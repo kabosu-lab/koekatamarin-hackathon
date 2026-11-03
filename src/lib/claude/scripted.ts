@@ -25,6 +25,13 @@ function scriptedDraft(transcript: string, jsonSchema: Record<string, unknown> |
   };
 }
 
+function scriptedDaily(prompt: string) {
+  const lines = [...prompt.matchAll(/^(?:本人：|投稿：|返信：|ありがとう：|勉強：)(.*)$/gm)]
+    .map((match) => match[1].trim())
+    .filter((line) => !(openingLines as readonly string[]).includes(line));
+  return { items: lines.slice(0, 6) };
+}
+
 function scriptedProfile(prompt: string) {
   const asked = prompt.match(/<頼み>([\s\S]*?)<\/頼み>/)?.[1]?.trim();
   if (asked) return { ready: true, text: `言葉で頼んで直したプロフィール（${asked}）` };
@@ -93,6 +100,7 @@ export function createScriptedClaude(): ClaudeClient {
     mode: "scripted",
     async complete({ task, messages, jsonSchema }) {
       if (task === "draft") return { text: JSON.stringify(scriptedDraft(messages[0].content, jsonSchema)), refused: false };
+      if (task === "daily") return { text: JSON.stringify(scriptedDaily(messages[0].content)), refused: false };
       if (task === "profile") return { text: JSON.stringify(scriptedProfile(messages[0].content)), refused: false };
       if (task === "cheer") return { text: JSON.stringify(scriptedCheer(jsonSchema)), refused: false };
       if (task === "reply") return { text: JSON.stringify(scriptedReply(messages[0].content)), refused: false };

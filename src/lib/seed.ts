@@ -1,5 +1,5 @@
 import type { DatabaseSync } from "node:sqlite";
-import { channels, people, posts, seedAvatars } from "./seed-data";
+import { channels, homeroomTeachers, people, posts, seedAvatars } from "./seed-data";
 
 /** 文字列のまま時刻順に並ぶよう、すべて UTC の形で保存する。 */
 function toStored(time: string): string {
@@ -29,6 +29,10 @@ export function seedDatabase(db: DatabaseSync): void {
   try {
     for (const p of people) {
       insertPerson.run(p.id, p.name, p.role, p.label, p.publicProfile);
+    }
+    const setHomeroom = db.prepare("UPDATE people SET homeroom_teacher_id = ? WHERE id = ?");
+    for (const [studentId, teacherId] of Object.entries(homeroomTeachers)) {
+      setHomeroom.run(teacherId, studentId);
     }
     const insertAvatar = db.prepare("INSERT INTO avatars (person_id, family) VALUES (?, ?)");
     for (const [personId, family] of Object.entries(seedAvatars)) {

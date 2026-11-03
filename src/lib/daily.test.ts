@@ -1,0 +1,203 @@
+import type { DatabaseSync } from "node:sqlite";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { createScriptedClaude } from "./claude/scripted";
+import type { ChatMessage, ClaudeClient, ClaudeRequest } from "./claude/types";
+import { getReport, handleCheck, handleMake, handleRespond, japanDate, listReceived, recipientsOf } from "./daily";
+import { openDatabase } from "./db";
+import { createDummyTeams } from "./destination/dummy-teams";
+import { seedDatabase } from "./seed";
+
+const scripted = createScriptedClaude();
+const NOW = new Date("2026-11-04T09:00:00Z"); // 18:00
+const DATE = japanDate(NOW);
+const talk: ChatMessage[] = [
+  { role: "user", content: "作文を褒めた" },
+  { role: "assistant", content: "ええやん" },
+  { role: "user", content: "保護者の電話で疲れた" },
+];
+
+let db: DatabaseSync;
+
+beforeEach(() => {
+  db = openDatabase(":memory:");
+  seedDatabase(db);
+});
+
+async function make(person = "saeki", conversation = talk) {
+  const outcome = await handleMake(scripted, db, person, { conversation }, NOW);
+  expect(outcome.status).toBe(200);
+  const report = getReport(db, person, DATE);
+  if (!report) throw new Error("まとめが作られていない");
+  return report;
+}
+
+describe("届く相手", () => {
+  it("先生の日報は管理職へ、生徒の日記は担任へ", () => {
+    expect(recipientsOf(db, "saeki").map((r) => r.id)).toEqual(["fujimoto"]);
+    expect(recipientsOf(db, "aoki").map((r) => r.id)).toEqual(["saeki"]);
+    expect(recipientsOf(db, "nakamura").map((r) => r.id)).toEqual(["kawamura"]);
+    expect(recipientsOf(db, "fujimoto")).toEqual([]);
+  });
+});
+
+describe("まとめ", () => {
+  it("項目ごとに作られ、初めはどれもチェックが付いていない", async () => {
+    const report = await make();
+    expect(report.items.map((i) => i.text)).toEqual(["作文を褒めた", "保護者の電話で疲れた"]);
+    expect(report.items.every((i) => !i.checked)).toBe(true);
+  });
+
+  it("今日の投稿や返信も材料になり、昨日のものは入らない", async () => {
+    const teams = createDummyTeams(db);
+    teams.createReply("noda", "post-making-1", "今日の返信");
+    const requests: ClaudeRequest[] = [];
+    const recording: ClaudeClient = {
+      mode: "real",
+      complete: async (request) => {
+        requests.push(request);
+        return { text: JSON.stringify({ items: ["項目"] }), refused: false };
+      },
+    };
+    await handleMake(recording, db, "noda", { conversation: [] }, new Date());
+    const prompt = requests[0].messages[0].content;
+    expect(prompt).toContain("今日の返信");
+    expect(prompt).not.toContain("ネットワークは最後まで苦手");
+  });
+
+  it("相棒の言葉は材料にせず、本人の話だけを使う", async () => {
+    const requests: ClaudeRequest[] = [];
+    const recording: ClaudeClient = {
+      mode: "real",
+      complete: async (request) => {
+        requests.push(request);
+        return { text: JSON.stringify({ items: ["項目"] }), refused: false };
+      },
+    };
+    await handleMake(recording, db, "saeki", { conversation: talk }, NOW);
+    expect(requests[0].messages[0].content).not.toContain("ええやん");
+  });
+
+  it("話した内容そのものを、チェックなしで他の人に見せない", async () => {
+    await make();
+    expect(JSON.stringify(listReceived(db, "fujimoto"))).not.toContain("保護者の電話");
+  });
+
+  it("材料がなければ Claude を呼ばず、作らない", async () => {
+    const complete = vi.fn();
+    const outcome = await handleMake({ mode: "real", complete }, db, "saeki", { conversation: [] }, NOW);
+    expect(outcome.body.report).toBeNull();
+    expect(complete).not.toHaveBeenCalled();
+  });
+
+  it("壊れた答えや断られたときは作らない", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    const broken: ClaudeClient = { mode: "real", complete: async () => ({ text: "壊れ", refused: false }) };
+    expect((await handleMake(broken, db, "saeki", { conversation: talk }, NOW)).status).toBe(503);
+    const refused: ClaudeClient = { mode: "real", complete: async () => ({ text: "", refused: true }) };
+    expect((await handleMake(refused, db, "saeki", { conversation: talk }, NOW)).status).toBe(503);
+    expect(getReport(db, "saeki", DATE)).toBeNull();
+    log.mockRestore();
+  });
+
+  it("届いている項目があるうちは作り直せない。外せば作り直せる", async () => {
+    const report = await make();
+    handleCheck(db, "saeki", { itemId: report.items[0].id, checked: true });
+    expect((await handleMake(scripted, db, "saeki", { conversation: talk }, NOW)).status).toBe(409);
+
+    handleCheck(db, "saeki", { itemId: report.items[0].id, checked: false });
+    expect((await handleMake(scripted, db, "saeki", { conversation: talk }, NOW)).status).toBe(200);
+  });
+
+  it("おかしな会話の記録は受け付けない", async () => {
+    const outcome = await handleMake(scripted, db, "saeki", { conversation: [{ role: "system", content: "x" }] }, NOW);
+    expect(outcome.status).toBe(400);
+  });
+});
+
+describe("チェックした項目だけが届く", () => {
+  it("チェックがなければ何も届かない", async () => {
+    await make();
+    expect(listReceived(db, "fujimoto")).toEqual([]);
+  });
+
+  it("チェックした項目だけが、決まった相手にだけ届く", async () => {
+    const report = await make();
+    handleCheck(db, "saeki", { itemId: report.items[0].id, checked: true });
+
+    const received = listReceived(db, "fujimoto");
+    expect(received).toHaveLength(1);
+    expect(received[0].items).toEqual(["作文を褒めた"]);
+    expect(JSON.stringify(received)).not.toContain("保護者の電話");
+
+    for (const other of ["ogawara", "kawamura", "noda", "shiraishi", "aoki", "kinoshita", "nakamura", "saeki"]) {
+      expect(listReceived(db, other)).toEqual([]);
+    }
+  });
+
+  it("チェックを外すと届かなくなる", async () => {
+    const report = await make();
+    handleCheck(db, "saeki", { itemId: report.items[0].id, checked: true });
+    handleCheck(db, "saeki", { itemId: report.items[0].id, checked: false });
+    expect(listReceived(db, "fujimoto")).toEqual([]);
+  });
+
+  it("生徒の日記は担任にだけ届き、管理職や他の先生には届かない", async () => {
+    const report = await make("aoki");
+    handleCheck(db, "aoki", { itemId: report.items[0].id, checked: true });
+
+    expect(listReceived(db, "saeki")).toHaveLength(1);
+    for (const other of ["fujimoto", "ogawara", "kawamura", "shiraishi", "nakamura"]) {
+      expect(listReceived(db, other)).toEqual([]);
+    }
+  });
+
+  it("本人以外はチェックを変えられない", async () => {
+    const report = await make();
+    expect(handleCheck(db, "fujimoto", { itemId: report.items[0].id, checked: true }).status).toBe(404);
+    expect(handleCheck(db, "aoki", { itemId: report.items[0].id, checked: true }).status).toBe(404);
+    expect(listReceived(db, "fujimoto")).toEqual([]);
+  });
+});
+
+describe("一言を返す", () => {
+  async function delivered() {
+    const report = await make();
+    handleCheck(db, "saeki", { itemId: report.items[0].id, checked: true });
+    return report;
+  }
+
+  it("受け取った人の一言が本人に届く", async () => {
+    const report = await delivered();
+    const outcome = await handleRespond(scripted, db, "fujimoto", { reportId: report.id, text: "いいですね" }, NOW);
+    expect(outcome.status).toBe(200);
+    expect(getReport(db, "saeki", DATE)?.responses).toEqual([
+      expect.objectContaining({ fromName: "藤本 恵", text: "いいですね" }),
+    ]);
+  });
+
+  it("届く相手以外は返せない", async () => {
+    const report = await delivered();
+    expect((await handleRespond(scripted, db, "ogawara", { reportId: report.id, text: "x" }, NOW)).status).toBe(404);
+    expect((await handleRespond(scripted, db, "aoki", { reportId: report.id, text: "x" }, NOW)).status).toBe(404);
+  });
+
+  it("何も届いていない日報には返せない", async () => {
+    const report = await make();
+    expect((await handleRespond(scripted, db, "fujimoto", { reportId: report.id, text: "x" }, NOW)).status).toBe(404);
+  });
+
+  it("きつい一言は止まり、確かめられないときも送らない", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    const report = await delivered();
+    expect((await handleRespond(scripted, db, "fujimoto", { reportId: report.id, text: "死ね" }, NOW)).status).toBe(422);
+    const failing: ClaudeClient = {
+      mode: "real",
+      complete: async () => {
+        throw new Error("通信の失敗");
+      },
+    };
+    expect((await handleRespond(failing, db, "fujimoto", { reportId: report.id, text: "x" }, NOW)).status).toBe(503);
+    expect(getReport(db, "saeki", DATE)?.responses).toEqual([]);
+    log.mockRestore();
+  });
+});

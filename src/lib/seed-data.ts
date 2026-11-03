@@ -119,6 +119,13 @@ export const seedAvatars: Record<string, string> = {
   nakamura: "spirit",
 };
 
+/** 生徒の日記が届く担任。 */
+export const homeroomTeachers: Record<string, string> = {
+  aoki: "saeki",
+  kinoshita: "ogawara",
+  nakamura: "kawamura",
+};
+
 /** テストの時期（架空の年間予定）。問いかけをテスト勉強向けに変える。 */
 export const examPeriods = [
   { from: "2026-11-24", to: "2026-11-30" },

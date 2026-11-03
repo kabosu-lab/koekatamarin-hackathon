@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { countContributions, getAvatar, KIND_QUESTION, STYLE_QUESTION } from "@/lib/avatar";
 import { getViewer } from "@/lib/current-person";
 import { getDatabase } from "@/lib/db";
@@ -52,6 +53,11 @@ export default async function MePage() {
         <p data-testid="profile-text">{profile || "まだ載せていません。"}</p>
         <ProfileEditor key={viewer.id} initialDraft={getDraft(db, viewer.id)} hasProfile={profile !== ""} />
       </section>
+
+      <div className="hub-links">
+        <Link href="/daily">{viewer.role === "student" ? "今日の日記" : "今日の日報"}</Link>
+        {viewer.role !== "student" && <Link href="/daily/received">届いた日報と日記</Link>}
+      </div>
 
       <section className="card" aria-label="これまで">
         <h2>これまで</h2>

@@ -850,3 +850,25 @@ body {
   font-size: 1.1rem;
   font-weight: 700;
 }
+
+.daily-item {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-start;
+  min-height: 2.75rem;
+  padding: 0.35rem 0;
+  font-size: 1rem !important;
+}
+
+.daily-item input {
+  flex: none;
+  width: 1.5rem;
+  height: 1.5rem;
+  margin-top: 0.15rem;
+}
+
+.response-card {
+  padding: 0.6rem 0.85rem;
+  border-radius: 0.75rem;
+  background: #e3f4e0;
+}

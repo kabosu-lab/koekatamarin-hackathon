@@ -8,6 +8,7 @@ import type { ChannelView } from "@/lib/destination/types";
 import { Compose, type ComposeStart } from "./Compose";
 import { ConnectCard, type ConnectSuggestion } from "./ConnectCard";
 import { SafetyCard, type SafetyNotice } from "./SafetyCard";
+import { loadTalk, saveTalk } from "./talk-storage";
 import { isSpeechSupported, startListening } from "./speech";
 
 const MAX_TEXT_LENGTH = 2000;
@@ -38,6 +39,18 @@ export function Talk({ viewer }: { viewer: { name: string; label: string } }) {
   }, [messages, sending, heard]);
 
   useEffect(() => () => stopRef.current?.(), []);
+
+  // 画面を行き来しても話が消えないよう、このタブの中だけに残す。サーバーには保存しない
+  const restored = useRef(false);
+  useEffect(() => {
+    if (restored.current) {
+      saveTalk(viewer.name, messages);
+      return;
+    }
+    restored.current = true;
+    const saved = loadTalk(viewer.name);
+    if (saved.length > 0) setMessages(saved);
+  }, [messages, viewer.name]);
 
   async function send(raw: string) {
     const text = raw.trim();

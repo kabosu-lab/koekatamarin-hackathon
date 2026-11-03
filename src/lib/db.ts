@@ -101,6 +101,28 @@ const MIGRATIONS: readonly string[] = [
      is_demo INTEGER NOT NULL DEFAULT 0 CHECK (is_demo IN (0, 1))
    ) STRICT;
    CREATE INDEX study_sessions_active ON study_sessions (finished_at, ends_at);`,
+  `ALTER TABLE people ADD COLUMN homeroom_teacher_id TEXT REFERENCES people (id);
+   CREATE TABLE daily_reports (
+     id TEXT PRIMARY KEY,
+     person_id TEXT NOT NULL REFERENCES people (id),
+     date TEXT NOT NULL,
+     created_at TEXT NOT NULL,
+     UNIQUE (person_id, date)
+   ) STRICT;
+   CREATE TABLE report_items (
+     id TEXT PRIMARY KEY,
+     report_id TEXT NOT NULL REFERENCES daily_reports (id) ON DELETE CASCADE,
+     position INTEGER NOT NULL,
+     text TEXT NOT NULL,
+     checked INTEGER NOT NULL DEFAULT 0 CHECK (checked IN (0, 1))
+   ) STRICT;
+   CREATE TABLE report_responses (
+     id TEXT PRIMARY KEY,
+     report_id TEXT NOT NULL REFERENCES daily_reports (id) ON DELETE CASCADE,
+     from_person_id TEXT NOT NULL REFERENCES people (id),
+     text TEXT NOT NULL,
+     created_at TEXT NOT NULL
+   ) STRICT;`,
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;
