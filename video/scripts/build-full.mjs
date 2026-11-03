@@ -33,7 +33,7 @@ const facts = {
   commits: Number(sh("git rev-list --count HEAD")),
   tests: Number(sh(`git grep -hE "^[[:space:]]*(it|test)\\(" HEAD -- src e2e | wc -l`)),
   reviews: Number(sh("git ls-tree -r --name-only HEAD reviews | wc -l")),
-  recent: sh(`git log --format=%s | grep -v "^BACKLOG" | grep -v Codex | head -9`).split("\n"),
+  recent: sh(`git log --format=%s | grep "追加$" | grep -vE "Codex|動画|勤務|学校" | head -9`).split("\n"),
 };
 writeFileSync(new URL("../src/candidates/repo-facts.json", import.meta.url), JSON.stringify(facts, null, 2) + "\n");
 console.log(facts);
