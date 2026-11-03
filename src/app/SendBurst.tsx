@@ -1,44 +1,57 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
+import { sendTiming, splitIntoWords } from "@/lib/lumps";
 
-const DURATION_MS = 2200;
-const PETALS = [-70, -40, -15, 15, 40, 70];
+export { playSendSound } from "./sound";
 
-/** 話した言葉がかたまりになって飛び、届くと桜の花びらになる。動きを減らす設定では出さない（CSS）。 */
+const PETALS = [-120, -85, -50, -20, 20, 50, 85, 120];
+/** 言葉が出る場所（中央からの横と縦のずれ）。順に上へ積み上がる */
+const SPOTS: [string, string][] = [
+  ["-24vw", "0rem"],
+  ["20vw", "-2.6rem"],
+  ["-16vw", "-5.2rem"],
+  ["24vw", "-7.8rem"],
+  ["-6vw", "-10.4rem"],
+];
+
+/** 話した言葉がポポポと出て、固まり、シューンと飛び、届くと花びらになる。動きを減らす設定では出さない（CSS）。 */
 export function SendBurst({ words, onDone }: { words: string; onDone(): void }) {
+  const pieces = useMemo(() => splitIntoWords(words), [words]);
+  const timing = sendTiming(pieces.length);
+
   useEffect(() => {
-    const timer = setTimeout(onDone, DURATION_MS);
+    const timer = setTimeout(onDone, timing.end * 1000);
     return () => clearTimeout(timer);
-  }, [onDone]);
+  }, [onDone, timing.end]);
+
+  const times = {
+    "--gather": `${timing.gather}s`,
+    "--launch": `${timing.launch}s`,
+    "--land": `${timing.land}s`,
+  } as React.CSSProperties;
 
   return (
-    <div className="send-burst" aria-hidden="true">
-      <span className="blob">{words}</span>
+    <div className="send-burst" aria-hidden="true" style={times}>
+      {pieces.map((piece, index) => (
+        <span
+          key={index}
+          className="word"
+          style={
+            {
+              "--x": SPOTS[index][0],
+              "--y": SPOTS[index][1],
+              "--delay": `${index * timing.popGap}s`,
+            } as React.CSSProperties
+          }
+        >
+          {piece}
+        </span>
+      ))}
+      <span className="blob" />
       {PETALS.map((dx) => (
         <span key={dx} className="burst-petal" style={{ "--dx": `${dx}px` } as React.CSSProperties} />
       ))}
     </div>
   );
-}
-
-/** 送ったときの小さな音。「音あり」を選んだ人にだけ鳴らす。 */
-export function playSendSound(): void {
-  if (document.documentElement.dataset.sound !== "on") return;
-  try {
-    const audio = new AudioContext();
-    const gain = audio.createGain();
-    gain.gain.setValueAtTime(0.08, audio.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, audio.currentTime + 0.5);
-    gain.connect(audio.destination);
-    [660, 880].forEach((frequency, index) => {
-      const tone = audio.createOscillator();
-      tone.frequency.value = frequency;
-      tone.connect(gain);
-      tone.start(audio.currentTime + index * 0.1);
-      tone.stop(audio.currentTime + 0.5);
-    });
-  } catch {
-    // 音が出せなくても、送るのには関係ない
-  }
 }

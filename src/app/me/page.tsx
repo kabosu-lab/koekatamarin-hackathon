@@ -10,6 +10,7 @@ import { PersonSwitcher } from "../PersonSwitcher";
 import { cookies } from "next/headers";
 import { APPEARANCE_OPTIONS, readAppearance } from "@/lib/appearance";
 import { setAppearance } from "../person-actions";
+import { SoundTest } from "./SoundTest";
 import { createDummyTeams } from "@/lib/destination/dummy-teams";
 import { listMemories } from "@/lib/memory";
 import { AvatarQuiz, MemoryList, ProfileEditor, ThanksForm } from "./MeActions";
@@ -91,6 +92,7 @@ export default async function MePage() {
             </div>
           </form>
         ))}
+        {appearance.sound === "on" && <SoundTest />}
       </section>
 
       <section className="card" aria-label="これまで">

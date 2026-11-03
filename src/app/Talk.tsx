@@ -220,7 +220,7 @@ export function Talk({
             setComposing(null);
             setSentTo({ channel, postId, isPublic });
             setBurst(words);
-            playSendSound();
+            playSendSound(words);
           }}
         />
       </div>

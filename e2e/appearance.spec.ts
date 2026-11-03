@@ -63,10 +63,23 @@ async function send(page: Page, words: string) {
 test("送ると言葉が飛び、花びらになって、消える", async ({ page }) => {
   const words = `飛ばす言葉 ${test.info().testId}`;
   await send(page, words);
-  await expect(page.locator(".send-burst .blob")).toHaveText(words);
+  await expect(page.locator(".send-burst .word").first()).toBeAttached();
+  await expect(page.locator(".send-burst .blob")).toBeAttached();
   await expect(page.locator(".send-burst .burst-petal").first()).toBeAttached();
   await expect(page.locator(".send-burst")).toHaveCount(0, { timeout: 5000 });
   await expect(page.locator(".sent")).toBeVisible();
+});
+
+test("音ありでは音を試せて、送っても画面が乱れない", async ({ page }) => {
+  const problems: string[] = [];
+  page.on("pageerror", (error) => problems.push(error.message));
+  await page.goto("/me");
+  await expect(page.getByRole("button", { name: "音を試す" })).toHaveCount(0);
+  await page.getByRole("button", { name: "音あり" }).click();
+  await page.getByRole("button", { name: "音を試す" }).click();
+  await send(page, `音の言葉 ${test.info().testId}`);
+  await expect(page.locator(".sent")).toBeVisible();
+  expect(problems).toEqual([]);
 });
 
 test("動きを減らす設定では、飛ばさない", async ({ page }) => {
