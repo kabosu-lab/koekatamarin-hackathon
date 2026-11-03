@@ -8,7 +8,7 @@ import { listPopularCards, listQuietPosts, listSeenNotes, listTodayCards } from 
 import { PersonSwitcher } from "../PersonSwitcher";
 import { TodayCards } from "./TodayCards";
 
-export const metadata: Metadata = { title: "今日の3人｜コエカタ" };
+export const metadata: Metadata = { title: "今日の3人｜こえかた" };
 export const dynamic = "force-dynamic";
 
 export default async function TodayPage({ searchParams }: { searchParams: Promise<{ view?: string | string[] }> }) {

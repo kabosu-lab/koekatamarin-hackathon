@@ -11,7 +11,7 @@ import { PersonSwitcher } from "../PersonSwitcher";
 import { createPost, createReply, shareConcern, toggleLike } from "./actions";
 import "./teams.css";
 
-export const metadata: Metadata = { title: "校内チャネル｜コエカタ" };
+export const metadata: Metadata = { title: "校内チャネル｜こえかた" };
 export const dynamic = "force-dynamic";
 
 const timeFormat = new Intl.DateTimeFormat("ja-JP", {

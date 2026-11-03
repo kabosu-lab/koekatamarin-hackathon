@@ -5,7 +5,7 @@ import { countContributions, getAvatar } from "@/lib/avatar";
 import { getDatabase } from "@/lib/db";
 import { Avatar } from "../../Avatar";
 
-export const metadata: Metadata = { title: "プロフィール｜コエカタ" };
+export const metadata: Metadata = { title: "プロフィール｜こえかた" };
 export const dynamic = "force-dynamic";
 
 export default async function PersonPage({ params }: { params: Promise<{ id: string }> }) {

@@ -4,7 +4,7 @@ import { getViewer } from "@/lib/current-person";
 import { getDatabase } from "@/lib/db";
 import { listAlertsFor } from "@/lib/safety";
 
-export const metadata: Metadata = { title: "相談室への知らせ｜コエカタ" };
+export const metadata: Metadata = { title: "相談室への知らせ｜こえかた" };
 export const dynamic = "force-dynamic";
 
 const timeFormat = new Intl.DateTimeFormat("ja-JP", {

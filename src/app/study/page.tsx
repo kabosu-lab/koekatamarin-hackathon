@@ -6,7 +6,7 @@ import { ensureDemoCompanions, findOwnSession, getPresence, isLateNight } from "
 import { PersonSwitcher } from "../PersonSwitcher";
 import { StudyTimer } from "./StudyTimer";
 
-export const metadata: Metadata = { title: "一緒に勉強する｜コエカタ" };
+export const metadata: Metadata = { title: "一緒に勉強する｜こえかた" };
 export const dynamic = "force-dynamic";
 
 export default async function StudyPage() {

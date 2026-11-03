@@ -6,7 +6,7 @@ import { BottomNav } from "./BottomNav";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "コエカタ",
+  title: "こえかた",
   description: "一人で抱えない。AI に話しかけるところから、人に頼れる学校へ。",
 };
 

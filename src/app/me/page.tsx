@@ -14,7 +14,7 @@ import { createDummyTeams } from "@/lib/destination/dummy-teams";
 import { listMemories } from "@/lib/memory";
 import { AvatarQuiz, MemoryList, ProfileEditor, ThanksForm } from "./MeActions";
 
-export const metadata: Metadata = { title: "じぶん｜コエカタ" };
+export const metadata: Metadata = { title: "じぶん｜こえかた" };
 export const dynamic = "force-dynamic";
 
 export default async function MePage() {

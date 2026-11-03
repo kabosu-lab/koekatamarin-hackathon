@@ -6,7 +6,7 @@ import { getDatabase } from "@/lib/db";
 import { PersonSwitcher } from "../PersonSwitcher";
 import { DailyPanel } from "./DailyPanel";
 
-export const metadata: Metadata = { title: "今日のまとめ｜コエカタ" };
+export const metadata: Metadata = { title: "今日のまとめ｜こえかた" };
 export const dynamic = "force-dynamic";
 
 export default async function DailyPage() {

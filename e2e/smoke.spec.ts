@@ -5,8 +5,8 @@ import { people } from "../src/lib/seed-data";
 test("スマホ幅で最初の画面が横にはみ出さず表示される", async ({ page }) => {
   await page.goto("/");
 
-  await expect(page).toHaveTitle("コエカタ");
-  await expect(page.getByRole("heading", { name: "コエカタ" })).toBeVisible();
+  await expect(page).toHaveTitle("こえかた");
+  await expect(page.getByRole("heading", { name: "こえかた" })).toBeVisible();
   await expect(page.locator("html")).toHaveAttribute("lang", "ja");
 
   const overflow = await page.evaluate(

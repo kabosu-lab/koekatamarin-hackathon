@@ -4,7 +4,7 @@ import { ensureDemoCompanions, getPresence } from "@/lib/study";
 import { PresenceView } from "../PresenceView";
 import { Refresher } from "./Refresher";
 
-export const metadata: Metadata = { title: "自習室｜コエカタ" };
+export const metadata: Metadata = { title: "自習室｜こえかた" };
 export const dynamic = "force-dynamic";
 
 /** Teams のチャネルのタブに置く画面。人数と相棒の情報だけで動き、操作も配信もない。 */

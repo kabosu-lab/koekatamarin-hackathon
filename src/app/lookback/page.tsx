@@ -7,7 +7,7 @@ import { LOOKBACK_PERIODS } from "@/lib/lookback";
 import { PersonSwitcher } from "../PersonSwitcher";
 import { LookbackPanel } from "./LookbackPanel";
 
-export const metadata: Metadata = { title: "ふりかえり｜コエカタ" };
+export const metadata: Metadata = { title: "ふりかえり｜こえかた" };
 export const dynamic = "force-dynamic";
 
 export default async function LookbackPage() {

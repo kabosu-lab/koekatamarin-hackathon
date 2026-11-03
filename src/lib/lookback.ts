@@ -56,7 +56,7 @@ export function collectMaterial(db: DatabaseSync, personId: string, since: strin
     .map((row) => row.line);
 }
 
-const lookbackSystemPrompt = `あなたは「コエカタ」の相棒です。本人のある期間の日報や日記、投稿、もらったありがとうから、ふりかえりを書きます。まず本人だけが読みます。
+const lookbackSystemPrompt = `あなたは「こえかた」の相棒です。本人のある期間の日報や日記、投稿、もらったありがとうから、ふりかえりを書きます。まず本人だけが読みます。
 
 - 本人に語りかける形で、短い段落を2〜3つ。具体的な出来事に触れる。「○○さんがあなたの返信に助けられました」のように、人とのつながりが見える言葉を中心にする
 - 変化が見えるなら「今月のあなたの変化」のように伝える

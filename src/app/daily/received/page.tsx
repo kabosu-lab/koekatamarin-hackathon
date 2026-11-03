@@ -6,7 +6,7 @@ import { getDatabase } from "@/lib/db";
 import { PersonSwitcher } from "../../PersonSwitcher";
 import { RespondForm } from "./RespondForm";
 
-export const metadata: Metadata = { title: "届いた日報と日記｜コエカタ" };
+export const metadata: Metadata = { title: "届いた日報と日記｜こえかた" };
 export const dynamic = "force-dynamic";
 
 export default async function ReceivedPage() {

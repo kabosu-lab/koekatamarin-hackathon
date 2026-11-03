@@ -7,7 +7,7 @@ import { getSakura, isBloomingSeason, parseSeason, type Season, timeOfDay } from
 import { schoolName } from "@/lib/seed-data";
 import { Avatar } from "../Avatar";
 
-export const metadata: Metadata = { title: "みんな｜コエカタ" };
+export const metadata: Metadata = { title: "みんな｜こえかた" };
 export const dynamic = "force-dynamic";
 
 const SEASON_LABEL: [Season, string][] = [

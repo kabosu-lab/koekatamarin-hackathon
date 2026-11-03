@@ -14,7 +14,7 @@ export default async function HomePage() {
   return (
     <main className="home">
       <header>
-        <h1>コエカタ</h1>
+        <h1>こえかた</h1>
         <p>一人で抱えない。</p>
         <PersonSwitcher viewerId={viewer.id} people={people} />
       </header>

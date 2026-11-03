@@ -8,7 +8,7 @@ import { listInbox, listPassCandidates } from "@/lib/inbox";
 import { PersonSwitcher } from "../PersonSwitcher";
 import { InboxCard } from "./InboxCard";
 
-export const metadata: Metadata = { title: "受信箱｜コエカタ" };
+export const metadata: Metadata = { title: "受信箱｜こえかた" };
 export const dynamic = "force-dynamic";
 
 export default async function InboxPage() {
