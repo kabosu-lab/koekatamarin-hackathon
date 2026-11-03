@@ -31,19 +31,29 @@ export function periodStart(period: LookbackPeriod, now: Date): string {
 
 /** 本人のものだけを集める。チェックの有無にかかわらず、自分の日報は自分で読める。 */
 export function collectMaterial(db: DatabaseSync, personId: string, since: string): string[] {
-  const rows = (sql: string) => db.prepare(sql).all(personId, since) as { text: string }[];
-  return [
+  type Row = { text: string; at: string };
+  const rows = (prefix: string, sql: string) =>
+    (db.prepare(sql).all(personId, since) as Row[]).map((row) => ({ line: `${prefix}：${row.text}`, at: row.at }));
+  const all = [
     ...rows(
-      `SELECT i.text FROM report_items i JOIN daily_reports d ON d.id = i.report_id
-       WHERE d.person_id = ? AND d.created_at >= ? ORDER BY d.date, i.position`,
-    ).map((r) => `日報：${r.text}`),
-    ...rows("SELECT body AS text FROM posts WHERE author_id = ? AND created_at >= ? ORDER BY created_at").map((r) => `投稿：${r.text}`),
-    ...rows("SELECT body AS text FROM replies WHERE author_id = ? AND created_at >= ? ORDER BY created_at").map((r) => `返信：${r.text}`),
+      "日報",
+      `SELECT i.text, d.created_at AS at FROM report_items i JOIN daily_reports d ON d.id = i.report_id
+       WHERE d.person_id = ? AND d.created_at >= ?`,
+    ),
+    ...rows("投稿", "SELECT body AS text, created_at AS at FROM posts WHERE author_id = ? AND created_at >= ?"),
+    ...rows("返信", "SELECT body AS text, created_at AS at FROM replies WHERE author_id = ? AND created_at >= ?"),
     ...rows(
-      `SELECT p.name || 'さんから：' || t.message AS text FROM thanks t JOIN people p ON p.id = t.from_person_id
-       WHERE t.to_person_id = ? AND t.created_at >= ? ORDER BY t.created_at`,
-    ).map((r) => `ありがとう：${r.text}`),
-  ].slice(-MAX_LINES);
+      "ありがとう",
+      `SELECT p.name || 'さんから：' || t.message AS text, t.created_at AS at FROM thanks t
+       JOIN people p ON p.id = t.from_person_id
+       WHERE t.to_person_id = ? AND t.created_at >= ?`,
+    ),
+  ];
+  // 種類に関わらず時系列に並べ、多すぎるときは新しいものを残す
+  return all
+    .sort((x, y) => x.at.localeCompare(y.at))
+    .slice(-MAX_LINES)
+    .map((row) => row.line);
 }
 
 const lookbackSystemPrompt = `あなたは「コエカタ」の相棒です。本人のある期間の日報や日記、投稿、もらったありがとうから、ふりかえりを書きます。まず本人だけが読みます。

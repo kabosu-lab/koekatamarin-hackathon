@@ -896,3 +896,40 @@ body {
   font-size: 0.9rem;
   font-weight: 400;
 }
+
+.talk .remember {
+  align-self: flex-end;
+  min-height: 2rem;
+  margin-top: -0.25rem;
+  padding: 0.1rem 0.6rem;
+  background: transparent;
+  border: 0;
+  color: #9c3412;
+  font-size: 0.8rem;
+  font-weight: 400;
+  text-decoration: underline;
+}
+
+.talk .remember:disabled {
+  opacity: 1;
+  color: #6b5d55;
+  text-decoration: none;
+}
+
+.memory-item {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 0.5rem;
+  border-top: 1px solid #eadfd8;
+}
+
+.memory-item p {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.memory-item button {
+  flex: none;
+}

@@ -126,6 +126,18 @@ const MIGRATIONS: readonly string[] = [
   `ALTER TABLE posts ADD COLUMN scope TEXT NOT NULL DEFAULT 'everyone'
      CHECK (scope IN ('everyone', 'person', 'managers', 'self'));
    ALTER TABLE posts ADD COLUMN scope_person_id TEXT REFERENCES people (id);`,
+  `CREATE TABLE companion_memories (
+     id TEXT PRIMARY KEY,
+     person_id TEXT NOT NULL REFERENCES people (id),
+     text TEXT NOT NULL,
+     created_at TEXT NOT NULL
+   ) STRICT;
+   CREATE INDEX companion_memories_by_person ON companion_memories (person_id, created_at);
+   CREATE TABLE forgotten_words (
+     person_id TEXT NOT NULL REFERENCES people (id),
+     source_id TEXT NOT NULL,
+     PRIMARY KEY (person_id, source_id)
+   ) STRICT;`,
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;

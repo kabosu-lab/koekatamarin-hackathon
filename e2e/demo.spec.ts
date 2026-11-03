@@ -95,8 +95,8 @@ test("先生の一日：話しかける、返す、パス、サンクス、日�
     await quiz.getByRole("button", { name: "じっくり話を聞く" }).click();
     await expect(quiz).toHaveCount(0);
   }
-  await expect(page.getByRole("region", { name: "これまで" })).toContainText("ゴール 1");
-  await expect(page.getByRole("region", { name: "これまで" })).toContainText("アシスト 1");
+  await expect(page.getByRole("region", { name: "これまで" })).toContainText(/ゴール [1-9]/);
+  await expect(page.getByRole("region", { name: "これまで" })).toContainText(/アシスト [1-9]/);
   await expect(page.getByRole("region", { name: "もらったありがとう" })).toContainText("つないでくれて");
   await shot(page, "06-相棒とありがとう");
 

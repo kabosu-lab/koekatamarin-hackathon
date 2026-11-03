@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import type { MemoryItem } from "@/lib/memory";
 import type { ProfileDraft } from "@/lib/profile";
 
 async function postJson(url: string, body: unknown) {
@@ -142,6 +143,47 @@ export function ProfileEditor({ initialDraft, hasProfile }: { initialDraft: Prof
         </p>
       )}
     </div>
+  );
+}
+
+export function MemoryList({ initial }: { initial: MemoryItem[] }) {
+  const [items, setItems] = useState(initial);
+  const [problem, setProblem] = useState("");
+
+  async function forget(item: MemoryItem) {
+    setProblem("");
+    const { ok } = await postJson("/api/memory", { action: "forget", id: item.id, kind: item.kind }).catch(() => ({
+      ok: false,
+    }));
+    if (ok) setItems((current) => current.filter((i) => i.id !== item.id));
+    else setProblem("消せませんでした。もう一度押してください。");
+  }
+
+  return (
+    <section className="card" aria-label="相棒が覚えていること">
+      <h2>相棒が覚えていること</h2>
+      <p className="muted">
+        公開した言葉は、話すときと人を紹介するときに使います。「覚えて」と頼んだことは、あなたとの話にだけ使います。
+      </p>
+      {items.length === 0 && <p className="muted">まだ何も覚えていません。</p>}
+      {items.map((item) => (
+        <div className="memory-item" key={item.id}>
+          <p>
+            <span className="muted">{item.kind === "spoken" ? "覚えてと頼んだこと" : "公開した言葉"}</span>
+            <br />
+            {item.text}
+          </p>
+          <button type="button" className="secondary" onClick={() => void forget(item)}>
+            忘れて
+          </button>
+        </div>
+      ))}
+      {problem && (
+        <p className="notice" role="alert">
+          {problem}
+        </p>
+      )}
+    </section>
   );
 }
 

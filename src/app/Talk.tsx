@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { type FormEvent, useEffect, useRef, useState } from "react";
+import { type FormEvent, Fragment, useEffect, useRef, useState } from "react";
 import type { Draft, Review } from "@/lib/claude/compose";
 import type { ChatMessage } from "@/lib/claude/types";
 import type { ChannelView, PersonView } from "@/lib/destination/types";
@@ -29,6 +29,7 @@ export function Talk({ viewer }: { viewer: { name: string; label: string } }) {
   const [preparing, setPreparing] = useState(false);
   const [safety, setSafety] = useState<SafetyNotice | null>(null);
   const [suggestion, setSuggestion] = useState<ConnectSuggestion | null>(null);
+  const [remembered, setRemembered] = useState<number[]>([]);
   const connectDone = useRef(false);
   const [sentTo, setSentTo] = useState<{ channel: ChannelView; postId: string } | null>(null);
   const stopRef = useRef<(() => void) | null>(null);
@@ -146,6 +147,18 @@ export function Talk({ viewer }: { viewer: { name: string; label: string } }) {
     }
   }
 
+  // 話しただけのことは、本人が頼んだものだけを残す
+  async function remember(index: number, text: string) {
+    setNotice("");
+    const response = await fetch("/api/memory", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "remember", text }),
+    }).catch(() => null);
+    if (response?.ok) setRemembered((current) => [...current, index]);
+    else setNotice("覚えられませんでした。もう一度押してください。");
+  }
+
   async function undoSent() {
     if (!sentTo) return;
     setNotice("");
@@ -214,10 +227,22 @@ export function Talk({ viewer }: { viewer: { name: string; label: string } }) {
           <p className="hint">調べ物でも、悩みでも、今日の頑張りでも。思いついたことから、どうぞ。</p>
         )}
         {messages.map((message, index) => (
-          <p key={index} className={`bubble ${message.role}`}>
-            <span className="visually-hidden">{message.role === "user" ? "あなた：" : "相棒："}</span>
-            {message.content}
-          </p>
+          <Fragment key={index}>
+            <p className={`bubble ${message.role}`}>
+              <span className="visually-hidden">{message.role === "user" ? "あなた：" : "相棒："}</span>
+              {message.content}
+            </p>
+            {message.role === "user" && (
+              <button
+                type="button"
+                className="remember"
+                disabled={remembered.includes(index)}
+                onClick={() => void remember(index, message.content)}
+              >
+                {remembered.includes(index) ? "覚えました" : "これを覚えて"}
+              </button>
+            )}
+          </Fragment>
         ))}
         {listening && (
           <p className="bubble user listening" role="status">

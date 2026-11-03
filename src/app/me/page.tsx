@@ -7,7 +7,9 @@ import { getDraft } from "@/lib/profile";
 import { listThanks } from "@/lib/thanks";
 import { Avatar } from "../Avatar";
 import { PersonSwitcher } from "../PersonSwitcher";
-import { AvatarQuiz, ProfileEditor, ThanksForm } from "./MeActions";
+import { createDummyTeams } from "@/lib/destination/dummy-teams";
+import { listMemories } from "@/lib/memory";
+import { AvatarQuiz, MemoryList, ProfileEditor, ThanksForm } from "./MeActions";
 
 export const metadata: Metadata = { title: "じぶん｜コエカタ" };
 export const dynamic = "force-dynamic";
@@ -59,6 +61,8 @@ export default async function MePage() {
         {viewer.role !== "student" && <Link href="/daily/received">届いた日報と日記</Link>}
         <Link href="/lookback">ふりかえり</Link>
       </div>
+
+      <MemoryList key={`${viewer.id}-memory`} initial={listMemories(db, createDummyTeams(db), viewer.id)} />
 
       <section className="card" aria-label="これまで">
         <h2>これまで</h2>

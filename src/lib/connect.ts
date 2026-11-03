@@ -2,6 +2,7 @@ import type { DatabaseSync } from "node:sqlite";
 import { isMessage, MAX_HISTORY } from "./claude/converse-request";
 import type { ChatMessage, ClaudeClient } from "./claude/types";
 import type { PostDestination } from "./destination/types";
+import { forgottenSources } from "./memory";
 
 const MAX_TOKENS = 2000;
 const MIN_MESSAGES = 4;
@@ -36,14 +37,17 @@ export function buildDirectory(db: DatabaseSync, destination: PostDestination, v
     .prepare("SELECT id, name, label, public_profile FROM people WHERE id != ? ORDER BY rowid")
     .all(viewerId) as { id: string; name: string; label: string; public_profile: string }[];
 
+  const forgotten = forgottenSources(db);
   const words = new Map<string, string[]>();
   const add = (personId: string, body: string) => words.set(personId, [...(words.get(personId) ?? []), body]);
   for (const channel of destination.listChannels(viewerId)) {
     for (const post of destination.listPosts(viewerId, channel.id)) {
       // 紹介に使うのは、校内に公開された投稿だけ。範囲を絞った投稿は材料にしない
       if (post.scope !== "everyone") continue;
-      add(post.authorId, post.body);
-      for (const reply of post.replies) add(reply.authorId, reply.body);
+      if (!forgotten.has(`${post.authorId}|${post.id}`)) add(post.authorId, post.body);
+      for (const reply of post.replies) {
+        if (!forgotten.has(`${reply.authorId}|${reply.id}`)) add(reply.authorId, reply.body);
+      }
     }
   }
 

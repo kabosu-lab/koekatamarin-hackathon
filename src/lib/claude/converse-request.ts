@@ -27,12 +27,16 @@ export function parseConverseInput(input: unknown): { history: ChatMessage[]; te
 }
 
 /** 画面からの依頼を確かめて、相棒の返事を返す。話の中身はログに残さない。 */
-export async function handleConverse(claude: ClaudeClient, input: unknown): Promise<ConverseOutcome> {
+export async function handleConverse(
+  claude: ClaudeClient,
+  input: unknown,
+  memory: string = "",
+): Promise<ConverseOutcome> {
   const parsed = parseConverseInput(input);
   if (!parsed) return { status: 400, body: { error: "言葉か会話の記録が正しくありません" } };
 
   try {
-    const { reply } = await converse(claude, parsed.history, parsed.text);
+    const { reply } = await converse(claude, parsed.history, parsed.text, memory);
     return { status: 200, body: { reply, mode: claude.mode } };
   } catch (error) {
     console.error("相棒の呼び出しに失敗", error instanceof Error ? error.name : "unknown");

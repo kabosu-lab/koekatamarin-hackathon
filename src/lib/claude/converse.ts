@@ -13,10 +13,11 @@ export async function converse(
   claude: ClaudeClient,
   history: ChatMessage[],
   userText: string,
+  memory: string = "",
 ): Promise<ConverseResult> {
   const { text, refused } = await claude.complete({
     task: "converse",
-    system: companionSystemPrompt,
+    system: memory ? `${companionSystemPrompt}\n\n${memory}` : companionSystemPrompt,
     messages: [...history, { role: "user", content: userText }],
     maxTokens: MAX_REPLY_TOKENS,
   });

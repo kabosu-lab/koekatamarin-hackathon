@@ -2,6 +2,7 @@ import type { DatabaseSync } from "node:sqlite";
 import { ComposeError, reviewPost } from "./claude/compose";
 import type { ClaudeClient } from "./claude/types";
 import type { PostDestination } from "./destination/types";
+import { listPublishedWords } from "./memory";
 
 const MAX_TOKENS = 2000;
 const MAX_WORDS = 15;
@@ -26,15 +27,9 @@ const schema = {
   properties: { ready: { type: "boolean" }, text: { type: "string" } },
 };
 
-/** 本人の言葉だけを集める。Claude との話は保存していないので、入りようがない。 */
-function publicWords(destination: PostDestination, personId: string): string[] {
-  const words = destination.listChannels(personId).flatMap((channel) =>
-    destination.listPosts(personId, channel.id).filter((post) => post.scope === "everyone").flatMap((post) => [
-      ...(post.authorId === personId ? [post.body] : []),
-      ...post.replies.filter((r) => r.authorId === personId).map((r) => r.body),
-    ]),
-  );
-  return words.slice(-MAX_WORDS);
+/** 本人の公開した言葉だけを集める。本人が「忘れて」と言ったものは使わない。 */
+function publicWords(db: DatabaseSync, destination: PostDestination, personId: string): string[] {
+  return listPublishedWords(db, destination, personId).map((word) => word.text).slice(-MAX_WORDS);
 }
 
 async function ask(claude: ClaudeClient, content: string): Promise<{ ready: boolean; text: string }> {
@@ -92,7 +87,7 @@ export async function handleProfile(
 
   try {
     if (action === "draft") {
-      const words = publicWords(destination, personId).map((w) => `<言葉>${w}</言葉>`).join("\n");
+      const words = publicWords(db, destination, personId).map((w) => `<言葉>${w}</言葉>`).join("\n");
       const draft = await ask(claude, `<今のプロフィール>${me.public_profile}</今のプロフィール>\n${words}`);
       if (!draft.ready) return { status: 200, body: { draft: null } };
       db.prepare(
@@ -110,7 +105,7 @@ export async function handleProfile(
       if (typeof request !== "string" || request.trim() === "" || request.length > MAX_REQUEST) {
         return { status: 400, body: { error: "頼みが空か、長すぎます" } };
       }
-      const words = publicWords(destination, personId).map((w) => `<言葉>${w}</言葉>`).join("\n");
+      const words = publicWords(db, destination, personId).map((w) => `<言葉>${w}</言葉>`).join("\n");
       const draft = await ask(
         claude,
         `<今のプロフィール>${current.text}</今のプロフィール>\n${words}\n<頼み>${request.trim()}</頼み>`,

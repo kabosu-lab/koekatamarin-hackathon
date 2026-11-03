@@ -37,6 +37,18 @@ describe("材料", () => {
     expect(material).not.toContain("文化祭");
   });
 
+  it("種類に関わらず時系列に並び、多いときは新しいものが残る", () => {
+    const insert = db.prepare("INSERT INTO replies (id, post_id, author_id, body, created_at) VALUES (?, 'post-making-1', 'saeki', ?, ?)");
+    for (let i = 0; i < 90; i += 1) {
+      insert.run(`old-${i}`, `古い返信 ${i}`, new Date(`2026-08-01T00:00:00Z`).toISOString());
+    }
+    const material = collectMaterial(db, "saeki", periodStart("year", NOW));
+    expect(material).toHaveLength(80);
+    expect(material.join("\n")).toContain("いいところを一つだけ");
+    const order = (word: string) => material.findIndex((line) => line.includes(word));
+    expect(order("文化祭")).toBeLessThan(order("いいところを一つだけ"));
+  });
+
   it("もらったありがとうが入る", () => {
     db.prepare("INSERT INTO thanks (id, from_person_id, to_person_id, message, created_at) VALUES ('t', 'noda', 'saeki', '助かりました', ?)").run(NOW.toISOString());
     expect(collectMaterial(db, "saeki", periodStart("term", NOW)).join("\n")).toContain("野田 翔さんから：助かりました");
