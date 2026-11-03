@@ -27,3 +27,140 @@ body {
   margin: 0;
   font-size: 2rem;
 }
+
+.home {
+  display: flex;
+  flex-direction: column;
+}
+
+.home header p {
+  margin: 0;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.talk {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.talk .log {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.talk .hint {
+  margin: 0;
+  color: #6b5d55;
+}
+
+.talk .bubble {
+  max-width: 85%;
+  margin: 0;
+  padding: 0.6rem 0.85rem;
+  border-radius: 1rem;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.talk .bubble.user {
+  align-self: flex-end;
+  background: #ffd9c7;
+}
+
+.talk .bubble.assistant {
+  align-self: flex-start;
+  background: #ffffff;
+  border: 1px solid #eadfd8;
+}
+
+.talk .bubble.listening {
+  min-width: 60%;
+  outline: 3px solid #d9552b;
+}
+
+.talk .listening-label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #9c3412;
+}
+
+.talk .waiting {
+  color: #6b5d55;
+}
+
+.talk .notice {
+  margin: 0;
+  padding: 0.6rem 0.85rem;
+  border-radius: 0.5rem;
+  background: #fff0c9;
+}
+
+.talk .scripted {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #6b5d55;
+}
+
+.talk .actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+  gap: 0.5rem;
+}
+
+.talk button {
+  min-height: 2.75rem;
+  border: 0;
+  border-radius: 0.75rem;
+  background: #9c3412;
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.talk button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.talk .primary {
+  min-height: 4.5rem;
+  font-size: 1.15rem;
+}
+
+.talk .write {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-end;
+}
+
+.talk .write textarea {
+  flex: 1;
+  min-width: 0;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid #cbbcb3;
+  border-radius: 0.5rem;
+  background: #fff;
+  color: inherit;
+  font: inherit;
+  font-size: 1rem;
+}
+
+.talk .write button {
+  flex: none;
+  padding-inline: 1rem;
+}
