@@ -1,6 +1,11 @@
 import type { DatabaseSync } from "node:sqlite";
 import { channels, people, posts } from "./seed-data";
 
+/** 文字列のまま時刻順に並ぶよう、すべて UTC の形で保存する。 */
+function toStored(time: string): string {
+  return new Date(time).toISOString();
+}
+
 /** ダミーのデータを入れる。すでに人物がいるときは何もしない（デモの続きを消さない）。 */
 export function seedDatabase(db: DatabaseSync): void {
   const { count } = db.prepare("SELECT count(*) AS count FROM people").get() as { count: number };
@@ -29,9 +34,9 @@ export function seedDatabase(db: DatabaseSync): void {
       insertChannel.run(c.id, c.name, c.description, c.audience);
     }
     for (const post of posts) {
-      insertPost.run(post.id, post.channelId, post.authorId, post.kind, post.body, post.createdAt);
+      insertPost.run(post.id, post.channelId, post.authorId, post.kind, post.body, toStored(post.createdAt));
       for (const r of post.replies) {
-        insertReply.run(r.id, post.id, r.authorId, r.body, r.createdAt);
+        insertReply.run(r.id, post.id, r.authorId, r.body, toStored(r.createdAt));
       }
       for (const personId of post.likedBy) {
         insertLike.run(post.id, personId);

@@ -1,0 +1,194 @@
+.teams {
+  --accent: #4f52b2;
+  --line: #dddbe6;
+  --muted: #5f5b70;
+  --surface: #ffffff;
+  min-height: 100dvh;
+  background: #f3f2f8;
+  color: #24222e;
+}
+
+.teams .bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.5rem;
+  align-items: center;
+  justify-content: space-between;
+  padding: max(0.75rem, env(safe-area-inset-top)) 1rem 0.75rem;
+  background: var(--accent);
+  color: #fff;
+}
+
+.teams .bar h1 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.teams .bar p {
+  margin: 0;
+  font-size: 0.8rem;
+}
+
+.teams .switcher {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: end;
+}
+
+.teams .switcher label {
+  display: grid;
+  font-size: 0.8rem;
+}
+
+.teams select,
+.teams input,
+.teams textarea {
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid var(--line);
+  border-radius: 0.4rem;
+  background: #fff;
+  color: inherit;
+  font: inherit;
+  font-size: 1rem;
+}
+
+.teams button {
+  min-height: 2.75rem;
+  padding: 0.4rem 0.9rem;
+  border: 1px solid var(--accent);
+  border-radius: 0.4rem;
+  background: var(--accent);
+  color: #fff;
+  font: inherit;
+  cursor: pointer;
+}
+
+.teams .switcher button {
+  border-color: #fff;
+}
+
+.teams .columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.teams nav ul {
+  display: flex;
+  gap: 0.25rem;
+  margin: 0;
+  padding: 0.5rem 1rem;
+  overflow-x: auto;
+  list-style: none;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+}
+
+.teams nav a {
+  display: block;
+  padding: 0.6rem 0.75rem;
+  border-radius: 0.4rem;
+  color: inherit;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.teams nav a[aria-current="page"] {
+  background: #e8e7f6;
+  font-weight: 700;
+}
+
+.teams main {
+  min-width: 0;
+  padding: 1rem;
+}
+
+.teams main h2 {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.teams .description,
+.teams .empty {
+  margin: 0 0 1rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.teams .post {
+  margin-bottom: 0.75rem;
+  padding: 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+  background: var(--surface);
+}
+
+.teams .author {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.teams .author strong {
+  color: #24222e;
+  font-size: 0.95rem;
+}
+
+.teams .body {
+  margin: 0.15rem 0 0.5rem;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.teams .likes {
+  margin: 0 0 0.5rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.teams .like {
+  margin-bottom: 0.5rem;
+  background: #fff;
+  color: var(--accent);
+}
+
+.teams .like[aria-pressed="true"] {
+  background: #e8e7f6;
+  font-weight: 700;
+}
+
+.teams .reply {
+  margin: 0 0 0.5rem;
+  padding-left: 0.75rem;
+  border-left: 3px solid var(--line);
+}
+
+.teams .compose {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-end;
+}
+
+.teams .compose button {
+  flex: none;
+}
+
+.teams .new-post {
+  margin-top: 1rem;
+}
+
+@media (min-width: 48rem) {
+  .teams .columns {
+    grid-template-columns: 14rem minmax(0, 1fr);
+  }
+
+  .teams nav ul {
+    display: block;
+    min-height: 100%;
+    padding: 0.75rem;
+    border-right: 1px solid var(--line);
+    border-bottom: 0;
+  }
+}
