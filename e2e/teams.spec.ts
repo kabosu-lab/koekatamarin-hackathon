@@ -48,3 +48,16 @@ test("スマホ幅で横にはみ出さない", async ({ page }) => {
   );
   expect(overflow).toBe(0);
 });
+
+test("スマホ幅でも、使う人の名前が読めて、選んだチャネルが画面に入っている", async ({ page }) => {
+  await page.goto("/teams?channel=staffroom");
+
+  const select = page.getByLabel("使う人");
+  const colors = await select.evaluate((element) => {
+    const style = getComputedStyle(element);
+    return { text: style.color, background: style.backgroundColor };
+  });
+  expect(colors.text).not.toBe(colors.background);
+
+  await expect(page.getByRole("link", { name: "職員室" })).toBeInViewport({ ratio: 1 });
+});
