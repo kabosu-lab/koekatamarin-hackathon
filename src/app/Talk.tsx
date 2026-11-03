@@ -6,6 +6,7 @@ import type { Draft, Review } from "@/lib/claude/compose";
 import type { ChatMessage } from "@/lib/claude/types";
 import type { ChannelView } from "@/lib/destination/types";
 import { Compose, type ComposeStart } from "./Compose";
+import { SafetyCard, type SafetyNotice } from "./SafetyCard";
 import { isSpeechSupported, startListening } from "./speech";
 
 const MAX_TEXT_LENGTH = 2000;
@@ -22,6 +23,7 @@ export function Talk({ viewer }: { viewer: { name: string; label: string } }) {
   const [scripted, setScripted] = useState(false);
   const [composing, setComposing] = useState<ComposeStart | null>(null);
   const [preparing, setPreparing] = useState(false);
+  const [safety, setSafety] = useState<SafetyNotice | null>(null);
   const [sentTo, setSentTo] = useState<ChannelView | null>(null);
   const stopRef = useRef<(() => void) | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
@@ -48,7 +50,12 @@ export function Talk({ viewer }: { viewer: { name: string; label: string } }) {
         body: JSON.stringify({ history, text }),
       });
       if (!response.ok) throw new Error(`status ${response.status}`);
-      const { reply, mode } = (await response.json()) as { reply: string; mode: string };
+      const { reply, mode, safety: notice } = (await response.json()) as {
+        reply: string;
+        mode: string;
+        safety?: SafetyNotice;
+      };
+      if (notice) setSafety(notice);
       setMessages((current) => [...current, { role: "assistant", content: reply }]);
       setScripted(mode === "scripted");
     } catch {
@@ -137,6 +144,7 @@ export function Talk({ viewer }: { viewer: { name: string; label: string } }) {
   return (
     <div className="talk">
       <div className="log" role="log" aria-label="相棒との会話">
+        <p className="promise">ここでの話はあなただけのものです。ただし、命や安全に関わるときは相談室の先生に伝えます。</p>
         {messages.length === 0 && !listening && (
           <p className="hint">調べ物でも、悩みでも、今日の頑張りでも。思いついたことから、どうぞ。</p>
         )}
@@ -159,6 +167,8 @@ export function Talk({ viewer }: { viewer: { name: string; label: string } }) {
         )}
         <div ref={endRef} />
       </div>
+
+      {safety && <SafetyCard key={safety.alertId} notice={safety} />}
 
       {notice && (
         <p className="notice" role="alert">

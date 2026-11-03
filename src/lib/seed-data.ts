@@ -105,6 +105,9 @@ export const people: SeedPerson[] = [
   },
 ];
 
+/** 命や安全に関わる知らせが必ず届く人（相談室）。 */
+export const counselorId = "shiraishi";
+
 export const channels: SeedChannel[] = [
   {
     id: "notices",

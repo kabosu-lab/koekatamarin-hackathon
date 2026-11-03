@@ -25,6 +25,14 @@ function scriptedDraft(transcript: string, jsonSchema: Record<string, unknown> |
   };
 }
 
+function scriptedSafety(conversation: string) {
+  const concern = /死にたい|消えたい|自殺|殴られ|虐待/.test(conversation);
+  return {
+    concern,
+    summary: concern ? "命や安全に関わる心配な相談がありました。本人に声をかけてください。" : "",
+  };
+}
+
 function scriptedReview(post: string) {
   if (/死ね|消えろ|殺す/.test(post)) {
     return {
@@ -52,6 +60,7 @@ export function createScriptedClaude(): ClaudeClient {
     mode: "scripted",
     async complete({ task, messages, jsonSchema }) {
       if (task === "draft") return { text: JSON.stringify(scriptedDraft(messages[0].content, jsonSchema)), refused: false };
+      if (task === "safety") return { text: JSON.stringify(scriptedSafety(messages[0].content)), refused: false };
       if (task === "review") return { text: JSON.stringify(scriptedReview(messages[0].content)), refused: false };
 
       const last = messages.at(-1)?.content.trim() ?? "";

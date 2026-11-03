@@ -46,6 +46,19 @@ const MIGRATIONS: readonly string[] = [
    ) STRICT;`,
   `ALTER TABLE posts ADD COLUMN researched_with_ai INTEGER NOT NULL DEFAULT 0
      CHECK (researched_with_ai IN (0, 1));`,
+  `CREATE TABLE safety_alerts (
+     id TEXT PRIMARY KEY,
+     person_id TEXT NOT NULL REFERENCES people (id),
+     summary TEXT NOT NULL,
+     created_at TEXT NOT NULL,
+     updated_at TEXT NOT NULL
+   ) STRICT;
+   CREATE INDEX safety_alerts_by_person ON safety_alerts (person_id, updated_at);
+   CREATE TABLE safety_alert_recipients (
+     alert_id TEXT NOT NULL REFERENCES safety_alerts (id) ON DELETE CASCADE,
+     person_id TEXT NOT NULL REFERENCES people (id),
+     PRIMARY KEY (alert_id, person_id)
+   ) STRICT;`,
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;

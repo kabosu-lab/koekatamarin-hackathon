@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { getViewer } from "@/lib/current-person";
 import { PersonSwitcher } from "./PersonSwitcher";
 import { Talk } from "./Talk";
@@ -14,6 +15,11 @@ export default async function HomePage() {
         <PersonSwitcher viewerId={viewer.id} people={people} />
       </header>
       {/* Claude との話は本人だけのもの。人物を切り替えたら会話を持ち越さない */}
+      {viewer.role !== "student" && (
+        <p className="staff-link">
+          <Link href="/soudan">相談室への知らせを見る</Link>
+        </p>
+      )}
       <Talk key={viewer.id} viewer={{ name: viewer.name, label: viewer.label }} />
     </main>
   );

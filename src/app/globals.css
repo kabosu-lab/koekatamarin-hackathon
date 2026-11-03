@@ -317,3 +317,102 @@ body {
   border: 1px solid #9c3412;
   color: #9c3412;
 }
+
+.talk .promise {
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  background: #f6ece5;
+  font-size: 0.85rem;
+}
+
+.staff-link {
+  margin: 0.5rem 0 0;
+  font-size: 0.9rem;
+}
+
+.safety-card {
+  display: grid;
+  gap: 0.6rem;
+  padding: 0.85rem;
+  border: 2px solid #9c3412;
+  border-radius: 0.75rem;
+  background: #fff;
+}
+
+.safety-card h2,
+.safety-card h3,
+.safety-card p {
+  margin: 0;
+}
+
+.safety-card h2 {
+  font-size: 1.05rem;
+}
+
+.safety-card h3 {
+  font-size: 0.95rem;
+}
+
+.safety-card ul {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.safety-card .caveat {
+  color: #6b5d55;
+  font-size: 0.85rem;
+}
+
+.safety-card label {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  min-height: 2.25rem;
+}
+
+.safety-card input[type="checkbox"] {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.safety-card .tel {
+  display: block;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.soudan {
+  display: grid;
+  gap: 0.75rem;
+  width: 100%;
+  max-width: 40rem;
+  margin-inline: auto;
+  padding: max(1rem, env(safe-area-inset-top)) 1rem 2rem;
+}
+
+.soudan h1,
+.soudan p {
+  margin: 0;
+}
+
+.soudan h1 {
+  font-size: 1.4rem;
+}
+
+.soudan article {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.75rem;
+  border: 1px solid #eadfd8;
+  border-radius: 0.5rem;
+  background: #fff;
+}
+
+.soudan .meta {
+  color: #6b5d55;
+  font-size: 0.85rem;
+}
