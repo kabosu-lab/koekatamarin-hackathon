@@ -65,6 +65,12 @@ export function handleMemory(db: DatabaseSync, personId: string, input: unknown,
     if (typeof text !== "string" || text.trim() === "" || text.length > MAX_BODY_LENGTH) {
       return { status: 400, body: { error: "言葉が空か、長すぎます" } };
     }
+    // 連打や再送で、同じことを二重に覚えない
+    const existing = db
+      .prepare("SELECT id FROM companion_memories WHERE person_id = ? AND text = ?")
+      .get(personId, text.trim()) as { id: string } | undefined;
+    if (existing) return { status: 200, body: { id: existing.id } };
+
     const memoryId = randomUUID();
     db.prepare("INSERT INTO companion_memories (id, person_id, text, created_at) VALUES (?, ?, ?, ?)").run(
       memoryId,

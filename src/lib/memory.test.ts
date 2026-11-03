@@ -128,6 +128,14 @@ describe("一覧と消去", () => {
     expect(memoryForPrompt(db, teams, "noda")).toContain("最後まで苦手");
   });
 
+  it("同じことを二度頼んでも、1つだけ覚える", () => {
+    const first = handleMemory(db, "noda", { action: "remember", text: SECRET }, NOW);
+    const second = handleMemory(db, "noda", { action: "remember", text: `  ${SECRET} ` }, NOW);
+    expect(second.body).toEqual(first.body);
+    expect(listMemories(db, teams, "noda").filter((m) => m.kind === "spoken")).toHaveLength(1);
+    expect(handleMemory(db, "saeki", { action: "remember", text: SECRET }, NOW).body).not.toEqual(first.body);
+  });
+
   it("おかしな依頼は受け付けない", () => {
     expect(handleMemory(db, "noda", { action: "remember", text: " " }).status).toBe(400);
     expect(handleMemory(db, "noda", { action: "x" }).status).toBe(400);

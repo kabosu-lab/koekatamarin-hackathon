@@ -91,6 +91,11 @@ describe("反応のない投稿", () => {
     }
   });
 
+  it("本人が追記しただけなら、反応のないままとして伝える", () => {
+    teams.createReply("nakamura", "post-clubs-1", "追記です");
+    expect(listQuietPosts(db, teams, "kawamura", DAY).map((p) => p.postId)).toEqual(["post-clubs-1"]);
+  });
+
   it("反応が付いたら出なくなる", () => {
     teams.createReply("saeki", "post-clubs-1", "すごい");
     expect(listQuietPosts(db, teams, "kawamura", DAY)).toEqual([]);

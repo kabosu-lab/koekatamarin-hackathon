@@ -102,7 +102,8 @@ export function listQuietPosts(db: DatabaseSync, destination: PostDestination, v
       (post) =>
         students.has(post.authorId) &&
         post.likeCount === 0 &&
-        post.replies.length === 0 &&
+        // 本人の追記は反応に数えない
+        post.replies.every((reply) => reply.authorId === post.authorId) &&
         now.getTime() - Date.parse(post.createdAt) >= QUIET_AFTER_MS,
     )
     .slice(0, QUIET_LIMIT)
