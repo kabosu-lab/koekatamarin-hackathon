@@ -7,6 +7,8 @@ const PORT = 3100;
 export default defineConfig({
   testDir: "./e2e",
   forbidOnly: true,
+  // デモの通し確認の写真（e2e/demo.spec.ts）を、成功しても残す
+  preserveOutput: "always",
   reporter: "list",
   use: { baseURL: `http://127.0.0.1:${PORT}` },
   projects: [{ name: "スマホ", use: { ...devices["Pixel 7"] } }],

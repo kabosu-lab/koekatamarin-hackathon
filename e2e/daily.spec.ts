@@ -114,3 +114,16 @@ test("チェックは1つずつ確定し、処理中は押せない。失敗し�
   await expect(box).toBeEnabled();
   await expect(box).not.toBeChecked();
 });
+
+test("チェックと文章は同じ行に並ぶ", async ({ page }) => {
+  await page.goto("/");
+  await switchPerson(page, "大河原 誠（英語・学年主任）");
+  await say(page, `並びの確認 ${test.info().testId}`);
+  await page.goto("/daily");
+  await page.getByRole("button", { name: "今日の日報を作る" }).click();
+  const label = page.locator("label.daily-item").first();
+  const box = await label.locator("input").boundingBox();
+  const text = await label.locator("span").boundingBox();
+  expect(box && text && box.x + box.width <= text.x).toBe(true);
+  expect(box && text && box.y < text.y + text.height).toBe(true);
+});

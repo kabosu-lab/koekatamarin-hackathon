@@ -851,7 +851,7 @@ body {
   font-weight: 700;
 }
 
-.daily-item {
+.card label.daily-item {
   display: flex;
   gap: 0.6rem;
   align-items: flex-start;
