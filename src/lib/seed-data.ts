@@ -119,6 +119,12 @@ export const seedAvatars: Record<string, string> = {
   nakamura: "spirit",
 };
 
+/** テストの時期（架空の年間予定）。問いかけをテスト勉強向けに変える。 */
+export const examPeriods = [
+  { from: "2026-11-24", to: "2026-11-30" },
+  { from: "2027-02-15", to: "2027-02-21" },
+] as const;
+
 /** 命や安全に関わる知らせが必ず届く人（相談室）。 */
 export const counselorId = "shiraishi";
 

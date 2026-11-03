@@ -103,6 +103,9 @@ export default async function TeamsPage({
                 </Link>
               </li>
             ))}
+            <li>
+              <Link href="/study/room">自習室（タブ）</Link>
+            </li>
           </ul>
         </nav>
 

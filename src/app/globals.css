@@ -829,3 +829,24 @@ body {
   font-weight: 700;
   text-decoration: none;
 }
+
+.timer {
+  font-size: 3rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.study-people {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: flex-end;
+  justify-content: center;
+  min-height: 4rem;
+}
+
+.study-count {
+  font-size: 1.1rem;
+  font-weight: 700;
+}

@@ -35,6 +35,7 @@ export function countLeaves(db: DatabaseSync, now: Date): number {
     one("SELECT count(*) AS count FROM posts WHERE created_at >= ? AND kind != 'notice'") +
     one("SELECT count(*) AS count FROM replies WHERE created_at >= ?") +
     one("SELECT count(*) AS count FROM thanks WHERE created_at >= ?") +
+    one("SELECT count(*) AS count FROM study_sessions WHERE finished_at >= ? AND completed = 1 AND is_demo = 0") +
     // いいねには日時がないので、対象の投稿の日時で数える
     one(`SELECT count(*) AS count FROM post_likes l JOIN posts p ON p.id = l.post_id WHERE p.created_at >= ?`)
   );

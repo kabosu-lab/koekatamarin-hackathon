@@ -91,6 +91,16 @@ const MIGRATIONS: readonly string[] = [
      text TEXT NOT NULL,
      revised INTEGER NOT NULL DEFAULT 0 CHECK (revised IN (0, 1))
    ) STRICT;`,
+  `CREATE TABLE study_sessions (
+     id TEXT PRIMARY KEY,
+     person_id TEXT NOT NULL REFERENCES people (id),
+     started_at TEXT NOT NULL,
+     ends_at TEXT NOT NULL,
+     finished_at TEXT,
+     completed INTEGER NOT NULL DEFAULT 0 CHECK (completed IN (0, 1)),
+     is_demo INTEGER NOT NULL DEFAULT 0 CHECK (is_demo IN (0, 1))
+   ) STRICT;
+   CREATE INDEX study_sessions_active ON study_sessions (finished_at, ends_at);`,
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;
