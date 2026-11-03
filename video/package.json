@@ -1,0 +1,21 @@
+{
+  "name": "koekata-video",
+  "private": true,
+  "description": "コエカタのデモ動画を作るコード（作品本体とは別）",
+  "scripts": {
+    "assets": "node scripts/build-assets.mjs",
+    "still": "remotion still src/index.jsx",
+    "assets:candidates": "node scripts/build-candidates.mjs",
+    "capture:app": "node scripts/capture-app.mjs",
+    "render": "npm run assets && remotion render src/index.jsx Trial out/koekata-trial.mp4 --codec=h264 --crf=18 --browser-executable=\"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome\""
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.300",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "remotion": "4.0.300"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3"
+  }
+}
