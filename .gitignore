@@ -3,6 +3,14 @@
 .env.*
 !.env.example
 
+# アプリの書き出しと手元のデータ
+.next/
+next-env.d.ts
+*.tsbuildinfo
+data/
+test-results/
+playwright-report/
+
 # Claude Code の手元設定
 .claude/settings.local.json
 
