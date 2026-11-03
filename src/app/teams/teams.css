@@ -145,6 +145,13 @@
   white-space: pre-wrap;
 }
 
+.teams .asked {
+  margin: 0.15rem 0 0;
+  color: var(--accent);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
 .teams .ai-mark {
   display: inline-block;
   margin: 0 0 0.5rem;

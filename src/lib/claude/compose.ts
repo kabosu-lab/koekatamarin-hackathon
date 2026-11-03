@@ -90,16 +90,18 @@ export async function draftPost(
   claude: ClaudeClient,
   history: ChatMessage[],
   channels: DraftChannel[],
+  askedName?: string,
 ): Promise<Draft> {
   const transcript = history
     .map((m) => `${m.role === "user" ? "本人" : "相棒"}：${m.content}`)
     .join("\n");
+  const asking = askedName ? `\n\nこの投稿は、${askedName}さんに聞いてみるためのものです。` : "";
   const channelList = channels.map((c) => `- ${c.id}：${c.name}（${c.description}）`).join("\n");
 
   const { text, refused } = await claude.complete({
     task: "draft",
     system: draftSystemPrompt,
-    messages: [{ role: "user", content: `チャネル:\n${channelList}\n\n<会話>\n${transcript}\n</会話>` }],
+    messages: [{ role: "user", content: `チャネル:\n${channelList}${asking}\n\n<会話>\n${transcript}\n</会話>` }],
     maxTokens: MAX_TOKENS,
     jsonSchema: draftSchema(channels),
   });

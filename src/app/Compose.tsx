@@ -8,6 +8,7 @@ export type ComposeStart = {
   draft: Draft;
   review: Review;
   channels: ChannelView[];
+  asked?: { id: string; name: string };
 };
 
 type Props = ComposeStart & {
@@ -27,7 +28,7 @@ async function postJson(url: string, body: unknown) {
   return { ok: response.ok, status: response.status, data: (await response.json()) as Record<string, unknown> };
 }
 
-export function Compose({ draft, review: firstReview, channels, viewer, onCancel, onSent }: Props) {
+export function Compose({ draft, review: firstReview, channels, asked, viewer, onCancel, onSent }: Props) {
   const [text, setText] = useState(draft.text);
   const [channelId, setChannelId] = useState(draft.channelId);
   const [review, setReview] = useState(firstReview);
@@ -63,6 +64,7 @@ export function Compose({ draft, review: firstReview, channels, viewer, onCancel
         channelId,
         kind: draft.kind,
         researchedWithAi: draft.researchedWithAi,
+        askedPersonId: asked?.id,
       });
       if (ok) {
         onSent(channel);
@@ -132,6 +134,7 @@ export function Compose({ draft, review: firstReview, channels, viewer, onCancel
         <p className="preview-author">
           <strong>{viewer.name}</strong> {viewer.label}
         </p>
+        {asked && <p className="preview-asked">{asked.name}さんへ</p>}
         <p className="preview-body">{text}</p>
         {draft.researchedWithAi && <p className="preview-mark">AI と調べました</p>}
       </div>

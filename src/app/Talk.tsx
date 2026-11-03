@@ -6,11 +6,14 @@ import type { Draft, Review } from "@/lib/claude/compose";
 import type { ChatMessage } from "@/lib/claude/types";
 import type { ChannelView } from "@/lib/destination/types";
 import { Compose, type ComposeStart } from "./Compose";
+import { ConnectCard, type ConnectSuggestion } from "./ConnectCard";
 import { SafetyCard, type SafetyNotice } from "./SafetyCard";
 import { isSpeechSupported, startListening } from "./speech";
 
 const MAX_TEXT_LENGTH = 2000;
 const MAX_HISTORY = 40;
+/** 話の途中で声をかけないよう、少なくとも2往復してから確かめる */
+const CONNECT_MIN_MESSAGES = 4;
 
 export function Talk({ viewer }: { viewer: { name: string; label: string } }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -24,6 +27,8 @@ export function Talk({ viewer }: { viewer: { name: string; label: string } }) {
   const [composing, setComposing] = useState<ComposeStart | null>(null);
   const [preparing, setPreparing] = useState(false);
   const [safety, setSafety] = useState<SafetyNotice | null>(null);
+  const [suggestion, setSuggestion] = useState<ConnectSuggestion | null>(null);
+  const connectDone = useRef(false);
   const [sentTo, setSentTo] = useState<ChannelView | null>(null);
   const stopRef = useRef<(() => void) | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
@@ -57,8 +62,16 @@ export function Talk({ viewer }: { viewer: { name: string; label: string } }) {
       // 返事が作れなくても、相談室に伝えたことは必ず本人に知らせる
       if (notice) setSafety(notice);
       if (!response.ok || !reply) throw new Error(`status ${response.status}`);
-      setMessages((current) => [...current, { role: "assistant", content: reply }]);
+      const updated: ChatMessage[] = [
+        ...messages,
+        { role: "user", content: text },
+        { role: "assistant", content: reply },
+      ];
+      setMessages(updated);
       setScripted(mode === "scripted");
+      // 命や安全の案内が出ているときは、人の紹介をしない
+      if (notice) connectDone.current = true;
+      void checkConnect(updated);
     } catch {
       // 話した言葉を失わないよう、書く欄に戻す
       setMessages(messages);
@@ -70,7 +83,27 @@ export function Talk({ viewer }: { viewer: { name: string; label: string } }) {
     }
   }
 
-  async function startCompose() {
+  async function checkConnect(history: ChatMessage[]) {
+    if (connectDone.current || history.length < CONNECT_MIN_MESSAGES) return;
+    try {
+      const response = await fetch("/api/connect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ history: history.slice(-MAX_HISTORY) }),
+      });
+      if (!response.ok) return;
+      const body = (await response.json()) as { suggestion: ConnectSuggestion | null };
+      if (body.suggestion && !connectDone.current) {
+        // 売り込まないよう、1回の会話で声をかけるのは1度だけ
+        connectDone.current = true;
+        setSuggestion(body.suggestion);
+      }
+    } catch {
+      // 声かけは無くても困らないので、黙って見送る
+    }
+  }
+
+  async function startCompose(asked?: { id: string; name: string }) {
     setPreparing(true);
     setNotice("");
     setSentTo(null);
@@ -78,7 +111,7 @@ export function Talk({ viewer }: { viewer: { name: string; label: string } }) {
       const response = await fetch("/api/draft", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ history: messages.slice(-MAX_HISTORY) }),
+        body: JSON.stringify({ history: messages.slice(-MAX_HISTORY), askedPersonId: asked?.id }),
       });
       if (!response.ok) throw new Error(`status ${response.status}`);
       const { draft, review, channels } = (await response.json()) as {
@@ -90,7 +123,8 @@ export function Talk({ viewer }: { viewer: { name: string; label: string } }) {
         setNotice("まだ投稿にできるお話がなさそう。もう少し聞かせてください。");
         return;
       }
-      setComposing({ draft, review, channels });
+      setSuggestion(null);
+      setComposing({ draft, review, channels, asked });
     } catch {
       setNotice("下書きを作れませんでした。もう一度押してください。");
     } finally {
@@ -168,6 +202,15 @@ export function Talk({ viewer }: { viewer: { name: string; label: string } }) {
         )}
         <div ref={endRef} />
       </div>
+
+      {suggestion && (
+        <ConnectCard
+          suggestion={suggestion}
+          busy={preparing}
+          onAccept={() => void startCompose({ id: suggestion.personId, name: suggestion.name })}
+          onDecline={() => setSuggestion(null)}
+        />
+      )}
 
       {safety && <SafetyCard key={safety.alertId} notice={safety} />}
 

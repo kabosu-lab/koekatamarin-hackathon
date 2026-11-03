@@ -25,6 +25,18 @@ function scriptedDraft(transcript: string, jsonSchema: Record<string, unknown> |
   };
 }
 
+function scriptedConnect(prompt: string, jsonSchema: Record<string, unknown> | undefined) {
+  const properties = (jsonSchema?.properties ?? {}) as { personId?: { enum?: string[] } };
+  const personId = properties.personId?.enum?.[0] ?? "";
+  const conversation = [...prompt.matchAll(/^本人：(.*)$/gm)].map((match) => match[1]).join("\n");
+  const moment = /解決|わかった|ありがとう/.test(conversation)
+    ? "resolved"
+    : /煮詰ま|行き詰|わからん/.test(conversation)
+      ? "stuck"
+      : "none";
+  return { moment, personId, message: moment === "none" ? "" : "この話、くわしい人にも聞いてみる？" };
+}
+
 function scriptedSafety(conversation: string) {
   if (/死にたい|消えたい|自殺/.test(conversation)) return { category: "self_harm" };
   if (/殴られ|虐待/.test(conversation)) return { category: "violence_or_abuse" };
@@ -58,6 +70,7 @@ export function createScriptedClaude(): ClaudeClient {
     mode: "scripted",
     async complete({ task, messages, jsonSchema }) {
       if (task === "draft") return { text: JSON.stringify(scriptedDraft(messages[0].content, jsonSchema)), refused: false };
+      if (task === "connect") return { text: JSON.stringify(scriptedConnect(messages[0].content, jsonSchema)), refused: false };
       if (task === "safety") return { text: JSON.stringify(scriptedSafety(messages[0].content)), refused: false };
       if (task === "review") return { text: JSON.stringify(scriptedReview(messages[0].content)), refused: false };
 

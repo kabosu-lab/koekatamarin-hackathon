@@ -416,3 +416,39 @@ body {
   color: #6b5d55;
   font-size: 0.85rem;
 }
+
+.connect-card {
+  display: grid;
+  gap: 0.6rem;
+  padding: 0.85rem;
+  border: 1px solid #eadfd8;
+  border-radius: 0.75rem;
+  background: #fff;
+}
+
+.connect-card p {
+  margin: 0;
+}
+
+.connect-card .person {
+  color: #6b5d55;
+  font-size: 0.85rem;
+}
+
+.connect-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+  gap: 0.5rem;
+}
+
+.talk .connect-actions .secondary {
+  background: #fff;
+  border: 1px solid #9c3412;
+  color: #9c3412;
+}
+
+.compose-card .preview-asked {
+  color: #4f52b2;
+  font-size: 0.9rem;
+  font-weight: 700;
+}

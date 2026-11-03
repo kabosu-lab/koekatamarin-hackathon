@@ -16,7 +16,8 @@
     "try:voice": "tsx --env-file-if-exists=.env scripts/try-voice.ts",
     "dev:phone": "next dev --experimental-https --hostname 0.0.0.0",
     "try:compose": "tsx --env-file-if-exists=.env scripts/try-compose.ts",
-    "try:safety": "tsx --env-file-if-exists=.env scripts/try-safety.ts"
+    "try:safety": "tsx --env-file-if-exists=.env scripts/try-safety.ts",
+    "try:connect": "tsx --env-file-if-exists=.env scripts/try-connect.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.4.0",

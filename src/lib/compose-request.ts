@@ -34,7 +34,10 @@ export async function handleDraft(
   viewerId: string,
   input: unknown,
 ): Promise<DraftOutcome> {
-  const { history } = fields(input);
+  const { history, askedPersonId } = fields(input);
+  if (askedPersonId !== undefined && typeof askedPersonId !== "string") {
+    return { status: 400, body: { error: "聞く相手が正しくありません" } };
+  }
   if (
     !Array.isArray(history) ||
     history.length === 0 ||
@@ -45,8 +48,17 @@ export async function handleDraft(
   }
 
   try {
-    const channels = destination.listChannels(viewerId);
-    const draft = await draftPost(claude, history as ChatMessage[], channels);
+    let channels = destination.listChannels(viewerId);
+    let askedName: string | undefined;
+    if (askedPersonId !== undefined) {
+      const name = destination.findPersonName(askedPersonId);
+      if (!name || askedPersonId === viewerId) return { status: 400, body: { error: "聞く相手が正しくありません" } };
+      askedName = name;
+      // 相手が読めるチャネルだけを送り先にする
+      const theirs = new Set(destination.listChannels(askedPersonId).map((c) => c.id));
+      channels = channels.filter((c) => theirs.has(c.id));
+    }
+    const draft = await draftPost(claude, history as ChatMessage[], channels, askedName);
     const review = draft.ready ? await reviewPost(claude, draft.text) : null;
     return { status: 200, body: { draft, review, channels } };
   } catch (error) {
@@ -74,7 +86,10 @@ export async function handlePublish(
   viewerId: string,
   input: unknown,
 ): Promise<PublishOutcome> {
-  const { text, channelId, kind, researchedWithAi } = fields(input);
+  const { text, channelId, kind, researchedWithAi, askedPersonId } = fields(input);
+  if (askedPersonId !== undefined && typeof askedPersonId !== "string") {
+    return { status: 400, body: { error: "聞く相手が正しくありません" } };
+  }
   if (!validText(text)) return { status: 400, body: { error: "本文が空か、長すぎます" } };
   if (typeof channelId !== "string") return { status: 400, body: { error: "チャネルが正しくありません" } };
 
@@ -94,6 +109,7 @@ export async function handlePublish(
     const postId = destination.createPost(viewerId, channelId, text, {
       kind: KINDS.find((k) => k === kind),
       researchedWithAi: researchedWithAi === true,
+      askedPersonId,
     });
     return { status: 200, body: { postId, channelId } };
   } catch (error) {

@@ -23,6 +23,8 @@ export type PostView = {
   kind: PostKind;
   body: string;
   createdAt: string;
+  /** 「○○さんに聞いてみる」で送った相手 */
+  askedPersonName: string | null;
   /** AI と調べたことが入っている印。人の経験と区別するため。 */
   researchedWithAi: boolean;
   likeCount: number;
@@ -33,6 +35,7 @@ export type PostView = {
 export type CreatePostOptions = {
   kind?: PostKind;
   researchedWithAi?: boolean;
+  askedPersonId?: string;
 };
 
 export class DestinationError extends Error {}
@@ -50,4 +53,5 @@ export type PostDestination = {
   createPost(viewerId: string, channelId: string, body: string, options?: CreatePostOptions): string;
   createReply(viewerId: string, postId: string, body: string): string;
   toggleLike(viewerId: string, postId: string): void;
+  findPersonName(personId: string): string | null;
 };

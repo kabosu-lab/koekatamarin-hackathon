@@ -59,6 +59,7 @@ const MIGRATIONS: readonly string[] = [
      person_id TEXT NOT NULL REFERENCES people (id),
      PRIMARY KEY (alert_id, person_id)
    ) STRICT;`,
+  `ALTER TABLE posts ADD COLUMN asked_person_id TEXT REFERENCES people (id);`,
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;

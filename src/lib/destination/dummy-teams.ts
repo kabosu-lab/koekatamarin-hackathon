@@ -22,6 +22,7 @@ type PostRow = {
   body: string;
   created_at: string;
   researched_with_ai: number;
+  asked_person_name: string | null;
   like_count: number;
   liked_by_viewer: number;
 };
@@ -94,6 +95,7 @@ export function createDummyTeams(db: DatabaseSync): PostDestination {
         .prepare(
           `SELECT p.id, p.channel_id, p.author_id, a.name AS author_name, a.label AS author_label,
                   p.kind, p.body, p.created_at, p.researched_with_ai,
+                  (SELECT q.name FROM people q WHERE q.id = p.asked_person_id) AS asked_person_name,
                   (SELECT count(*) FROM post_likes l WHERE l.post_id = p.id) AS like_count,
                   EXISTS (SELECT 1 FROM post_likes l WHERE l.post_id = p.id AND l.person_id = ?) AS liked_by_viewer
            FROM posts p JOIN people a ON a.id = p.author_id
@@ -117,6 +119,7 @@ export function createDummyTeams(db: DatabaseSync): PostDestination {
         body: p.body,
         createdAt: p.created_at,
         researchedWithAi: p.researched_with_ai === 1,
+        askedPersonName: p.asked_person_name,
         likeCount: p.like_count,
         likedByViewer: p.liked_by_viewer === 1,
         replies: (selectReplies.all(p.id) as ReplyRow[]).map((r): ReplyView => ({
@@ -129,12 +132,26 @@ export function createDummyTeams(db: DatabaseSync): PostDestination {
       }));
     },
 
-    createPost(viewerId, channelId, body, { kind = "report", researchedWithAi = false } = {}) {
+    createPost(viewerId, channelId, body, { kind = "report", researchedWithAi = false, askedPersonId } = {}) {
       requireVisibleChannel(viewerId, channelId);
+      if (askedPersonId !== undefined) {
+        // 聞く相手が読めないチャネルでは、お願いが届かない
+        if (askedPersonId === viewerId) throw new DestinationError("自分には聞けません");
+        requireVisibleChannel(askedPersonId, channelId);
+      }
       const id = randomUUID();
       db.prepare(
-        "INSERT INTO posts (id, channel_id, author_id, kind, body, created_at, researched_with_ai) VALUES (?, ?, ?, ?, ?, ?, ?)",
-      ).run(id, channelId, viewerId, kind, cleanBody(body), new Date().toISOString(), researchedWithAi ? 1 : 0);
+        "INSERT INTO posts (id, channel_id, author_id, kind, body, created_at, researched_with_ai, asked_person_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+      ).run(
+        id,
+        channelId,
+        viewerId,
+        kind,
+        cleanBody(body),
+        new Date().toISOString(),
+        researchedWithAi ? 1 : 0,
+        askedPersonId ?? null,
+      );
       return id;
     },
 
@@ -145,6 +162,11 @@ export function createDummyTeams(db: DatabaseSync): PostDestination {
         "INSERT INTO replies (id, post_id, author_id, body, created_at) VALUES (?, ?, ?, ?, ?)",
       ).run(id, postId, viewerId, cleanBody(body), new Date().toISOString());
       return id;
+    },
+
+    findPersonName(personId) {
+      const row = db.prepare("SELECT name FROM people WHERE id = ?").get(personId) as { name: string } | undefined;
+      return row?.name ?? null;
     },
 
     toggleLike(viewerId, postId) {
