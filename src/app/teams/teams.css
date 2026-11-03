@@ -145,6 +145,21 @@
   white-space: pre-wrap;
 }
 
+.teams .needs-look {
+  margin: 0 0 0.5rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: 0.4rem;
+  background: #fff3cf;
+  font-size: 0.85rem;
+}
+
+.teams .share-concern {
+  margin-bottom: 0.5rem;
+  background: #fff;
+  color: var(--accent);
+  font-size: 0.85rem;
+}
+
 .teams .asked {
   margin: 0.15rem 0 0;
   color: var(--accent);

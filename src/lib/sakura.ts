@@ -77,6 +77,19 @@ export function getSakura(db: DatabaseSync, now: Date, season: Season = seasonOf
   return { season, leaves, bloom, message };
 }
 
+export type TimeOfDay = "morning" | "day" | "evening" | "night";
+
+/** 朝昼夕夜の空。 */
+export function timeOfDay(now: Date): TimeOfDay {
+  const hour = Number(
+    new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Tokyo", hour: "2-digit", hourCycle: "h23" }).format(now),
+  );
+  if (hour >= 5 && hour < 10) return "morning";
+  if (hour >= 10 && hour < 16) return "day";
+  if (hour >= 16 && hour < 19) return "evening";
+  return "night";
+}
+
 export function isBloomingSeason(season: Season): boolean {
   return season === "haru";
 }

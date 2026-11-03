@@ -32,6 +32,10 @@ export type PostView = {
   body: string;
   createdAt: string;
   scope: PostScope;
+  /** 教職員にだけ伝える、相棒からの確認のお願い。判断するのは人。 */
+  needsLook: boolean;
+  /** 教職員のチャネルで共有済み */
+  sharedToStaff: boolean;
   /** 「○○さんに聞いてみる」で送った相手 */
   askedPersonName: string | null;
   /** お願いをパスでつないだ人（古い順） */
@@ -52,6 +56,8 @@ export type CreatePostOptions = {
   scope?: PostScope;
   /** scope が person のときの相手 */
   scopePersonId?: string;
+  /** 受け取られ方の確認で気になるとされた投稿 */
+  needsLook?: boolean;
 };
 
 export class DestinationError extends Error {}
@@ -70,6 +76,8 @@ export type PostDestination = {
   createReply(viewerId: string, postId: string, body: string): string;
   toggleLike(viewerId: string, postId: string): void;
   findPersonName(personId: string): string | null;
+  /** 気になる投稿を、教職員だけのチャネルで共有する。教職員だけができる。 */
+  shareConcern(viewerId: string, postId: string): boolean;
   listOtherPeople(viewerId: string): PersonView[];
   /** 本人が送った直後の取り消し。誰かが返したあとや、時間が過ぎたあとは取り消せない。 */
   undoPost(viewerId: string, postId: string, now: Date): boolean;

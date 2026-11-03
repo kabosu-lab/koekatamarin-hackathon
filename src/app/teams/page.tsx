@@ -8,7 +8,7 @@ import { getViewer } from "@/lib/current-person";
 import { schoolName } from "@/lib/seed-data";
 import { Avatar } from "../Avatar";
 import { PersonSwitcher } from "../PersonSwitcher";
-import { createPost, createReply, toggleLike } from "./actions";
+import { createPost, createReply, shareConcern, toggleLike } from "./actions";
 import "./teams.css";
 
 export const metadata: Metadata = { title: "校内チャネル｜コエカタ" };
@@ -37,7 +37,17 @@ function Author({ name, label, time, image }: { name: string; label: string; tim
   );
 }
 
-function Post({ post, viewerId, images }: { post: PostView; viewerId: string; images: Record<string, string> }) {
+function Post({
+  post,
+  viewerId,
+  images,
+  canShare,
+}: {
+  post: PostView;
+  viewerId: string;
+  images: Record<string, string>;
+  canShare: boolean;
+}) {
   return (
     <article className="post" aria-label={`${post.authorName}さんの投稿`}>
       <Author name={post.authorName} label={post.authorLabel} time={post.createdAt} image={images[post.authorId]} />
@@ -51,6 +61,19 @@ function Post({ post, viewerId, images }: { post: PostView; viewerId: string; im
       <p className="body">{post.body}</p>
       {post.researchedWithAi && <p className="ai-mark">AI と調べました</p>}
       {post.scope !== "everyone" && <p className="ai-mark">{SCOPE_LABEL[post.scope]}</p>}
+
+      {post.needsLook && !post.sharedToStaff && (
+        <p className="needs-look">相棒より：言い方が少し気になります。人の目で確かめてください（判断するのは先生です）</p>
+      )}
+      {post.sharedToStaff && <p className="needs-look">教職員のチャネルで共有済みです</p>}
+      {canShare && post.scope === "everyone" && !post.sharedToStaff && (
+        <form action={shareConcern}>
+          <input type="hidden" name="postId" value={post.id} />
+          <button type="submit" className="share-concern">
+            教職員で共有する
+          </button>
+        </form>
+      )}
 
       {post.authorId === viewerId ? (
         <p className="likes">いいね {post.likeCount}</p>
@@ -128,7 +151,13 @@ export default async function TeamsPage({
           {posts.length === 0 ? (
             <p className="empty">まだ投稿はありません。</p>
           ) : (
-            posts.map((post) => <Post key={post.id} post={post} viewerId={viewer.id} images={images} />)
+            posts.map((post) => <Post
+                key={post.id}
+                post={post}
+                viewerId={viewer.id}
+                images={images}
+                canShare={viewer.role !== "student" && channel.audience === "everyone" && post.authorId !== viewer.id}
+              />)
           )}
 
           <form action={createPost} className="compose new-post">

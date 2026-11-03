@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getViewer } from "@/lib/current-person";
 import { getDatabase } from "@/lib/db";
+import { dailyQuestion } from "@/lib/daily-question";
 import { countForNotice } from "@/lib/inbox";
 import { PersonSwitcher } from "./PersonSwitcher";
 import { Talk } from "./Talk";
@@ -26,7 +27,7 @@ export default async function HomePage() {
           <Link href="/soudan">相談室への知らせを見る</Link>
         </p>
       )}
-      <Talk key={viewer.id} viewer={{ name: viewer.name, label: viewer.label }} />
+      <Talk key={viewer.id} viewer={{ name: viewer.name, label: viewer.label }} question={dailyQuestion(new Date())} />
     </main>
   );
 }

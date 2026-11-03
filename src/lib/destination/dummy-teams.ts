@@ -27,6 +27,8 @@ type PostRow = {
   researched_with_ai: number;
   scope: PostScope;
   scope_person_id: string | null;
+  needs_look: number;
+  shared_to_staff: number;
   asked_person_name: string | null;
   answered: number;
   like_count: number;
@@ -112,10 +114,11 @@ export function createDummyTeams(db: DatabaseSync): PostDestination {
 
     listPosts(viewerId, channelId) {
       requireVisibleChannel(viewerId, channelId);
+      const viewerIsStaff = roleOf(viewerId) !== "student";
       const posts = db
         .prepare(
           `SELECT p.id, p.channel_id, p.author_id, a.name AS author_name, a.label AS author_label,
-                  p.kind, p.body, p.created_at, p.researched_with_ai, p.scope, p.scope_person_id,
+                  p.kind, p.body, p.created_at, p.researched_with_ai, p.scope, p.scope_person_id, p.needs_look, p.shared_to_staff,
                   (SELECT q.name FROM people q WHERE q.id = p.asked_person_id) AS asked_person_name,
                   EXISTS (SELECT 1 FROM replies r WHERE r.post_id = p.id AND r.author_id = p.asked_person_id) AS answered,
                   (SELECT count(*) FROM post_likes l WHERE l.post_id = p.id) AS like_count,
@@ -147,6 +150,9 @@ export function createDummyTeams(db: DatabaseSync): PostDestination {
         createdAt: p.created_at,
         researchedWithAi: p.researched_with_ai === 1,
         scope: p.scope,
+        // 本人や生徒には見せない。教職員が確かめるためのもの
+        needsLook: viewerIsStaff && p.author_id !== viewerId && p.needs_look === 1,
+        sharedToStaff: viewerIsStaff && p.shared_to_staff === 1,
         askedPersonName: p.asked_person_name,
         passedThrough: (selectPasses.all(p.id) as { name: string }[]).map((x) => x.name),
         answered: p.answered === 1,
@@ -167,7 +173,7 @@ export function createDummyTeams(db: DatabaseSync): PostDestination {
       viewerId,
       channelId,
       body,
-      { kind = "report", researchedWithAi = false, askedPersonId, scope = "everyone", scopePersonId } = {},
+      { kind = "report", researchedWithAi = false, askedPersonId, scope = "everyone", scopePersonId, needsLook = false } = {},
     ) {
       requireVisibleChannel(viewerId, channelId);
       if (askedPersonId !== undefined) {
@@ -185,8 +191,8 @@ export function createDummyTeams(db: DatabaseSync): PostDestination {
       }
       const id = randomUUID();
       db.prepare(
-        `INSERT INTO posts (id, channel_id, author_id, kind, body, created_at, researched_with_ai, asked_person_id, scope, scope_person_id)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO posts (id, channel_id, author_id, kind, body, created_at, researched_with_ai, asked_person_id, scope, scope_person_id, needs_look)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       ).run(
         id,
         channelId,
@@ -198,6 +204,8 @@ export function createDummyTeams(db: DatabaseSync): PostDestination {
         askedPersonId ?? null,
         scope,
         scope === "person" ? (scopePersonId ?? null) : null,
+        // 範囲を絞った投稿は相手を本人が選んでいるので、他の教職員へ広げるきっかけにしない
+        needsLook && scope === "everyone" ? 1 : 0,
       );
       return id;
     },
@@ -209,6 +217,37 @@ export function createDummyTeams(db: DatabaseSync): PostDestination {
         "INSERT INTO replies (id, post_id, author_id, body, created_at) VALUES (?, ?, ?, ?, ?)",
       ).run(id, postId, viewerId, cleanBody(body), new Date().toISOString());
       return id;
+    },
+
+    shareConcern(viewerId, postId) {
+      if (roleOf(viewerId) === "student") return false;
+      const post = db
+        .prepare(
+          `SELECT p.body, p.scope, p.shared_to_staff, p.author_id, a.name AS author_name, c.name AS channel_name, c.audience
+           FROM posts p JOIN people a ON a.id = p.author_id JOIN channels c ON c.id = p.channel_id
+           WHERE p.id = ?`,
+        )
+        .get(postId) as
+        | { body: string; scope: PostScope; shared_to_staff: number; author_id: string; author_name: string; channel_name: string; audience: Audience }
+        | undefined;
+      // 共有できるのは、校内に出た投稿だけ。範囲を絞った投稿を他の教職員へ広げない
+      if (!post || post.scope !== "everyone" || post.audience !== "everyone" || post.shared_to_staff === 1) return false;
+      const staffChannel = db.prepare("SELECT id FROM channels WHERE audience = 'staff' ORDER BY rowid LIMIT 1").get() as
+        | { id: string }
+        | undefined;
+      if (!staffChannel) return false;
+
+      db.prepare(
+        "INSERT INTO posts (id, channel_id, author_id, kind, body, created_at) VALUES (?, ?, ?, 'worry', ?, ?)",
+      ).run(
+        randomUUID(),
+        staffChannel.id,
+        viewerId,
+        `気になる投稿を共有します（${post.channel_name}・${post.author_name}さん）。一人で抱えず、担任、生徒指導、学年長、管理職で一緒に見てください。\n「${post.body}」`,
+        new Date().toISOString(),
+      );
+      db.prepare("UPDATE posts SET shared_to_staff = 1 WHERE id = ?").run(postId);
+      return true;
     },
 
     listOtherPeople(viewerId) {

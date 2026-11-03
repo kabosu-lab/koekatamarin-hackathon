@@ -3,7 +3,7 @@ import Link from "next/link";
 import { getAvatar } from "@/lib/avatar";
 import { getViewer } from "@/lib/current-person";
 import { getDatabase } from "@/lib/db";
-import { getSakura, isBloomingSeason, parseSeason, type Season } from "@/lib/sakura";
+import { getSakura, isBloomingSeason, parseSeason, type Season, timeOfDay } from "@/lib/sakura";
 import { schoolName } from "@/lib/seed-data";
 import { Avatar } from "../Avatar";
 
@@ -21,7 +21,8 @@ export default async function MinnaPage({ searchParams }: { searchParams: Promis
   const { people } = await getViewer();
   const { season: requested } = await searchParams;
   const db = getDatabase();
-  const sakura = getSakura(db, new Date(), parseSeason(requested) ?? undefined);
+  const now = new Date();
+  const sakura = getSakura(db, now, parseSeason(requested) ?? undefined);
 
   return (
     <main className="home">
@@ -32,6 +33,7 @@ export default async function MinnaPage({ searchParams }: { searchParams: Promis
 
       <section
         className="sakura-scene"
+        data-time={timeOfDay(now)}
         aria-label="校内の桜"
         style={{ backgroundImage: `url(/api/art/school-${sakura.season}.jpg)` }}
       >

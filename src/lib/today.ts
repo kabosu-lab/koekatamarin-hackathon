@@ -3,6 +3,7 @@ import type { DatabaseSync } from "node:sqlite";
 import { ComposeError } from "./claude/compose";
 import type { ClaudeClient } from "./claude/types";
 import { DestinationError, type PostDestination, type PostView } from "./destination/types";
+import { isNoticeHours } from "./inbox";
 
 const MAX_TOKENS = 2000;
 const MAX_CARDS = 30;
@@ -80,6 +81,31 @@ export function listPopularCards(destination: PostDestination, viewerId: string)
   return candidates(destination, viewerId)
     .sort((a, b) => score(b) - score(a) || b.createdAt.localeCompare(a.createdAt))
     .slice(0, MAX_CARDS)
+    .map(toCard);
+}
+
+const QUIET_AFTER_MS = 24 * 60 * 60 * 1000;
+const QUIET_LIMIT = 2;
+
+/**
+ * 反応のない生徒の投稿を、担任にだけそっと伝える。教室で余った子に先生が声をかけるのと同じ。
+ * 通知の時間外には出さない。
+ */
+export function listQuietPosts(db: DatabaseSync, destination: PostDestination, viewerId: string, now: Date): TodayCard[] {
+  if (!isNoticeHours(now)) return [];
+  const students = new Set(
+    (db.prepare("SELECT id FROM people WHERE homeroom_teacher_id = ?").all(viewerId) as { id: string }[]).map((row) => row.id),
+  );
+  if (students.size === 0) return [];
+  return candidates(destination, viewerId)
+    .filter(
+      (post) =>
+        students.has(post.authorId) &&
+        post.likeCount === 0 &&
+        post.replies.length === 0 &&
+        now.getTime() - Date.parse(post.createdAt) >= QUIET_AFTER_MS,
+    )
+    .slice(0, QUIET_LIMIT)
     .map(toCard);
 }
 

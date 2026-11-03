@@ -28,6 +28,11 @@ export async function createReply(form: FormData) {
   revalidatePath("/teams");
 }
 
+export async function shareConcern(form: FormData) {
+  destination().shareConcern(await viewerId(), field(form, "postId"));
+  revalidatePath("/teams");
+}
+
 export async function toggleLike(form: FormData) {
   destination().toggleLike(await viewerId(), field(form, "postId"));
   revalidatePath("/teams");

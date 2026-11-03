@@ -395,6 +395,22 @@ body {
   font-size: 0.85rem;
 }
 
+.daily-question {
+  margin: 0;
+  padding: 0.6rem 0.85rem;
+  border-radius: 1rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  font-weight: 700;
+}
+
+.quiet-note {
+  margin: 0.75rem 0 0;
+  padding: 0.6rem 0.85rem;
+  border-radius: 0.5rem;
+  background: var(--warn);
+}
+
 .staff-link {
   margin: 0.5rem 0 0;
   font-size: 0.9rem;
@@ -823,6 +839,25 @@ body {
   border-radius: 1rem;
   background-size: cover;
   background-position: center;
+}
+
+.sakura-scene::before {
+  position: absolute;
+  inset: 0;
+  content: "";
+  pointer-events: none;
+}
+
+.sakura-scene[data-time="morning"]::before {
+  background: rgb(255 214 170 / 18%);
+}
+
+.sakura-scene[data-time="evening"]::before {
+  background: rgb(240 120 60 / 30%);
+}
+
+.sakura-scene[data-time="night"]::before {
+  background: rgb(15 20 60 / 55%);
 }
 
 .sakura-scene .caption {

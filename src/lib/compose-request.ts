@@ -133,6 +133,7 @@ export async function handlePublish(
       askedPersonId,
       scope: knownScope,
       scopePersonId,
+      needsLook: review.verdict === "caution",
     });
     return { status: 200, body: { postId, channelId } };
   } catch (error) {

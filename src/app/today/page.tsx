@@ -4,7 +4,7 @@ import { getViewer } from "@/lib/current-person";
 import { getDatabase } from "@/lib/db";
 import { getAvatar } from "@/lib/avatar";
 import { createDummyTeams } from "@/lib/destination/dummy-teams";
-import { listPopularCards, listSeenNotes, listTodayCards } from "@/lib/today";
+import { listPopularCards, listQuietPosts, listSeenNotes, listTodayCards } from "@/lib/today";
 import { PersonSwitcher } from "../PersonSwitcher";
 import { TodayCards } from "./TodayCards";
 
@@ -21,6 +21,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
   const now = new Date();
   const cards = popular ? listPopularCards(teams, viewer.id) : listTodayCards(teams, viewer.id, now);
   const seen = listSeenNotes(db, viewer.id, now);
+  const quiet = listQuietPosts(db, teams, viewer.id, now);
 
   return (
     <main className="home">
@@ -33,6 +34,13 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
       {seen.map((note) => (
         <p className="seen-note" key={note.postBody}>
           {note.seenBy.join("さん、")}さんが、あなたの投稿を見てくれました：「{note.postBody}」
+        </p>
+      ))}
+
+      {quiet.map((post) => (
+        <p className="quiet-note" key={post.postId}>
+          {post.authorName}さんの投稿に、まだ反応がありません。一言どうですか？「{post.body}」{" "}
+          <Link href={`/teams?channel=${post.channelId}`}>校内チャネルで見る</Link>
         </p>
       ))}
 

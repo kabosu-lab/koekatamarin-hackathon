@@ -17,7 +17,13 @@ const MAX_HISTORY = 40;
 /** 話の途中で声をかけないよう、少なくとも2往復してから確かめる */
 const CONNECT_MIN_MESSAGES = 4;
 
-export function Talk({ viewer }: { viewer: { name: string; label: string } }) {
+export function Talk({
+  viewer,
+  question,
+}: {
+  viewer: { name: string; label: string };
+  question: string | null;
+}) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState("");
   const [writing, setWriting] = useState(false);
@@ -229,7 +235,10 @@ export function Talk({ viewer }: { viewer: { name: string; label: string } }) {
       <div className="log" role="log" aria-label="相棒との会話">
         <p className="promise">ここでの話はあなただけのものです。ただし、命や安全に関わるときは相談室の先生に伝えます。</p>
         {messages.length === 0 && !listening && (
-          <p className="hint">調べ物でも、悩みでも、今日の頑張りでも。思いついたことから、どうぞ。</p>
+          <>
+            {question && <p className="daily-question">{question}</p>}
+            <p className="hint">調べ物でも、悩みでも、今日の頑張りでも。思いついたことから、どうぞ。</p>
+          </>
         )}
         {messages.map((message, index) => (
           <Fragment key={index}>
