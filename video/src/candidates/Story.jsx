@@ -136,7 +136,7 @@ const Features = ({ f }) => <>
 </>;
 const Making = ({ f }) => (
   <AbsoluteFill style={{ background: "#14161c" }}>
-    <div style={{ position: "absolute", left: 110, top: 110, fontFamily: GOTHIC, fontWeight: 300, fontSize: 68, color: "#f2efe9" }}><Quiet text="現場の教員が、Claude と作った" f={f} at={6} stagger={1} blur={0} /></div>
+    <div style={{ position: "absolute", left: 110, top: 110, fontFamily: GOTHIC, fontWeight: 300, fontSize: 68, color: "#f2efe9" }}><Quiet text="作り手が、Claude と作った" f={f} at={6} stagger={1} blur={0} /></div>
     <div style={{ position: "absolute", left: 110, top: 280, width: 860, fontFamily: '"Menlo", "Hiragino Sans", monospace', fontSize: 32, lineHeight: 1.8, color: "#c7c3ba" }}>
       {R.recent.slice(0, 5).map((l, i) => <div key={i} style={{ opacity: lerp(f, 40 + i * 10, 54 + i * 10, 0, 1), whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{l}</div>)}
       <div style={{ marginTop: 26, color: "#a8a59d", fontSize: 30, opacity: lerp(f, 100, 120, 0, 1) }}>コミット {R.commits}・テスト {R.tests}・Codex の見直し {R.reviews}（補助）</div>

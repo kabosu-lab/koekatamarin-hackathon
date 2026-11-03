@@ -1,7 +1,7 @@
 {
   "name": "koekata-video",
   "private": true,
-  "description": "コエカタのデモ動画を作るコード（作品本体とは別）",
+  "description": "こえかたのデモ動画を作るコード（作品本体とは別）",
   "scripts": {
     "assets": "node scripts/build-assets.mjs",
     "still": "remotion still src/index.jsx",
