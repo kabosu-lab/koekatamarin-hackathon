@@ -25,19 +25,12 @@ describe("splitIntoWords", () => {
 });
 
 describe("sendTiming", () => {
-  it("言葉が出て、固まり、箱に入って開き、飛んで、届く順になる", () => {
+  it("言葉が出て、固まり、飛んで、届く順になる", () => {
     const t = sendTiming(5);
-    expect(t.wordTimes[4]).toBeLessThan(t.gather);
-    const order = [t.gather, t.enter, t.open, t.launch, t.land, t.end];
-    expect(order).toEqual([...order].sort((a, b) => a - b));
-    expect(t.end).toBeLessThan(3.5);
-  });
-
-  it("拍は「ぽ、ぽ、ぽぽ、ぽ」で、4つ目だけ詰まる", () => {
-    const { wordTimes } = sendTiming(5);
-    const gaps = wordTimes.slice(1).map((time, i) => Number((time - wordTimes[i]).toFixed(2)));
-    expect(gaps[0]).toBe(gaps[1]);
-    expect(gaps[2]).toBeLessThan(gaps[1]);
-    expect(gaps[3]).toBe(gaps[1]);
+    expect(t.popGap * 4).toBeLessThan(t.gather);
+    expect(t.gather).toBeLessThan(t.launch);
+    expect(t.launch).toBeLessThan(t.land);
+    expect(t.land).toBeLessThan(t.end);
+    expect(t.end).toBeLessThan(3);
   });
 });

@@ -108,7 +108,7 @@ function whoosh(at: number, duration: number, volume: number) {
   source.start(at);
 }
 
-/** 送ったときの音：ぽ、ぽ、ぽぽ、ぽ（言葉）、箱に入る音、シューン（飛ぶ）、ポン（届く）。「音あり」を選んだ人にだけ鳴らす。 */
+/** 送ったときの音：ポポポ（言葉）、シューン（飛ぶ）、ポン（届く）。「音あり」を選んだ人にだけ鳴らす。 */
 export function playSendSound(words: string): void {
   if (document.documentElement.dataset.sound !== "on") return;
   try {
@@ -117,9 +117,8 @@ export function playSendSound(words: string): void {
     const count = splitIntoWords(words).length;
     const timing = sendTiming(count);
     const t0 = audio.currentTime + 0.02;
-    timing.wordTimes.forEach((time, i) => pop(t0 + time, WORD_NOTES[i], 0.55));
+    for (let i = 0; i < count; i++) pop(t0 + i * timing.popGap, WORD_NOTES[i], 0.55);
     GATHER_NOTES.forEach((note, i) => pop(t0 + timing.gather + i * 0.05, note, 0.18));
-    pop(t0 + timing.enter, 67, 0.4);
     pop(t0 + timing.launch, 60, 0.5);
     whoosh(t0 + timing.launch, timing.land - timing.launch, 0.9);
     pop(t0 + timing.land, 60, 0.7);

@@ -15,7 +15,7 @@ const SPOTS: [string, string][] = [
   ["-6vw", "-10.4rem"],
 ];
 
-/** 話した言葉がぽ、ぽ、ぽぽ、ぽと出て固まり、文章の箱に入って開き、シューンと外へ飛んで、届くと花びらになる。動きを減らす設定では出さない（CSS）。 */
+/** 話した言葉がポポポと出て、固まり、シューンと飛び、届くと花びらになる。動きを減らす設定では出さない（CSS）。 */
 export function SendBurst({ words, onDone }: { words: string; onDone(): void }) {
   const pieces = useMemo(() => splitIntoWords(words), [words]);
   const timing = sendTiming(pieces.length);
@@ -27,8 +27,6 @@ export function SendBurst({ words, onDone }: { words: string; onDone(): void }) 
 
   const times = {
     "--gather": `${timing.gather}s`,
-    "--enter": `${timing.enter}s`,
-    "--open": `${timing.open}s`,
     "--launch": `${timing.launch}s`,
     "--land": `${timing.land}s`,
   } as React.CSSProperties;
@@ -43,7 +41,7 @@ export function SendBurst({ words, onDone }: { words: string; onDone(): void }) 
             {
               "--x": SPOTS[index][0],
               "--y": SPOTS[index][1],
-              "--delay": `${timing.wordTimes[index]}s`,
+              "--delay": `${index * timing.popGap}s`,
             } as React.CSSProperties
           }
         >
@@ -51,9 +49,6 @@ export function SendBurst({ words, onDone }: { words: string; onDone(): void }) 
         </span>
       ))}
       <span className="blob" />
-      <span className="draft-box">
-        <span>{words}</span>
-      </span>
       {PETALS.map((dx) => (
         <span key={dx} className="burst-petal" style={{ "--dx": `${dx}px` } as React.CSSProperties} />
       ))}
