@@ -101,12 +101,18 @@ describe("最初の一言", () => {
 
   it("台本の「私は嫌やわ」は売り込まない", async () => {
     const { reply } = await converse(createScriptedClaude(), [], "私は嫌やわ");
-    expect(reply).toContain("無理に使わなくて");
+    expect(reply).toContain("無理に使わんでええ");
   });
 
   it("相棒の指示に、人のふりをしない・売り込まない決まりがある", () => {
     expect(companionSystemPrompt).toContain("人のふりをせず");
     expect(companionSystemPrompt).toContain("売り込まない");
     expect(companionSystemPrompt).toContain("連絡した・伝えたと言わない");
+  });
+
+  it("相棒の指示に、相手のトーンに合わせる決まりがある", () => {
+    expect(companionSystemPrompt).toContain("同じトーンで返す");
+    expect(companionSystemPrompt).toContain("敬語に戻さず");
+    expect(companionSystemPrompt).toContain("相手が使っていない方言は使わない");
   });
 });

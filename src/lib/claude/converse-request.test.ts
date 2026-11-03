@@ -10,7 +10,7 @@ describe("handleConverse", () => {
     const outcome = await handleConverse(scripted, { history: [], text: " 私は嫌やわ " });
     expect(outcome.status).toBe(200);
     expect(outcome.body).toMatchObject({ mode: "scripted" });
-    expect(JSON.stringify(outcome.body)).toContain("無理に使わなくて");
+    expect(JSON.stringify(outcome.body)).toContain("無理に使わんでええ");
   });
 
   it.each([
