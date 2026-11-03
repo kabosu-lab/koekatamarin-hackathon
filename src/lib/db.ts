@@ -74,6 +74,23 @@ const MIGRATIONS: readonly string[] = [
      seen_at TEXT NOT NULL,
      PRIMARY KEY (post_id, person_id)
    ) STRICT;`,
+  `CREATE TABLE avatars (
+     person_id TEXT PRIMARY KEY REFERENCES people (id),
+     family TEXT NOT NULL
+   ) STRICT;
+   CREATE TABLE thanks (
+     id TEXT PRIMARY KEY,
+     from_person_id TEXT NOT NULL REFERENCES people (id),
+     to_person_id TEXT NOT NULL REFERENCES people (id),
+     message TEXT NOT NULL,
+     created_at TEXT NOT NULL
+   ) STRICT;
+   CREATE INDEX thanks_by_receiver ON thanks (to_person_id, created_at);
+   CREATE TABLE profile_drafts (
+     person_id TEXT PRIMARY KEY REFERENCES people (id),
+     text TEXT NOT NULL,
+     revised INTEGER NOT NULL DEFAULT 0 CHECK (revised IN (0, 1))
+   ) STRICT;`,
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;

@@ -23,8 +23,9 @@ async function fakeSpeech(page: Page, spoken: string) {
 
 test("最初の画面の主役は「話しかける」と「文字で書く」", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByRole("button", { name: "話しかける" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "文字で書く" })).toBeVisible();
+  // 下の案内に隠れず、最初から画面に入っている
+  await expect(page.getByRole("button", { name: "話しかける" })).toBeInViewport({ ratio: 1 });
+  await expect(page.getByRole("button", { name: "文字で書く" })).toBeInViewport({ ratio: 1 });
 });
 
 test("声で話すと、聞いている様子を見せ、話した言葉を残して相棒が返す", async ({ page }) => {

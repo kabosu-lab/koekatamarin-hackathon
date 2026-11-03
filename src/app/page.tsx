@@ -19,9 +19,6 @@ export default async function HomePage() {
       </header>
       {/* Claude との話は本人だけのもの。人物を切り替えたら会話を持ち越さない */}
       <p className="staff-link">
-        <Link href="/today">今日の3人</Link>
-      </p>
-      <p className="staff-link">
         <Link href="/inbox">受信箱{waiting > 0 && `（お願いが ${waiting} 件）`}</Link>
       </p>
       {viewer.role !== "student" && (

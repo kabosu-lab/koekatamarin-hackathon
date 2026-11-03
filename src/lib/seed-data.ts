@@ -107,6 +107,18 @@ export const people: SeedPerson[] = [
   },
 ];
 
+/** 最初から分身を持っている人。佐伯先生はデモで最初の問いかけから始める。 */
+export const seedAvatars: Record<string, string> = {
+  ogawara: "elder",
+  kawamura: "coat",
+  noda: "craft",
+  shiraishi: "bird",
+  fujimoto: "dragon",
+  aoki: "jacket",
+  kinoshita: "beast",
+  nakamura: "spirit",
+};
+
 /** 命や安全に関わる知らせが必ず届く人（相談室）。 */
 export const counselorId = "shiraishi";
 

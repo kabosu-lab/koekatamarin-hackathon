@@ -3,7 +3,7 @@
   --line: #dddbe6;
   --muted: #5f5b70;
   --surface: #ffffff;
-  min-height: 100dvh;
+  flex: 1;
   background: #f3f2f8;
   color: #24222e;
 }

@@ -1,0 +1,198 @@
+"use client";
+
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import type { ProfileDraft } from "@/lib/profile";
+
+async function postJson(url: string, body: unknown) {
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const data = (await response.json().catch(() => ({}))) as Record<string, unknown>;
+  return { ok: response.ok, data };
+}
+
+type Question = {
+  question: string;
+  options: readonly { value: string; label: string }[];
+};
+
+export function AvatarQuiz({ kindQuestion, styleQuestion }: { kindQuestion: Question; styleQuestion: Question }) {
+  const router = useRouter();
+  const [kind, setKind] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [problem, setProblem] = useState("");
+
+  async function choose(style: string) {
+    setBusy(true);
+    setProblem("");
+    const { ok } = await postJson("/api/avatar", { kind, style }).catch(() => ({ ok: false }));
+    if (ok) router.refresh();
+    else setProblem("うまくいきませんでした。もう一度押してください。");
+    setBusy(false);
+  }
+
+  const question = kind ? styleQuestion : kindQuestion;
+  return (
+    <section className="card" aria-label="最初の問いかけ">
+      <h2>{question.question}</h2>
+      <div className="row">
+        {question.options.map((option) => (
+          <button
+            key={option.value}
+            type="button"
+            disabled={busy}
+            onClick={() => (kind ? void choose(option.value) : setKind(option.value))}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+      {problem && (
+        <p className="notice" role="alert">
+          {problem}
+        </p>
+      )}
+    </section>
+  );
+}
+
+export function ProfileEditor({ initialDraft, hasProfile }: { initialDraft: ProfileDraft | null; hasProfile: boolean }) {
+  const router = useRouter();
+  const [draft, setDraft] = useState(initialDraft);
+  const [request, setRequest] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState("");
+
+  async function run(action: string, extra: Record<string, unknown> = {}) {
+    setBusy(true);
+    setNotice("");
+    try {
+      const { ok, data } = await postJson("/api/profile", { action, ...extra });
+      if (!ok) {
+        setNotice(typeof data.error === "string" ? data.error : "うまくいきませんでした。");
+        return;
+      }
+      if (action === "draft" || action === "revise") {
+        const next = data.draft as ProfileDraft | null;
+        if (!next) setNotice("まだ材料が足りないみたい。校内でやり取りすると、作れるようになります。");
+        setDraft(next);
+        setRequest("");
+      } else {
+        setDraft(null);
+        router.refresh();
+      }
+    } catch {
+      setNotice("うまくいきませんでした。もう一度押してください。");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div>
+      {draft ? (
+        <div className="card" aria-label="プロフィールの下書き" role="group">
+          <h2>こう載せていい？</h2>
+          <p className="draft-text">{draft.text}</p>
+          <div className="row">
+            <button type="button" disabled={busy} onClick={() => void run("publish")}>
+              これで載せる
+            </button>
+            <button type="button" className="secondary" disabled={busy} onClick={() => void run("discard")}>
+              載せない
+            </button>
+          </div>
+          {draft.revised ? (
+            <p className="muted">言葉で直せるのは、更新ごとに1回です。</p>
+          ) : (
+            <>
+              <label>
+                ここをこう変えて（更新ごとに1回）
+                <textarea rows={2} maxLength={200} value={request} onChange={(event) => setRequest(event.target.value)} />
+              </label>
+              <button
+                type="button"
+                className="secondary"
+                disabled={busy || request.trim() === ""}
+                onClick={() => void run("revise", { request })}
+              >
+                この頼みで直す
+              </button>
+            </>
+          )}
+        </div>
+      ) : (
+        <div className="row">
+          <button type="button" disabled={busy} onClick={() => void run("draft")}>
+            プロフィールを更新する
+          </button>
+          {hasProfile && (
+            <button type="button" className="secondary" disabled={busy} onClick={() => void run("remove")}>
+              プロフィールを消す
+            </button>
+          )}
+        </div>
+      )}
+      {notice && (
+        <p className="notice" role="alert">
+          {notice}
+        </p>
+      )}
+    </div>
+  );
+}
+
+export function ThanksForm({ people }: { people: { id: string; name: string; label: string }[] }) {
+  const [to, setTo] = useState("");
+  const [message, setMessage] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState("");
+
+  async function send() {
+    setBusy(true);
+    setNotice("");
+    try {
+      const { ok, data } = await postJson("/api/thanks", { toPersonId: to, message });
+      if (ok) {
+        const name = people.find((p) => p.id === to)?.name ?? "";
+        setNotice(`${name}さんに、ありがとうが届きました。`);
+        setMessage("");
+        setTo("");
+      } else {
+        setNotice(typeof data.error === "string" ? data.error : "まだ送っていません。もう一度押してください。");
+      }
+    } catch {
+      setNotice("まだ送っていません。もう一度押してください。");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="card" aria-label="サンクスカードを送る">
+      <h2>今週助けてくれた人は？</h2>
+      <label>
+        送る相手
+        <select value={to} onChange={(event) => setTo(event.target.value)}>
+          <option value="">選んでください</option>
+          {people.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name}（{p.label}）
+            </option>
+          ))}
+        </select>
+      </label>
+      <label>
+        ありがとうの言葉
+        <textarea rows={2} maxLength={2000} value={message} onChange={(event) => setMessage(event.target.value)} />
+      </label>
+      <button type="button" disabled={busy || to === "" || message.trim() === ""} onClick={() => void send()}>
+        サンクスカードを送る
+      </button>
+      {notice && <p role="status">{notice}</p>}
+    </section>
+  );
+}
