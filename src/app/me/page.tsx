@@ -57,6 +57,7 @@ export default async function MePage() {
       <div className="hub-links">
         <Link href="/daily">{viewer.role === "student" ? "今日の日記" : "今日の日報"}</Link>
         {viewer.role !== "student" && <Link href="/daily/received">届いた日報と日記</Link>}
+        <Link href="/lookback">ふりかえり</Link>
       </div>
 
       <section className="card" aria-label="これまで">

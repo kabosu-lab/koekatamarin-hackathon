@@ -25,6 +25,12 @@ function scriptedDraft(transcript: string, jsonSchema: Record<string, unknown> |
   };
 }
 
+function scriptedLookback(prompt: string) {
+  const lines = prompt.split("\n").filter((line) => /^(日報|投稿|返信|ありがとう)：/.test(line));
+  if (lines.length === 0) return { ready: false, text: "" };
+  return { ready: true, text: `この期間に、${lines.length} 個のやり取りがありました。${lines[0].replace(/^.*?：/, "")}` };
+}
+
 function scriptedDaily(prompt: string) {
   const lines = [...prompt.matchAll(/^(?:本人：|投稿：|返信：|ありがとう：|勉強：)(.*)$/gm)]
     .map((match) => match[1].trim())
@@ -100,6 +106,7 @@ export function createScriptedClaude(): ClaudeClient {
     mode: "scripted",
     async complete({ task, messages, jsonSchema }) {
       if (task === "draft") return { text: JSON.stringify(scriptedDraft(messages[0].content, jsonSchema)), refused: false };
+      if (task === "lookback") return { text: JSON.stringify(scriptedLookback(messages[0].content)), refused: false };
       if (task === "daily") return { text: JSON.stringify(scriptedDaily(messages[0].content)), refused: false };
       if (task === "profile") return { text: JSON.stringify(scriptedProfile(messages[0].content)), refused: false };
       if (task === "cheer") return { text: JSON.stringify(scriptedCheer(jsonSchema)), refused: false };

@@ -22,7 +22,8 @@
     "db:reset": "rm -f data/koekata.db data/koekata.db-wal data/koekata.db-shm",
     "try:cheer": "tsx --env-file-if-exists=.env scripts/try-cheer.ts",
     "try:profile": "tsx --env-file-if-exists=.env scripts/try-profile.ts",
-    "try:daily": "tsx --env-file-if-exists=.env scripts/try-daily.ts"
+    "try:daily": "tsx --env-file-if-exists=.env scripts/try-daily.ts",
+    "try:lookback": "tsx --env-file-if-exists=.env scripts/try-lookback.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.4.0",

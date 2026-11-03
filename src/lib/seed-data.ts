@@ -119,6 +119,30 @@ export const seedAvatars: Record<string, string> = {
   nakamura: "spirit",
 };
 
+/** ふりかえりで使う、過去の日報と日記。どれも本人だけのもので、誰にも届いていない。 */
+export const pastReports: { personId: string; date: string; items: string[] }[] = [
+  {
+    personId: "saeki",
+    date: "2026-09-18",
+    items: ["文化祭のクラスの出し物を、生徒に任せてみた", "パソコンの出席入力でまた止まった。野田先生に聞いた"],
+  },
+  {
+    personId: "saeki",
+    date: "2026-10-09",
+    items: ["作文に、いいところを一つだけ書くようにした", "川村先生の授業の相談にのった"],
+  },
+  {
+    personId: "aoki",
+    date: "2026-09-25",
+    items: ["ITパスポートの勉強を始めた。用語が多くて驚いた"],
+  },
+  {
+    personId: "aoki",
+    date: "2026-10-16",
+    items: ["過去問の点数が初めて半分を超えた", "友だちに勉強会に来ないかと声をかけた"],
+  },
+];
+
 /** 生徒の日記が届く担任。 */
 export const homeroomTeachers: Record<string, string> = {
   aoki: "saeki",

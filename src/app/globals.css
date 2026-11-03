@@ -872,3 +872,8 @@ body {
   border-radius: 0.75rem;
   background: #e3f4e0;
 }
+
+.lookback-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

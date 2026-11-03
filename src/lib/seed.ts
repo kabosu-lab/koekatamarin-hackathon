@@ -1,5 +1,5 @@
 import type { DatabaseSync } from "node:sqlite";
-import { channels, homeroomTeachers, people, posts, seedAvatars } from "./seed-data";
+import { channels, homeroomTeachers, pastReports, people, posts, seedAvatars } from "./seed-data";
 
 /** 文字列のまま時刻順に並ぶよう、すべて UTC の形で保存する。 */
 function toStored(time: string): string {
@@ -62,6 +62,13 @@ export function seedDatabase(db: DatabaseSync): void {
         insertLike.run(post.id, personId);
       }
     }
+    const insertReport = db.prepare("INSERT INTO daily_reports (id, person_id, date, created_at) VALUES (?, ?, ?, ?)");
+    const insertItem = db.prepare("INSERT INTO report_items (id, report_id, position, text) VALUES (?, ?, ?, ?)");
+    pastReports.forEach((report, reportIndex) => {
+      const id = `past-${reportIndex}`;
+      insertReport.run(id, report.personId, report.date, toStored(`${report.date}T18:00:00+09:00`));
+      report.items.forEach((text, position) => insertItem.run(`${id}-${position}`, id, position, text));
+    });
     db.exec("COMMIT");
   } catch (error) {
     db.exec("ROLLBACK");
