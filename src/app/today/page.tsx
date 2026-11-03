@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getViewer } from "@/lib/current-person";
 import { getDatabase } from "@/lib/db";
+import { getAvatar } from "@/lib/avatar";
 import { createDummyTeams } from "@/lib/destination/dummy-teams";
 import { listPopularCards, listSeenNotes, listTodayCards } from "@/lib/today";
 import { PersonSwitcher } from "../PersonSwitcher";
@@ -44,7 +45,10 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
         </Link>
       </nav>
 
-      <TodayCards key={`${viewer.id}-${popular ? "popular" : "today"}`} cards={cards} />
+      <TodayCards
+        key={`${viewer.id}-${popular ? "popular" : "today"}`}
+        cards={cards.map((card) => ({ ...card, authorImage: getAvatar(db, card.authorId).image }))}
+      />
 
       <p className="staff-link">
         <Link href="/">もどる</Link>

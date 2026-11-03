@@ -8,6 +8,7 @@ import type { ChannelView, PersonView } from "@/lib/destination/types";
 import { Compose, type ComposeStart } from "./Compose";
 import { ConnectCard, type ConnectSuggestion } from "./ConnectCard";
 import { SafetyCard, type SafetyNotice } from "./SafetyCard";
+import { playSendSound, SendBurst } from "./SendBurst";
 import { loadTalk, saveTalk } from "./talk-storage";
 import { isSpeechSupported, startListening } from "./speech";
 
@@ -29,6 +30,7 @@ export function Talk({ viewer }: { viewer: { name: string; label: string } }) {
   const [preparing, setPreparing] = useState(false);
   const [safety, setSafety] = useState<SafetyNotice | null>(null);
   const [suggestion, setSuggestion] = useState<ConnectSuggestion | null>(null);
+  const [burst, setBurst] = useState<string | null>(null);
   const [remembered, setRemembered] = useState<number[]>([]);
   const connectDone = useRef(false);
   const [sentTo, setSentTo] = useState<{ channel: ChannelView; postId: string } | null>(null);
@@ -208,9 +210,11 @@ export function Talk({ viewer }: { viewer: { name: string; label: string } }) {
           {...composing}
           viewer={viewer}
           onCancel={() => setComposing(null)}
-          onSent={(channel, postId) => {
+          onSent={(channel, postId, words) => {
             setComposing(null);
             setSentTo({ channel, postId });
+            setBurst(words);
+            playSendSound();
           }}
         />
       </div>
@@ -221,6 +225,7 @@ export function Talk({ viewer }: { viewer: { name: string; label: string } }) {
 
   return (
     <div className="talk" data-viewer={viewer.name}>
+      {burst && <SendBurst words={burst} onDone={() => setBurst(null)} />}
       <div className="log" role="log" aria-label="相棒との会話">
         <p className="promise">ここでの話はあなただけのものです。ただし、命や安全に関わるときは相談室の先生に伝えます。</p>
         {messages.length === 0 && !listening && (

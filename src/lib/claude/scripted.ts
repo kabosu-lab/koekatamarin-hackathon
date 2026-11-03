@@ -35,7 +35,7 @@ function scriptedDaily(prompt: string) {
   const lines = [...prompt.matchAll(/^(?:本人：|投稿：|返信：|ありがとう：|勉強：)(.*)$/gm)]
     .map((match) => match[1].trim())
     .filter((line) => !(openingLines as readonly string[]).includes(line));
-  return { items: lines.slice(0, 6) };
+  return { items: lines.slice(-6) };
 }
 
 function scriptedProfile(prompt: string) {

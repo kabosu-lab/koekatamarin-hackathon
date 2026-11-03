@@ -11,6 +11,7 @@ const SEEN_DAYS = 7;
 
 export type TodayCard = {
   postId: string;
+  authorId: string;
   channelId: string;
   channelName: string;
   authorName: string;
@@ -43,6 +44,7 @@ function visiblePosts(destination: PostDestination, viewerId: string): (PostView
 function toCard(post: ReturnType<typeof visiblePosts>[number]): TodayCard {
   return {
     postId: post.id,
+    authorId: post.authorId,
     channelId: post.channelId,
     channelName: post.channelName,
     authorName: post.authorName,

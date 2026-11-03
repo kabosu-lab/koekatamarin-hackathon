@@ -12,6 +12,16 @@ test("画面は「話す」「みんな」「じぶん」の3つで、行き来�
   await expect(page.getByRole("heading", { name: "じぶん" })).toBeVisible();
 });
 
+test("下の階層の画面でも、今どこにいるかが分かる", async ({ page }) => {
+  const current = page.getByRole("navigation", { name: "画面の切り替え" }).locator('[aria-current="page"]');
+  await page.goto("/today");
+  await expect(current).toHaveText("みんな");
+  await page.goto("/daily");
+  await expect(current).toHaveText("じぶん");
+  await page.goto("/inbox");
+  await expect(current).toHaveText("話す");
+});
+
 test("最初の問いかけに答えると卵の系統が決まり、絵が読み込まれる", async ({ browser }) => {
   // 他のテストと混ざらないよう、まだ分身のない佐伯先生の新しい文脈で進める
   const page = await (await browser.newContext()).newPage();

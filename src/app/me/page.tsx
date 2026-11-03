@@ -7,6 +7,9 @@ import { getDraft } from "@/lib/profile";
 import { listThanks } from "@/lib/thanks";
 import { Avatar } from "../Avatar";
 import { PersonSwitcher } from "../PersonSwitcher";
+import { cookies } from "next/headers";
+import { APPEARANCE_OPTIONS, readAppearance } from "@/lib/appearance";
+import { setAppearance } from "../person-actions";
 import { createDummyTeams } from "@/lib/destination/dummy-teams";
 import { listMemories } from "@/lib/memory";
 import { AvatarQuiz, MemoryList, ProfileEditor, ThanksForm } from "./MeActions";
@@ -16,6 +19,8 @@ export const dynamic = "force-dynamic";
 
 export default async function MePage() {
   const { viewer, people } = await getViewer();
+  const store = await cookies();
+  const appearance = readAppearance((name) => store.get(name)?.value);
   const db = getDatabase();
   const avatar = getAvatar(db, viewer.id);
   const counts = countContributions(db, viewer.id);
@@ -63,6 +68,30 @@ export default async function MePage() {
       </div>
 
       <MemoryList key={`${viewer.id}-memory`} initial={listMemories(db, createDummyTeams(db), viewer.id)} />
+
+      <section className="card appearance" aria-label="見た目">
+        <h2>見た目</h2>
+        {APPEARANCE_OPTIONS.map((group) => (
+          <form action={setAppearance} key={group.name}>
+            <input type="hidden" name="name" value={group.name} />
+            <p className="muted">{group.label}</p>
+            <div className="row">
+              {group.options.map((option) => (
+                <button
+                  key={option.value}
+                  type="submit"
+                  name="value"
+                  value={option.value}
+                  className="secondary"
+                  aria-pressed={appearance[group.name] === option.value}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </form>
+        ))}
+      </section>
 
       <section className="card" aria-label="これまで">
         <h2>これまで</h2>

@@ -3,8 +3,10 @@ import Link from "next/link";
 import { getDatabase } from "@/lib/db";
 import { createDummyTeams } from "@/lib/destination/dummy-teams";
 import { MAX_BODY_LENGTH, type PostView } from "@/lib/destination/types";
+import { getAvatar } from "@/lib/avatar";
 import { getViewer } from "@/lib/current-person";
 import { schoolName } from "@/lib/seed-data";
+import { Avatar } from "../Avatar";
 import { PersonSwitcher } from "../PersonSwitcher";
 import { createPost, createReply, toggleLike } from "./actions";
 import "./teams.css";
@@ -26,18 +28,19 @@ const SCOPE_LABEL = {
   self: "自分だけ",
 };
 
-function Author({ name, label, time }: { name: string; label: string; time: string }) {
+function Author({ name, label, time, image }: { name: string; label: string; time: string; image: string }) {
   return (
     <p className="author">
+      <Avatar image={image} alt={`${name}さんの相棒`} size={28} />
       <strong>{name}</strong> <span>{label}</span> <time dateTime={time}>{timeFormat.format(new Date(time))}</time>
     </p>
   );
 }
 
-function Post({ post, viewerId }: { post: PostView; viewerId: string }) {
+function Post({ post, viewerId, images }: { post: PostView; viewerId: string; images: Record<string, string> }) {
   return (
     <article className="post" aria-label={`${post.authorName}さんの投稿`}>
-      <Author name={post.authorName} label={post.authorLabel} time={post.createdAt} />
+      <Author name={post.authorName} label={post.authorLabel} time={post.createdAt} image={images[post.authorId]} />
       {post.askedPersonName && (
         <p className="asked">
           {post.passedThrough.map((name) => `${name}さんのパス → `).join("")}
@@ -62,7 +65,7 @@ function Post({ post, viewerId }: { post: PostView; viewerId: string }) {
 
       {post.replies.map((reply) => (
         <div className="reply" key={reply.id}>
-          <Author name={reply.authorName} label={reply.authorLabel} time={reply.createdAt} />
+          <Author name={reply.authorName} label={reply.authorLabel} time={reply.createdAt} image={images[reply.authorId]} />
           <p className="body">{reply.body}</p>
         </div>
       ))}
@@ -83,7 +86,9 @@ export default async function TeamsPage({
 }) {
   const { viewer, people } = await getViewer();
 
-  const teams = createDummyTeams(getDatabase());
+  const db = getDatabase();
+  const images = Object.fromEntries(people.map((p) => [p.id, getAvatar(db, p.id).image]));
+  const teams = createDummyTeams(db);
   const channels = teams.listChannels(viewer.id);
   const { channel: requested } = await searchParams;
   // 人物を切り替えて見られなくなったチャネルは、最初のチャネルへ戻す
@@ -123,7 +128,7 @@ export default async function TeamsPage({
           {posts.length === 0 ? (
             <p className="empty">まだ投稿はありません。</p>
           ) : (
-            posts.map((post) => <Post key={post.id} post={post} viewerId={viewer.id} />)
+            posts.map((post) => <Post key={post.id} post={post} viewerId={viewer.id} images={images} />)
           )}
 
           <form action={createPost} className="compose new-post">

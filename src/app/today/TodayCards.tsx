@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import type { CheerHint, TodayCard } from "@/lib/today";
+import { Avatar } from "../Avatar";
 
 const BATCH = 3;
 
@@ -16,7 +17,7 @@ async function postJson(url: string, body: unknown) {
 }
 
 /** カードは1枚ずつ。押さないと次は出ず、自動で流れ続けない。 */
-export function TodayCards({ cards }: { cards: TodayCard[] }) {
+export function TodayCards({ cards }: { cards: (TodayCard & { authorImage: string })[] }) {
   const [index, setIndex] = useState(0);
   const [limit, setLimit] = useState(BATCH);
   const [cheered, setCheered] = useState<string[]>([]);
@@ -84,6 +85,7 @@ export function TodayCards({ cards }: { cards: TodayCard[] }) {
         {index + 1} 枚目（全 {Math.min(limit, cards.length)} 枚）・{card.channelName}
       </p>
       <p className="who">
+        <Avatar image={card.authorImage} alt={`${card.authorName}さんの相棒`} size={40} />
         <strong>{card.authorName}</strong>（{card.authorLabel}）
       </p>
       <p className="words">{card.body}</p>

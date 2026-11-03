@@ -15,7 +15,7 @@ export type ComposeStart = {
 type Props = ComposeStart & {
   viewer: { name: string; label: string };
   onCancel(): void;
-  onSent(channel: ChannelView, postId: string): void;
+  onSent(channel: ChannelView, postId: string, words: string): void;
 };
 
 const SCOPE_OPTIONS: { value: PostScope; label: string }[] = [
@@ -88,7 +88,7 @@ export function Compose({ draft, review: firstReview, channels, people, asked, v
         scopePersonId: scope === "person" ? scopePersonId : undefined,
       });
       if (ok) {
-        onSent(channel, data.postId as string);
+        onSent(channel, data.postId as string, text);
         return;
       }
       if (status === 422 && data.review) {
