@@ -1,0 +1,88 @@
+import { expect, type Page, test } from "@playwright/test";
+import { switchPerson } from "./helpers";
+
+const TEACHER = "佐伯 みどり（国語・2年担任）";
+const OTHER = "野田 翔（情報・ものづくり部顧問）";
+
+/** このテスト専用のお願いを、別の人から佐伯先生へ送る。 */
+async function askTeacher(page: Page, words: string) {
+  await page.goto("/");
+  await switchPerson(page, "大河原 誠（英語・学年主任）");
+  const response = await page.request.post("/api/publish", {
+    data: { text: words, channelId: "study", askedPersonId: "saeki" },
+  });
+  expect(response.ok()).toBe(true);
+  await page.goto("/");
+  await switchPerson(page, TEACHER);
+}
+
+test("お願いに話して返すと、本人の話した言葉で届いてゴールになる", async ({ page }) => {
+  const words = `相談 ${test.info().testId}`;
+  await askTeacher(page, words);
+
+  await page.goto("/inbox");
+  const card = page.getByRole("region").filter({ hasText: words });
+  await card.getByLabel("話したこと").fill("わからん");
+  await card.getByRole("button", { name: "返信の言葉にする" }).click();
+  await expect(card.locator(".question")).toContainText("あなたのとき");
+  await expect(card.getByLabel("返信の文章")).toHaveCount(0);
+
+  const answer = `私は声に出して読んでます ${test.info().testId}`;
+  await card.getByLabel("話したこと").fill(answer);
+  await card.getByRole("button", { name: "返信の言葉にする" }).click();
+  await expect(card.getByLabel("返信の文章")).toHaveValue(answer);
+  await card.getByRole("button", { name: "本人として返信する" }).click();
+  await expect(page.getByText("ゴール！")).toBeVisible();
+
+  await page.goto("/teams?channel=study");
+  const post = page.getByRole("article").filter({ hasText: words });
+  await expect(post.locator(".reply")).toContainText(answer);
+  await expect(post.locator(".asked")).toContainText("ゴール");
+});
+
+test("詳しくないことはパスでき、相手の受信箱に届く", async ({ page }) => {
+  const words = `パスする相談 ${test.info().testId}`;
+  await askTeacher(page, words);
+
+  await page.goto("/inbox");
+  const card = page.getByRole("region").filter({ hasText: words });
+  await card.getByText("もっと詳しい人にパスする").click();
+  await card.getByLabel("パスする相手").selectOption({ label: OTHER });
+  await card.getByRole("button", { name: "パスする" }).click();
+  await expect(page.getByText("つないでくれてありがとう")).toBeVisible();
+
+  await page.goto("/");
+  await switchPerson(page, OTHER);
+  await page.goto("/inbox");
+  await expect(page.getByRole("region").filter({ hasText: words }).locator(".passed")).toContainText("佐伯 みどりさんからのパス");
+});
+
+test("声で話して返せる", async ({ page }) => {
+  const words = `声で返す相談 ${test.info().testId}`;
+  await page.addInitScript((text) => {
+    class FakeRecognition {
+      onresult: ((event: unknown) => void) | null = null;
+      onend: (() => void) | null = null;
+      onerror: ((event: unknown) => void) | null = null;
+      start() {}
+      stop() {
+        const result = Object.assign([{ transcript: text }], { isFinal: true });
+        this.onresult?.({ resultIndex: 0, results: [result] });
+        this.onend?.();
+      }
+    }
+    Object.assign(window, { webkitSpeechRecognition: FakeRecognition, SpeechRecognition: FakeRecognition });
+  }, "声で話した返事");
+  await askTeacher(page, words);
+
+  await page.goto("/inbox");
+  const card = page.getByRole("region").filter({ hasText: words });
+  await card.getByRole("button", { name: "話して返す" }).click();
+  await card.getByRole("button", { name: "話し終わった" }).click();
+  await expect(card.getByLabel("話したこと")).toHaveValue("声で話した返事");
+});
+
+test("最初の画面に受信箱への入口がある", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.getByRole("link", { name: /受信箱/ })).toBeVisible();
+});

@@ -32,7 +32,13 @@ function Post({ post, viewerId }: { post: PostView; viewerId: string }) {
   return (
     <article className="post" aria-label={`${post.authorName}さんの投稿`}>
       <Author name={post.authorName} label={post.authorLabel} time={post.createdAt} />
-      {post.askedPersonName && <p className="asked">{post.askedPersonName}さんへ</p>}
+      {post.askedPersonName && (
+        <p className="asked">
+          {post.passedThrough.map((name) => `${name}さんのパス → `).join("")}
+          {post.askedPersonName}さんへ
+          {post.answered && "（ゴール！）"}
+        </p>
+      )}
       <p className="body">{post.body}</p>
       {post.researchedWithAi && <p className="ai-mark">AI と調べました</p>}
 

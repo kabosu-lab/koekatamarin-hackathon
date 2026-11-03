@@ -23,6 +23,7 @@ type PostRow = {
   created_at: string;
   researched_with_ai: number;
   asked_person_name: string | null;
+  answered: number;
   like_count: number;
   liked_by_viewer: number;
 };
@@ -96,6 +97,7 @@ export function createDummyTeams(db: DatabaseSync): PostDestination {
           `SELECT p.id, p.channel_id, p.author_id, a.name AS author_name, a.label AS author_label,
                   p.kind, p.body, p.created_at, p.researched_with_ai,
                   (SELECT q.name FROM people q WHERE q.id = p.asked_person_id) AS asked_person_name,
+                  EXISTS (SELECT 1 FROM replies r WHERE r.post_id = p.id AND r.author_id = p.asked_person_id) AS answered,
                   (SELECT count(*) FROM post_likes l WHERE l.post_id = p.id) AS like_count,
                   EXISTS (SELECT 1 FROM post_likes l WHERE l.post_id = p.id AND l.person_id = ?) AS liked_by_viewer
            FROM posts p JOIN people a ON a.id = p.author_id
@@ -110,6 +112,11 @@ export function createDummyTeams(db: DatabaseSync): PostDestination {
          ORDER BY r.created_at, r.rowid`,
       );
 
+      const selectPasses = db.prepare(
+        `SELECT q.name FROM post_passes x JOIN people q ON q.id = x.from_person_id
+         WHERE x.post_id = ? ORDER BY x.created_at, x.rowid`,
+      );
+
       return posts.map((p): PostView => ({
         id: p.id,
         authorId: p.author_id,
@@ -120,6 +127,8 @@ export function createDummyTeams(db: DatabaseSync): PostDestination {
         createdAt: p.created_at,
         researchedWithAi: p.researched_with_ai === 1,
         askedPersonName: p.asked_person_name,
+        passedThrough: (selectPasses.all(p.id) as { name: string }[]).map((x) => x.name),
+        answered: p.answered === 1,
         likeCount: p.like_count,
         likedByViewer: p.liked_by_viewer === 1,
         replies: (selectReplies.all(p.id) as ReplyRow[]).map((r): ReplyView => ({

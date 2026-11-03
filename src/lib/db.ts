@@ -60,6 +60,14 @@ const MIGRATIONS: readonly string[] = [
      PRIMARY KEY (alert_id, person_id)
    ) STRICT;`,
   `ALTER TABLE posts ADD COLUMN asked_person_id TEXT REFERENCES people (id);`,
+  `CREATE TABLE post_passes (
+     id TEXT PRIMARY KEY,
+     post_id TEXT NOT NULL REFERENCES posts (id) ON DELETE CASCADE,
+     from_person_id TEXT NOT NULL REFERENCES people (id),
+     to_person_id TEXT NOT NULL REFERENCES people (id),
+     created_at TEXT NOT NULL
+   ) STRICT;
+   CREATE INDEX post_passes_by_post ON post_passes (post_id, created_at);`,
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;

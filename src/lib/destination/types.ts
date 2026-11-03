@@ -25,6 +25,10 @@ export type PostView = {
   createdAt: string;
   /** 「○○さんに聞いてみる」で送った相手 */
   askedPersonName: string | null;
+  /** お願いをパスでつないだ人（古い順） */
+  passedThrough: string[];
+  /** お願いされた人が返信した（ゴール） */
+  answered: boolean;
   /** AI と調べたことが入っている印。人の経験と区別するため。 */
   researchedWithAi: boolean;
   likeCount: number;

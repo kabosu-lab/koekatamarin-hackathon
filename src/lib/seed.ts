@@ -18,7 +18,7 @@ export function seedDatabase(db: DatabaseSync): void {
     "INSERT INTO channels (id, name, description, audience) VALUES (?, ?, ?, ?)",
   );
   const insertPost = db.prepare(
-    "INSERT INTO posts (id, channel_id, author_id, kind, body, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+    "INSERT INTO posts (id, channel_id, author_id, kind, body, created_at, asked_person_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
   );
   const insertReply = db.prepare(
     "INSERT INTO replies (id, post_id, author_id, body, created_at) VALUES (?, ?, ?, ?, ?)",
@@ -34,7 +34,7 @@ export function seedDatabase(db: DatabaseSync): void {
       insertChannel.run(c.id, c.name, c.description, c.audience);
     }
     for (const post of posts) {
-      insertPost.run(post.id, post.channelId, post.authorId, post.kind, post.body, toStored(post.createdAt));
+      insertPost.run(post.id, post.channelId, post.authorId, post.kind, post.body, toStored(post.createdAt), post.askedPersonId ?? null);
       for (const r of post.replies) {
         insertReply.run(r.id, post.id, r.authorId, r.body, toStored(r.createdAt));
       }

@@ -37,6 +37,8 @@ export type SeedPost = {
   createdAt: string;
   replies: SeedReply[];
   likedBy: string[];
+  /** 「○○さんに聞いてみる」の相手 */
+  askedPersonId?: string;
 };
 
 export const people: SeedPerson[] = [
@@ -142,6 +144,28 @@ export const channels: SeedChannel[] = [
 ];
 
 export const posts: SeedPost[] = [
+  {
+    id: "post-ask-1",
+    channelId: "making",
+    authorId: "kinoshita",
+    kind: "trouble",
+    body: "しおり立ての底を広くしたら、今度は反ってしまいました。佐伯先生、図書室で使うならどのくらいの大きさがいいですか？ 反りの直し方も知りたいです。",
+    createdAt: "2026-11-02T16:40:00+09:00",
+    replies: [],
+    likedBy: ["noda"],
+    askedPersonId: "saeki",
+  },
+  {
+    id: "post-ask-2",
+    channelId: "staffroom",
+    authorId: "kawamura",
+    kind: "worry",
+    body: "作文の感想に、どんな一言を書くと生徒に届くのか悩んでいます。佐伯先生はどうされていますか？",
+    createdAt: "2026-11-02T17:20:00+09:00",
+    replies: [],
+    likedBy: [],
+    askedPersonId: "saeki",
+  },
   {
     id: "post-notice-1",
     channelId: "notices",

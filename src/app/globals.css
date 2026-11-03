@@ -452,3 +452,87 @@ body {
   font-size: 0.9rem;
   font-weight: 700;
 }
+
+.inbox-list {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.talk.inbox-item {
+  flex: none;
+  gap: 0.6rem;
+  margin: 0;
+  padding: 0.85rem;
+  border: 1px solid #eadfd8;
+  border-radius: 0.75rem;
+  background: #fff;
+}
+
+.inbox-item p {
+  margin: 0;
+}
+
+.inbox-item .from {
+  color: #6b5d55;
+  font-size: 0.85rem;
+}
+
+.inbox-item .passed {
+  color: #4f52b2;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.inbox-item textarea,
+.inbox-item select {
+  width: 100%;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid #cbbcb3;
+  border-radius: 0.5rem;
+  background: #fff;
+  color: inherit;
+  font: inherit;
+  font-size: 1rem;
+}
+
+.inbox-item .question {
+  padding: 0.6rem 0.85rem;
+  border-radius: 1rem;
+  background: #f6ece5;
+}
+
+.inbox-item .row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+  gap: 0.5rem;
+}
+
+.inbox-item details {
+  border-top: 1px solid #eadfd8;
+  padding-top: 0.5rem;
+}
+
+.inbox-item summary {
+  min-height: 2.25rem;
+  color: #9c3412;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.inbox-item .pass {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.inbox-item .pass label {
+  display: grid;
+  font-size: 0.85rem;
+}
+
+.inbox-counts {
+  margin: 0.75rem 0 0;
+  color: #6b5d55;
+  font-size: 0.9rem;
+}
