@@ -49,12 +49,12 @@ test("文字で書いて、会話を続けられる", async ({ page }) => {
 
   const input = page.getByLabel("相棒に書く");
   await input.fill("こんにちは");
-  await page.getByRole("button", { name: "送る" }).click();
+  await page.getByRole("button", { name: "相棒に送る" }).click();
   await expect(page.getByRole("log").locator(".bubble.assistant")).toContainText("今日はどんな一日");
   await expect(input).toHaveValue("");
 
   await input.fill("あんた何ができるん");
-  await page.getByRole("button", { name: "送る" }).click();
+  await page.getByRole("button", { name: "相棒に送る" }).click();
   await expect(page.getByRole("log").locator(".bubble.assistant")).toHaveCount(2);
 });
 
@@ -62,7 +62,7 @@ test("台本で動いているときは、そのことを隠さない", async ({
   await page.goto("/");
   await page.getByRole("button", { name: "文字で書く" }).click();
   await page.getByLabel("相棒に書く").fill("こんにちは");
-  await page.getByRole("button", { name: "送る" }).click();
+  await page.getByRole("button", { name: "相棒に送る" }).click();
   await expect(page.getByText("いまは台本で動いています")).toBeVisible();
 });
 
@@ -84,7 +84,7 @@ test("つながらないときは、話した言葉を失わない", async ({ pa
   await page.goto("/");
   await page.getByRole("button", { name: "文字で書く" }).click();
   await page.getByLabel("相棒に書く").fill("大事な話");
-  await page.getByRole("button", { name: "送る" }).click();
+  await page.getByRole("button", { name: "相棒に送る" }).click();
 
   await expect(page.locator(".notice")).toContainText("もう一度送って");
   await expect(page.getByLabel("相棒に書く")).toHaveValue("大事な話");

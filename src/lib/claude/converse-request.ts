@@ -8,7 +8,7 @@ export type ConverseOutcome =
   | { status: 200; body: { reply: string; mode: ClaudeClient["mode"] } }
   | { status: 400 | 503; body: { error: string } };
 
-function isMessage(value: unknown): value is ChatMessage {
+export function isMessage(value: unknown): value is ChatMessage {
   if (typeof value !== "object" || value === null) return false;
   const { role, content } = value as Record<string, unknown>;
   return (

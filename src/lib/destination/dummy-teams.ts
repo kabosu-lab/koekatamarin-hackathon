@@ -21,6 +21,7 @@ type PostRow = {
   kind: PostKind;
   body: string;
   created_at: string;
+  researched_with_ai: number;
   like_count: number;
   liked_by_viewer: number;
 };
@@ -92,7 +93,7 @@ export function createDummyTeams(db: DatabaseSync): PostDestination {
       const posts = db
         .prepare(
           `SELECT p.id, p.channel_id, p.author_id, a.name AS author_name, a.label AS author_label,
-                  p.kind, p.body, p.created_at,
+                  p.kind, p.body, p.created_at, p.researched_with_ai,
                   (SELECT count(*) FROM post_likes l WHERE l.post_id = p.id) AS like_count,
                   EXISTS (SELECT 1 FROM post_likes l WHERE l.post_id = p.id AND l.person_id = ?) AS liked_by_viewer
            FROM posts p JOIN people a ON a.id = p.author_id
@@ -115,6 +116,7 @@ export function createDummyTeams(db: DatabaseSync): PostDestination {
         kind: p.kind,
         body: p.body,
         createdAt: p.created_at,
+        researchedWithAi: p.researched_with_ai === 1,
         likeCount: p.like_count,
         likedByViewer: p.liked_by_viewer === 1,
         replies: (selectReplies.all(p.id) as ReplyRow[]).map((r): ReplyView => ({
@@ -127,12 +129,12 @@ export function createDummyTeams(db: DatabaseSync): PostDestination {
       }));
     },
 
-    createPost(viewerId, channelId, body) {
+    createPost(viewerId, channelId, body, { kind = "report", researchedWithAi = false } = {}) {
       requireVisibleChannel(viewerId, channelId);
       const id = randomUUID();
       db.prepare(
-        "INSERT INTO posts (id, channel_id, author_id, kind, body, created_at) VALUES (?, ?, ?, 'report', ?, ?)",
-      ).run(id, channelId, viewerId, cleanBody(body), new Date().toISOString());
+        "INSERT INTO posts (id, channel_id, author_id, kind, body, created_at, researched_with_ai) VALUES (?, ?, ?, ?, ?, ?, ?)",
+      ).run(id, channelId, viewerId, kind, cleanBody(body), new Date().toISOString(), researchedWithAi ? 1 : 0);
       return id;
     },
 

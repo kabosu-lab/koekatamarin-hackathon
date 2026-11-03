@@ -1,10 +1,9 @@
 "use server";
 
-import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { getDatabase } from "@/lib/db";
 import { createDummyTeams } from "@/lib/destination/dummy-teams";
-import { DEFAULT_PERSON_ID, PERSON_COOKIE } from "./person";
+import { getViewer } from "@/lib/current-person";
 
 function field(form: FormData, name: string): string {
   const value = form.get(name);
@@ -12,17 +11,11 @@ function field(form: FormData, name: string): string {
 }
 
 async function viewerId(): Promise<string> {
-  return (await cookies()).get(PERSON_COOKIE)?.value ?? DEFAULT_PERSON_ID;
+  return (await getViewer()).viewer.id;
 }
 
 function destination() {
   return createDummyTeams(getDatabase());
-}
-
-export async function switchPerson(form: FormData) {
-  // ダミーの人物を切り替えるデモ用の仕組みで、本物のログインではない
-  (await cookies()).set(PERSON_COOKIE, field(form, "personId"), { sameSite: "lax", path: "/" });
-  revalidatePath("/teams");
 }
 
 export async function createPost(form: FormData) {

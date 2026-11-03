@@ -23,9 +23,16 @@ export type PostView = {
   kind: PostKind;
   body: string;
   createdAt: string;
+  /** AI と調べたことが入っている印。人の経験と区別するため。 */
+  researchedWithAi: boolean;
   likeCount: number;
   likedByViewer: boolean;
   replies: ReplyView[];
+};
+
+export type CreatePostOptions = {
+  kind?: PostKind;
+  researchedWithAi?: boolean;
 };
 
 export class DestinationError extends Error {}
@@ -40,7 +47,7 @@ export const MAX_BODY_LENGTH = 2000;
 export type PostDestination = {
   listChannels(viewerId: string): ChannelView[];
   listPosts(viewerId: string, channelId: string): PostView[];
-  createPost(viewerId: string, channelId: string, body: string): string;
+  createPost(viewerId: string, channelId: string, body: string, options?: CreatePostOptions): string;
   createReply(viewerId: string, postId: string, body: string): string;
   toggleLike(viewerId: string, postId: string): void;
 };

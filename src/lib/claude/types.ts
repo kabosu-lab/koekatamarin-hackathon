@@ -4,10 +4,16 @@ export type ChatMessage = {
   content: string;
 };
 
+export type ClaudeTask = "converse" | "draft" | "review";
+
 export type ClaudeRequest = {
+  /** 何のための呼び出しか。キーなしの台本が返し方を選ぶのに使う。 */
+  task: ClaudeTask;
   system: string;
   messages: ChatMessage[];
   maxTokens: number;
+  /** 指定すると、この形の JSON で返させる */
+  jsonSchema?: Record<string, unknown>;
 };
 
 export type ClaudeResponse = {

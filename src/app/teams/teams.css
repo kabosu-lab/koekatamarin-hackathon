@@ -145,6 +145,15 @@
   white-space: pre-wrap;
 }
 
+.teams .ai-mark {
+  display: inline-block;
+  margin: 0 0 0.5rem;
+  padding: 0.1rem 0.5rem;
+  border-radius: 1rem;
+  background: #e8e7f6;
+  font-size: 0.8rem;
+}
+
 .teams .likes {
   margin: 0 0 0.5rem;
   color: var(--muted);

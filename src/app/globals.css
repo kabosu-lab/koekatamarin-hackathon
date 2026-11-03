@@ -164,3 +164,156 @@ body {
   flex: none;
   padding-inline: 1rem;
 }
+
+.home .switcher {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: end;
+  margin-top: 0.5rem;
+}
+
+.home .switcher label {
+  display: grid;
+  flex: 1;
+  min-width: 12rem;
+  font-size: 0.85rem;
+}
+
+.home select {
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid #cbbcb3;
+  border-radius: 0.5rem;
+  background: #fff;
+  color: inherit;
+  font: inherit;
+  font-size: 1rem;
+}
+
+.home .switcher button {
+  min-height: 2.75rem;
+  padding-inline: 0.85rem;
+  border: 1px solid #9c3412;
+  border-radius: 0.5rem;
+  background: #fff;
+  color: #9c3412;
+  font: inherit;
+  cursor: pointer;
+}
+
+.talk .compose-start {
+  background: #fff;
+  border: 2px solid #9c3412;
+  color: #9c3412;
+}
+
+.talk .sent {
+  margin: 0;
+  padding: 0.6rem 0.85rem;
+  border-radius: 0.5rem;
+  background: #e3f4e0;
+}
+
+.compose-card {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.compose-card h2 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.compose-card textarea {
+  width: 100%;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid #cbbcb3;
+  border-radius: 0.5rem;
+  background: #fff;
+  color: inherit;
+  font: inherit;
+  font-size: 1rem;
+}
+
+.compose-card .perception {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.6rem 0.85rem;
+  border-radius: 0.5rem;
+  background: #e3f4e0;
+}
+
+.compose-card .perception p {
+  margin: 0;
+}
+
+.compose-card .perception.caution {
+  background: #fff0c9;
+}
+
+.compose-card .perception.block {
+  background: #ffd9d2;
+}
+
+.talk .alternative {
+  padding: 0.5rem 0.75rem;
+  background: #fff;
+  border: 1px solid #9c3412;
+  color: #6f240a;
+  font-weight: 400;
+  text-align: left;
+}
+
+.compose-card .channel {
+  display: grid;
+  font-size: 0.85rem;
+}
+
+.compose-card .preview {
+  padding: 0.75rem;
+  border: 1px solid #dddbe6;
+  border-radius: 0.5rem;
+  background: #fff;
+}
+
+.compose-card .preview p {
+  margin: 0;
+}
+
+.compose-card .preview-title {
+  margin-bottom: 0.4rem !important;
+  color: #5f5b70;
+  font-size: 0.8rem;
+}
+
+.compose-card .preview-author {
+  font-size: 0.8rem;
+}
+
+.compose-card .preview-body {
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.compose-card .preview-mark {
+  display: inline-block;
+  margin-top: 0.4rem !important;
+  padding: 0.1rem 0.5rem;
+  border-radius: 1rem;
+  background: #e8e7f6;
+  font-size: 0.8rem;
+}
+
+.compose-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.talk .compose-actions .secondary {
+  background: #fff;
+  border: 1px solid #9c3412;
+  color: #9c3412;
+}

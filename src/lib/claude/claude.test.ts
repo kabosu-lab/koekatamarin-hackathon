@@ -36,6 +36,7 @@ describe("createAnthropicClaude", () => {
     });
 
     const result = await createAnthropicClaude(api).complete({
+      task: "converse",
       system: "指示",
       messages: [{ role: "user", content: "こんにちは" }],
       maxTokens: 100,
@@ -56,7 +57,7 @@ describe("createAnthropicClaude", () => {
   it("安全のために断られたことを伝える", async () => {
     const { api } = stubApi({ content: [], stop_reason: "refusal" });
 
-    const result = await createAnthropicClaude(api).complete({ system: "", messages: [], maxTokens: 100 });
+    const result = await createAnthropicClaude(api).complete({ task: "converse", system: "", messages: [], maxTokens: 100 });
 
     expect(result).toEqual({ text: "", refused: true });
   });

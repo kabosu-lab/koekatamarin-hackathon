@@ -1,13 +1,17 @@
 "use client";
 
+import Link from "next/link";
 import { type FormEvent, useEffect, useRef, useState } from "react";
+import type { Draft, Review } from "@/lib/claude/compose";
 import type { ChatMessage } from "@/lib/claude/types";
+import type { ChannelView } from "@/lib/destination/types";
+import { Compose, type ComposeStart } from "./Compose";
 import { isSpeechSupported, startListening } from "./speech";
 
 const MAX_TEXT_LENGTH = 2000;
 const MAX_HISTORY = 40;
 
-export function Talk() {
+export function Talk({ viewer }: { viewer: { name: string; label: string } }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState("");
   const [writing, setWriting] = useState(false);
@@ -16,6 +20,9 @@ export function Talk() {
   const [sending, setSending] = useState(false);
   const [notice, setNotice] = useState("");
   const [scripted, setScripted] = useState(false);
+  const [composing, setComposing] = useState<ComposeStart | null>(null);
+  const [preparing, setPreparing] = useState(false);
+  const [sentTo, setSentTo] = useState<ChannelView | null>(null);
   const stopRef = useRef<(() => void) | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
 
@@ -55,6 +62,34 @@ export function Talk() {
     }
   }
 
+  async function startCompose() {
+    setPreparing(true);
+    setNotice("");
+    setSentTo(null);
+    try {
+      const response = await fetch("/api/draft", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ history: messages.slice(-MAX_HISTORY) }),
+      });
+      if (!response.ok) throw new Error(`status ${response.status}`);
+      const { draft, review, channels } = (await response.json()) as {
+        draft: Draft;
+        review: Review | null;
+        channels: ChannelView[];
+      };
+      if (!draft.ready || !review) {
+        setNotice("まだ投稿にできるお話がなさそう。もう少し聞かせてください。");
+        return;
+      }
+      setComposing({ draft, review, channels });
+    } catch {
+      setNotice("下書きを作れませんでした。もう一度押してください。");
+    } finally {
+      setPreparing(false);
+    }
+  }
+
   function listen() {
     setNotice("");
     if (!isSpeechSupported()) {
@@ -80,6 +115,24 @@ export function Talk() {
     event.preventDefault();
     void send(draft);
   }
+
+  if (composing) {
+    return (
+      <div className="talk">
+        <Compose
+          {...composing}
+          viewer={viewer}
+          onCancel={() => setComposing(null)}
+          onSent={(channel) => {
+            setComposing(null);
+            setSentTo(channel);
+          }}
+        />
+      </div>
+    );
+  }
+
+  const canCompose = messages.some((message) => message.role === "user");
 
   return (
     <div className="talk">
@@ -114,6 +167,18 @@ export function Talk() {
       )}
       {scripted && <p className="scripted">いまは台本で動いています（Claude にはつながっていません）</p>}
 
+      {sentTo && (
+        <p className="sent" role="status">
+          {sentTo.name}に届きました。<Link href={`/teams?channel=${sentTo.id}`}>校内チャネルで見る</Link>
+        </p>
+      )}
+
+      {canCompose && !listening && (
+        <button type="button" className="compose-start" disabled={sending || preparing} onClick={() => void startCompose()}>
+          {preparing ? "言葉にしています…" : "言葉にして送る"}
+        </button>
+      )}
+
       <div className="actions">
         {listening ? (
           <button type="button" className="primary stop" onClick={() => stopRef.current?.()}>
@@ -146,7 +211,7 @@ export function Talk() {
             onChange={(event) => setDraft(event.target.value)}
           />
           <button type="submit" disabled={sending || draft.trim() === ""}>
-            送る
+            相棒に送る
           </button>
         </form>
       )}

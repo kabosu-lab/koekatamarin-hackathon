@@ -1,13 +1,12 @@
 import type { Metadata } from "next";
-import { cookies } from "next/headers";
 import Link from "next/link";
 import { getDatabase } from "@/lib/db";
 import { createDummyTeams } from "@/lib/destination/dummy-teams";
 import { MAX_BODY_LENGTH, type PostView } from "@/lib/destination/types";
-import { listPeople } from "@/lib/people";
+import { getViewer } from "@/lib/current-person";
 import { schoolName } from "@/lib/seed-data";
-import { createPost, createReply, switchPerson, toggleLike } from "./actions";
-import { DEFAULT_PERSON_ID, PERSON_COOKIE } from "./person";
+import { PersonSwitcher } from "../PersonSwitcher";
+import { createPost, createReply, toggleLike } from "./actions";
 import "./teams.css";
 
 export const metadata: Metadata = { title: "校内チャネル｜コエカタ" };
@@ -34,6 +33,7 @@ function Post({ post, viewerId }: { post: PostView; viewerId: string }) {
     <article className="post" aria-label={`${post.authorName}さんの投稿`}>
       <Author name={post.authorName} label={post.authorLabel} time={post.createdAt} />
       <p className="body">{post.body}</p>
+      {post.researchedWithAi && <p className="ai-mark">AI と調べました</p>}
 
       {post.authorId === viewerId ? (
         <p className="likes">いいね {post.likeCount}</p>
@@ -67,9 +67,7 @@ export default async function TeamsPage({
 }: {
   searchParams: Promise<{ channel?: string | string[] }>;
 }) {
-  const people = listPeople();
-  const cookieValue = (await cookies()).get(PERSON_COOKIE)?.value;
-  const viewer = people.find((p) => p.id === cookieValue) ?? people.find((p) => p.id === DEFAULT_PERSON_ID) ?? people[0];
+  const { viewer, people } = await getViewer();
 
   const teams = createDummyTeams(getDatabase());
   const channels = teams.listChannels(viewer.id);
@@ -85,19 +83,7 @@ export default async function TeamsPage({
           <h1>校内チャネル</h1>
           <p>{schoolName}・Teams 風のダミー画面</p>
         </div>
-        <form action={switchPerson} className="switcher">
-          <label>
-            使う人
-            <select name="personId" defaultValue={viewer.id} key={viewer.id}>
-              {people.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}（{p.label}）
-                </option>
-              ))}
-            </select>
-          </label>
-          <button type="submit">切り替え</button>
-        </form>
+        <PersonSwitcher viewerId={viewer.id} people={people} />
       </header>
 
       <div className="columns">

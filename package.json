@@ -14,7 +14,8 @@
     "test:unit": "vitest run",
     "test:e2e": "playwright test",
     "try:voice": "tsx --env-file-if-exists=.env scripts/try-voice.ts",
-    "dev:phone": "next dev --experimental-https --hostname 0.0.0.0"
+    "dev:phone": "next dev --experimental-https --hostname 0.0.0.0",
+    "try:compose": "tsx --env-file-if-exists=.env scripts/try-compose.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.4.0",

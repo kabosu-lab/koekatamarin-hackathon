@@ -15,6 +15,7 @@ export async function converse(
   userText: string,
 ): Promise<ConverseResult> {
   const { text, refused } = await claude.complete({
+    task: "converse",
     system: companionSystemPrompt,
     messages: [...history, { role: "user", content: userText }],
     maxTokens: MAX_REPLY_TOKENS,
