@@ -191,6 +191,10 @@ export async function handleMake(
   if (existing && existing.items.some((i) => i.checked)) {
     return { status: 409, body: { error: "もう届いている項目があるので、作り直せません。チェックを外すと作り直せます" } };
   }
+  // 届いた一言を消さない
+  if (existing && existing.responses.length > 0) {
+    return { status: 409, body: { error: "一言が届いているので、作り直せません" } };
+  }
 
   let items: string[];
   try {

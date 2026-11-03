@@ -89,6 +89,12 @@ describe("自習室に見えるもの", () => {
     expect(countLeaves(db, AFTER)).toBe(leaves);
   });
 
+  it("実際に誰かが勉強しているときは、デモのダミーを足さない", () => {
+    startStudy(db, "noda", NOW);
+    ensureDemoCompanions(db, NOW);
+    expect(getPresence(db, NOW).count).toBe(1);
+  });
+
   it("デモのダミーになっている人も、自分で始めれば1人のまま本人の勉強になる", () => {
     ensureDemoCompanions(db, NOW);
     const session = startStudy(db, "aoki", NOW);

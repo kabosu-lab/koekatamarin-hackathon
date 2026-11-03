@@ -65,6 +65,22 @@ describe("seedDatabase", () => {
     db.close();
   });
 
+  it("前からある DB にも、あとから足した担任と分身が入り、本人の分身は変えない", () => {
+    const db = seeded();
+    db.exec("UPDATE people SET homeroom_teacher_id = NULL; DELETE FROM avatars WHERE person_id = 'noda'");
+    db.exec("UPDATE avatars SET family = 'bird' WHERE person_id = 'aoki'");
+
+    seedDatabase(db);
+
+    const homeroom = db.prepare("SELECT homeroom_teacher_id AS id FROM people WHERE id = 'aoki'").get() as { id: string };
+    expect(homeroom.id).toBe("saeki");
+    const family = (id: string) =>
+      (db.prepare("SELECT family FROM avatars WHERE person_id = ?").get(id) as { family: string }).family;
+    expect(family("noda")).toBe("craft");
+    expect(family("aoki")).toBe("bird");
+    db.close();
+  });
+
   it("2回目は何もせず、デモの続きを消さない", () => {
     const db = seeded();
     db.prepare("DELETE FROM posts WHERE id = ?").run(posts[0].id);

@@ -47,6 +47,7 @@ export function studyQuestion(now: Date): string {
 
 /** デモ用：誰もいないときだけ、ダミーの人たちが勉強している状態にする。葉には数えない。 */
 export function ensureDemoCompanions(db: DatabaseSync, now: Date): void {
+  if (getPresence(db, now).count > 0) return;
   const insert = db.prepare(
     "INSERT INTO study_sessions (id, person_id, started_at, ends_at, is_demo) VALUES (?, ?, ?, ?, 1)",
   );

@@ -6,10 +6,29 @@ function toStored(time: string): string {
   return new Date(time).toISOString();
 }
 
-/** ダミーのデータを入れる。すでに人物がいるときは何もしない（デモの続きを消さない）。 */
+/** あとから足した人物の情報を、前からある DB にも入れる。何度動かしても同じで、本人が決めたものは変えない。 */
+function syncPeople(db: DatabaseSync): void {
+  const setHomeroom = db.prepare(
+    "UPDATE people SET homeroom_teacher_id = ? WHERE id = ? AND homeroom_teacher_id IS NULL",
+  );
+  for (const [studentId, teacherId] of Object.entries(homeroomTeachers)) {
+    setHomeroom.run(teacherId, studentId);
+  }
+  const insertAvatar = db.prepare(
+    "INSERT OR IGNORE INTO avatars (person_id, family) SELECT id, ? FROM people WHERE id = ?",
+  );
+  for (const [personId, family] of Object.entries(seedAvatars)) {
+    insertAvatar.run(family, personId);
+  }
+}
+
+/** ダミーのデータを入れる。すでに人物がいるときは入れ直さない（デモの続きを消さない）。 */
 export function seedDatabase(db: DatabaseSync): void {
   const { count } = db.prepare("SELECT count(*) AS count FROM people").get() as { count: number };
-  if (count > 0) return;
+  if (count > 0) {
+    syncPeople(db);
+    return;
+  }
 
   const insertPerson = db.prepare(
     "INSERT INTO people (id, name, role, label, public_profile) VALUES (?, ?, ?, ?, ?)",
@@ -30,14 +49,7 @@ export function seedDatabase(db: DatabaseSync): void {
     for (const p of people) {
       insertPerson.run(p.id, p.name, p.role, p.label, p.publicProfile);
     }
-    const setHomeroom = db.prepare("UPDATE people SET homeroom_teacher_id = ? WHERE id = ?");
-    for (const [studentId, teacherId] of Object.entries(homeroomTeachers)) {
-      setHomeroom.run(teacherId, studentId);
-    }
-    const insertAvatar = db.prepare("INSERT INTO avatars (person_id, family) VALUES (?, ?)");
-    for (const [personId, family] of Object.entries(seedAvatars)) {
-      insertAvatar.run(personId, family);
-    }
+    syncPeople(db);
     for (const c of channels) {
       insertChannel.run(c.id, c.name, c.description, c.audience);
     }

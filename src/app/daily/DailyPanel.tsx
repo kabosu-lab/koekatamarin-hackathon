@@ -24,6 +24,8 @@ export function DailyPanel({ initialReport, recipients, viewerName, noun }: Prop
   const [report, setReport] = useState(initialReport);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
+  // 届くかどうかに関わるので、1項目ずつ順に確定させる。応答が逆転して画面と記録がずれないように
+  const [updating, setUpdating] = useState<string | null>(null);
 
   async function make() {
     setBusy(true);
@@ -46,15 +48,16 @@ export function DailyPanel({ initialReport, recipients, viewerName, noun }: Prop
   }
 
   async function toggle(itemId: string, checked: boolean) {
-    if (!report) return;
+    if (!report || updating) return;
     setNotice("");
-    const before = report;
-    setReport({ ...report, items: report.items.map((i) => (i.id === itemId ? { ...i, checked } : i)) });
+    setUpdating(itemId);
     const { ok } = await postDaily({ action: "check", itemId, checked }).catch(() => ({ ok: false }));
-    if (!ok) {
-      setReport(before);
+    if (ok) {
+      setReport({ ...report, items: report.items.map((i) => (i.id === itemId ? { ...i, checked } : i)) });
+    } else {
       setNotice("変えられませんでした。もう一度押してください。");
     }
+    setUpdating(null);
   }
 
   const to = recipients.map((r) => `${r.name}先生`).join("、");
@@ -76,6 +79,7 @@ export function DailyPanel({ initialReport, recipients, viewerName, noun }: Prop
                   <input
                     type="checkbox"
                     checked={item.checked}
+                    disabled={updating !== null}
                     onChange={(event) => void toggle(item.id, event.target.checked)}
                   />
                 )}

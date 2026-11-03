@@ -29,8 +29,8 @@ test("話したことが日報の項目になり、チェックした項目だ�
   await page.goto("/");
   await switchPerson(page, "川村 陽菜（理科・1年副担任）");
   await page.goto("/daily");
-  await page.getByRole("checkbox", { name: shared }).check();
-  await page.waitForLoadState("networkidle");
+  await page.getByRole("checkbox", { name: shared }).click();
+  await expect(page.getByRole("checkbox", { name: shared })).toBeChecked();
 
   await page.goto("/");
   await switchPerson(page, "藤本 恵（教頭）");
@@ -55,8 +55,8 @@ test("生徒の日記は担任にだけ届く", async ({ page }) => {
   await page.goto("/daily");
   await expect(page.getByRole("heading", { name: "今日の日記" })).toBeVisible();
   await page.getByRole("button", { name: "今日の日記を作る" }).click();
-  await page.getByRole("checkbox", { name: words }).check();
-  await page.waitForLoadState("networkidle");
+  await page.getByRole("checkbox", { name: words }).click();
+  await expect(page.getByRole("checkbox", { name: words })).toBeChecked();
 
   await page.goto("/");
   await switchPerson(page, "藤本 恵（教頭）");
@@ -86,4 +86,31 @@ test("材料がないときは作らず、そのことを伝える", async ({ pa
   await page.goto("/daily");
   await page.getByRole("button", { name: "今日の日報を作る" }).click();
   await expect(page.locator(".notice")).toContainText("やり取りがまだない");
+});
+
+test("チェックは1つずつ確定し、処理中は押せない。失敗したら元のまま伝える", async ({ page }) => {
+  const words = `チェックの確認 ${test.info().testId}`;
+  await page.goto("/");
+  await switchPerson(page, "野田 翔（情報・ものづくり部顧問）");
+  await say(page, words);
+  await page.goto("/daily");
+  await page.getByRole("button", { name: "今日の日報を作る" }).click();
+  const box = page.getByRole("checkbox", { name: words });
+  await expect(box).not.toBeChecked();
+
+  let release = () => {};
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route("**/api/daily", async (route) => {
+    await held;
+    await route.fulfill({ status: 503, json: { error: "x" } });
+  });
+  await box.click();
+  await expect(box).toBeDisabled();
+  release();
+
+  await expect(page.locator(".notice")).toContainText("変えられませんでした");
+  await expect(box).toBeEnabled();
+  await expect(box).not.toBeChecked();
 });

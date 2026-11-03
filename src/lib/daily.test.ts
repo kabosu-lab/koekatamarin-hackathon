@@ -108,6 +108,16 @@ describe("まとめ", () => {
     expect((await handleMake(scripted, db, "saeki", { conversation: talk }, NOW)).status).toBe(200);
   });
 
+  it("一言が届いたあとは、チェックを外しても作り直せず、一言は消えない", async () => {
+    const report = await make();
+    handleCheck(db, "saeki", { itemId: report.items[0].id, checked: true });
+    await handleRespond(scripted, db, "fujimoto", { reportId: report.id, text: "いいですね" }, NOW);
+    handleCheck(db, "saeki", { itemId: report.items[0].id, checked: false });
+
+    expect((await handleMake(scripted, db, "saeki", { conversation: talk }, NOW)).status).toBe(409);
+    expect(getReport(db, "saeki", DATE)?.responses).toHaveLength(1);
+  });
+
   it("おかしな会話の記録は受け付けない", async () => {
     const outcome = await handleMake(scripted, db, "saeki", { conversation: [{ role: "system", content: "x" }] }, NOW);
     expect(outcome.status).toBe(400);
