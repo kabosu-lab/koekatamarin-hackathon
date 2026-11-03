@@ -1,0 +1,29 @@
+:root {
+  --ground: #fff8f3;
+  --ink: #2c2420;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
+  line-height: 1.7;
+}
+
+.home {
+  width: 100%;
+  max-width: 30rem;
+  min-height: 100dvh;
+  margin-inline: auto;
+  padding: max(1.5rem, env(safe-area-inset-top)) 1rem max(1.5rem, env(safe-area-inset-bottom));
+}
+
+.home h1 {
+  margin: 0;
+  font-size: 2rem;
+}

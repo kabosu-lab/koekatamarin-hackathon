@@ -12,4 +12,16 @@ for t in tests/*.test.sh; do
   bash "$t"
 done
 
+[ -x node_modules/.bin/next ] || npm ci
+
+echo "== 型の確認"
+npm run --silent typecheck
+
+echo "== Vitest"
+npm run --silent test:unit
+
+echo "== Playwright"
+npx playwright install chromium
+npm run --silent test:e2e
+
 echo "すべて通りました"
