@@ -1,7 +1,7 @@
 import type { DatabaseSync } from "node:sqlite";
 import { handleConverse, parseConverseInput } from "./claude/converse-request";
 import type { ClaudeClient } from "./claude/types";
-import { assessSafety, isCounselingOpen, listShareCandidates, recordAlert, type ShareCandidate } from "./safety";
+import { assessSafety, assessWithoutClaude, isCounselingOpen, listShareCandidates, recordAlert, type ShareCandidate } from "./safety";
 
 export type SafetyNoticeBody = {
   alertId: string;
@@ -9,7 +9,7 @@ export type SafetyNoticeBody = {
   candidates: ShareCandidate[];
 };
 
-/** 相棒の返事と、命や安全の確認を同時に進める。確認の失敗で会話は止めない。 */
+/** 相棒の返事と、命や安全の確認を同時に進める。確認に失敗しても会話は止めず、はっきりした言葉は見逃さない。 */
 export async function handleTalk(
   claude: ClaudeClient,
   db: DatabaseSync,
@@ -24,7 +24,7 @@ export async function handleTalk(
       ? assessSafety(claude, parsed.history, parsed.text).catch((error: unknown) => {
           // 話の中身をログに残さない
           console.error("命や安全の確認に失敗", error instanceof Error ? error.name : "unknown");
-          return null;
+          return assessWithoutClaude(parsed.text);
         })
       : null,
   ]);

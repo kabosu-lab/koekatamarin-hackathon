@@ -49,13 +49,14 @@ export function Talk({ viewer }: { viewer: { name: string; label: string } }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ history, text }),
       });
-      if (!response.ok) throw new Error(`status ${response.status}`);
-      const { reply, mode, safety: notice } = (await response.json()) as {
-        reply: string;
-        mode: string;
+      const { reply, mode, safety: notice } = (await response.json().catch(() => ({}))) as {
+        reply?: string;
+        mode?: string;
         safety?: SafetyNotice;
       };
+      // 返事が作れなくても、相談室に伝えたことは必ず本人に知らせる
       if (notice) setSafety(notice);
+      if (!response.ok || !reply) throw new Error(`status ${response.status}`);
       setMessages((current) => [...current, { role: "assistant", content: reply }]);
       setScripted(mode === "scripted");
     } catch {
@@ -125,7 +126,7 @@ export function Talk({ viewer }: { viewer: { name: string; label: string } }) {
 
   if (composing) {
     return (
-      <div className="talk">
+      <div className="talk" data-viewer={viewer.name}>
         <Compose
           {...composing}
           viewer={viewer}
@@ -142,7 +143,7 @@ export function Talk({ viewer }: { viewer: { name: string; label: string } }) {
   const canCompose = messages.some((message) => message.role === "user");
 
   return (
-    <div className="talk">
+    <div className="talk" data-viewer={viewer.name}>
       <div className="log" role="log" aria-label="相棒との会話">
         <p className="promise">ここでの話はあなただけのものです。ただし、命や安全に関わるときは相談室の先生に伝えます。</p>
         {messages.length === 0 && !listening && (

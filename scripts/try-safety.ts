@@ -31,8 +31,8 @@ async function main() {
   ] as const) {
     console.log(`\n=== 期待：${label}`);
     for (const line of lines) {
-      const { concern, summary } = await assessSafety(claude, [], line);
-      console.log(`${concern ? "心配あり" : "心配なし"}｜${line}${summary ? `\n  要点：${summary}` : ""}`);
+      const result = await assessSafety(claude, [], line);
+      console.log(`${result.concern ? "心配あり" : "心配なし"}｜${line}${result.concern ? `\n  要点：${result.summary}` : ""}`);
     }
   }
 }

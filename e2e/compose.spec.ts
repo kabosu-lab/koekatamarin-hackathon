@@ -1,4 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
+import { switchPerson } from "./helpers";
 
 async function say(page: Page, text: string) {
   if (!(await page.getByLabel("相棒に書く").isVisible())) {
@@ -8,11 +9,6 @@ async function say(page: Page, text: string) {
   await page.getByRole("button", { name: "相棒に送る" }).click();
   await expect(page.getByRole("log").locator(".bubble.assistant").last()).toBeVisible();
   await expect(page.getByRole("button", { name: "言葉にして送る" })).toBeEnabled();
-}
-
-async function switchTo(page: Page, name: string) {
-  await page.getByLabel("使う人").selectOption({ label: name });
-  await page.getByRole("button", { name: "切り替え" }).click();
 }
 
 test("話したことが下書きになり、Teams の見え方を確かめて、本人が送ると届く", async ({ page }) => {
@@ -106,7 +102,7 @@ test("AI と調べたことには印が付き、Teams でも見える", async ({
 
 test("生徒の送り先に職員室は出ない", async ({ page }) => {
   await page.goto("/");
-  await switchTo(page, "青木 ひより（2年）");
+  await switchPerson(page, "青木 ひより（2年）");
   await say(page, "過去問を解いた");
   await page.getByRole("button", { name: "言葉にして送る" }).click();
   await expect(page.getByLabel("送り先のチャネル").locator("option", { hasText: "職員室" })).toHaveCount(0);
@@ -122,7 +118,7 @@ test("まだ中身がない会話は、下書きにせず聞き返す", async ({
 test("人物を切り替えると、前の人の会話は残らない", async ({ page }) => {
   await page.goto("/");
   await say(page, "誰にも言っていない悩み");
-  await switchTo(page, "中村 結衣（1年・吹奏楽部）");
+  await switchPerson(page, "中村 結衣（1年・吹奏楽部）");
   await expect(page.getByText("誰にも言っていない悩み")).toHaveCount(0);
 });
 

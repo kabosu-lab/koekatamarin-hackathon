@@ -25,16 +25,22 @@ describe("assessSafety", () => {
   it("断られて確かめられないときは、見逃さない側に倒す", async () => {
     const result = await assessSafety(answering("", true), [], "……");
     expect(result.concern).toBe(true);
-    expect(result.summary).not.toBe("");
   });
 
-  it("心配がないときは要点を持たない", async () => {
-    const result = await assessSafety(answering('{"concern":false,"summary":"余計な要約"}'), [], "疲れた");
-    expect(result).toEqual({ concern: false, summary: "" });
+  it("心配がないときは何も持たない", async () => {
+    const result = await assessSafety(answering('{"category":"none"}'), [], "疲れた");
+    expect(result).toEqual({ concern: false });
+  });
+
+  it("Claude が文章を足しても、相談室に届く文面には入らない", async () => {
+    const answer = JSON.stringify({ category: "self_harm", summary: "田中さんが死にたいと言った" });
+    const result = await assessSafety(answering(answer), [], "x");
+    expect(JSON.stringify(result)).not.toContain("田中");
+    expect(result.concern).toBe(true);
   });
 
   it("形が違う答えは失敗にする", async () => {
-    await expect(assessSafety(answering('{"concern":"はい"}'), [], "x")).rejects.toThrow();
+    await expect(assessSafety(answering('{"category":"わからない"}'), [], "x")).rejects.toThrow();
     await expect(assessSafety(answering("壊れている"), [], "x")).rejects.toThrow();
   });
 });
@@ -96,6 +102,42 @@ describe("handleTalk", () => {
     expect(listAlertsFor(db, "shiraishi")).toHaveLength(2);
   });
 
+  it("確認に失敗しても、はっきりした言葉は相談室に届き、話した言葉は入らない", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    const claude: ClaudeClient = {
+      mode: "real",
+      complete: async ({ task }) => {
+        if (task === "safety") throw new Error("通信の失敗");
+        return { text: "聞いてるよ", refused: false };
+      },
+    };
+
+    const outcome = await handleTalk(claude, db, "aoki", { history: [], text: "秘密の話。もう死にたい" }, NOW);
+
+    expect(outcome.body.safety).toBeDefined();
+    const alerts = listAlertsFor(db, "shiraishi");
+    expect(alerts).toHaveLength(1);
+    expect(JSON.stringify(alerts)).not.toContain("秘密の話");
+    log.mockRestore();
+  });
+
+  it("確認に失敗しても、ふつうの話では知らせない", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    const claude: ClaudeClient = {
+      mode: "real",
+      complete: async ({ task }) => {
+        if (task === "safety") throw new Error("通信の失敗");
+        return { text: "聞いてるよ", refused: false };
+      },
+    };
+
+    const outcome = await handleTalk(claude, db, "aoki", { history: [], text: "今日は頑張った" }, NOW);
+
+    expect(outcome.body.safety).toBeUndefined();
+    expect(listAlertsFor(db, "shiraishi")).toEqual([]);
+    log.mockRestore();
+  });
+
   it("確認に失敗しても、会話は止めない", async () => {
     const log = vi.spyOn(console, "error").mockImplementation(() => {});
     const claude: ClaudeClient = {
@@ -118,7 +160,7 @@ describe("handleTalk", () => {
     const claude: ClaudeClient = {
       mode: "real",
       complete: async ({ task }) => {
-        if (task === "safety") return { text: '{"concern":true,"summary":"要点"}', refused: false };
+        if (task === "safety") return { text: '{"category":"self_harm"}', refused: false };
         throw new Error("通信の失敗");
       },
     };
@@ -170,6 +212,30 @@ describe("shareAlert", () => {
     expect(ids).toContain("saeki");
     expect(ids).not.toContain("nakamura");
     expect(ids).not.toContain("shiraishi");
+  });
+
+  it("別の心配が続いても、前の内容を消さない", () => {
+    const id = recordAlert(db, "aoki", "一つ目の要点", NOW);
+    const later = new Date(NOW.getTime() + 60 * 1000);
+    expect(recordAlert(db, "aoki", "二つ目の要点", later)).toBe(id);
+
+    const [alert] = listAlertsFor(db, "shiraishi");
+    expect(alert.summary).toContain("一つ目の要点");
+    expect(alert.summary).toContain("二つ目の要点");
+  });
+
+  it("本人が選んだ先生に、選び直していない新しい内容は届かない", () => {
+    const first = recordAlert(db, "aoki", "一つ目の要点", NOW);
+    shareAlert(db, first, "aoki", ["saeki"]);
+
+    const later = new Date(NOW.getTime() + 60 * 1000);
+    const second = recordAlert(db, "aoki", "二つ目の要点", later);
+
+    expect(second).not.toBe(first);
+    const seen = listAlertsFor(db, "saeki");
+    expect(seen).toHaveLength(1);
+    expect(seen[0].summary).not.toContain("二つ目の要点");
+    expect(listAlertsFor(db, "shiraishi")).toHaveLength(2);
   });
 
   it("相談室を外すことはできない", () => {

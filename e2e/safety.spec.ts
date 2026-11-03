@@ -1,11 +1,7 @@
 import { expect, type Page, test } from "@playwright/test";
+import { switchPerson } from "./helpers";
 
 const SECRET = "親に殴られている 秘密の言葉";
-
-async function switchTo(page: Page, name: string) {
-  await page.getByLabel("使う人").selectOption({ label: name });
-  await page.getByRole("button", { name: "切り替え" }).click();
-}
 
 async function say(page: Page, text: string) {
   await page.getByRole("button", { name: "文字で書く" }).click();
@@ -21,7 +17,7 @@ test("最初から、命や安全に関わるときは伝えることを本人�
 
 test("心配な話は要点だけ相談室に届き、本人が選んだ先生にも伝えられる", async ({ page }) => {
   await page.goto("/");
-  await switchTo(page, "木下 蓮（3年・ものづくり部）");
+  await switchPerson(page, "木下 蓮（3年・ものづくり部）");
   await say(page, SECRET);
 
   const card = page.getByRole("region", { name: "相談室に伝えました" });
@@ -35,7 +31,7 @@ test("心配な話は要点だけ相談室に届き、本人が選んだ先生�
   await card.getByRole("button", { name: "選んだ先生にも伝える" }).click();
   await expect(card).toContainText("大河原 誠先生にも伝えました");
 
-  await switchTo(page, "白石 文（養護・相談室）");
+  await switchPerson(page, "白石 文（養護・相談室）");
   await page.getByRole("link", { name: "相談室への知らせを見る" }).click();
   const alert = page.getByRole("article", { name: "木下 蓮さんについての知らせ" });
   await expect(alert).toBeVisible();
@@ -51,14 +47,14 @@ test("心配な話は要点だけ相談室に届き、本人が選んだ先生�
 /** 知らせの画面には切り替えがないので、最初の画面で切り替えて戻る。 */
 async function switchTo2(page: Page, name: string) {
   await page.goto("/");
-  await switchTo(page, name);
+  await switchPerson(page, name);
   await expect(page.getByRole("link", { name: "相談室への知らせを見る" })).toBeVisible();
   await page.goto("/soudan");
 }
 
 test("生徒には知らせの入口がなく、URL を開いても何も見えない", async ({ page }) => {
   await page.goto("/");
-  await switchTo(page, "青木 ひより（2年）");
+  await switchPerson(page, "青木 ひより（2年）");
   await expect(page.getByLabel("使う人")).toHaveValue("aoki");
   await expect(page.getByRole("link", { name: "相談室への知らせを見る" })).toHaveCount(0);
 
@@ -88,4 +84,20 @@ test("相談室が閉まっている時間は、そのことと今すぐ話せ�
   const card = page.getByRole("region", { name: "相談室に伝えました" });
   await expect(card).toContainText("いま相談室は閉まっています");
   await expect(card).toContainText("0120-279-338");
+});
+
+test("返事が作れなくても、相談室に伝えたことは本人に見せ、話した言葉も失わない", async ({ page }) => {
+  await page.route("**/api/converse", (route) =>
+    route.fulfill({
+      status: 503,
+      json: { error: "x", safety: { alertId: "x", counselingOpen: true, candidates: [] } },
+    }),
+  );
+  await page.goto("/");
+  await page.getByRole("button", { name: "文字で書く" }).click();
+  await page.getByLabel("相棒に書く").fill("大事な話");
+  await page.getByRole("button", { name: "相棒に送る" }).click();
+
+  await expect(page.getByRole("region", { name: "相談室に伝えました" })).toBeVisible();
+  await expect(page.getByLabel("相棒に書く")).toHaveValue("大事な話");
 });

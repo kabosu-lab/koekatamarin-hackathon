@@ -26,11 +26,9 @@ function scriptedDraft(transcript: string, jsonSchema: Record<string, unknown> |
 }
 
 function scriptedSafety(conversation: string) {
-  const concern = /死にたい|消えたい|自殺|殴られ|虐待/.test(conversation);
-  return {
-    concern,
-    summary: concern ? "命や安全に関わる心配な相談がありました。本人に声をかけてください。" : "",
-  };
+  if (/死にたい|消えたい|自殺/.test(conversation)) return { category: "self_harm" };
+  if (/殴られ|虐待/.test(conversation)) return { category: "violence_or_abuse" };
+  return { category: "none" };
 }
 
 function scriptedReview(post: string) {
