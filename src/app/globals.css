@@ -1078,17 +1078,49 @@ main a {
 
 .send-burst .blob {
   position: absolute;
-  bottom: 20%;
+  bottom: 27%;
   left: 50%;
-  width: 5rem;
-  height: 5rem;
+  width: 4.5rem;
+  height: 4.5rem;
   border-radius: 50%;
   background: radial-gradient(circle at 35% 30%, #ffb08a, #ff4d8d 70%);
   box-shadow: 0 0.3rem 1rem rgb(0 0 0 / 22%);
   opacity: 0;
   animation:
-    blob-form 0.22s cubic-bezier(0.34, 1.8, 0.64, 1) var(--gather) forwards,
-    blob-fly 0.42s cubic-bezier(0.6, 0, 0.9, 0.5) var(--launch) forwards;
+    blob-form 0.2s cubic-bezier(0.34, 1.8, 0.64, 1) var(--gather) forwards,
+    blob-enter 0.14s cubic-bezier(0.6, 0, 0.9, 0.5) var(--enter) forwards;
+}
+
+.send-burst .draft-box {
+  position: absolute;
+  bottom: 24%;
+  left: 50%;
+  z-index: -1;
+  box-sizing: border-box;
+  width: min(80vw, 22rem);
+  min-height: 6.5rem;
+  padding: 0.85rem 1rem;
+  border: 2px solid #ff7a59;
+  border-radius: 1.1rem;
+  background: var(--surface, #fff);
+  color: var(--ink);
+  font-size: 0.95rem;
+  line-height: 1.5;
+  box-shadow: 0 0.4rem 1.2rem rgb(0 0 0 / 20%);
+  opacity: 0;
+  animation:
+    box-in 0.22s cubic-bezier(0.34, 1.6, 0.64, 1) var(--gather) forwards,
+    box-bump 0.3s cubic-bezier(0.34, 1.8, 0.64, 1) var(--enter),
+    box-fly 0.42s cubic-bezier(0.6, 0, 0.9, 0.5) var(--launch) forwards;
+}
+
+.send-burst .draft-box > span {
+  display: -webkit-box;
+  overflow: hidden;
+  opacity: 0;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  animation: box-text 0.3s ease-out var(--open) forwards;
 }
 
 .send-burst .burst-petal {
@@ -1128,19 +1160,68 @@ main a {
   }
 }
 
-/* 一度つぶれてから、縦に伸びて飛ぶ */
-@keyframes blob-fly {
+@keyframes blob-enter {
+  from {
+    opacity: 1;
+    transform: translateX(-50%) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(-50%) scale(0.1);
+  }
+}
+
+@keyframes box-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) scale(0.75);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) scale(1);
+  }
+}
+
+/* かたまりを受け取って、ぽよんと弾む */
+@keyframes box-bump {
+  0% {
+    opacity: 1;
+    transform: translateX(-50%) scale(1);
+  }
+  35% {
+    opacity: 1;
+    transform: translateX(-50%) scale(1.06, 0.92);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(-50%) scale(1);
+  }
+}
+
+@keyframes box-text {
+  from {
+    opacity: 0;
+    transform: translateY(0.4rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 一度つぶれてから、縦に伸びて外へ飛ぶ */
+@keyframes box-fly {
   0% {
     opacity: 1;
     transform: translateX(-50%) scale(1);
   }
   20% {
     opacity: 1;
-    transform: translate(-50%, 0.6rem) scale(1.25, 0.72);
+    transform: translate(-50%, 0.6rem) scale(1.08, 0.86);
   }
   100% {
     opacity: 0;
-    transform: translate(-50%, -62vh) scale(0.45, 1.5);
+    transform: translate(-50%, -70vh) scale(0.4, 0.9);
   }
 }
 

@@ -65,6 +65,7 @@ test("送ると言葉が飛び、花びらになって、消える", async ({ pa
   await send(page, words);
   await expect(page.locator(".send-burst .word").first()).toBeAttached();
   await expect(page.locator(".send-burst .blob")).toBeAttached();
+  await expect(page.locator(".send-burst .draft-box")).toHaveText(words);
   await expect(page.locator(".send-burst .burst-petal").first()).toBeAttached();
   await expect(page.locator(".send-burst")).toHaveCount(0, { timeout: 5000 });
   await expect(page.locator(".sent")).toBeVisible();
