@@ -173,6 +173,20 @@ describe("プロフィール", () => {
     expect(prompt).not.toContain("しおり立て"); // 他の人の投稿
   });
 
+  it("同姓同名の別の人の言葉は、材料に入らない", async () => {
+    db.prepare("UPDATE people SET name = ? WHERE id = ?").run("野田 翔", "ogawara");
+    const requests: ClaudeRequest[] = [];
+    const recording: ClaudeClient = {
+      mode: "real",
+      complete: async (request) => {
+        requests.push(request);
+        return { text: JSON.stringify({ ready: true, text: "下書き" }), refused: false };
+      },
+    };
+    await profile({ action: "draft" }, "noda", recording);
+    expect(JSON.stringify(requests[0].messages)).not.toContain("電話で話を聞く"); // 大河原先生の返信
+  });
+
   it("言葉で直せるのは更新ごとに1回", async () => {
     await profile({ action: "draft" });
     expect((await profile({ action: "revise", request: "短くして" })).status).toBe(200);

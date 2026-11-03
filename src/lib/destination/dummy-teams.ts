@@ -30,6 +30,7 @@ type PostRow = {
 
 type ReplyRow = {
   id: string;
+  author_id: string;
   author_name: string;
   author_label: string;
   body: string;
@@ -106,7 +107,7 @@ export function createDummyTeams(db: DatabaseSync): PostDestination {
         )
         .all(viewerId, channelId) as PostRow[];
       const selectReplies = db.prepare(
-        `SELECT r.id, a.name AS author_name, a.label AS author_label, r.body, r.created_at
+        `SELECT r.id, r.author_id, a.name AS author_name, a.label AS author_label, r.body, r.created_at
          FROM replies r JOIN people a ON a.id = r.author_id
          WHERE r.post_id = ?
          ORDER BY r.created_at, r.rowid`,
@@ -133,6 +134,7 @@ export function createDummyTeams(db: DatabaseSync): PostDestination {
         likedByViewer: p.liked_by_viewer === 1,
         replies: (selectReplies.all(p.id) as ReplyRow[]).map((r): ReplyView => ({
           id: r.id,
+          authorId: r.author_id,
           authorName: r.author_name,
           authorLabel: r.author_label,
           body: r.body,

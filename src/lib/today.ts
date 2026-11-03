@@ -90,7 +90,10 @@ export function recordSeen(
   const post = visiblePosts(destination, viewerId).find((p) => p.id === postId);
   // 自分の投稿を見ても、見てくれた人には数えない
   if (!post || post.authorId === viewerId) return false;
-  db.prepare("INSERT OR IGNORE INTO post_views (post_id, person_id, seen_at) VALUES (?, ?, ?)").run(
+  db.prepare(
+    `INSERT INTO post_views (post_id, person_id, seen_at) VALUES (?, ?, ?)
+     ON CONFLICT (post_id, person_id) DO UPDATE SET seen_at = excluded.seen_at`,
+  ).run(
     postId,
     viewerId,
     now.toISOString(),

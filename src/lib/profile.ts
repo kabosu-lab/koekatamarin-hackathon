@@ -27,11 +27,11 @@ const schema = {
 };
 
 /** 本人の言葉だけを集める。Claude との話は保存していないので、入りようがない。 */
-function publicWords(destination: PostDestination, personId: string, personName: string): string[] {
+function publicWords(destination: PostDestination, personId: string): string[] {
   const words = destination.listChannels(personId).flatMap((channel) =>
     destination.listPosts(personId, channel.id).flatMap((post) => [
       ...(post.authorId === personId ? [post.body] : []),
-      ...post.replies.filter((r) => r.authorName === personName).map((r) => r.body),
+      ...post.replies.filter((r) => r.authorId === personId).map((r) => r.body),
     ]),
   );
   return words.slice(-MAX_WORDS);
@@ -92,7 +92,7 @@ export async function handleProfile(
 
   try {
     if (action === "draft") {
-      const words = publicWords(destination, personId, me.name).map((w) => `<言葉>${w}</言葉>`).join("\n");
+      const words = publicWords(destination, personId).map((w) => `<言葉>${w}</言葉>`).join("\n");
       const draft = await ask(claude, `<今のプロフィール>${me.public_profile}</今のプロフィール>\n${words}`);
       if (!draft.ready) return { status: 200, body: { draft: null } };
       db.prepare(
@@ -110,7 +110,7 @@ export async function handleProfile(
       if (typeof request !== "string" || request.trim() === "" || request.length > MAX_REQUEST) {
         return { status: 400, body: { error: "頼みが空か、長すぎます" } };
       }
-      const words = publicWords(destination, personId, me.name).map((w) => `<言葉>${w}</言葉>`).join("\n");
+      const words = publicWords(destination, personId).map((w) => `<言葉>${w}</言葉>`).join("\n");
       const draft = await ask(
         claude,
         `<今のプロフィール>${current.text}</今のプロフィール>\n${words}\n<頼み>${request.trim()}</頼み>`,

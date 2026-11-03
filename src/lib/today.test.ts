@@ -82,6 +82,15 @@ describe("誰が見たか", () => {
     expect(listSeenNotes(db, "aoki", NOW)).toEqual([]);
   });
 
+  it("期限を過ぎてから見直すと、また見てくれた人に出る", () => {
+    recordSeen(db, teams, "saeki", STUDY, NOW);
+    const later = new Date(NOW.getTime() + 8 * 24 * 60 * 60 * 1000);
+    expect(listSeenNotes(db, "aoki", later)).toEqual([]);
+
+    recordSeen(db, teams, "saeki", STUDY, later);
+    expect(listSeenNotes(db, "aoki", later)[0].seenBy).toEqual(["佐伯 みどり"]);
+  });
+
   it("古い記録は出さない", () => {
     recordSeen(db, teams, "saeki", STUDY, NOW);
     expect(listSeenNotes(db, "aoki", new Date(NOW.getTime() + 8 * 24 * 60 * 60 * 1000))).toEqual([]);

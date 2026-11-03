@@ -5,8 +5,8 @@ import type { ClaudeClient, ClaudeRequest } from "./claude/types";
 import { openDatabase } from "./db";
 import { createDummyTeams } from "./destination/dummy-teams";
 import type { PostDestination } from "./destination/types";
+import { countContributions } from "./avatar";
 import {
-  countContributions,
   countForNotice,
   draftReply,
   handleInboxReply,
@@ -44,6 +44,17 @@ describe("受信箱", () => {
 
     expect(listInbox(db, "saeki").map((i) => i.postId)).toEqual([STAFF_ASK]);
     expect(teams.listPosts("saeki", "making").find((p) => p.id === STUDENT_ASK)?.answered).toBe(true);
+  });
+
+  it("返信したお願いには、再送や古い画面からもう一度返せず、パスもできない", async () => {
+    await handleInboxReply(scripted, db, teams, "saeki", { postId: STUDENT_ASK, text: "返信です" });
+
+    expect((await handleInboxReply(scripted, db, teams, "saeki", { postId: STUDENT_ASK, text: "二重" })).status).toBe(404);
+    expect((await handleReplyDraft(scripted, db, "saeki", { postId: STUDENT_ASK, spoken: "話" })).status).toBe(404);
+    expect(handlePass(db, teams, "saeki", { postId: STUDENT_ASK, toPersonId: "noda" }, NOW).status).toBe(404);
+    expect(listInbox(db, "noda")).toEqual([]);
+    const post = teams.listPosts("saeki", "making").find((p) => p.id === STUDENT_ASK);
+    expect(post?.replies.filter((r) => r.authorId === "saeki")).toHaveLength(1);
   });
 
   it("他の人の返信では、お願いは消えない", () => {
@@ -165,12 +176,12 @@ describe("パスとアシスト", () => {
 
   it("相手が返信するとゴール、回した人にアシストが付く", async () => {
     handlePass(db, teams, "saeki", { postId: STUDENT_ASK, toPersonId: "noda" }, NOW);
-    expect(countContributions(db, "saeki")).toEqual({ goals: 0, assists: 0 });
+    expect(countContributions(db, "saeki")).toMatchObject({ goals: 0, assists: 0 });
 
     await handleInboxReply(scripted, db, teams, "noda", { postId: STUDENT_ASK, text: "底を厚くしましょう" });
 
-    expect(countContributions(db, "noda")).toEqual({ goals: 1, assists: 0 });
-    expect(countContributions(db, "saeki")).toEqual({ goals: 0, assists: 1 });
+    expect(countContributions(db, "noda")).toMatchObject({ goals: 1, assists: 0 });
+    expect(countContributions(db, "saeki")).toMatchObject({ goals: 0, assists: 1 });
   });
 
   it("生徒には、職員室のお願いをパスできない", () => {

@@ -9,6 +9,7 @@ export type ChannelView = {
 
 export type ReplyView = {
   id: string;
+  authorId: string;
   authorName: string;
   authorLabel: string;
   body: string;

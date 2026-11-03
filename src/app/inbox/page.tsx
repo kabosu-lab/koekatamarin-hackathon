@@ -3,7 +3,8 @@ import Link from "next/link";
 import { getViewer } from "@/lib/current-person";
 import { getDatabase } from "@/lib/db";
 import { createDummyTeams } from "@/lib/destination/dummy-teams";
-import { countContributions, listInbox, listPassCandidates } from "@/lib/inbox";
+import { countContributions } from "@/lib/avatar";
+import { listInbox, listPassCandidates } from "@/lib/inbox";
 import { PersonSwitcher } from "../PersonSwitcher";
 import { InboxCard } from "./InboxCard";
 

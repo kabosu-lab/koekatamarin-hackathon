@@ -50,6 +50,16 @@ describe("buildDirectory", () => {
   });
 });
 
+describe("同姓同名", () => {
+  it("名前が同じでも、別の人の言葉を混ぜない", async () => {
+    db.prepare("UPDATE people SET name = ? WHERE id = ?").run("野田 翔", "ogawara");
+    const noda = buildDirectory(db, teams, "saeki").find((p) => p.id === "noda");
+    const other = buildDirectory(db, teams, "saeki").find((p) => p.id === "ogawara");
+    expect(JSON.stringify(noda?.publicWords)).toContain("ネットワーク");
+    expect(JSON.stringify(other?.publicWords)).not.toContain("ネットワーク");
+  });
+});
+
 describe("声をかけるとき", () => {
   it.each(["resolved", "stuck"])("%s のときは人を紹介する", async (moment) => {
     const result = await suggest(answering({ moment, personId: "ogawara", message: "大河原先生に聞いてみる？" }));

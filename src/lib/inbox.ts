@@ -83,7 +83,10 @@ function currentAsked(db: DatabaseSync, postId: string, viewerId: string): { bod
   const post = db
     .prepare("SELECT body, channel_id, author_id, asked_person_id FROM posts WHERE id = ?")
     .get(postId) as { body: string; channel_id: string; author_id: string; asked_person_id: string | null } | undefined;
-  return post && post.asked_person_id === viewerId ? post : null;
+  if (!post || post.asked_person_id !== viewerId) return null;
+  // 返信済みのお願いは終わっている。再送や古い画面から、もう一度返したりパスしたりできない
+  const answered = db.prepare("SELECT 1 FROM replies WHERE post_id = ? AND author_id = ?").get(postId, viewerId);
+  return answered ? null : post;
 }
 
 /** パスを回せる相手。相手が読めるチャネルに限り、すでに通った人と投稿した本人には戻さない。 */
@@ -128,26 +131,6 @@ export function passPost(
   ).run(randomUUID(), postId, viewerId, toPersonId, now.toISOString());
   db.prepare("UPDATE posts SET asked_person_id = ? WHERE id = ?").run(toPersonId, postId);
   return true;
-}
-
-/** 本人にだけ見せる数。人と比べるためのものではない。 */
-export function countContributions(db: DatabaseSync, personId: string): { goals: number; assists: number } {
-  const goals = db
-    .prepare(
-      `SELECT count(DISTINCT p.id) AS count FROM posts p
-       JOIN replies r ON r.post_id = p.id AND r.author_id = p.asked_person_id
-       WHERE p.asked_person_id = ?`,
-    )
-    .get(personId) as { count: number };
-  const assists = db
-    .prepare(
-      `SELECT count(DISTINCT x.post_id) AS count FROM post_passes x
-       JOIN posts p ON p.id = x.post_id
-       JOIN replies r ON r.post_id = p.id AND r.author_id = p.asked_person_id
-       WHERE x.from_person_id = ?`,
-    )
-    .get(personId) as { count: number };
-  return { goals: goals.count, assists: assists.count };
 }
 
 const replySystemPrompt = `あなたは「コエカタ」の相棒です。本人に届いたお願いへの返信を、本人が話したことから文章にします。話すだけで30秒で返せるようにするのが目的です。

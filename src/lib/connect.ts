@@ -37,11 +37,11 @@ export function buildDirectory(db: DatabaseSync, destination: PostDestination, v
     .all(viewerId) as { id: string; name: string; label: string; public_profile: string }[];
 
   const words = new Map<string, string[]>();
-  const add = (name: string, body: string) => words.set(name, [...(words.get(name) ?? []), body]);
+  const add = (personId: string, body: string) => words.set(personId, [...(words.get(personId) ?? []), body]);
   for (const channel of destination.listChannels(viewerId)) {
     for (const post of destination.listPosts(viewerId, channel.id)) {
-      add(post.authorName, post.body);
-      for (const reply of post.replies) add(reply.authorName, reply.body);
+      add(post.authorId, post.body);
+      for (const reply of post.replies) add(reply.authorId, reply.body);
     }
   }
 
@@ -50,7 +50,7 @@ export function buildDirectory(db: DatabaseSync, destination: PostDestination, v
     name: p.name,
     label: p.label,
     publicProfile: p.public_profile,
-    publicWords: (words.get(p.name) ?? []).slice(-POSTS_PER_PERSON),
+    publicWords: (words.get(p.id) ?? []).slice(-POSTS_PER_PERSON),
   }));
 }
 
