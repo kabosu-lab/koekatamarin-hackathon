@@ -16,6 +16,10 @@ export default defineConfig({
     reuseExistingServer: false,
     timeout: 180_000,
     // テストの記録を手元のデータと混ぜず、毎回まっさらから始める
-    env: { KOEKATA_DB_PATH: join(tmpdir(), `koekata-e2e-${process.pid}.db`) },
+    env: {
+      KOEKATA_DB_PATH: join(tmpdir(), `koekata-e2e-${process.pid}.db`),
+      // .env にキーがあっても、テストでは料金を使わない
+      KOEKATA_CLAUDE: "scripted",
+    },
   },
 });
