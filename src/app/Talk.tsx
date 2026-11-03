@@ -233,7 +233,7 @@ export function Talk({
     <div className="talk" data-viewer={viewer.name}>
       {burst && <SendBurst words={burst} onDone={() => setBurst(null)} />}
       <div className="log" role="log" aria-label="相棒との会話">
-        <p className="promise">ここでの話はあなただけのものです。ただし、命や安全に関わるときは相談室の先生に伝えます。</p>
+        <p className="promise">ここでの話はあなただけのものです。ただし、命や安全に関わるときは、話した言葉ではなく要点だけを相談室の先生に伝えます。</p>
         {messages.length === 0 && !listening && (
           <>
             {question && <p className="daily-question">{question}</p>}

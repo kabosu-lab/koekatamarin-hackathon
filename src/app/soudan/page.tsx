@@ -34,6 +34,7 @@ export default async function SoudanPage() {
               <strong>{alert.personName}</strong>（{alert.personLabel}）
             </p>
             <p>{alert.summary}</p>
+            {alert.disputedAt && <p>本人から「違うよ」と届いています。声をかけるかは相談室の先生が判断してください。</p>}
             <p className="meta">
               {timeFormat.format(new Date(alert.updatedAt))}
               {alert.recipients.length > 0 && `・本人が選んで伝えた先：${alert.recipients.join("、")}`}

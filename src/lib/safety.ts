@@ -33,7 +33,7 @@ const SUMMARIES: Record<Exclude<SafetyCategory, "none"> | "unknown", string> = {
 export type SafetyAssessment = { concern: false } | { concern: true; summary: string };
 
 /** Claude に確かめられないときの最後の備え。はっきりした言葉だけを拾う。 */
-const CLEAR_DANGER = /死にたい|しにたい|消えたい|消えてしまいたい|自殺|殺したい|殴られ|虐待/;
+const CLEAR_DANGER = /死にたい|しにたい|消えたい|消えてしまいたい|自殺|殺したい|殴られ|虐待|いじめられ/;
 
 export function assessWithoutClaude(text: string): SafetyAssessment {
   return CLEAR_DANGER.test(text) ? { concern: true, summary: SUMMARIES.unknown } : { concern: false };
@@ -45,6 +45,8 @@ export type SafetyAlert = {
   personLabel: string;
   summary: string;
   updatedAt: string;
+  /** 本人が「違うよ」と伝えた時刻。知らせは取り消さず、相談室の判断の材料にする */
+  disputedAt: string | null;
   recipients: string[];
 };
 
@@ -131,13 +133,14 @@ export function isCounselingOpen(now: Date): boolean {
  * 相談室に要点を届ける。会話そのものは保存しない。
  * 同じ話が続く間は1つの知らせに足していくが、すでに本人が他の先生を選んだ知らせには足さない。
  * 新しい内容を、本人が選び直さないまま届けないため。
+ * 本人が「違うよ」と伝えた知らせにも足さない。そのあとの新しい心配が「違う」に紛れないため。
  */
 export function recordAlert(db: DatabaseSync, personId: string, summary: string, now: Date): string {
   const since = new Date(now.getTime() - MERGE_WINDOW_MS).toISOString();
   const recent = db
     .prepare(
       `SELECT a.id, a.summary FROM safety_alerts a
-       WHERE a.person_id = ? AND a.updated_at >= ?
+       WHERE a.person_id = ? AND a.updated_at >= ? AND a.disputed_at IS NULL
          AND NOT EXISTS (SELECT 1 FROM safety_alert_recipients r WHERE r.alert_id = a.id)
        ORDER BY a.updated_at DESC LIMIT 1`,
     )
@@ -186,11 +189,19 @@ export function shareAlert(db: DatabaseSync, alertId: string, ownerId: string, p
   return true;
 }
 
+/** 本人だけが「違うよ」と伝えられる。知らせは消さず、相談室に見えるようにする。 */
+export function disputeAlert(db: DatabaseSync, alertId: string, ownerId: string, now: Date): boolean {
+  const result = db
+    .prepare("UPDATE safety_alerts SET disputed_at = COALESCE(disputed_at, ?) WHERE id = ? AND person_id = ?")
+    .run(now.toISOString(), alertId, ownerId);
+  return Number(result.changes) === 1;
+}
+
 /** その人に届いている知らせ。相談室には全部、本人が選んだ先にはその分だけ。 */
 export function listAlertsFor(db: DatabaseSync, viewerId: string): SafetyAlert[] {
   const rows = db
     .prepare(
-      `SELECT a.id, p.name AS person_name, p.label AS person_label, a.summary, a.updated_at
+      `SELECT a.id, p.name AS person_name, p.label AS person_label, a.summary, a.updated_at, a.disputed_at
        FROM safety_alerts a JOIN people p ON p.id = a.person_id
        WHERE ? = ?
           OR EXISTS (SELECT 1 FROM safety_alert_recipients r WHERE r.alert_id = a.id AND r.person_id = ?)
@@ -202,6 +213,7 @@ export function listAlertsFor(db: DatabaseSync, viewerId: string): SafetyAlert[]
     person_label: string;
     summary: string;
     updated_at: string;
+    disputed_at: string | null;
   }[];
   const selectRecipients = db.prepare(
     `SELECT p.name FROM safety_alert_recipients r JOIN people p ON p.id = r.person_id
@@ -213,6 +225,7 @@ export function listAlertsFor(db: DatabaseSync, viewerId: string): SafetyAlert[]
     personLabel: row.person_label,
     summary: row.summary,
     updatedAt: row.updated_at,
+    disputedAt: row.disputed_at,
     recipients: (selectRecipients.all(row.id) as { name: string }[]).map((r) => r.name),
   }));
 }

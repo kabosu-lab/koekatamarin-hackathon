@@ -12,7 +12,7 @@ async function say(page: Page, text: string) {
 
 test("最初から、命や安全に関わるときは伝えることを本人に見せている", async ({ page }) => {
   await page.goto("/");
-  await expect(page.locator(".promise")).toContainText("命や安全に関わるときは相談室の先生に伝えます");
+  await expect(page.locator(".promise")).toContainText("話した言葉ではなく要点だけを相談室の先生に伝えます");
 });
 
 test("心配な話は要点だけ相談室に届き、本人が選んだ先生にも伝えられる", async ({ page }) => {
@@ -51,6 +51,38 @@ async function switchTo2(page: Page, name: string) {
   await expect(page.getByRole("link", { name: "相談室への知らせを見る" })).toBeVisible();
   await page.goto("/soudan");
 }
+
+test("本人は「違うよ」と伝えられ、知らせは消えずに相談室に見える", async ({ page }) => {
+  await page.goto("/");
+  await switchPerson(page, "木下 蓮（3年・ものづくり部）");
+  await say(page, "クラスのグループから外されて、教室に行くのがこわい");
+
+  const card = page.getByRole("region", { name: "相談室に伝えました" });
+  await expect(card).toContainText("外の機関に相談することもあります");
+  await card.getByRole("button", { name: "違うよ" }).click();
+  await expect(card).toContainText("知らせは取り消されません");
+  await expect(card.getByRole("button", { name: "違うよ" })).toHaveCount(0);
+
+  await page.goto("/");
+  await switchPerson(page, "白石 文（養護・相談室）");
+  await page.goto("/soudan");
+  await expect(page.getByRole("article", { name: "木下 蓮さんについての知らせ" }).filter({ hasText: "本人から「違うよ」と届いています" }).first()).toBeVisible();
+});
+
+test("「違うよ」が届かなかったときは、もう一度押せる", async ({ page }) => {
+  await page.route("**/api/converse", (route) =>
+    route.fulfill({ json: { reply: "聞いてるよ", mode: "scripted", safety: { alertId: "x", counselingOpen: false, candidates: [] } } }),
+  );
+  await page.route("**/api/safety/dispute", (route) => route.fulfill({ status: 500, json: { error: "x" } }));
+  await page.goto("/");
+  await say(page, "……");
+
+  const card = page.getByRole("region", { name: "相談室に伝えました" });
+  await expect(card).toContainText("外の機関に相談することもあります");
+  await card.getByRole("button", { name: "違うよ" }).click();
+  await expect(card.getByRole("alert")).toContainText("もう一度押してください");
+  await expect(card.getByRole("button", { name: "違うよ" })).toBeEnabled();
+});
 
 test("生徒には知らせの入口がなく、URL を開いても何も見えない", async ({ page }) => {
   await page.goto("/");

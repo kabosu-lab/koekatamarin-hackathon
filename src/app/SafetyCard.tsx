@@ -14,6 +14,9 @@ export function SafetyCard({ notice }: { notice: SafetyNotice }) {
   const [sharedNames, setSharedNames] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState("");
+  const [disputed, setDisputed] = useState(false);
+  const [disputing, setDisputing] = useState(false);
+  const [disputeProblem, setDisputeProblem] = useState("");
 
   function toggle(id: string) {
     setSelected((current) => (current.includes(id) ? current.filter((x) => x !== id) : [...current, id]));
@@ -38,6 +41,24 @@ export function SafetyCard({ notice }: { notice: SafetyNotice }) {
     }
   }
 
+  async function dispute() {
+    setDisputing(true);
+    setDisputeProblem("");
+    try {
+      const response = await fetch("/api/safety/dispute", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ alertId: notice.alertId }),
+      });
+      if (!response.ok) throw new Error(`status ${response.status}`);
+      setDisputed(true);
+    } catch {
+      setDisputeProblem("届けられませんでした。もう一度押してください。");
+    } finally {
+      setDisputing(false);
+    }
+  }
+
   return (
     <section className="safety-card" aria-label="相談室に伝えました">
       <h2>相談室の先生に、要点だけ伝えました</h2>
@@ -49,6 +70,18 @@ export function SafetyCard({ notice }: { notice: SafetyNotice }) {
           <strong>いま相談室は閉まっています。</strong>
           先生が見るのは次に開くときです。今すぐ話したいときは、下の窓口につながります。
         </p>
+      )}
+      <p>必要なときは、学校が外の機関に相談することもあります。どこまで進むのかは、相談室の先生に聞いて大丈夫です。</p>
+
+      {disputed ? (
+        <p role="status">相談室の先生にも「違うよ」と届けました。知らせは取り消されません。</p>
+      ) : (
+        <>
+          <button type="button" disabled={disputing} onClick={() => void dispute()}>
+            違うよ
+          </button>
+          {disputeProblem && <p role="alert">{disputeProblem}</p>}
+        </>
       )}
 
       <h3>今すぐ話せるところ</h3>

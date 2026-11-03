@@ -75,7 +75,7 @@ function scriptedConnect(prompt: string, jsonSchema: Record<string, unknown> | u
 
 function scriptedSafety(conversation: string) {
   if (/死にたい|消えたい|自殺/.test(conversation)) return { category: "self_harm" };
-  if (/殴られ|虐待/.test(conversation)) return { category: "violence_or_abuse" };
+  if (/殴られ|虐待|グループから外されて|いじめられ/.test(conversation)) return { category: "violence_or_abuse" };
   return { category: "none" };
 }
 

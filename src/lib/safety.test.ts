@@ -3,7 +3,7 @@ import type { DatabaseSync } from "node:sqlite";
 import { createScriptedClaude } from "./claude/scripted";
 import type { ClaudeClient } from "./claude/types";
 import { openDatabase } from "./db";
-import { assessSafety, isCounselingOpen, listAlertsFor, listShareCandidates, recordAlert, shareAlert } from "./safety";
+import { assessSafety, isCounselingOpen, listAlertsFor, listShareCandidates, recordAlert, shareAlert, disputeAlert, assessWithoutClaude } from "./safety";
 import { hotlines } from "./safety-hotlines";
 import { seedDatabase } from "./seed";
 import { handleTalk } from "./talk-request";
@@ -100,6 +100,36 @@ describe("handleTalk", () => {
 
     await handleTalk(scripted, db, "aoki", worrying, new Date(NOW.getTime() + 3 * 60 * 60 * 1000));
     expect(listAlertsFor(db, "shiraishi")).toHaveLength(2);
+  });
+
+  it("本人だけが「違うよ」と伝えられ、知らせは消えない", async () => {
+    const outcome = await handleTalk(scripted, db, "aoki", worrying, NOW);
+    const alertId = outcome.body.safety!.alertId;
+
+    expect(disputeAlert(db, alertId, "nakamura", NOW)).toBe(false);
+    expect(disputeAlert(db, alertId, "shiraishi", NOW)).toBe(false);
+    expect(listAlertsFor(db, "shiraishi")[0].disputedAt).toBeNull();
+
+    expect(disputeAlert(db, alertId, "aoki", NOW)).toBe(true);
+    const [alert] = listAlertsFor(db, "shiraishi");
+    expect(alert.disputedAt).toBe(NOW.toISOString());
+    expect(alert.summary).not.toBe("");
+  });
+
+  it("「違うよ」のあとの新しい心配は、別の知らせになる", async () => {
+    const outcome = await handleTalk(scripted, db, "aoki", worrying, NOW);
+    disputeAlert(db, outcome.body.safety!.alertId, "aoki", NOW);
+
+    await handleTalk(scripted, db, "aoki", worrying, new Date(NOW.getTime() + 10 * 60 * 1000));
+    const alerts = listAlertsFor(db, "shiraishi");
+    expect(alerts).toHaveLength(2);
+    expect(alerts.filter((a) => a.disputedAt === null)).toHaveLength(1);
+  });
+
+  it("学校でよくある困りごとも、台本と最後の備えで拾う", async () => {
+    await handleTalk(scripted, db, "aoki", { history: [], text: "クラスのグループから外されて、教室に行くのがこわい" }, NOW);
+    expect(listAlertsFor(db, "shiraishi")).toHaveLength(1);
+    expect(assessWithoutClaude("ずっといじめられてる").concern).toBe(true);
   });
 
   it("確認に失敗しても、はっきりした言葉は相談室に届き、話した言葉は入らない", async () => {
