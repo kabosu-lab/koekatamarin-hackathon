@@ -1,4 +1,4 @@
-# コエカタ
+# こえかた
 
 Built with Claude: Japan 2026 の作品（提出 2026-11-08 20:00）。仕様は `SPEC.md`、作業の順番は `BACKLOG.md` を見る。
 
