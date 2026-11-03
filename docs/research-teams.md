@@ -12,6 +12,14 @@
 | チャネルで誰が見たかを知る | 取得方法は見つからなかった。Teams の既読はチャットのもので、資料は古いものも含む | Teams で直接見た人は分からない |
 | 無料の試験用テナントを作る | 開発者プログラムに入るだけでは得られない。Visual Studio の契約者やパートナーなどが対象と報告されている | 提出版はダミー画面で進める |
 
+## 自習室を Teams から見せるには
+
+| やりたいこと | 結果 | コエカタへの影響 |
+|---|---|---|
+| 映像を常時配信する | 向かない。[ライブイベントは 2026 年 6 月 30 日に終了の案内](https://learn.microsoft.com/en-us/microsoftteams/teams-stream-overview)。[会議やイベントには時間の上限がある](https://learn.microsoft.com/en-us/microsoftteams/limits-specifications-teams) | 映像の配信はしない |
+| チャネルのタブに Web ページを載せる | できる。[HTTPS、iframe の許可、Teams の SDK の初期化などが必要](https://learn.microsoft.com/en-us/microsoftteams/platform/tabs/how-to/tab-requirements) | 自習室の画面はタブに載せる |
+| 投稿したカードを書き換える | [ボットの機能で更新できる](https://learn.microsoft.com/en-us/microsoftteams/platform/bots/how-to/update-and-delete-bot-messages)。更新では新しい通知が出ないという[報告](https://learn.microsoft.com/en-us/answers/questions/5805345/disable-teams-banner-notification-for-adaptive-car)もある | 「いま8人が勉強中」のカードに使える可能性 |
+
 未確認：朝のカードをボットで届ける方法、購読に必要な設定の詳細、学校のテナントの方針。
 
 ## 設計への結論

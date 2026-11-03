@@ -3,6 +3,13 @@
 .env.*
 !.env.example
 
+# 公開しない手元の資料（Discord の整理など）
+.private/
+
+# 動画の書き出し（作り方のコードは video/ に残す）
+video/out/
+*.mp4
+
 # アプリの書き出しと手元のデータ
 .next/
 next-env.d.ts
@@ -18,3 +25,6 @@ playwright-report/
 .DS_Store
 node_modules/
 __pycache__/
+
+# 動画の素材はコードから作る
+video/public/
