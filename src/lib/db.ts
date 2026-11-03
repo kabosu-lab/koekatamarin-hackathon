@@ -141,6 +141,12 @@ const MIGRATIONS: readonly string[] = [
   `ALTER TABLE posts ADD COLUMN needs_look INTEGER NOT NULL DEFAULT 0 CHECK (needs_look IN (0, 1));
    ALTER TABLE posts ADD COLUMN shared_to_staff INTEGER NOT NULL DEFAULT 0 CHECK (shared_to_staff IN (0, 1));`,
   `ALTER TABLE safety_alerts ADD COLUMN disputed_at TEXT;`,
+  `CREATE TABLE hidden_people (
+     person_id TEXT NOT NULL REFERENCES people (id),
+     hidden_person_id TEXT NOT NULL REFERENCES people (id),
+     created_at TEXT NOT NULL,
+     PRIMARY KEY (person_id, hidden_person_id)
+   ) STRICT;`,
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;

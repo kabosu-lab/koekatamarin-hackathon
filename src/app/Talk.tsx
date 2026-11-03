@@ -39,7 +39,7 @@ export function Talk({
   const [burst, setBurst] = useState<string | null>(null);
   const [remembered, setRemembered] = useState<number[]>([]);
   const connectDone = useRef(false);
-  const [sentTo, setSentTo] = useState<{ channel: ChannelView; postId: string } | null>(null);
+  const [sentTo, setSentTo] = useState<{ channel: ChannelView; postId: string; isPublic: boolean } | null>(null);
   const stopRef = useRef<(() => void) | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
 
@@ -216,9 +216,9 @@ export function Talk({
           {...composing}
           viewer={viewer}
           onCancel={() => setComposing(null)}
-          onSent={(channel, postId, words) => {
+          onSent={(channel, postId, words, isPublic) => {
             setComposing(null);
-            setSentTo({ channel, postId });
+            setSentTo({ channel, postId, isPublic });
             setBurst(words);
             playSendSound();
           }}
@@ -296,6 +296,7 @@ export function Talk({
           <button type="button" className="undo" onClick={() => void undoSent()}>
             送ったものを取り消す
           </button>
+          {sentTo.isPublic && <Link href="/nakama">同じことに取り組んでいる人を探してみる？</Link>}
         </p>
       )}
 

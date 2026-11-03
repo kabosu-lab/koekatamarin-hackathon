@@ -33,9 +33,17 @@ export type ConnectSuggestionBody = {
  * Claude との話はどこにも保存していないので、材料に入りようがない。
  */
 export function buildDirectory(db: DatabaseSync, destination: PostDestination, viewerId: string): DirectoryEntry[] {
-  const people = db
-    .prepare("SELECT id, name, label, public_profile FROM people WHERE id != ? ORDER BY rowid")
-    .all(viewerId) as { id: string; name: string; label: string; public_profile: string }[];
+  return buildPublicEntries(db, destination, viewerId).filter((entry) => entry.id !== viewerId);
+}
+
+/** 本人も含めた公開の材料。本人が読める範囲の言葉だけを集める。 */
+export function buildPublicEntries(db: DatabaseSync, destination: PostDestination, viewerId: string): DirectoryEntry[] {
+  const people = db.prepare("SELECT id, name, label, public_profile FROM people ORDER BY rowid").all() as {
+    id: string;
+    name: string;
+    label: string;
+    public_profile: string;
+  }[];
 
   const forgotten = forgottenSources(db);
   const words = new Map<string, string[]>();

@@ -73,6 +73,14 @@ function scriptedConnect(prompt: string, jsonSchema: Record<string, unknown> | u
   return { moment, personId, message: moment === "none" ? "" : "この話、くわしい人にも聞いてみる？" };
 }
 
+function scriptedNakama(jsonSchema: Record<string, unknown> | undefined) {
+  const properties = (jsonSchema?.properties ?? {}) as {
+    suggestions?: { items?: { properties?: { personId?: { enum?: string[] } } } };
+  };
+  const ids = properties.suggestions?.items?.properties?.personId?.enum ?? [];
+  return { suggestions: ids.slice(0, 2).map((personId) => ({ personId, reason: "公開の投稿に、近い話題があります。" })) };
+}
+
 function scriptedSafety(conversation: string) {
   if (/死にたい|消えたい|自殺/.test(conversation)) return { category: "self_harm" };
   if (/殴られ|虐待|グループから外されて|いじめられ/.test(conversation)) return { category: "violence_or_abuse" };
@@ -112,6 +120,7 @@ export function createScriptedClaude(): ClaudeClient {
       if (task === "cheer") return { text: JSON.stringify(scriptedCheer(jsonSchema)), refused: false };
       if (task === "reply") return { text: JSON.stringify(scriptedReply(messages[0].content)), refused: false };
       if (task === "connect") return { text: JSON.stringify(scriptedConnect(messages[0].content, jsonSchema)), refused: false };
+      if (task === "nakama") return { text: JSON.stringify(scriptedNakama(jsonSchema)), refused: false };
       if (task === "safety") return { text: JSON.stringify(scriptedSafety(messages[0].content)), refused: false };
       if (task === "review") return { text: JSON.stringify(scriptedReview(messages[0].content)), refused: false };
 

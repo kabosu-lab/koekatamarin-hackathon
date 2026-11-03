@@ -66,19 +66,30 @@ function candidates(destination: PostDestination, viewerId: string) {
 }
 
 /** その人のその日のカード。同じ日は同じ順で出て、日が変わると変わる。 */
-export function listTodayCards(destination: PostDestination, viewerId: string, now: Date): TodayCard[] {
+export function listTodayCards(
+  destination: PostDestination,
+  viewerId: string,
+  now: Date,
+  hidden: ReadonlySet<string> = new Set(),
+): TodayCard[] {
   const seed = `${japanDate(now)}|${viewerId}|`;
   const order = (id: string) => createHash("sha256").update(seed + id).digest("hex");
   return candidates(destination, viewerId)
+    .filter((post) => !hidden.has(post.authorId))
     .sort((a, b) => order(a.id).localeCompare(order(b.id)))
     .slice(0, MAX_CARDS)
     .map(toCard);
 }
 
 /** 反応の多い投稿から順に。 */
-export function listPopularCards(destination: PostDestination, viewerId: string): TodayCard[] {
+export function listPopularCards(
+  destination: PostDestination,
+  viewerId: string,
+  hidden: ReadonlySet<string> = new Set(),
+): TodayCard[] {
   const score = (post: { likeCount: number; replies: unknown[] }) => post.likeCount + post.replies.length;
   return candidates(destination, viewerId)
+    .filter((post) => !hidden.has(post.authorId))
     .sort((a, b) => score(b) - score(a) || b.createdAt.localeCompare(a.createdAt))
     .slice(0, MAX_CARDS)
     .map(toCard);
