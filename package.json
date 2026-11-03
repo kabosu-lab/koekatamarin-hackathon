@@ -19,7 +19,8 @@
     "try:safety": "tsx --env-file-if-exists=.env scripts/try-safety.ts",
     "try:connect": "tsx --env-file-if-exists=.env scripts/try-connect.ts",
     "try:reply": "tsx --env-file-if-exists=.env scripts/try-reply.ts",
-    "db:reset": "rm -f data/koekata.db data/koekata.db-wal data/koekata.db-shm"
+    "db:reset": "rm -f data/koekata.db data/koekata.db-wal data/koekata.db-shm",
+    "try:cheer": "tsx --env-file-if-exists=.env scripts/try-cheer.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.4.0",

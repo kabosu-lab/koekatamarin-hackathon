@@ -536,3 +536,79 @@ body {
   color: #6b5d55;
   font-size: 0.9rem;
 }
+
+.today-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.today-tabs a {
+  padding: 0.5rem 0.85rem;
+  border: 1px solid #9c3412;
+  border-radius: 2rem;
+  color: #9c3412;
+  text-decoration: none;
+}
+
+.today-tabs a[aria-current="page"] {
+  background: #9c3412;
+  color: #fff;
+}
+
+.seen-note {
+  margin: 0.75rem 0 0;
+  padding: 0.6rem 0.85rem;
+  border-radius: 0.5rem;
+  background: #e3f4e0;
+}
+
+.talk.today-card {
+  flex: none;
+  gap: 0.6rem;
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid #eadfd8;
+  border-radius: 1rem;
+  background: #fff;
+}
+
+.today-card p {
+  margin: 0;
+}
+
+.today-card .count {
+  color: #6b5d55;
+  font-size: 0.85rem;
+}
+
+.today-card .who {
+  font-size: 0.9rem;
+}
+
+.today-card .words {
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  font-size: 1.1rem;
+}
+
+.today-card .hint-line {
+  padding: 0.5rem 0.75rem;
+  border-radius: 1rem;
+  background: #f6ece5;
+  font-size: 0.95rem;
+}
+
+.today-card .row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+  gap: 0.5rem;
+}
+
+.talk .today-card .secondary,
+.today-card .secondary {
+  background: #fff;
+  border: 1px solid #9c3412;
+  color: #9c3412;
+}

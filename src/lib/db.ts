@@ -68,6 +68,12 @@ const MIGRATIONS: readonly string[] = [
      created_at TEXT NOT NULL
    ) STRICT;
    CREATE INDEX post_passes_by_post ON post_passes (post_id, created_at);`,
+  `CREATE TABLE post_views (
+     post_id TEXT NOT NULL REFERENCES posts (id) ON DELETE CASCADE,
+     person_id TEXT NOT NULL REFERENCES people (id),
+     seen_at TEXT NOT NULL,
+     PRIMARY KEY (post_id, person_id)
+   ) STRICT;`,
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;

@@ -4,7 +4,7 @@ export type ChatMessage = {
   content: string;
 };
 
-export type ClaudeTask = "converse" | "draft" | "review" | "safety" | "connect" | "reply";
+export type ClaudeTask = "converse" | "draft" | "review" | "safety" | "connect" | "reply" | "cheer";
 
 export type ClaudeRequest = {
   /** 何のための呼び出しか。キーなしの台本が返し方を選ぶのに使う。 */

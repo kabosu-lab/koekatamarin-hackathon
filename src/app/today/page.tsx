@@ -1,0 +1,54 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import { getViewer } from "@/lib/current-person";
+import { getDatabase } from "@/lib/db";
+import { createDummyTeams } from "@/lib/destination/dummy-teams";
+import { listPopularCards, listSeenNotes, listTodayCards } from "@/lib/today";
+import { PersonSwitcher } from "../PersonSwitcher";
+import { TodayCards } from "./TodayCards";
+
+export const metadata: Metadata = { title: "今日の3人｜コエカタ" };
+export const dynamic = "force-dynamic";
+
+export default async function TodayPage({ searchParams }: { searchParams: Promise<{ view?: string | string[] }> }) {
+  const { viewer, people } = await getViewer();
+  const { view } = await searchParams;
+  const popular = view === "popular";
+
+  const db = getDatabase();
+  const teams = createDummyTeams(db);
+  const now = new Date();
+  const cards = popular ? listPopularCards(teams, viewer.id) : listTodayCards(teams, viewer.id, now);
+  const seen = listSeenNotes(db, viewer.id, now);
+
+  return (
+    <main className="home">
+      <header>
+        <h1>今日の3人</h1>
+        <p>10秒で、誰かの頑張りを応援できます。</p>
+        <PersonSwitcher viewerId={viewer.id} people={people} />
+      </header>
+
+      {seen.map((note) => (
+        <p className="seen-note" key={note.postBody}>
+          {note.seenBy.join("さん、")}さんが、あなたの投稿を見てくれました：「{note.postBody}」
+        </p>
+      ))}
+
+      <nav className="today-tabs" aria-label="カードの選び方">
+        <Link href="/today" aria-current={popular ? undefined : "page"}>
+          今日の3人
+        </Link>
+        <Link href="/today?view=popular" aria-current={popular ? "page" : undefined}>
+          人気の投稿
+        </Link>
+      </nav>
+
+      <TodayCards key={`${viewer.id}-${popular ? "popular" : "today"}`} cards={cards} />
+
+      <p className="staff-link">
+        <Link href="/">もどる</Link>
+      </p>
+    </main>
+  );
+}
