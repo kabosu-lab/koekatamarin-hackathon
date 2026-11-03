@@ -270,6 +270,46 @@ export const posts: SeedPost[] = [
     likedBy: ["noda", "saeki"],
   },
   {
+    id: "post-making-2",
+    channelId: "making",
+    authorId: "kawamura",
+    kind: "trouble",
+    body: "文化祭のクラス紹介動画、毎年つくるのに時間がかかります。早く作るコツはありますか？",
+    createdAt: "2026-10-20T16:10:00+09:00",
+    replies: [
+      {
+        id: "reply-making-2a",
+        authorId: "noda",
+        body: "撮る前に、30秒の場面を紙に6枚書くと撮り直しが減りました。去年は半分の時間で終わりました。",
+        createdAt: "2026-10-20T17:05:00+09:00",
+      },
+      {
+        id: "reply-making-2b",
+        authorId: "kinoshita",
+        body: "音楽は最後に決めると、映像に合わせやすかったです。",
+        createdAt: "2026-10-21T08:10:00+09:00",
+      },
+    ],
+    likedBy: ["saeki", "aoki"],
+  },
+  {
+    id: "post-study-2",
+    channelId: "study",
+    authorId: "kawamura",
+    kind: "trouble",
+    body: "授業の小テストを毎回作るのに時間がかかっています。みなさんはどうしていますか？",
+    createdAt: "2026-10-22T15:30:00+09:00",
+    replies: [
+      {
+        id: "reply-study-2",
+        authorId: "ogawara",
+        body: "同じ形の問題を5問に決めて、数字と語句だけ毎回替えています。作るのは10分くらいです。",
+        createdAt: "2026-10-22T16:40:00+09:00",
+      },
+    ],
+    likedBy: ["saeki"],
+  },
+  {
     id: "post-clubs-1",
     channelId: "clubs",
     authorId: "nakamura",
@@ -314,3 +354,23 @@ export const posts: SeedPost[] = [
     likedBy: ["kawamura"],
   },
 ];
+
+/** 最初から広がっている校内の知恵。言葉が使われた人は、投稿と返信から決まる。 */
+export const seedKnowledge = [
+  {
+    id: "knowledge-festival-video",
+    postId: "post-making-2",
+    authorId: "kawamura",
+    title: "文化祭の動画を早く作る",
+    body: "撮る前に、30秒の場面を紙に6枚書くと撮り直しが減る（野田先生。去年は半分の時間で終わった）。音楽は最後に決めると映像に合わせやすい（木下さん）。",
+    reviews: [{ reviewerId: "saeki", verdict: "helped", comment: "クラスで試して、撮り直しが減りました。" }],
+  },
+  {
+    id: "knowledge-quick-quiz",
+    postId: "post-study-2",
+    authorId: "kawamura",
+    title: "小テストを10分で作る",
+    body: "同じ形の問題を5問に決めて、数字と語句だけ毎回替える（大河原先生。作るのは10分くらい）。",
+    reviews: [],
+  },
+] as const;

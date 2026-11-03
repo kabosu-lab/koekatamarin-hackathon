@@ -1,5 +1,5 @@
 import type { DatabaseSync } from "node:sqlite";
-import { channels, homeroomTeachers, pastReports, people, posts, seedAvatars } from "./seed-data";
+import { channels, homeroomTeachers, pastReports, people, posts, seedAvatars, seedKnowledge } from "./seed-data";
 
 /** 文字列のまま時刻順に並ぶよう、すべて UTC の形で保存する。 */
 function toStored(time: string): string {
@@ -22,11 +22,48 @@ function syncPeople(db: DatabaseSync): void {
   }
 }
 
+const KNOWLEDGE_SEEDED = "seed_knowledge";
+
+/** 最初の知恵を、前からある DB にも1度だけ入れる。本人が取り下げたものを戻さない。 */
+function syncKnowledge(db: DatabaseSync): void {
+  if (db.prepare("SELECT 1 FROM app_meta WHERE key = ?").get(KNOWLEDGE_SEEDED)) return;
+  const insertPost = db.prepare(
+    "INSERT OR IGNORE INTO posts (id, channel_id, author_id, kind, body, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+  );
+  const insertReply = db.prepare(
+    "INSERT OR IGNORE INTO replies (id, post_id, author_id, body, created_at) VALUES (?, ?, ?, ?, ?)",
+  );
+  const insertLike = db.prepare("INSERT OR IGNORE INTO post_likes (post_id, person_id) VALUES (?, ?)");
+  const insertItem = db.prepare(
+    `INSERT INTO knowledge_items (id, source_post_id, title, body, status, author_id, created_at, updated_at)
+     VALUES (?, ?, ?, ?, 'shared', ?, ?, ?)`,
+  );
+  const insertContributor = db.prepare("INSERT OR IGNORE INTO knowledge_contributors (item_id, person_id, state) VALUES (?, ?, 'ok')");
+  const insertReview = db.prepare(
+    "INSERT INTO knowledge_reviews (id, item_id, reviewer_id, verdict, comment, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+  );
+  for (const seed of seedKnowledge) {
+    const post = posts.find((p) => p.id === seed.postId);
+    if (!post) continue;
+    const stamp = toStored(post.replies.at(-1)?.createdAt ?? post.createdAt);
+    insertPost.run(post.id, post.channelId, post.authorId, post.kind, post.body, toStored(post.createdAt));
+    for (const r of post.replies) insertReply.run(r.id, post.id, r.authorId, r.body, toStored(r.createdAt));
+    for (const personId of post.likedBy) insertLike.run(post.id, personId);
+    insertItem.run(seed.id, post.id, seed.title, seed.body, seed.authorId, stamp, stamp);
+    for (const personId of [post.authorId, ...post.replies.map((r) => r.authorId)]) insertContributor.run(seed.id, personId);
+    seed.reviews.forEach((review, index) => {
+      insertReview.run(`${seed.id}-review-${index}`, seed.id, review.reviewerId, review.verdict, review.comment, stamp);
+    });
+  }
+  db.prepare("INSERT INTO app_meta (key, value) VALUES (?, '1')").run(KNOWLEDGE_SEEDED);
+}
+
 /** ダミーのデータを入れる。すでに人物がいるときは入れ直さない（デモの続きを消さない）。 */
 export function seedDatabase(db: DatabaseSync): void {
   const { count } = db.prepare("SELECT count(*) AS count FROM people").get() as { count: number };
   if (count > 0) {
     syncPeople(db);
+    syncKnowledge(db);
     return;
   }
 
@@ -69,6 +106,7 @@ export function seedDatabase(db: DatabaseSync): void {
       insertReport.run(id, report.personId, report.date, toStored(`${report.date}T18:00:00+09:00`));
       report.items.forEach((text, position) => insertItem.run(`${id}-${position}`, id, position, text));
     });
+    syncKnowledge(db);
     db.exec("COMMIT");
   } catch (error) {
     db.exec("ROLLBACK");

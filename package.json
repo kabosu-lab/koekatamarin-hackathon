@@ -18,6 +18,7 @@
     "try:compose": "tsx --env-file-if-exists=.env scripts/try-compose.ts",
     "try:safety": "tsx --env-file-if-exists=.env scripts/try-safety.ts",
     "try:nakama": "tsx --env-file-if-exists=.env scripts/try-nakama.ts",
+    "try:knowledge": "tsx --env-file-if-exists=.env scripts/try-knowledge.ts",
     "try:connect": "tsx --env-file-if-exists=.env scripts/try-connect.ts",
     "try:reply": "tsx --env-file-if-exists=.env scripts/try-reply.ts",
     "db:reset": "rm -f data/koekata.db data/koekata.db-wal data/koekata.db-shm",

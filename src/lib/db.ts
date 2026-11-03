@@ -147,6 +147,34 @@ const MIGRATIONS: readonly string[] = [
      created_at TEXT NOT NULL,
      PRIMARY KEY (person_id, hidden_person_id)
    ) STRICT;`,
+  `CREATE TABLE knowledge_items (
+     id TEXT PRIMARY KEY,
+     source_post_id TEXT NOT NULL REFERENCES posts (id),
+     title TEXT NOT NULL,
+     body TEXT NOT NULL,
+     status TEXT NOT NULL CHECK (status IN ('confirming', 'shared', 'withdrawn')),
+     fix_requested INTEGER NOT NULL DEFAULT 0 CHECK (fix_requested IN (0, 1)),
+     author_id TEXT NOT NULL REFERENCES people (id),
+     created_at TEXT NOT NULL,
+     updated_at TEXT NOT NULL
+   ) STRICT;
+   CREATE INDEX knowledge_items_by_status ON knowledge_items (status, updated_at);
+   CREATE TABLE knowledge_contributors (
+     item_id TEXT NOT NULL REFERENCES knowledge_items (id) ON DELETE CASCADE,
+     person_id TEXT NOT NULL REFERENCES people (id),
+     state TEXT NOT NULL CHECK (state IN ('waiting', 'ok', 'removed')),
+     PRIMARY KEY (item_id, person_id)
+   ) STRICT;
+   CREATE TABLE knowledge_reviews (
+     id TEXT PRIMARY KEY,
+     item_id TEXT NOT NULL REFERENCES knowledge_items (id) ON DELETE CASCADE,
+     reviewer_id TEXT NOT NULL REFERENCES people (id),
+     verdict TEXT NOT NULL CHECK (verdict IN ('helped', 'fix')),
+     comment TEXT NOT NULL,
+     resolved_at TEXT,
+     created_at TEXT NOT NULL,
+     UNIQUE (item_id, reviewer_id)
+   ) STRICT;`,
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;

@@ -81,6 +81,29 @@ function scriptedNakama(jsonSchema: Record<string, unknown> | undefined) {
   return { suggestions: ids.slice(0, 2).map((personId) => ({ personId, reason: "公開の投稿に、近い話題があります。" })) };
 }
 
+function scriptedKnowledgeDraft(prompt: string) {
+  const post = prompt.match(/^投稿：[^：]*：(.*)$/m)?.[1]?.trim() ?? "";
+  const answers = [...prompt.matchAll(/^返事：(.*)$/gm)].map((match) => match[1].trim());
+  if (!post || answers.length === 0) return { ready: false, title: "", body: "" };
+  return { ready: true, title: post.slice(0, 24), body: answers.join("\n") };
+}
+
+/** 漢字とカタカナの2文字が重なる材料を、近いものとして選ぶ。 */
+function scriptedKnowledgeFind(prompt: string) {
+  const asked = prompt.match(/<本人の話>([\s\S]*?)<\/本人の話>/)?.[1] ?? "";
+  const pairs = new Set(
+    [...asked.matchAll(/[\p{Script=Han}\p{Script=Katakana}]{2,}/gu)].flatMap(([word]) =>
+      Array.from({ length: word.length - 1 }, (_, i) => word.slice(i, i + 2)),
+    ),
+  );
+  const material = prompt.slice(prompt.indexOf("<材料>"));
+  const results = [...material.matchAll(/^- ([kp]-[^：]+)：(.*)$/gm)]
+    .filter(([, , text]) => [...pairs].some((pair) => text.includes(pair)))
+    .slice(0, 2)
+    .map(([, id]) => ({ id, reason: "話していることに近い言葉が出てきます。" }));
+  return { results };
+}
+
 function scriptedSafety(conversation: string) {
   if (/死にたい|消えたい|自殺/.test(conversation)) return { category: "self_harm" };
   if (/殴られ|虐待|グループから外されて|いじめられ/.test(conversation)) return { category: "violence_or_abuse" };
@@ -121,6 +144,8 @@ export function createScriptedClaude(): ClaudeClient {
       if (task === "reply") return { text: JSON.stringify(scriptedReply(messages[0].content)), refused: false };
       if (task === "connect") return { text: JSON.stringify(scriptedConnect(messages[0].content, jsonSchema)), refused: false };
       if (task === "nakama") return { text: JSON.stringify(scriptedNakama(jsonSchema)), refused: false };
+      if (task === "knowledge_draft") return { text: JSON.stringify(scriptedKnowledgeDraft(messages[0].content)), refused: false };
+      if (task === "knowledge_find") return { text: JSON.stringify(scriptedKnowledgeFind(messages[0].content)), refused: false };
       if (task === "safety") return { text: JSON.stringify(scriptedSafety(messages[0].content)), refused: false };
       if (task === "review") return { text: JSON.stringify(scriptedReview(messages[0].content)), refused: false };
 
