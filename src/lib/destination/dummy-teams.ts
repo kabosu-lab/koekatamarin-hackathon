@@ -1,11 +1,14 @@
 import { randomUUID } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
+import { recipientsOf } from "../recipients";
 import type { Audience, PostKind, Role } from "../seed-data";
 import {
   type ChannelView,
   DestinationError,
   MAX_BODY_LENGTH,
+  type PersonView,
   type PostDestination,
+  type PostScope,
   type PostView,
   type ReplyView,
 } from "./types";
@@ -22,6 +25,8 @@ type PostRow = {
   body: string;
   created_at: string;
   researched_with_ai: number;
+  scope: PostScope;
+  scope_person_id: string | null;
   asked_person_name: string | null;
   answered: number;
   like_count: number;
@@ -48,6 +53,9 @@ function cleanBody(body: string): string {
   return trimmed;
 }
 
+/** 取り消せるのは、送ってからこの時間まで */
+const UNDO_WINDOW_MS = 5 * 60 * 1000;
+
 /** SQLite に保存する、Teams 風のダミーの投稿先。 */
 export function createDummyTeams(db: DatabaseSync): PostDestination {
   function roleOf(viewerId: string): Role {
@@ -69,11 +77,22 @@ export function createDummyTeams(db: DatabaseSync): PostDestination {
     }
   }
 
+  /** 投稿ごとの見える範囲。範囲の外の人には、投稿があることも伝えない。 */
+  function canSeeScope(
+    viewerId: string,
+    post: { author_id: string; scope: PostScope; scope_person_id: string | null },
+  ): boolean {
+    if (post.author_id === viewerId || post.scope === "everyone") return true;
+    if (post.scope === "person") return post.scope_person_id === viewerId;
+    if (post.scope === "managers") return recipientsOf(db, post.author_id).some((r) => r.id === viewerId);
+    return false;
+  }
+
   function requireVisiblePost(viewerId: string, postId: string): { author_id: string } {
-    const post = db.prepare("SELECT channel_id, author_id FROM posts WHERE id = ?").get(postId) as
-      | { channel_id: string; author_id: string }
+    const post = db.prepare("SELECT channel_id, author_id, scope, scope_person_id FROM posts WHERE id = ?").get(postId) as
+      | { channel_id: string; author_id: string; scope: PostScope; scope_person_id: string | null }
       | undefined;
-    if (!post) throw new DestinationError("投稿が見つかりません");
+    if (!post || !canSeeScope(viewerId, post)) throw new DestinationError("投稿が見つかりません");
     try {
       requireVisibleChannel(viewerId, post.channel_id);
     } catch {
@@ -96,7 +115,7 @@ export function createDummyTeams(db: DatabaseSync): PostDestination {
       const posts = db
         .prepare(
           `SELECT p.id, p.channel_id, p.author_id, a.name AS author_name, a.label AS author_label,
-                  p.kind, p.body, p.created_at, p.researched_with_ai,
+                  p.kind, p.body, p.created_at, p.researched_with_ai, p.scope, p.scope_person_id,
                   (SELECT q.name FROM people q WHERE q.id = p.asked_person_id) AS asked_person_name,
                   EXISTS (SELECT 1 FROM replies r WHERE r.post_id = p.id AND r.author_id = p.asked_person_id) AS answered,
                   (SELECT count(*) FROM post_likes l WHERE l.post_id = p.id) AS like_count,
@@ -118,7 +137,7 @@ export function createDummyTeams(db: DatabaseSync): PostDestination {
          WHERE x.post_id = ? ORDER BY x.created_at, x.rowid`,
       );
 
-      return posts.map((p): PostView => ({
+      return posts.filter((p) => canSeeScope(viewerId, { ...p, author_id: p.author_id })).map((p): PostView => ({
         id: p.id,
         authorId: p.author_id,
         authorName: p.author_name,
@@ -127,6 +146,7 @@ export function createDummyTeams(db: DatabaseSync): PostDestination {
         body: p.body,
         createdAt: p.created_at,
         researchedWithAi: p.researched_with_ai === 1,
+        scope: p.scope,
         askedPersonName: p.asked_person_name,
         passedThrough: (selectPasses.all(p.id) as { name: string }[]).map((x) => x.name),
         answered: p.answered === 1,
@@ -143,16 +163,30 @@ export function createDummyTeams(db: DatabaseSync): PostDestination {
       }));
     },
 
-    createPost(viewerId, channelId, body, { kind = "report", researchedWithAi = false, askedPersonId } = {}) {
+    createPost(
+      viewerId,
+      channelId,
+      body,
+      { kind = "report", researchedWithAi = false, askedPersonId, scope = "everyone", scopePersonId } = {},
+    ) {
       requireVisibleChannel(viewerId, channelId);
       if (askedPersonId !== undefined) {
         // 聞く相手が読めないチャネルでは、お願いが届かない
         if (askedPersonId === viewerId) throw new DestinationError("自分には聞けません");
         requireVisibleChannel(askedPersonId, channelId);
+        // お願いは相手に届くものなので、相手が読めない範囲には置かない
+        if (scope !== "everyone" && !(scope === "person" && scopePersonId === askedPersonId)) {
+          throw new DestinationError("聞く相手に見える範囲にしてください");
+        }
+      }
+      if (scope === "person") {
+        if (!scopePersonId || scopePersonId === viewerId) throw new DestinationError("見せる相手を選んでください");
+        requireVisibleChannel(scopePersonId, channelId);
       }
       const id = randomUUID();
       db.prepare(
-        "INSERT INTO posts (id, channel_id, author_id, kind, body, created_at, researched_with_ai, asked_person_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        `INSERT INTO posts (id, channel_id, author_id, kind, body, created_at, researched_with_ai, asked_person_id, scope, scope_person_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       ).run(
         id,
         channelId,
@@ -162,6 +196,8 @@ export function createDummyTeams(db: DatabaseSync): PostDestination {
         new Date().toISOString(),
         researchedWithAi ? 1 : 0,
         askedPersonId ?? null,
+        scope,
+        scope === "person" ? (scopePersonId ?? null) : null,
       );
       return id;
     },
@@ -173,6 +209,25 @@ export function createDummyTeams(db: DatabaseSync): PostDestination {
         "INSERT INTO replies (id, post_id, author_id, body, created_at) VALUES (?, ?, ?, ?, ?)",
       ).run(id, postId, viewerId, cleanBody(body), new Date().toISOString());
       return id;
+    },
+
+    listOtherPeople(viewerId) {
+      const rows = db
+        .prepare("SELECT id, name, label FROM people WHERE id != ? ORDER BY rowid")
+        .all(viewerId) as PersonView[];
+      return rows.map(({ id, name, label }) => ({ id, name, label }));
+    },
+
+    undoPost(viewerId, postId, now) {
+      const post = db.prepare("SELECT author_id, created_at FROM posts WHERE id = ?").get(postId) as
+        | { author_id: string; created_at: string }
+        | undefined;
+      if (!post || post.author_id !== viewerId) return false;
+      if (now.getTime() - Date.parse(post.created_at) > UNDO_WINDOW_MS) return false;
+      if (db.prepare("SELECT 1 FROM replies WHERE post_id = ?").get(postId)) return false;
+      db.prepare("DELETE FROM post_passes WHERE post_id = ?").run(postId);
+      db.prepare("DELETE FROM posts WHERE id = ?").run(postId);
+      return true;
     },
 
     findPersonName(personId) {

@@ -20,6 +20,12 @@ const timeFormat = new Intl.DateTimeFormat("ja-JP", {
   minute: "2-digit",
 });
 
+const SCOPE_LABEL = {
+  person: "特定の人だけ",
+  managers: "管理職や担任だけ",
+  self: "自分だけ",
+};
+
 function Author({ name, label, time }: { name: string; label: string; time: string }) {
   return (
     <p className="author">
@@ -41,6 +47,7 @@ function Post({ post, viewerId }: { post: PostView; viewerId: string }) {
       )}
       <p className="body">{post.body}</p>
       {post.researchedWithAi && <p className="ai-mark">AI と調べました</p>}
+      {post.scope !== "everyone" && <p className="ai-mark">{SCOPE_LABEL[post.scope]}</p>}
 
       {post.authorId === viewerId ? (
         <p className="likes">いいね {post.likeCount}</p>

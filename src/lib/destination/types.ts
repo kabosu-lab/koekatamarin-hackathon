@@ -1,5 +1,12 @@
 import type { Audience, PostKind } from "../seed-data";
 
+/** 投稿ごとに本人が選ぶ、見える範囲。 */
+export type PostScope = "everyone" | "person" | "managers" | "self";
+
+export const POST_SCOPES: readonly PostScope[] = ["everyone", "person", "managers", "self"];
+
+export type PersonView = { id: string; name: string; label: string };
+
 export type ChannelView = {
   id: string;
   name: string;
@@ -24,6 +31,7 @@ export type PostView = {
   kind: PostKind;
   body: string;
   createdAt: string;
+  scope: PostScope;
   /** 「○○さんに聞いてみる」で送った相手 */
   askedPersonName: string | null;
   /** お願いをパスでつないだ人（古い順） */
@@ -41,6 +49,9 @@ export type CreatePostOptions = {
   kind?: PostKind;
   researchedWithAi?: boolean;
   askedPersonId?: string;
+  scope?: PostScope;
+  /** scope が person のときの相手 */
+  scopePersonId?: string;
 };
 
 export class DestinationError extends Error {}
@@ -59,4 +70,7 @@ export type PostDestination = {
   createReply(viewerId: string, postId: string, body: string): string;
   toggleLike(viewerId: string, postId: string): void;
   findPersonName(personId: string): string | null;
+  listOtherPeople(viewerId: string): PersonView[];
+  /** 本人が送った直後の取り消し。誰かが返したあとや、時間が過ぎたあとは取り消せない。 */
+  undoPost(viewerId: string, postId: string, now: Date): boolean;
 };

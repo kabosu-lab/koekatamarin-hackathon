@@ -4,6 +4,7 @@ import { ComposeError, reviewPost } from "./claude/compose";
 import { isMessage, MAX_HISTORY } from "./claude/converse-request";
 import type { ChatMessage, ClaudeClient } from "./claude/types";
 import { MAX_BODY_LENGTH } from "./destination/types";
+import { type Recipient, recipientsOf } from "./recipients";
 
 const MAX_TOKENS = 3000;
 const MAX_ITEMS = 6;
@@ -11,7 +12,7 @@ const MAX_ITEMS = 6;
 export type ReportItem = { id: string; text: string; checked: boolean };
 export type ReportResponse = { id: string; fromName: string; text: string };
 export type DailyReport = { id: string; date: string; items: ReportItem[]; responses: ReportResponse[] };
-export type Recipient = { id: string; name: string };
+export type { Recipient };
 export type ReceivedReport = {
   reportId: string;
   personName: string;
@@ -25,23 +26,7 @@ export function japanDate(now: Date): string {
   return new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Tokyo" }).format(now);
 }
 
-/** 届く相手。先生の日報は管理職へ、生徒の日記は担任へ。管理職自身の日報は自分の記録になる。 */
-export function recipientsOf(db: DatabaseSync, personId: string): Recipient[] {
-  const person = db.prepare("SELECT role, homeroom_teacher_id FROM people WHERE id = ?").get(personId) as
-    | { role: string; homeroom_teacher_id: string | null }
-    | undefined;
-  if (!person) return [];
-  if (person.role === "teacher") {
-    return (db.prepare("SELECT id, name FROM people WHERE role = 'admin' ORDER BY rowid").all() as Recipient[]).map(
-      ({ id, name }) => ({ id, name }),
-    );
-  }
-  if (person.role === "student" && person.homeroom_teacher_id) {
-    const teacher = db.prepare("SELECT id, name FROM people WHERE id = ?").get(person.homeroom_teacher_id) as Recipient;
-    return [{ id: teacher.id, name: teacher.name }];
-  }
-  return [];
-}
+export { recipientsOf };
 
 function dayRange(date: string): [string, string] {
   const start = new Date(`${date}T00:00:00+09:00`);

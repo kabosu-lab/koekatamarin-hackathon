@@ -32,7 +32,8 @@ export function countLeaves(db: DatabaseSync, now: Date): number {
   const since = new Date(`${month >= 4 ? year : year - 1}-04-01T00:00:00+09:00`).toISOString();
   const one = (sql: string) => (db.prepare(sql).get(since) as { count: number }).count;
   return (
-    one("SELECT count(*) AS count FROM posts WHERE created_at >= ? AND kind != 'notice'") +
+    // 自分だけの投稿は、人に届いていないので葉にならない
+    one("SELECT count(*) AS count FROM posts WHERE created_at >= ? AND kind != 'notice' AND scope != 'self'") +
     one("SELECT count(*) AS count FROM replies WHERE created_at >= ?") +
     one("SELECT count(*) AS count FROM thanks WHERE created_at >= ?") +
     one("SELECT count(*) AS count FROM study_sessions WHERE finished_at >= ? AND completed = 1 AND is_demo = 0") +

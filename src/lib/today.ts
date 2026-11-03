@@ -57,7 +57,9 @@ function toCard(post: ReturnType<typeof visiblePosts>[number]): TodayCard {
 
 /** 応援できる投稿。自分の投稿と、一方通行のお知らせは入れない。 */
 function candidates(destination: PostDestination, viewerId: string) {
-  return visiblePosts(destination, viewerId).filter((post) => post.authorId !== viewerId && post.kind !== "notice");
+  return visiblePosts(destination, viewerId).filter(
+    (post) => post.authorId !== viewerId && post.kind !== "notice" && post.scope === "everyone",
+  );
 }
 
 /** その人のその日のカード。同じ日は同じ順で出て、日が変わると変わる。 */

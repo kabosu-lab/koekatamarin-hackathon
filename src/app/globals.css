@@ -877,3 +877,22 @@ body {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+
+.compose-card .preview-scope {
+  margin-top: 0.4rem !important;
+  color: #9c3412;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.talk .sent .undo {
+  display: block;
+  min-height: 2.25rem;
+  margin-top: 0.4rem;
+  padding: 0.25rem 0.75rem;
+  background: #fff;
+  border: 1px solid #9c3412;
+  color: #9c3412;
+  font-size: 0.9rem;
+  font-weight: 400;
+}

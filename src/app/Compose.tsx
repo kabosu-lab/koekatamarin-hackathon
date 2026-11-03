@@ -2,20 +2,28 @@
 
 import { useState } from "react";
 import type { Draft, Review } from "@/lib/claude/compose";
-import type { ChannelView } from "@/lib/destination/types";
+import type { ChannelView, PersonView, PostScope } from "@/lib/destination/types";
 
 export type ComposeStart = {
   draft: Draft;
   review: Review;
   channels: ChannelView[];
+  people: PersonView[];
   asked?: { id: string; name: string };
 };
 
 type Props = ComposeStart & {
   viewer: { name: string; label: string };
   onCancel(): void;
-  onSent(channel: ChannelView): void;
+  onSent(channel: ChannelView, postId: string): void;
 };
+
+const SCOPE_OPTIONS: { value: PostScope; label: string }[] = [
+  { value: "everyone", label: "チャネルのみんな" },
+  { value: "person", label: "特定の人だけ" },
+  { value: "managers", label: "管理職や担任だけ" },
+  { value: "self", label: "自分だけ" },
+];
 
 const MAX_LENGTH = 2000;
 
@@ -28,17 +36,28 @@ async function postJson(url: string, body: unknown) {
   return { ok: response.ok, status: response.status, data: (await response.json()) as Record<string, unknown> };
 }
 
-export function Compose({ draft, review: firstReview, channels, asked, viewer, onCancel, onSent }: Props) {
+export function Compose({ draft, review: firstReview, channels, people, asked, viewer, onCancel, onSent }: Props) {
   const [text, setText] = useState(draft.text);
   const [channelId, setChannelId] = useState(draft.channelId);
   const [review, setReview] = useState(firstReview);
   const [reviewedText, setReviewedText] = useState(draft.text);
+  const [scope, setScope] = useState<PostScope>("everyone");
+  const [scopePersonId, setScopePersonId] = useState("");
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
 
   const channel = channels.find((c) => c.id === channelId) ?? channels[0];
   const checked = text.trim() === reviewedText.trim();
   const blocked = checked && review.verdict === "block";
+  const missingPerson = scope === "person" && scopePersonId === "";
+  const scopeNote =
+    scope === "person"
+      ? `${people.find((p) => p.id === scopePersonId)?.name ?? "選んだ人"}さんとあなただけに見えます`
+      : scope === "managers"
+        ? "管理職や担任とあなただけに見えます"
+        : scope === "self"
+          ? "あなただけに見えます"
+          : null;
 
   async function check(target: string) {
     setBusy(true);
@@ -65,9 +84,11 @@ export function Compose({ draft, review: firstReview, channels, asked, viewer, o
         kind: draft.kind,
         researchedWithAi: draft.researchedWithAi,
         askedPersonId: asked?.id,
+        scope,
+        scopePersonId: scope === "person" ? scopePersonId : undefined,
       });
       if (ok) {
-        onSent(channel);
+        onSent(channel, data.postId as string);
         return;
       }
       if (status === 422 && data.review) {
@@ -75,7 +96,11 @@ export function Compose({ draft, review: firstReview, channels, asked, viewer, o
         setReviewedText(text);
         return;
       }
-      setNotice("まだ送っていません。もう一度押してください。");
+      setNotice(
+        status === 400 && typeof data.error === "string"
+          ? `まだ送っていません。${data.error}`
+          : "まだ送っていません。もう一度押してください。",
+      );
     } catch {
       setNotice("まだ送っていません。もう一度押してください。");
     } finally {
@@ -129,6 +154,32 @@ export function Compose({ draft, review: firstReview, channels, asked, viewer, o
         </select>
       </label>
 
+      {!asked && (
+        <label className="channel">
+          見える範囲
+          <select value={scope} onChange={(event) => setScope(event.target.value as PostScope)}>
+            {SCOPE_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      {scope === "person" && (
+        <label className="channel">
+          見せる相手
+          <select value={scopePersonId} onChange={(event) => setScopePersonId(event.target.value)}>
+            <option value="">選んでください</option>
+            {people.map((person) => (
+              <option key={person.id} value={person.id}>
+                {person.name}（{person.label}）
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+
       <div className="preview">
         <p className="preview-title">Teams にはこう見えます（{channel.name}）</p>
         <p className="preview-author">
@@ -137,6 +188,7 @@ export function Compose({ draft, review: firstReview, channels, asked, viewer, o
         {asked && <p className="preview-asked">{asked.name}さんへ</p>}
         <p className="preview-body">{text}</p>
         {draft.researchedWithAi && <p className="preview-mark">AI と調べました</p>}
+        {scopeNote && <p className="preview-scope">{scopeNote}</p>}
       </div>
 
       {notice && (
@@ -149,7 +201,7 @@ export function Compose({ draft, review: firstReview, channels, asked, viewer, o
         <button type="button" className="secondary" disabled={busy} onClick={onCancel}>
           取り消す
         </button>
-        <button type="button" disabled={busy || !checked || blocked} onClick={() => void send()}>
+        <button type="button" disabled={busy || !checked || blocked || missingPerson} onClick={() => void send()}>
           本人として送る
         </button>
       </div>

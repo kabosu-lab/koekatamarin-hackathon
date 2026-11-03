@@ -1,13 +1,20 @@
 import { ComposeError, draftPost, type Draft, type Review, reviewPost } from "./claude/compose";
 import { isMessage, MAX_HISTORY } from "./claude/converse-request";
 import type { ClaudeClient, ChatMessage } from "./claude/types";
-import { DestinationError, MAX_BODY_LENGTH, type ChannelView, type PostDestination } from "./destination/types";
+import {
+  DestinationError,
+  MAX_BODY_LENGTH,
+  POST_SCOPES,
+  type ChannelView,
+  type PersonView,
+  type PostDestination,
+} from "./destination/types";
 import type { PostKind } from "./seed-data";
 
 type Failure = { status: 400 | 422 | 503; body: { error: string; review?: Review } };
 
 export type DraftOutcome =
-  | { status: 200; body: { draft: Draft; review: Review | null; channels: ChannelView[] } }
+  | { status: 200; body: { draft: Draft; review: Review | null; channels: ChannelView[]; people: PersonView[] } }
   | Failure;
 export type ReviewOutcome = { status: 200; body: { review: Review } } | Failure;
 export type PublishOutcome = { status: 200; body: { postId: string; channelId: string } } | Failure;
@@ -60,11 +67,20 @@ export async function handleDraft(
     }
     const draft = await draftPost(claude, history as ChatMessage[], channels, askedName);
     const review = draft.ready ? await reviewPost(claude, draft.text) : null;
-    return { status: 200, body: { draft, review, channels } };
+    return { status: 200, body: { draft, review, channels, people: destination.listOtherPeople(viewerId) } };
   } catch (error) {
     logFailure(error);
     return UNAVAILABLE;
   }
+}
+
+/** 送った直後の取り消し。 */
+export function handleUndo(destination: PostDestination, viewerId: string, input: unknown, now: Date = new Date()) {
+  const { postId } = fields(input);
+  if (typeof postId !== "string" || !destination.undoPost(viewerId, postId, now)) {
+    return { status: 409, body: { error: "もう取り消せません" } };
+  }
+  return { status: 200, body: { ok: true } };
 }
 
 export async function handleReview(claude: ClaudeClient, input: unknown): Promise<ReviewOutcome> {
@@ -86,7 +102,12 @@ export async function handlePublish(
   viewerId: string,
   input: unknown,
 ): Promise<PublishOutcome> {
-  const { text, channelId, kind, researchedWithAi, askedPersonId } = fields(input);
+  const { text, channelId, kind, researchedWithAi, askedPersonId, scope, scopePersonId } = fields(input);
+  const knownScope = POST_SCOPES.find((s) => s === scope);
+  if (scope !== undefined && !knownScope) return { status: 400, body: { error: "見える範囲が正しくありません" } };
+  if (scopePersonId !== undefined && typeof scopePersonId !== "string") {
+    return { status: 400, body: { error: "見せる相手が正しくありません" } };
+  }
   if (askedPersonId !== undefined && typeof askedPersonId !== "string") {
     return { status: 400, body: { error: "聞く相手が正しくありません" } };
   }
@@ -110,6 +131,8 @@ export async function handlePublish(
       kind: KINDS.find((k) => k === kind),
       researchedWithAi: researchedWithAi === true,
       askedPersonId,
+      scope: knownScope,
+      scopePersonId,
     });
     return { status: 200, body: { postId, channelId } };
   } catch (error) {

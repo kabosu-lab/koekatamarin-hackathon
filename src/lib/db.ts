@@ -123,6 +123,9 @@ const MIGRATIONS: readonly string[] = [
      text TEXT NOT NULL,
      created_at TEXT NOT NULL
    ) STRICT;`,
+  `ALTER TABLE posts ADD COLUMN scope TEXT NOT NULL DEFAULT 'everyone'
+     CHECK (scope IN ('everyone', 'person', 'managers', 'self'));
+   ALTER TABLE posts ADD COLUMN scope_person_id TEXT REFERENCES people (id);`,
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;

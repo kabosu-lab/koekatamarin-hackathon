@@ -40,6 +40,8 @@ export function buildDirectory(db: DatabaseSync, destination: PostDestination, v
   const add = (personId: string, body: string) => words.set(personId, [...(words.get(personId) ?? []), body]);
   for (const channel of destination.listChannels(viewerId)) {
     for (const post of destination.listPosts(viewerId, channel.id)) {
+      // 紹介に使うのは、校内に公開された投稿だけ。範囲を絞った投稿は材料にしない
+      if (post.scope !== "everyone") continue;
       add(post.authorId, post.body);
       for (const reply of post.replies) add(reply.authorId, reply.body);
     }

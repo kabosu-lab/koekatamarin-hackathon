@@ -29,7 +29,7 @@ const schema = {
 /** 本人の言葉だけを集める。Claude との話は保存していないので、入りようがない。 */
 function publicWords(destination: PostDestination, personId: string): string[] {
   const words = destination.listChannels(personId).flatMap((channel) =>
-    destination.listPosts(personId, channel.id).flatMap((post) => [
+    destination.listPosts(personId, channel.id).filter((post) => post.scope === "everyone").flatMap((post) => [
       ...(post.authorId === personId ? [post.body] : []),
       ...post.replies.filter((r) => r.authorId === personId).map((r) => r.body),
     ]),

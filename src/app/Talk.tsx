@@ -4,7 +4,7 @@ import Link from "next/link";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import type { Draft, Review } from "@/lib/claude/compose";
 import type { ChatMessage } from "@/lib/claude/types";
-import type { ChannelView } from "@/lib/destination/types";
+import type { ChannelView, PersonView } from "@/lib/destination/types";
 import { Compose, type ComposeStart } from "./Compose";
 import { ConnectCard, type ConnectSuggestion } from "./ConnectCard";
 import { SafetyCard, type SafetyNotice } from "./SafetyCard";
@@ -30,7 +30,7 @@ export function Talk({ viewer }: { viewer: { name: string; label: string } }) {
   const [safety, setSafety] = useState<SafetyNotice | null>(null);
   const [suggestion, setSuggestion] = useState<ConnectSuggestion | null>(null);
   const connectDone = useRef(false);
-  const [sentTo, setSentTo] = useState<ChannelView | null>(null);
+  const [sentTo, setSentTo] = useState<{ channel: ChannelView; postId: string } | null>(null);
   const stopRef = useRef<(() => void) | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
 
@@ -127,21 +127,38 @@ export function Talk({ viewer }: { viewer: { name: string; label: string } }) {
         body: JSON.stringify({ history: messages.slice(-MAX_HISTORY), askedPersonId: asked?.id }),
       });
       if (!response.ok) throw new Error(`status ${response.status}`);
-      const { draft, review, channels } = (await response.json()) as {
+      const { draft, review, channels, people } = (await response.json()) as {
         draft: Draft;
         review: Review | null;
         channels: ChannelView[];
+        people: PersonView[];
       };
       if (!draft.ready || !review) {
         setNotice("まだ投稿にできるお話がなさそう。もう少し聞かせてください。");
         return;
       }
       setSuggestion(null);
-      setComposing({ draft, review, channels, asked });
+      setComposing({ draft, review, channels, people, asked });
     } catch {
       setNotice("下書きを作れませんでした。もう一度押してください。");
     } finally {
       setPreparing(false);
+    }
+  }
+
+  async function undoSent() {
+    if (!sentTo) return;
+    setNotice("");
+    const response = await fetch("/api/publish/undo", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ postId: sentTo.postId }),
+    }).catch(() => null);
+    if (response?.ok) {
+      setSentTo(null);
+      setNotice("取り消しました。言葉はもう一度作り直せます。");
+    } else {
+      setNotice("もう取り消せません（返信が付いたか、時間が過ぎました）。");
     }
   }
 
@@ -178,9 +195,9 @@ export function Talk({ viewer }: { viewer: { name: string; label: string } }) {
           {...composing}
           viewer={viewer}
           onCancel={() => setComposing(null)}
-          onSent={(channel) => {
+          onSent={(channel, postId) => {
             setComposing(null);
-            setSentTo(channel);
+            setSentTo({ channel, postId });
           }}
         />
       </div>
@@ -236,7 +253,10 @@ export function Talk({ viewer }: { viewer: { name: string; label: string } }) {
 
       {sentTo && (
         <p className="sent" role="status">
-          {sentTo.name}に届きました。<Link href={`/teams?channel=${sentTo.id}`}>校内チャネルで見る</Link>
+          {sentTo.channel.name}に届きました。<Link href={`/teams?channel=${sentTo.channel.id}`}>校内チャネルで見る</Link>
+          <button type="button" className="undo" onClick={() => void undoSent()}>
+            送ったものを取り消す
+          </button>
         </p>
       )}
 

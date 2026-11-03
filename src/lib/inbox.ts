@@ -98,6 +98,9 @@ export function listPassCandidates(
 ): PassCandidate[] {
   const post = currentAsked(db, postId, viewerId);
   if (!post) return [];
+  // 範囲を絞ったお願いを回すと、本人が選んでいない人に見えてしまう
+  const { scope } = db.prepare("SELECT scope FROM posts WHERE id = ?").get(postId) as { scope: string };
+  if (scope !== "everyone") return [];
   const passed = new Set(
     (db.prepare("SELECT from_person_id FROM post_passes WHERE post_id = ?").all(postId) as { from_person_id: string }[]).map(
       (x) => x.from_person_id,
