@@ -142,6 +142,11 @@ test("先生の一日：話しかける、返す、パス、サンクス、日�
   await expect(page.getByRole("article", { name: "青木 ひよりさんから" })).toContainText("過去問が半分解けた");
   await shot(page, "09-生徒の日記");
 
+  // やり取りが校内の知恵になり、次に困った人の役に立つ
+  await page.goto("/chie");
+  await expect(page.getByRole("link", { name: "小テストを10分で作る" })).toBeVisible();
+  await shot(page, "09-2-校内の知恵");
+
   // 締め：校内の桜が咲く
   await page.goto("/minna?season=haru");
   await expect(page.getByRole("region", { name: "校内の桜" })).toContainText("今年の桜が");

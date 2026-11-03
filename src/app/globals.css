@@ -1219,3 +1219,52 @@ button:active:not(:disabled),
   margin: 0.25rem 0 0;
   overflow-wrap: anywhere;
 }
+
+/* 校内の知恵 */
+.chie-list,
+.chie-results {
+  display: grid;
+  gap: 0.9rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.chie-list p,
+.chie-results p {
+  margin: 0.25rem 0 0;
+}
+
+.chie-body {
+  margin: 0.25rem 0 0;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.chie-form {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.chie-form input,
+.chie-form textarea {
+  width: 100%;
+  box-sizing: border-box;
+  font: inherit;
+}
+
+.chie-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.9rem;
+  align-items: center;
+}
+
+.talk .chie-card {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  background: var(--surface);
+}

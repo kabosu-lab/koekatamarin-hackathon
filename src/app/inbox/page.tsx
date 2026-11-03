@@ -5,6 +5,8 @@ import { getDatabase } from "@/lib/db";
 import { createDummyTeams } from "@/lib/destination/dummy-teams";
 import { countContributions } from "@/lib/avatar";
 import { listInbox, listPassCandidates } from "@/lib/inbox";
+import { listKnowledgeTasks } from "@/lib/knowledge";
+import { KnowledgeTasks } from "../chie/KnowledgeTasks";
 import { PersonSwitcher } from "../PersonSwitcher";
 import { InboxCard } from "./InboxCard";
 
@@ -28,6 +30,8 @@ export default async function InboxPage() {
       <p className="inbox-counts">
         {viewer.name}さんのゴール {goals}・アシスト {assists}
       </p>
+
+      <KnowledgeTasks tasks={listKnowledgeTasks(db, viewer.id)} />
 
       <div className="inbox-list">
         {items.length === 0 ? (

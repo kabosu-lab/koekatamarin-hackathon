@@ -5,6 +5,8 @@ import { createDummyTeams } from "@/lib/destination/dummy-teams";
 import { MAX_BODY_LENGTH, type PostView } from "@/lib/destination/types";
 import { getAvatar } from "@/lib/avatar";
 import { getViewer } from "@/lib/current-person";
+import { canSaveKnowledge } from "@/lib/knowledge";
+import { forgottenSources } from "@/lib/memory";
 import { schoolName } from "@/lib/seed-data";
 import { Avatar } from "../Avatar";
 import { PersonSwitcher } from "../PersonSwitcher";
@@ -42,14 +44,16 @@ function Post({
   viewerId,
   images,
   canShare,
+  canSave,
 }: {
   post: PostView;
   viewerId: string;
   images: Record<string, string>;
   canShare: boolean;
+  canSave: boolean;
 }) {
   return (
-    <article className="post" aria-label={`${post.authorName}さんの投稿`}>
+    <article className="post" id={`post-${post.id}`} aria-label={`${post.authorName}さんの投稿`}>
       <Author name={post.authorName} label={post.authorLabel} time={post.createdAt} image={images[post.authorId]} />
       {post.askedPersonName && (
         <p className="asked">
@@ -93,6 +97,12 @@ function Post({
         </div>
       ))}
 
+      {canSave && (
+        <p className="save-knowledge">
+          <Link href={`/chie/new?post=${post.id}`}>知恵に残す</Link>
+        </p>
+      )}
+
       <form action={createReply} className="compose">
         <input type="hidden" name="postId" value={post.id} />
         <input name="body" aria-label="返信" placeholder="返信する" required maxLength={MAX_BODY_LENGTH} />
@@ -117,6 +127,7 @@ export default async function TeamsPage({
   // 人物を切り替えて見られなくなったチャネルは、最初のチャネルへ戻す
   const channel = channels.find((c) => c.id === requested) ?? channels[0];
   const posts = teams.listPosts(viewer.id, channel.id);
+  const forgotten = forgottenSources(db);
 
   return (
     <div className="teams">
@@ -157,6 +168,7 @@ export default async function TeamsPage({
                 viewerId={viewer.id}
                 images={images}
                 canShare={viewer.role !== "student" && channel.audience === "everyone" && post.authorId !== viewer.id}
+                canSave={channel.audience === "everyone" && canSaveKnowledge(post, viewer.id, forgotten)}
               />)
           )}
 

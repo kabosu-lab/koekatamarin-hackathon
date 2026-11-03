@@ -5,6 +5,8 @@ import { type FormEvent, Fragment, useEffect, useRef, useState } from "react";
 import type { Draft, Review } from "@/lib/claude/compose";
 import type { ChatMessage } from "@/lib/claude/types";
 import type { ChannelView, PersonView } from "@/lib/destination/types";
+import type { KnowledgeResult } from "@/lib/knowledge";
+import { KnowledgeResults } from "./chie/KnowledgeResults";
 import { Compose, type ComposeStart } from "./Compose";
 import { ConnectCard, type ConnectSuggestion } from "./ConnectCard";
 import { SafetyCard, type SafetyNotice } from "./SafetyCard";
@@ -20,9 +22,11 @@ const CONNECT_MIN_MESSAGES = 4;
 export function Talk({
   viewer,
   question,
+  initialAsk = null,
 }: {
   viewer: { name: string; label: string };
   question: string | null;
+  initialAsk?: { id: string; name: string } | null;
 }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState("");
@@ -38,6 +42,9 @@ export function Talk({
   const [suggestion, setSuggestion] = useState<ConnectSuggestion | null>(null);
   const [burst, setBurst] = useState<string | null>(null);
   const [remembered, setRemembered] = useState<number[]>([]);
+  const [askTarget, setAskTarget] = useState(initialAsk);
+  const [finding, setFinding] = useState(false);
+  const [found, setFound] = useState<KnowledgeResult[] | null>(null);
   const connectDone = useRef(false);
   const [sentTo, setSentTo] = useState<{ channel: ChannelView; postId: string; isPublic: boolean } | null>(null);
   const stopRef = useRef<(() => void) | null>(null);
@@ -152,6 +159,32 @@ export function Talk({
       setNotice("下書きを作れませんでした。もう一度押してください。");
     } finally {
       setPreparing(false);
+    }
+  }
+
+  // 押したときだけ探す。話した言葉はこの呼び出しの中だけで使い、保存しない
+  async function findKnowledge() {
+    setFinding(true);
+    setNotice("");
+    try {
+      const query = messages
+        .filter((message) => message.role === "user")
+        .slice(-3)
+        .map((message) => message.content)
+        .join("\n")
+        .slice(0, MAX_TEXT_LENGTH);
+      const response = await fetch("/api/chie/find", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query }),
+      });
+      if (!response.ok) throw new Error(`status ${response.status}`);
+      const body = (await response.json()) as { results: KnowledgeResult[] };
+      setFound(body.results);
+    } catch {
+      setNotice("探せませんでした。もう一度押してください。");
+    } finally {
+      setFinding(false);
     }
   }
 
@@ -300,9 +333,42 @@ export function Talk({
         </p>
       )}
 
+      {askTarget && (
+        <p className="sent" role="status">
+          {askTarget.name}さんに聞いてみましょう。話したら「言葉にして送る」で、{askTarget.name}さんへのお願いになります。
+          <button type="button" className="undo" onClick={() => setAskTarget(null)}>
+            やめる
+          </button>
+        </p>
+      )}
+
+      {found && (
+        <section className="chie-card" aria-label="校内の知恵">
+          <h2>校内の知恵</h2>
+          {found.length === 0 ? (
+            <p>今は近いものが見つかりませんでした。</p>
+          ) : (
+            <KnowledgeResults
+              results={found}
+              viewerName={viewer.name}
+              onAsk={(person) => {
+                setAskTarget(person);
+                setFound(null);
+              }}
+            />
+          )}
+        </section>
+      )}
+
       {canCompose && !listening && (
-        <button type="button" className="compose-start" disabled={sending || preparing} onClick={() => void startCompose()}>
+        <button type="button" className="compose-start" disabled={sending || preparing} onClick={() => void startCompose(askTarget ?? undefined)}>
           {preparing ? "言葉にしています…" : "言葉にして送る"}
+        </button>
+      )}
+
+      {canCompose && !listening && !safety && (
+        <button type="button" className="compose-start" disabled={sending || finding} onClick={() => void findKnowledge()}>
+          {finding ? "探しています…" : "校内の知恵を探す"}
         </button>
       )}
 
