@@ -1,4 +1,6 @@
 import { expect, test } from "@playwright/test";
+import { SCHEMA_VERSION } from "../src/lib/db";
+import { people } from "../src/lib/seed-data";
 
 test("スマホ幅で最初の画面が横にはみ出さず表示される", async ({ page }) => {
   await page.goto("/");
@@ -13,9 +15,13 @@ test("スマホ幅で最初の画面が横にはみ出さず表示される", as
   expect(overflow).toBe(0);
 });
 
-test("サーバーからデータベースまでつながっている", async ({ request }) => {
+test("サーバーからダミーのデータまでつながっている", async ({ request }) => {
   const response = await request.get("/api/health");
 
   expect(response.ok()).toBe(true);
-  expect(await response.json()).toEqual({ status: "ok", schemaVersion: 1 });
+  expect(await response.json()).toEqual({
+    status: "ok",
+    schemaVersion: SCHEMA_VERSION,
+    peopleCount: people.length,
+  });
 });

@@ -1,12 +1,48 @@
 import { mkdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
+import { seedDatabase } from "./seed";
 
 /** 順番に適用する変更。公開後は書き換えず、末尾に足す。 */
 const MIGRATIONS: readonly string[] = [
   `CREATE TABLE app_meta (
      key TEXT PRIMARY KEY,
      value TEXT NOT NULL
+   ) STRICT;`,
+  `CREATE TABLE people (
+     id TEXT PRIMARY KEY,
+     name TEXT NOT NULL,
+     role TEXT NOT NULL CHECK (role IN ('teacher', 'admin', 'student')),
+     label TEXT NOT NULL,
+     public_profile TEXT NOT NULL
+   ) STRICT;
+   CREATE TABLE channels (
+     id TEXT PRIMARY KEY,
+     name TEXT NOT NULL,
+     description TEXT NOT NULL,
+     audience TEXT NOT NULL CHECK (audience IN ('everyone', 'staff'))
+   ) STRICT;
+   CREATE TABLE posts (
+     id TEXT PRIMARY KEY,
+     channel_id TEXT NOT NULL REFERENCES channels (id),
+     author_id TEXT NOT NULL REFERENCES people (id),
+     kind TEXT NOT NULL CHECK (kind IN ('notice', 'trouble', 'worry', 'effort', 'report')),
+     body TEXT NOT NULL,
+     created_at TEXT NOT NULL
+   ) STRICT;
+   CREATE INDEX posts_by_channel ON posts (channel_id, created_at);
+   CREATE TABLE replies (
+     id TEXT PRIMARY KEY,
+     post_id TEXT NOT NULL REFERENCES posts (id) ON DELETE CASCADE,
+     author_id TEXT NOT NULL REFERENCES people (id),
+     body TEXT NOT NULL,
+     created_at TEXT NOT NULL
+   ) STRICT;
+   CREATE INDEX replies_by_post ON replies (post_id, created_at);
+   CREATE TABLE post_likes (
+     post_id TEXT NOT NULL REFERENCES posts (id) ON DELETE CASCADE,
+     person_id TEXT NOT NULL REFERENCES people (id),
+     PRIMARY KEY (post_id, person_id)
    ) STRICT;`,
 ];
 
@@ -58,6 +94,10 @@ export function readSchemaVersion(db: DatabaseSync): number {
 const holder = globalThis as typeof globalThis & { koekataDb?: DatabaseSync };
 
 export function getDatabase(): DatabaseSync {
-  holder.koekataDb ??= openDatabase(process.env.KOEKATA_DB_PATH ?? "data/koekata.db");
+  if (!holder.koekataDb) {
+    const db = openDatabase(process.env.KOEKATA_DB_PATH ?? "data/koekata.db");
+    seedDatabase(db);
+    holder.koekataDb = db;
+  }
   return holder.koekataDb;
 }
