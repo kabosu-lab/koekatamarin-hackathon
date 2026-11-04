@@ -10,9 +10,9 @@ const { chromium } = require("@playwright/test");
 const BASE = process.env.APP_URL ?? "http://127.0.0.1:3177";
 const OUT = new URL("../public/app/", import.meta.url).pathname;
 mkdirSync(OUT, { recursive: true });
-const SPOKEN = "今日、生徒の発表がよかったんです。誰にも言えてないんですけど。";
+const SPOKEN = "作文の書き出し、声に出して読ませてみたら、みんな書けました！";
 const HARSH = "隣のクラスの先生は使えない";
-const REPLY = "それ、聞かせてください。明日の朝、職員室で。";
+const REPLY = "それ、次の授業でやってみます！";
 
 /* 話の時刻を、夜の話に合わせる（撮影用の使い捨ての DB だけ。recapture.sh が場所を渡す） */
 function setStoryTime(table, body, hour, minute) {

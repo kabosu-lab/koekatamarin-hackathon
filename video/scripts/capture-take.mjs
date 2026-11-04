@@ -11,7 +11,7 @@ const { chromium } = require("@playwright/test");
 
 const BASE = process.env.APP_URL ?? "http://127.0.0.1:3177";
 const PUB = new URL("../public/app/", import.meta.url).pathname;
-const SPOKEN = "今日、生徒の発表がよかったんです。誰にも言えてないんですけど。";
+const SPOKEN = "作文の書き出し、声に出して読ませてみたら、みんな書けました！";
 const FPS = 30, END = 36;
 mkdirSync(PUB, { recursive: true });
 const dir = mkdtempSync(join(tmpdir(), "koekata-take-"));
