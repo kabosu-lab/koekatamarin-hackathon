@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { Icon, type IconName } from "./Icon";
 
 const ITEMS: { href: string; label: string; icon: IconName; also: string[] }[] = [
-  { href: "/", label: "話す", icon: "talk", also: ["/inbox", "/soudan", "/walk"] },
+  { href: "/", label: "話す", icon: "talk", also: ["/inbox", "/soudan", "/walk", "/yousu"] },
   { href: "/minna", label: "みんな", icon: "people", also: ["/today", "/teams", "/study", "/people", "/chie"] },
   { href: "/me", label: "じぶん", icon: "me", also: ["/daily", "/lookback"] },
 ];

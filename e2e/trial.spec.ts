@@ -227,3 +227,19 @@ test("改善点は合言葉がないと送れず、同じ端末の連打を止�
   expect(statuses[10]).toBe(429);
   expect((await page.request.post("/api/feedback", { data: { kind: "違う" } })).status()).toBe(429);
 });
+
+test.describe("見た目を選んでいない生徒", () => {
+  test.use({ storageState: { cookies: [], origins: [] } });
+
+  test("レトロでも、試用の表示と改善点の入口がある", async ({ page }) => {
+    await page.goto("/access");
+    await page.getByLabel("合言葉").fill(CODE);
+    await page.getByRole("button", { name: "入る" }).click();
+    await expect(page.locator(".retro-home")).toBeVisible();
+    await expect(page.getByText(NOTICE)).toBeVisible();
+    await expect(page.getByRole("button", { name: "改善点を送る" })).toBeVisible();
+    await page.getByRole("link", { name: "はなす" }).click();
+    await expect(page.locator(".promise")).toContainText("相談室にも先生にも届きません");
+    await expect(page.getByRole("button", { name: "改善点を送る" })).toBeVisible();
+  });
+});

@@ -1,10 +1,11 @@
-/** 見た目の設定。色と書体、文字の大きさ、音だけで、配置は変えない。 */
+/** 見た目の設定。データはどの見た目でも同じで、見せ方だけが変わる。 */
 export const APPEARANCE_OPTIONS = [
   {
     name: "theme",
     label: "きせかえ",
     options: [
       { value: "modern", label: "モダン" },
+      { value: "retro", label: "レトロ" },
       { value: "pop", label: "ポップ" },
       { value: "game", label: "ゲーム" },
       { value: "clear", label: "くっきり" },
@@ -55,10 +56,12 @@ export function isAppearanceValue(name: string, value: string): name is Appearan
   return group !== undefined && group.options.some((option) => option.value === value);
 }
 
-export function readAppearance(read: (cookie: string) => string | undefined): Appearance {
+/** 本人がまだ選んでいなければ、生徒はレトロ、先生と大人はモダンから始まる。 */
+export function readAppearance(read: (cookie: string) => string | undefined, role?: string): Appearance {
+  const defaults: Appearance = role === "student" ? { ...DEFAULTS, theme: "retro" } : DEFAULTS;
   const get = (name: AppearanceName) => {
     const value = read(APPEARANCE_COOKIES[name]);
-    return value !== undefined && isAppearanceValue(name, value) ? value : DEFAULTS[name];
+    return value !== undefined && isAppearanceValue(name, value) ? value : defaults[name];
   };
   return { theme: get("theme"), size: get("size"), sound: get("sound"), avatar: get("avatar") };
 }

@@ -10,9 +10,11 @@ import { BottomNav } from "./BottomNav";
 import { FeedbackSheet } from "./FeedbackSheet";
 import { PersonSwitcher } from "./PersonSwitcher";
 import { TrialProvider } from "./TrialContext";
+import { dotFont } from "./fonts";
 import "./globals.css";
 import "./modern.css";
 import "./usability.css";
+import "./retro.css";
 
 export const metadata: Metadata = {
   title: "こえかた",
@@ -27,12 +29,12 @@ export const viewport: Viewport = {
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
   const store = await cookies();
-  const appearance = readAppearance((name) => store.get(name)?.value);
   const { viewer, people } = await getViewer();
+  const appearance = readAppearance((name) => store.get(name)?.value, viewer.role);
   const { theme, size, sound } = appearance;
   const trial = isTrialMode();
   return (
-    <html lang="ja" data-theme={theme} data-size={size} data-sound={sound} data-avatar={showsRewards(appearance) ? "show" : "hide"}>
+    <html lang="ja" className={dotFont.variable} data-theme={theme} data-size={size} data-sound={sound} data-avatar={showsRewards(appearance) ? "show" : "hide"}>
       <body>
         {trial && (
           <div className="trial-banner">

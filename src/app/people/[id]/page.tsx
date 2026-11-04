@@ -1,4 +1,5 @@
 import { wornTitle } from "@/lib/titles";
+import { getViewer } from "@/lib/current-person";
 import { PersonTitle } from "../../PersonTitle";
 import { cookies } from "next/headers";
 import { readAppearance } from "@/lib/appearance";
@@ -25,7 +26,7 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
   const avatar = getAvatar(db, id);
   const counts = countContributions(db, id);
   const store = await cookies();
-  const rewards = showsRewards(readAppearance((name) => store.get(name)?.value));
+  const rewards = showsRewards(readAppearance((name) => store.get(name)?.value, (await getViewer()).viewer.role));
   const ribbons = rewards ? listPublicRibbons(db, id) : [];
 
   return (

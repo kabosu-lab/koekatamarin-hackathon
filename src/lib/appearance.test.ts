@@ -24,7 +24,7 @@ function contrast(a: string, b: string): number {
   return (hi + 0.05) / (lo + 0.05);
 }
 
-const THEMES = [":root", 'html[data-theme="modern"]', 'html[data-theme="game"]', 'html[data-theme="clear"]'];
+const THEMES = [":root", 'html[data-theme="modern"]', 'html[data-theme="retro"]', 'html[data-theme="game"]', 'html[data-theme="clear"]'];
 
 describe("きせかえ", () => {
   it.each(THEMES)("%s は文字が読みやすい（AA の 4.5 以上）", (selector) => {
@@ -86,5 +86,19 @@ describe("報酬を出すか", () => {
     expect(showsRewards({ theme: "pop", avatar: "show" })).toBe(true);
     expect(showsRewards({ theme: "pop", avatar: "hide" })).toBe(false);
     expect(showsRewards({ theme: "game", avatar: "show" })).toBe(true);
+  });
+});
+
+describe("種類による最初の見た目", () => {
+  it("生徒はレトロ、先生と大人はモダンから始まる", () => {
+    expect(readAppearance(() => undefined, "student").theme).toBe("retro");
+    expect(readAppearance(() => undefined, "teacher").theme).toBe("modern");
+    expect(readAppearance(() => undefined, "admin").theme).toBe("modern");
+  });
+
+  it("本人が選んだ見た目を優先する", () => {
+    const chosen = (value: string) => (cookie: string) => (cookie === "koekata_theme" ? value : undefined);
+    expect(readAppearance(chosen("pop"), "student").theme).toBe("pop");
+    expect(readAppearance(chosen("retro"), "teacher").theme).toBe("retro");
   });
 });

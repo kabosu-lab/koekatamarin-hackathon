@@ -18,13 +18,18 @@ import { RibbonMoment } from "./RibbonMoment";
 import { listGiftEggs, syncGiftEggs } from "@/lib/gift-eggs";
 import { listNewRibbons, syncRibbons } from "@/lib/ribbons";
 import { showsRewards } from "@/lib/rewards-view";
+import { pixelStageFor } from "@/lib/pixel-companion";
 import { setAppearance } from "./person-actions";
+import { PixelCompanion } from "./PixelCompanion";
+import { RetroHome } from "./RetroHome";
 import { Talk } from "./Talk";
 
 export const dynamic = "force-dynamic";
 
-export default async function HomePage({ searchParams }: { searchParams: Promise<{ ask?: string | string[]; goal?: string | string[] }> }) {
-  const { ask, goal } = await searchParams;
+const SEND_PROMPT = "届けたいことを話してね。下書きにするよ。送るのは、確かめてから。";
+
+export default async function HomePage({ searchParams }: { searchParams: Promise<{ ask?: string | string[]; goal?: string | string[]; talk?: string | string[] }> }) {
+  const { ask, goal, talk } = await searchParams;
   const { viewer, people } = await getViewer();
   const db = getDatabase();
   const waiting = countForNotice(db, viewer.id, new Date());
@@ -39,14 +44,53 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
   const doneGoal = typeof goal === "string" ? getGoal(db, viewer.id, goal) : null;
   const store = await cookies();
   const promiseSeen = store.has(promiseCookieName(viewer.id));
-  const appearance = readAppearance((name) => store.get(name)?.value);
+  const appearance = readAppearance((name) => store.get(name)?.value, viewer.role);
   const soundOn = appearance.sound === "on";
   const rewards = showsRewards(appearance);
   const isModern = appearance.theme === "modern";
+  const isRetro = appearance.theme === "retro";
   syncRibbons(db, viewer.id, new Date());
   syncGiftEggs(db, viewer.id, new Date());
   const eggs = rewards ? listGiftEggs(db, viewer.id).length : 0;
   const hasAlerts = !isTrialMode() && viewer.role !== "student" && (viewer.id === counselorId || listAlertsFor(db, viewer.id).length > 0);
+  const avatar = getAvatar(db, viewer.id);
+  const quickLinks = (
+    <nav className="quick-links" aria-label="届いているもの">
+      {eggs > 0 && (
+        <Link href="/me">
+          <Icon name="gift" />
+          贈り物の卵が届いています
+        </Link>
+      )}
+      {(waiting > 0 || knowledgeTasks > 0) && (
+        <Link href="/inbox">
+          <Icon name="inbox" />
+          受信箱
+          {waiting > 0 && `（お願いが ${waiting} 件）`}
+          {knowledgeTasks > 0 && `（知恵の確認が ${knowledgeTasks} 件）`}
+        </Link>
+      )}
+      {hasAlerts && (
+        <Link href="/soudan">
+          <Icon name="shield" />
+          相談室への知らせを見る
+        </Link>
+      )}
+    </nav>
+  );
+  const question = goalQuestion(db, viewer.id, new Date()) ?? dailyQuestion(new Date());
+  const pixelStage = pixelStageFor(avatar.family, avatar.stage);
+
+  // レトロの最初の画面。名指しの相手や頑張りの報告から来たときは、そのまま話す画面へ進む
+  if (isRetro && ask === undefined && goal === undefined && talk === undefined) {
+    return (
+      <>
+        {rewards && <RibbonMoment key={`ribbon-${viewer.id}`} ribbons={listNewRibbons(db, viewer.id)} />}
+        <RetroHome message={question} showCompanion={rewards} stage={pixelStage} branch={avatar.family} name={viewer.name} quickLinks={quickLinks} />
+      </>
+    );
+  }
+
   return (
     <main className="home stage-home">
       {rewards && <RibbonMoment key={`ribbon-${viewer.id}`} ribbons={listNewRibbons(db, viewer.id)} />}
@@ -78,35 +122,15 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
         </details>
       </header>
       {/* Claude との話は本人だけのもの。人物を切り替えたら会話を持ち越さない */}
-      <nav className="quick-links" aria-label="届いているもの">
-        {eggs > 0 && (
-          <Link href="/me">
-            <Icon name="gift" />
-            贈り物の卵が届いています
-          </Link>
-        )}
-        {(waiting > 0 || knowledgeTasks > 0) && (
-          <Link href="/inbox">
-            <Icon name="inbox" />
-            受信箱
-            {waiting > 0 && `（お願いが ${waiting} 件）`}
-            {knowledgeTasks > 0 && `（知恵の確認が ${knowledgeTasks} 件）`}
-          </Link>
-        )}
-        {hasAlerts && (
-          <Link href="/soudan">
-            <Icon name="shield" />
-            相談室への知らせを見る
-          </Link>
-        )}
-      </nav>
+      {quickLinks}
+      {isRetro && rewards && <PixelCompanion stage={pixelStage} branch={avatar.family} alt={`${viewer.name}さんの相棒`} size={120} />}
       <Talk
         key={viewer.id}
         viewer={{ name: viewer.name, label: viewer.label }}
         viewerId={viewer.id}
         promiseSeen={promiseSeen}
-        avatarImage={rewards ? getAvatar(db, viewer.id).image : undefined}
-        question={goalQuestion(db, viewer.id, new Date()) ?? dailyQuestion(new Date())}
+        avatarImage={rewards && !isRetro ? avatar.image : undefined}
+        question={talk === "send" ? SEND_PROMPT : question}
         initialGoal={doneGoal?.status === "done" ? { id: doneGoal.id, text: doneGoal.text } : null}
         initialAsk={askPerson ? { id: askPerson.id, name: askPerson.name } : null}
       />

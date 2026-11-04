@@ -23,13 +23,13 @@ const SEASON_LABEL: [Season, string][] = [
 ];
 
 export default async function MinnaPage({ searchParams }: { searchParams: Promise<{ season?: string | string[] }> }) {
-  const { people } = await getViewer();
+  const { viewer, people } = await getViewer();
   const { season: requested } = await searchParams;
   const db = getDatabase();
   const now = new Date();
   const sakura = getSakura(db, now, parseSeason(requested) ?? undefined);
   const store = await cookies();
-  const rewards = showsRewards(readAppearance((name) => store.get(name)?.value));
+  const rewards = showsRewards(readAppearance((name) => store.get(name)?.value, viewer.role));
   const events = rewards ? activeEvents(now) : [];
   const inEvent = events.length > 0;
 

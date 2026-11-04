@@ -38,7 +38,7 @@ export const dynamic = "force-dynamic";
 export default async function MePage() {
   const { viewer, people } = await getViewer();
   const store = await cookies();
-  const appearance = readAppearance((name) => store.get(name)?.value);
+  const appearance = readAppearance((name) => store.get(name)?.value, viewer.role);
   const db = getDatabase();
   // 隠している人にも裏で集まる
   syncRibbons(db, viewer.id, new Date());

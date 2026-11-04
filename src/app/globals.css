@@ -50,6 +50,35 @@ html[data-theme="modern"] {
 }
 
 /* きせかえは色と書体だけを変える。配置と余白はここでは変えない */
+/* レトロの色。画面の作りは retro.css */
+html[data-theme="retro"] {
+  --stage: #a7b58a;
+  --lump: #46543a;
+  --line-bold: #141d0d;
+  --ground: #a7b58a;
+  --surface: #b4c198;
+  --ink: #141d0d;
+  --muted: #2b361f;
+  --accent: #141d0d;
+  --accent-deep: #000000;
+  --pop: #2b361f;
+  --lift: none;
+  --on-accent: #d3dcae;
+  --line: #46543a;
+  --input-line: #141d0d;
+  --bubble-user: #bfcba3;
+  --soft: #bfcba3;
+  --warn: #bfcba3;
+  --good: #bfcba3;
+  --danger: #c9b79a;
+  --thanks: #bfcba3;
+  --caption: rgb(167 181 138 / 92%);
+  --font: var(--font-dot), "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
+  --pixel-dark: #141d0d;
+  --pixel-mid: #46543a;
+  --pixel-light: #d3dcae;
+}
+
 html[data-theme="game"] {
   --stage: #2a2f58;
   --lump: #ff8e7a;
