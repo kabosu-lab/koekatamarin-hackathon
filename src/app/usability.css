@@ -413,3 +413,11 @@ html body .card {
   min-width: 0;
   max-width: 100%;
 }
+
+/* iPad の細い列では、話す・書くを1列にして言葉を折らない */
+@media (min-width: 768px) and (max-width: 1199px) {
+  html .stage-home .talk .actions,
+  html .side-actions {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
