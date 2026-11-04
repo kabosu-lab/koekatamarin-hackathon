@@ -18,7 +18,15 @@ function tempPath(): string {
 }
 
 afterEach(() => {
-  for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true });
+  for (const dir of dirs.splice(0)) {
+    try {
+      rmSync(dir, { recursive: true, force: true });
+    } catch (error) {
+      // openDatabase が例外で終わると接続が開いたまま残り、Windows では消せない。OS の一時フォルダなので残してよい
+      const code = (error as NodeJS.ErrnoException).code;
+      if (process.platform !== "win32" || (code !== "EPERM" && code !== "EBUSY")) throw error;
+    }
+  }
 });
 
 describe("openDatabase", () => {

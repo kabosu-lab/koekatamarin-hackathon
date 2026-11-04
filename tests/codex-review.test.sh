@@ -17,7 +17,12 @@ printf '%s\n' "$@" >"$STUB_LOG/args"
 cat >"$STUB_LOG/stdin"
 echo called >>"$STUB_LOG/calls"
 [ "${STUB_FAIL:-}" = "1" ] && exit 3
-[ "${STUB_HANG:-}" = "1" ] && sleep 5
+if [ "${STUB_HANG:-}" = "1" ]; then
+  # 子プロセスを残して固まる。時間切れでこの子まで止まることを確かめる
+  sleep 30 &
+  echo "$!" >"$STUB_LOG/child"
+  wait
+fi
 while [ "$#" -gt 0 ]; do
   if [ "$1" = "-o" ]; then echo "指摘なし $STUB_REPO/a.txt" >"$2"; fi
   shift
@@ -34,14 +39,16 @@ g init -q
 echo 1 >"$REPO/a.txt"
 g add -A
 g commit -qm first
-export STUB_LOG="$WORK/log" STUB_REPO="$REPO"
+# スクリプトが見るパスは git が返す形（Windows では C:/...）なので、比べるときもそれを使う
+REPO_TOP="$(g rev-parse --show-toplevel)"
+export STUB_LOG="$WORK/log" STUB_REPO="$REPO_TOP"
 calls() { wc -l <"$WORK/log/calls" | tr -d ' '; }
 reviews() { ls "$REPO/reviews" 2>/dev/null | wc -l | tr -d ' '; }
 
 # 読むだけの指定で呼び、標準入力を渡さず、結果を保存する
 echo "渡らないはずの入力" | "$REPO/scripts/codex-review.sh" >/dev/null
 args="$(cat "$WORK/log/args")"
-for want in --sandbox read-only --ephemeral --cd "$REPO"; do
+for want in --sandbox read-only --ephemeral --cd "$REPO_TOP"; do
   grep -qxF -- "$want" <<<"$args" || fail "引数に $want がない"
 done
 [ ! -s "$WORK/log/stdin" ] || fail "標準入力が閉じていない"
@@ -49,7 +56,7 @@ done
 report="$(ls "$REPO"/reviews/*.md)"
 [[ "$(basename "$report")" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}-[0-9]{6}\.md$ ]] || fail "ファイル名に日付がない"
 grep -q "^reviewed-commit: $(g rev-parse HEAD)$" "$report" || fail "コミットが記録されていない"
-if grep -qF "$REPO" "$report"; then fail "絶対パスが残っている"; fi
+if grep -qF "$REPO_TOP" "$report"; then fail "絶対パスが残っている"; fi
 
 # 変更がなければ呼ばない
 "$REPO/scripts/codex-review.sh" >/dev/null
@@ -78,5 +85,57 @@ start="$SECONDS"
 if STUB_HANG=1 CODEX_REVIEW_TIMEOUT=1 "$REPO/scripts/codex-review.sh" >/dev/null 2>&1; then fail "時間切れが伝わっていない"; fi
 [ "$((SECONDS - start))" -lt 4 ] || fail "時間切れで止まっていない"
 [ "$(reviews)" = "$before" ] || fail "時間切れなのに結果を保存した"
+
+# 時間切れのとき、子プロセスが残らない
+child_gone() {
+  local pid
+  pid="$(cat "$WORK/log/child")"
+  for _ in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do
+    kill -0 "$pid" 2>/dev/null || return 0
+    sleep 0.1
+  done
+  kill "$pid" 2>/dev/null || true
+  fail "$1 の時間切れで子プロセスが残った"
+}
+child_gone "標準の手段"
+
+# timeout を隠すための PATH。スクリプトと偽の codex が使うコマンドだけを置く
+min_path() {
+  local dir="$1" name real
+  shift
+  mkdir -p "$dir"
+  cp "$WORK/bin/codex" "$dir/codex"
+  for name in git dirname ls tail sed head mktemp rm mkdir date cat sleep "$@"; do
+    real="$(command -v "$name")"
+    printf '#!%s\nexec "%s" "$@"\n' "$BASH" "$real" >"$dir/$name"
+    chmod +x "$dir/$name"
+  done
+  printf '#!%s\nexec "%s" "$@"\n' "$BASH" "$BASH" >"$dir/bash"
+  chmod +x "$dir/bash"
+}
+
+# timeout がなくても、perl で時間切れになり、子プロセスも残らない
+if command -v perl >/dev/null 2>&1; then
+  min_path "$WORK/only-perl" perl
+  rm -f "$WORK/log/child"
+  start="$SECONDS"
+  if STUB_HANG=1 CODEX_REVIEW_TIMEOUT=1 PATH="$WORK/only-perl" "$BASH" "$REPO/scripts/codex-review.sh" >/dev/null 2>&1; then
+    fail "perl の時間切れが伝わっていない"
+  fi
+  [ "$((SECONDS - start))" -lt 4 ] || fail "perl の時間切れで止まっていない"
+  [ -s "$WORK/log/child" ] || fail "perl の手段で Codex を呼んでいない"
+  [ "$(reviews)" = "$before" ] || fail "perl の時間切れなのに結果を保存した"
+  child_gone "perl"
+fi
+
+# timeout も perl もなければ、Codex を呼ばず、分かるエラーで止まる
+min_path "$WORK/no-timer"
+called="$(calls)"
+if err="$(PATH="$WORK/no-timer" "$BASH" "$REPO/scripts/codex-review.sh" 2>&1 >/dev/null)"; then
+  fail "時間切れの手段がないのに成功した"
+fi
+grep -qF "timeout も perl も見つかりません" <<<"$err" || fail "時間切れの手段がないことを伝えていない: $err"
+[ "$(calls)" = "$called" ] || fail "時間切れの手段がないのに Codex を呼んだ"
+[ "$(reviews)" = "$before" ] || fail "時間切れの手段がないのに結果を保存した"
 
 echo "ok"

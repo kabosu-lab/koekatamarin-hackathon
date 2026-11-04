@@ -61,7 +61,8 @@ export default defineConfig({
     },
     {
       // 上のビルドが終わるのを待ってから、同じビルドを合言葉つきで動かす
-      command: `until curl -sf http://127.0.0.1:${PORT}/api/health > /dev/null; do sleep 1; done; npm run start -- --hostname 127.0.0.1 --port ${TRIAL_PORT}`,
+      // 待つ処理は Mac と Windows のどちらのシェルでも動くよう、node で書く
+      command: `node -e "const wait=()=>fetch('http://127.0.0.1:${PORT}/api/health').then(r=>{if(!r.ok)throw 0}).catch(()=>new Promise(s=>setTimeout(s,1000)).then(wait));wait()" && npm run start -- --hostname 127.0.0.1 --port ${TRIAL_PORT}`,
       url: `http://127.0.0.1:${TRIAL_PORT}/api/health`,
       reuseExistingServer: false,
       timeout: 240_000,

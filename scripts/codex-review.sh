@@ -40,8 +40,32 @@ PROMPT="このリポジトリの変更をレビューしてください。ファ
 tmp="$(mktemp)"
 trap 'rm -f "$tmp"' EXIT
 
-# perl の alarm で時間切れにする（macOS には timeout がない）。読むだけ・記録を残さない・標準入力は閉じる
-if ! perl -e 'alarm shift; exec @ARGV or die $!' "$TIMEOUT" \
+# 時間切れの手段がなければ、Codex を止められないので呼ばない
+if ! command -v timeout >/dev/null 2>&1 && ! command -v perl >/dev/null 2>&1; then
+  echo "時間切れの処理に使う timeout も perl も見つかりません。どちらかを入れてください。Codex は呼んでいません。" >&2
+  exit 1
+fi
+
+# 時間切れでは子プロセスまで止める。timeout は自分のプロセスグループごと止める。
+# macOS には timeout がなく、Git Bash の perl では alarm が exec のあとに効かないので、perl は fork して待つ
+with_timeout() {
+  if command -v timeout >/dev/null 2>&1; then
+    timeout -k 5 "$@"
+  else
+    perl -e '
+      my $limit = shift;
+      my $pid = fork() // die "fork: $!";
+      if (!$pid) { setpgrp(0, 0); exec { $ARGV[0] } @ARGV or die "exec: $!"; }
+      $SIG{ALRM} = sub { kill "TERM", -$pid; sleep 1; kill "KILL", -$pid; exit 124; };
+      alarm $limit;
+      waitpid($pid, 0);
+      exit($? & 127 ? 128 + ($? & 127) : $? >> 8);
+    ' "$@"
+  fi
+}
+
+# 読むだけ・記録を残さない・標準入力は閉じる
+if ! with_timeout "$TIMEOUT" \
   codex exec --sandbox read-only --ephemeral --cd "$ROOT" -o "$tmp" "$PROMPT" \
   </dev/null >&2; then
   echo "Codex のレビューに失敗しました。結果は保存していません。" >&2
