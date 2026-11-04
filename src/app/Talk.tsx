@@ -10,7 +10,9 @@ import { KnowledgeResults } from "./chie/KnowledgeResults";
 import { Compose, type ComposeStart } from "./Compose";
 import { ConnectCard, type ConnectSuggestion } from "./ConnectCard";
 import { SafetyCard, type SafetyNotice } from "./SafetyCard";
+import { AttachmentPreview } from "./AttachmentPreview";
 import { playSendSound, SendBurst } from "./SendBurst";
+import type { AttachmentView } from "@/lib/attachment";
 import { loadTalk, saveTalk } from "./talk-storage";
 import { isSpeechSupported, startListening } from "./speech";
 
@@ -41,6 +43,8 @@ export function Talk({
   const [safety, setSafety] = useState<SafetyNotice | null>(null);
   const [suggestion, setSuggestion] = useState<ConnectSuggestion | null>(null);
   const [burst, setBurst] = useState<string | null>(null);
+  const [attachment, setAttachment] = useState<AttachmentView | null>(null);
+  const [uploading, setUploading] = useState(false);
   const [remembered, setRemembered] = useState<number[]>([]);
   const [askTarget, setAskTarget] = useState(initialAsk);
   const [finding, setFinding] = useState(false);
@@ -140,21 +144,22 @@ export function Talk({
       const response = await fetch("/api/draft", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ history: messages.slice(-MAX_HISTORY), askedPersonId: asked?.id }),
+        body: JSON.stringify({ history: messages.slice(-MAX_HISTORY), askedPersonId: asked?.id, attachmentId: attachment?.id }),
       });
       if (!response.ok) throw new Error(`status ${response.status}`);
-      const { draft, review, channels, people } = (await response.json()) as {
+      const { draft, review, channels, people, attachment: checked } = (await response.json()) as {
         draft: Draft;
         review: Review | null;
         channels: ChannelView[];
         people: PersonView[];
+        attachment?: ComposeStart["attachment"];
       };
       if (!draft.ready || !review) {
         setNotice("まだ投稿にできるお話がなさそう。もう少し聞かせてください。");
         return;
       }
       setSuggestion(null);
-      setComposing({ draft, review, channels, people, asked });
+      setComposing({ draft, review, channels, people, asked, attachment: checked });
     } catch {
       setNotice("下書きを作れませんでした。もう一度押してください。");
     } finally {
@@ -237,6 +242,33 @@ export function Talk({
     });
   }
 
+  async function attach(file: File) {
+    setUploading(true);
+    setNotice("");
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const response = await fetch("/api/attachments", { method: "POST", body: form });
+      const body = (await response.json().catch(() => ({}))) as AttachmentView & { error?: string };
+      if (!response.ok) {
+        setNotice(body.error ?? "付けられませんでした。もう一度選んでください。");
+        return;
+      }
+      setAttachment({ id: body.id, mediaType: body.mediaType, fileName: body.fileName });
+    } catch {
+      setNotice("付けられませんでした。もう一度選んでください。");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function removeAttachment() {
+    if (!attachment) return;
+    const { id } = attachment;
+    setAttachment(null);
+    await fetch(`/api/attachments/${id}`, { method: "DELETE" }).catch(() => null);
+  }
+
   function submit(event: FormEvent) {
     event.preventDefault();
     void send(draft);
@@ -249,9 +281,15 @@ export function Talk({
           {...composing}
           viewer={viewer}
           onCancel={() => setComposing(null)}
+          onReplaceAttachment={() => {
+            void removeAttachment();
+            setComposing(null);
+            setNotice("撮り直したものや別のファイルを、もう一度付けてください。");
+          }}
           onSent={(channel, postId, words, isPublic) => {
             setComposing(null);
             setSentTo({ channel, postId, isPublic });
+            setAttachment(null);
             setBurst(words);
             playSendSound(words);
           }}
@@ -370,6 +408,32 @@ export function Talk({
         <button type="button" className="compose-start" disabled={sending || finding} onClick={() => void findKnowledge()}>
           {finding ? "探しています…" : "校内の知恵を探す"}
         </button>
+      )}
+
+      {attachment ? (
+        <section className="attachment-chip" aria-label="付けたファイル">
+          <AttachmentPreview attachment={attachment} />
+          <p>ひとこと話して、「言葉にして送る」を押してください。</p>
+          <button type="button" className="undo" onClick={() => void removeAttachment()}>
+            外す
+          </button>
+        </section>
+      ) : (
+        !listening && (
+          <label className="attach-button">
+            {uploading ? "付けています…" : "写真か PDF を付ける"}
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp,application/pdf"
+              disabled={uploading}
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                event.target.value = "";
+                if (file) void attach(file);
+              }}
+            />
+          </label>
+        )
       )}
 
       <div className="actions">

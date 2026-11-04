@@ -175,9 +175,21 @@ const MIGRATIONS: readonly string[] = [
      created_at TEXT NOT NULL,
      UNIQUE (item_id, reviewer_id)
    ) STRICT;`,
+  `CREATE TABLE attachments (
+     id TEXT PRIMARY KEY,
+     owner_id TEXT NOT NULL REFERENCES people (id),
+     post_id TEXT UNIQUE REFERENCES posts (id) ON DELETE CASCADE,
+     media_type TEXT NOT NULL CHECK (media_type IN ('image/jpeg', 'image/png', 'image/webp', 'application/pdf')),
+     file_name TEXT NOT NULL,
+     data BLOB NOT NULL,
+     created_at TEXT NOT NULL
+   ) STRICT;
+   CREATE INDEX attachments_pending ON attachments (owner_id, post_id);
+   ALTER TABLE knowledge_items ADD COLUMN show_attachment INTEGER NOT NULL DEFAULT 0 CHECK (show_attachment IN (0, 1));`,
 ];
 
-export const SCHEMA_VERSION = MIGRATIONS.length;
+export const SCHEMA_VERSION
+ = MIGRATIONS.length;
 
 function getSchemaVersion(db: DatabaseSync): number {
   const row = db.prepare("PRAGMA user_version").get() as { user_version: number };

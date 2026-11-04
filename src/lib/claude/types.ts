@@ -4,13 +4,21 @@ export type ChatMessage = {
   content: string;
 };
 
-export type ClaudeTask = "converse" | "draft" | "review" | "safety" | "connect" | "reply" | "cheer" | "profile" | "daily" | "lookback" | "nakama" | "knowledge_draft" | "knowledge_find";
+export type ClaudeTask = "converse" | "draft" | "review" | "safety" | "connect" | "reply" | "cheer" | "profile" | "daily" | "lookback" | "nakama" | "knowledge_draft" | "knowledge_find" | "attachment_draft";
+
+/** 下書きの材料として Claude に渡す添付。1回の呼び出しに1つだけ。 */
+export type ClaudeAttachment = {
+  mediaType: "image/jpeg" | "image/png" | "image/webp" | "application/pdf";
+  base64: string;
+};
 
 export type ClaudeRequest = {
   /** 何のための呼び出しか。キーなしの台本が返し方を選ぶのに使う。 */
   task: ClaudeTask;
   system: string;
   messages: ChatMessage[];
+  /** 最後の発言に付けて渡す */
+  attachment?: ClaudeAttachment;
   maxTokens: number;
   /** 指定すると、この形の JSON で返させる */
   jsonSchema?: Record<string, unknown>;

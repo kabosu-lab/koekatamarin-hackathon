@@ -1,3 +1,12 @@
+import type { DatabaseSync } from "node:sqlite";
+import {
+  type AttachmentNotice,
+  type AttachmentView,
+  draftFromAttachment,
+  linkAttachment,
+  loadPending,
+  toClaudeAttachment,
+} from "./attachment";
 import { ComposeError, draftPost, type Draft, type Review, reviewPost } from "./claude/compose";
 import { isMessage, MAX_HISTORY } from "./claude/converse-request";
 import type { ClaudeClient, ChatMessage } from "./claude/types";
@@ -14,7 +23,16 @@ import type { PostKind } from "./seed-data";
 type Failure = { status: 400 | 422 | 503; body: { error: string; review?: Review } };
 
 export type DraftOutcome =
-  | { status: 200; body: { draft: Draft; review: Review | null; channels: ChannelView[]; people: PersonView[] } }
+  | {
+      status: 200;
+      body: {
+        draft: Draft;
+        review: Review | null;
+        channels: ChannelView[];
+        people: PersonView[];
+        attachment?: AttachmentView & { notices: AttachmentNotice[] };
+      };
+    }
   | Failure;
 export type ReviewOutcome = { status: 200; body: { review: Review } } | Failure;
 export type PublishOutcome = { status: 200; body: { postId: string; channelId: string } } | Failure;
@@ -40,8 +58,12 @@ export async function handleDraft(
   destination: PostDestination,
   viewerId: string,
   input: unknown,
+  db?: DatabaseSync,
 ): Promise<DraftOutcome> {
-  const { history, askedPersonId } = fields(input);
+  const { history, askedPersonId, attachmentId } = fields(input);
+  if (attachmentId !== undefined && typeof attachmentId !== "string") {
+    return { status: 400, body: { error: "添付が正しくありません" } };
+  }
   if (askedPersonId !== undefined && typeof askedPersonId !== "string") {
     return { status: 400, body: { error: "聞く相手が正しくありません" } };
   }
@@ -64,6 +86,22 @@ export async function handleDraft(
       // 相手が読めるチャネルだけを送り先にする
       const theirs = new Set(destination.listChannels(askedPersonId).map((c) => c.id));
       channels = channels.filter((c) => theirs.has(c.id));
+    }
+    if (attachmentId !== undefined) {
+      const stored = db ? loadPending(db, viewerId, attachmentId) : null;
+      if (!stored) return { status: 400, body: { error: "添付が見つかりません。もう一度付けてください" } };
+      const { draft, notices } = await draftFromAttachment(claude, toClaudeAttachment(stored), history as ChatMessage[], channels);
+      const review = draft.ready ? await reviewPost(claude, draft.text) : null;
+      return {
+        status: 200,
+        body: {
+          draft,
+          review,
+          channels,
+          people: destination.listOtherPeople(viewerId),
+          attachment: { id: stored.id, mediaType: stored.media_type, fileName: stored.file_name, notices },
+        },
+      };
     }
     const draft = await draftPost(claude, history as ChatMessage[], channels, askedName);
     const review = draft.ready ? await reviewPost(claude, draft.text) : null;
@@ -101,8 +139,12 @@ export async function handlePublish(
   destination: PostDestination,
   viewerId: string,
   input: unknown,
+  db?: DatabaseSync,
 ): Promise<PublishOutcome> {
-  const { text, channelId, kind, researchedWithAi, askedPersonId, scope, scopePersonId } = fields(input);
+  const { text, channelId, kind, researchedWithAi, askedPersonId, scope, scopePersonId, attachmentId } = fields(input);
+  if (attachmentId !== undefined && (typeof attachmentId !== "string" || !db || !loadPending(db, viewerId, attachmentId))) {
+    return { status: 400, body: { error: "添付が見つかりません。もう一度付けてください" } };
+  }
   const knownScope = POST_SCOPES.find((s) => s === scope);
   if (scope !== undefined && !knownScope) return { status: 400, body: { error: "見える範囲が正しくありません" } };
   if (scopePersonId !== undefined && typeof scopePersonId !== "string") {
@@ -135,6 +177,7 @@ export async function handlePublish(
       scopePersonId,
       needsLook: review.verdict === "caution",
     });
+    if (typeof attachmentId === "string" && db) linkAttachment(db, viewerId, attachmentId, postId);
     return { status: 200, body: { postId, channelId } };
   } catch (error) {
     if (error instanceof DestinationError) return { status: 400, body: { error: error.message } };

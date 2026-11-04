@@ -5,6 +5,7 @@ import { getViewer } from "@/lib/current-person";
 import { getDatabase } from "@/lib/db";
 import { getKnowledge } from "@/lib/knowledge";
 import { KnowledgeActions } from "./KnowledgeActions";
+import { AttachmentPreview } from "../../AttachmentPreview";
 
 export const metadata: Metadata = { title: "校内の知恵｜こえかた" };
 export const dynamic = "force-dynamic";
@@ -26,6 +27,8 @@ export default async function KnowledgePage({ params }: { params: Promise<{ id: 
       <section className="card" aria-label="知恵の本文">
         <p className="chie-body">{item.body}</p>
         <p className="muted">やった人の経験です。公式の規程ではありません。</p>
+        {item.attachment && <AttachmentPreview attachment={item.attachment} />}
+
         {item.researchedWithAi && <p className="ai-mark">AI と調べました</p>}
         <p className="muted">
           {item.helpedCount > 0 && `${item.helpedCount}人が役に立ったと言っています。`}

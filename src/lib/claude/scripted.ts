@@ -25,6 +25,18 @@ function scriptedDraft(transcript: string, jsonSchema: Record<string, unknown> |
   };
 }
 
+/** 台本の下書き。添付は読まず、気づきの例を1つ返す。 */
+function scriptedAttachmentDraft(transcript: string, jsonSchema: Record<string, unknown> | undefined) {
+  const { ready, text, channelId } = scriptedDraft(transcript, jsonSchema);
+  return {
+    ready,
+    text: ready ? `${text} 🎉` : "",
+    channelId,
+    kind: "effort",
+    notices: ready ? [{ kind: "name", where: "台本の例：上のほうに名前らしい文字" }] : [],
+  };
+}
+
 function scriptedLookback(prompt: string) {
   const lines = prompt.split("\n").filter((line) => /^(日報|投稿|返信|ありがとう)：/.test(line));
   if (lines.length === 0) return { ready: false, text: "" };
@@ -137,6 +149,7 @@ export function createScriptedClaude(): ClaudeClient {
     mode: "scripted",
     async complete({ task, messages, jsonSchema }) {
       if (task === "draft") return { text: JSON.stringify(scriptedDraft(messages[0].content, jsonSchema)), refused: false };
+      if (task === "attachment_draft") return { text: JSON.stringify(scriptedAttachmentDraft(messages[0].content, jsonSchema)), refused: false };
       if (task === "lookback") return { text: JSON.stringify(scriptedLookback(messages[0].content)), refused: false };
       if (task === "daily") return { text: JSON.stringify(scriptedDaily(messages[0].content)), refused: false };
       if (task === "profile") return { text: JSON.stringify(scriptedProfile(messages[0].content)), refused: false };

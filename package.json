@@ -25,7 +25,9 @@
     "try:cheer": "tsx --env-file-if-exists=.env scripts/try-cheer.ts",
     "try:profile": "tsx --env-file-if-exists=.env scripts/try-profile.ts",
     "try:daily": "tsx --env-file-if-exists=.env scripts/try-daily.ts",
-    "try:lookback": "tsx --env-file-if-exists=.env scripts/try-lookback.ts"
+    "try:lookback": "tsx --env-file-if-exists=.env scripts/try-lookback.ts",
+    "try:attachment": "tsx --env-file-if-exists=.env scripts/try-attachment.ts",
+    "demo:attachments": "tsx scripts/make-demo-attachments.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.4.0",

@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { DatabaseSync } from "node:sqlite";
+import type { DatabaseSync, StatementSync } from "node:sqlite";
 import { recipientsOf } from "../recipients";
 import type { Audience, PostKind, Role } from "../seed-data";
 import {
@@ -7,6 +7,7 @@ import {
   DestinationError,
   MAX_BODY_LENGTH,
   type PersonView,
+  type PostAttachment,
   type PostDestination,
   type PostScope,
   type PostView,
@@ -53,6 +54,11 @@ function cleanBody(body: string): string {
   if (trimmed === "") throw new DestinationError("本文が空です");
   if (trimmed.length > MAX_BODY_LENGTH) throw new DestinationError("本文が長すぎます");
   return trimmed;
+}
+
+function attachmentOf(select: StatementSync, postId: string): PostAttachment | null {
+  const row = select.get(postId) as { id: string; media_type: string; file_name: string } | undefined;
+  return row ? { id: row.id, mediaType: row.media_type, fileName: row.file_name } : null;
 }
 
 /** 取り消せるのは、送ってからこの時間まで */
@@ -140,6 +146,8 @@ export function createDummyTeams(db: DatabaseSync): PostDestination {
          WHERE x.post_id = ? ORDER BY x.created_at, x.rowid`,
       );
 
+      const selectAttachment = db.prepare("SELECT id, media_type, file_name FROM attachments WHERE post_id = ?");
+
       return posts.filter((p) => canSeeScope(viewerId, { ...p, author_id: p.author_id })).map((p): PostView => ({
         id: p.id,
         authorId: p.author_id,
@@ -149,6 +157,7 @@ export function createDummyTeams(db: DatabaseSync): PostDestination {
         body: p.body,
         createdAt: p.created_at,
         researchedWithAi: p.researched_with_ai === 1,
+        attachment: attachmentOf(selectAttachment, p.id),
         scope: p.scope,
         // 本人や生徒には見せない。教職員が確かめるためのもの
         needsLook: viewerIsStaff && p.author_id !== viewerId && p.needs_look === 1,

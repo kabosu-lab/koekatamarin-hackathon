@@ -8,6 +8,7 @@ import { getViewer } from "@/lib/current-person";
 import { canSaveKnowledge } from "@/lib/knowledge";
 import { forgottenSources } from "@/lib/memory";
 import { schoolName } from "@/lib/seed-data";
+import { AttachmentPreview } from "../AttachmentPreview";
 import { Avatar } from "../Avatar";
 import { PersonSwitcher } from "../PersonSwitcher";
 import { createPost, createReply, shareConcern, toggleLike } from "./actions";
@@ -63,7 +64,9 @@ function Post({
         </p>
       )}
       <p className="body">{post.body}</p>
+      {post.attachment && <AttachmentPreview attachment={post.attachment} />}
       {post.researchedWithAi && <p className="ai-mark">AI と調べました</p>}
+
       {post.scope !== "everyone" && <p className="ai-mark">{SCOPE_LABEL[post.scope]}</p>}
 
       {post.needsLook && !post.sharedToStaff && (

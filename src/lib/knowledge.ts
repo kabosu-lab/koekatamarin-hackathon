@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
 import { reviewPost } from "./claude/compose";
 import type { ClaudeClient } from "./claude/types";
-import { MAX_BODY_LENGTH, type PostDestination, type PostView } from "./destination/types";
+import { MAX_BODY_LENGTH, type PostAttachment, type PostDestination, type PostView } from "./destination/types";
 import { forgottenSources } from "./memory";
 import { isNoticeHours } from "./inbox";
 import { listHiddenIds } from "./nakama";
@@ -52,6 +52,10 @@ export type KnowledgeDetail = KnowledgeSummary & {
   canReview: boolean;
   /** 「聞いてみる？」の相手。質問した本人は入れない */
   askableIds: string[];
+  /** 投稿した本人が載せると選んだときだけある */
+  attachment: PostAttachment | null;
+  /** 投稿した本人にだけある、載せるかの選択 */
+  attachmentChoice: { fileName: string; shown: boolean } | null;
 };
 export type KnowledgeTask = { id: string; title: string; reason: "confirm" | "fix" };
 export type KnowledgeResult = {
@@ -252,11 +256,12 @@ type ItemRow = {
   status: KnowledgeStatus;
   author_id: string;
   fix_requested: number;
+  show_attachment: number;
 };
 
 function loadItem(db: DatabaseSync, itemId: string): ItemRow | undefined {
   return db
-    .prepare("SELECT id, source_post_id, title, body, status, author_id, fix_requested FROM knowledge_items WHERE id = ?")
+    .prepare("SELECT id, source_post_id, title, body, status, author_id, fix_requested, show_attachment FROM knowledge_items WHERE id = ?")
     .get(itemId) as ItemRow | undefined;
 }
 
@@ -324,6 +329,10 @@ export function getKnowledge(db: DatabaseSync, viewerId: string, itemId: string)
     author_id: string;
     kind: string;
   };
+  const attached = db.prepare("SELECT id, media_type, file_name FROM attachments WHERE post_id = ?").get(item.source_post_id) as
+    | { id: string; media_type: string; file_name: string }
+    | undefined;
+  const posted: PostAttachment | null = attached ? { id: attached.id, mediaType: attached.media_type, fileName: attached.file_name } : null;
   const reviews = (
     db
       .prepare(
@@ -361,6 +370,8 @@ export function getKnowledge(db: DatabaseSync, viewerId: string, itemId: string)
       source,
       contributors.filter((c) => c.state === "ok").map((c) => c.id),
     ),
+    attachment: item.show_attachment === 1 ? posted : null,
+    attachmentChoice: posted && source.author_id === viewerId ? { fileName: posted.fileName, shown: item.show_attachment === 1 } : null,
   };
 }
 
@@ -443,6 +454,24 @@ export function returnForgottenWords(db: DatabaseSync, personId: string, sourceI
       item.id,
     );
   }
+}
+
+/**
+ * 知恵に添付を載せるかは、投稿した本人だけが選ぶ。自動では引き継がない。
+ * 載せられるのは、校内全体に公開された投稿の添付だけ。
+ */
+export function chooseKnowledgeAttachment(db: DatabaseSync, itemId: string, personId: string, show: boolean, now: Date): boolean {
+  const row = db
+    .prepare(
+      `SELECT p.author_id, p.scope, c.audience, i.status, EXISTS (SELECT 1 FROM attachments a WHERE a.post_id = p.id) AS attached
+       FROM knowledge_items i JOIN posts p ON p.id = i.source_post_id JOIN channels c ON c.id = p.channel_id
+       WHERE i.id = ?`,
+    )
+    .get(itemId) as { author_id: string; scope: string; audience: string; status: string; attached: number } | undefined;
+  if (!row || row.author_id !== personId || row.status === "withdrawn" || !row.attached) return false;
+  if (show && (row.scope !== "everyone" || row.audience !== "everyone")) return false;
+  db.prepare("UPDATE knowledge_items SET show_attachment = ?, updated_at = ? WHERE id = ?").run(show ? 1 : 0, now.toISOString(), itemId);
+  return true;
 }
 
 export function withdrawKnowledge(db: DatabaseSync, itemId: string, personId: string, now: Date): boolean {
@@ -551,7 +580,7 @@ export async function handleKnowledgeAction(
   input: unknown,
   now: Date = new Date(),
 ): Promise<Outcome> {
-  const { action, itemId, reviewId } = fields(input);
+  const { action, itemId, reviewId, show } = fields(input);
   if (action === "edit") return handleKnowledgeEdit(claude, db, viewerId, input, now);
   if (action === "review") return handleKnowledgeReview(claude, db, viewerId, input, now);
   if (typeof itemId !== "string") return { status: 400, body: { error: "依頼が正しくありません" } };
@@ -564,7 +593,9 @@ export async function handleKnowledgeAction(
           ? withdrawKnowledge(db, itemId, viewerId, now)
           : action === "resolve" && typeof reviewId === "string"
             ? resolveKnowledgeReview(db, viewerId, itemId, reviewId, now)
-            : null;
+            : action === "attachment" && typeof show === "boolean"
+              ? chooseKnowledgeAttachment(db, itemId, viewerId, show, now)
+              : null;
   if (done === null) return { status: 400, body: { error: "依頼が正しくありません" } };
   return done ? { status: 200, body: { ok: true } } : { status: 404, body: { error: "できませんでした" } };
 }

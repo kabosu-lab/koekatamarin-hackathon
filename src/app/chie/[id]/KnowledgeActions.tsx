@@ -99,6 +99,16 @@ export function KnowledgeActions({ item, viewerId }: { item: KnowledgeDetail; vi
         </section>
       )}
 
+      {item.attachmentChoice && (
+        <section className="card" aria-label="添付を載せる">
+          <h2>{item.attachmentChoice.fileName}</h2>
+          <p className="muted">知恵に添付を載せるかは、投稿したあなたが選べます。載せると校内の人に見えます。</p>
+          <button type="button" className="secondary" disabled={busy} onClick={() => void run({ action: "attachment", show: !item.attachmentChoice?.shown })}>
+            {item.attachmentChoice.shown ? "添付を知恵から外す" : "添付も知恵に載せる"}
+          </button>
+        </section>
+      )}
+
       {removable && (
         <section className="card" aria-label="名前と言葉を外す">
           <p className="muted">いつでも外せます。外すと、作った人が直すまで広がりません。</p>

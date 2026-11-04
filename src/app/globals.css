@@ -1268,3 +1268,100 @@ button:active:not(:disabled),
   border-radius: 1rem;
   background: var(--surface);
 }
+
+/* 頑張りの添付 */
+.attach-button {
+  display: block;
+  margin-bottom: 0.5rem;
+  padding: 0.55rem 0.75rem;
+  border: 2px dashed var(--accent, #9a3412);
+  border-radius: 0.8rem;
+  color: var(--accent, #9a3412);
+  font-weight: 700;
+  text-align: center;
+  cursor: pointer;
+}
+
+.attach-button input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.attach-button:focus-within {
+  outline: 2px solid var(--accent, #9a3412);
+  outline-offset: 2px;
+}
+
+.attachment-chip,
+.attachment-check {
+  display: grid;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 0.8rem;
+  background: var(--surface, #fff);
+  overflow-wrap: anywhere;
+}
+
+.attachment-check h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.attachment-check ul {
+  margin: 0;
+  padding-left: 1.2rem;
+}
+
+.attachment-check .row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.attachment-caveat {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.attachment-image {
+  display: block;
+  max-width: 100%;
+  max-height: 16rem;
+  border-radius: 0.6rem;
+}
+
+.attachment-file {
+  display: inline-block;
+  overflow-wrap: anywhere;
+}
+
+/* 付けた直後は小さく見せ、「話しかける」を画面に残す */
+.attachment-chip .attachment-image {
+  width: auto;
+  max-height: 6rem;
+}
+
+.attachment-chip p {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.talk .attachment-chip button,
+.talk .attachment-check button {
+  width: auto;
+  justify-self: start;
+  padding: 0.4rem 0.75rem;
+  border: 2px solid var(--accent, #9a3412);
+  background: transparent;
+  color: var(--accent, #9a3412);
+  font-size: 0.9rem;
+}
+
+.talk .attachment-check button[aria-pressed="true"] {
+  background: var(--accent, #9a3412);
+  color: #fff;
+}

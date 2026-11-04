@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import type { Draft, Review } from "@/lib/claude/compose";
+import type { AttachmentNotice, AttachmentNoticeKind, AttachmentView } from "@/lib/attachment";
 import type { ChannelView, PersonView, PostScope } from "@/lib/destination/types";
+import { AttachmentPreview } from "./AttachmentPreview";
 
 export type ComposeStart = {
   draft: Draft;
@@ -10,11 +12,14 @@ export type ComposeStart = {
   channels: ChannelView[];
   people: PersonView[];
   asked?: { id: string; name: string };
+  attachment?: AttachmentView & { notices: AttachmentNotice[] };
 };
 
 type Props = ComposeStart & {
   viewer: { name: string; label: string };
   onCancel(): void;
+  /** 添付を付け直すために、話す画面へ戻る */
+  onReplaceAttachment?(): void;
   onSent(channel: ChannelView, postId: string, words: string, isPublic: boolean): void;
 };
 
@@ -27,6 +32,15 @@ const SCOPE_OPTIONS: { value: PostScope; label: string }[] = [
 
 const MAX_LENGTH = 2000;
 
+const NOTICE_LABEL: Record<AttachmentNoticeKind, string> = {
+  name: "名前",
+  face: "顔",
+  contact: "連絡先",
+  address: "住所",
+  student_number: "学籍番号",
+  other: "個人の情報",
+};
+
 async function postJson(url: string, body: unknown) {
   const response = await fetch(url, {
     method: "POST",
@@ -36,7 +50,20 @@ async function postJson(url: string, body: unknown) {
   return { ok: response.ok, status: response.status, data: (await response.json()) as Record<string, unknown> };
 }
 
-export function Compose({ draft, review: firstReview, channels, people, asked, viewer, onCancel, onSent }: Props) {
+export function Compose({
+  draft,
+  review: firstReview,
+  channels,
+  people,
+  asked,
+  attachment,
+  viewer,
+  onCancel,
+  onReplaceAttachment,
+  onSent,
+}: Props) {
+  const [acknowledged, setAcknowledged] = useState(false);
+  const noticesOpen = (attachment?.notices.length ?? 0) > 0 && !acknowledged;
   const [text, setText] = useState(draft.text);
   const [channelId, setChannelId] = useState(draft.channelId);
   const [review, setReview] = useState(firstReview);
@@ -86,6 +113,7 @@ export function Compose({ draft, review: firstReview, channels, people, asked, v
         askedPersonId: asked?.id,
         scope,
         scopePersonId: scope === "person" ? scopePersonId : undefined,
+        attachmentId: attachment?.id,
       });
       if (ok) {
         onSent(channel, data.postId as string, text, scope === "everyone");
@@ -143,6 +171,42 @@ export function Compose({ draft, review: firstReview, channels, people, asked, v
         </button>
       )}
 
+      {attachment && (
+        <div className="attachment-check" aria-label="添付の確認" role="group">
+          <AttachmentPreview attachment={attachment} />
+          {attachment.notices.length > 0 ? (
+            <>
+              <h3>隠しますか？</h3>
+              <ul>
+                {attachment.notices.map((notice) => (
+                  <li key={`${notice.kind}-${notice.where}`}>
+                    {NOTICE_LABEL[notice.kind]}：{notice.where}
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : (
+            <p>相棒が気づいた点はありませんでした。</p>
+          )}
+          <p className="attachment-caveat">相棒は見逃すことがあります。最後に確かめるのはあなたです。</p>
+          <div className="row">
+            {attachment.notices.length > 0 && (
+              <button type="button" className="secondary" disabled={busy} onClick={onReplaceAttachment}>
+                隠して撮り直す
+              </button>
+            )}
+            <button type="button" className="secondary" disabled={busy} onClick={onReplaceAttachment}>
+              別のファイルにする
+            </button>
+            {attachment.notices.length > 0 && (
+              <button type="button" className="secondary" disabled={busy || acknowledged} aria-pressed={acknowledged} onClick={() => setAcknowledged(true)}>
+                {acknowledged ? "このまま送ります" : "このまま送る"}
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       <label className="channel">
         送り先のチャネル
         <select value={channelId} onChange={(event) => setChannelId(event.target.value)}>
@@ -187,6 +251,7 @@ export function Compose({ draft, review: firstReview, channels, people, asked, v
         </p>
         {asked && <p className="preview-asked">{asked.name}さんへ</p>}
         <p className="preview-body">{text}</p>
+        {attachment && <p className="preview-mark">添付：{attachment.fileName}</p>}
         {draft.researchedWithAi && <p className="preview-mark">AI と調べました</p>}
         {scopeNote && <p className="preview-scope">{scopeNote}</p>}
       </div>
@@ -201,7 +266,7 @@ export function Compose({ draft, review: firstReview, channels, people, asked, v
         <button type="button" className="secondary" disabled={busy} onClick={onCancel}>
           取り消す
         </button>
-        <button type="button" disabled={busy || !checked || blocked || missingPerson} onClick={() => void send()}>
+        <button type="button" disabled={busy || !checked || blocked || missingPerson || noticesOpen} onClick={() => void send()}>
           本人として送る
         </button>
       </div>

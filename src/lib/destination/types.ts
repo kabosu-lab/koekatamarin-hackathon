@@ -23,6 +23,8 @@ export type ReplyView = {
   createdAt: string;
 };
 
+export type PostAttachment = { id: string; mediaType: string; fileName: string };
+
 export type PostView = {
   id: string;
   authorId: string;
@@ -43,6 +45,8 @@ export type PostView = {
   /** お願いされた人が返信した（ゴール） */
   answered: boolean;
   /** AI と調べたことが入っている印。人の経験と区別するため。 */
+  /** 付けられた写真か PDF。投稿と同じ範囲の人にだけ見える。 */
+  attachment: PostAttachment | null;
   researchedWithAi: boolean;
   likeCount: number;
   likedByViewer: boolean;
