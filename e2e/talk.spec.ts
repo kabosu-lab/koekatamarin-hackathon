@@ -21,6 +21,53 @@ async function fakeSpeech(page: Page, spoken: string) {
   }, spoken);
 }
 
+test("息つぎでブラウザが認識を終えても、押すまで聞き続けて、言葉をつなげて渡す", async ({ page }) => {
+  await page.addInitScript(() => {
+    const store = window as unknown as Record<string, unknown>;
+    class BreathingRecognition {
+      onresult: ((event: unknown) => void) | null = null;
+      onend: (() => void) | null = null;
+      onerror: ((event: unknown) => void) | null = null;
+      continuous = false;
+      start() {
+        store.current = this;
+        store.startCount = ((store.startCount as number) ?? 0) + 1;
+        store.continuousFlag = this.continuous;
+      }
+      stop() {
+        this.onend?.();
+      }
+      breath(text: string) {
+        this.onresult?.({ resultIndex: 0, results: [Object.assign([{ transcript: text }], { isFinal: true })] });
+        this.onend?.();
+      }
+    }
+    Object.assign(window, { webkitSpeechRecognition: BreathingRecognition, SpeechRecognition: BreathingRecognition });
+  });
+  await page.goto("/");
+  await page.getByRole("button", { name: "話しかける" }).click();
+  const stop = page.getByRole("button", { name: "話し終わった" });
+  await expect(stop).toBeVisible();
+
+  const breath = (text: string) =>
+    page.evaluate((words) => {
+      const store = window as unknown as { current: { breath(text: string): void } };
+      store.current.breath(words);
+    }, text);
+  await page.waitForTimeout(1100);
+  await breath("文化祭の動画");
+  await expect.poll(() => page.evaluate(() => (window as unknown as { startCount: number }).startCount)).toBe(2);
+  await expect(stop).toBeVisible();
+  await page.waitForTimeout(1100);
+  await breath("できました");
+  await expect.poll(() => page.evaluate(() => (window as unknown as { startCount: number }).startCount)).toBe(3);
+  await expect(stop).toBeVisible();
+  expect(await page.evaluate(() => (window as unknown as { continuousFlag: boolean }).continuousFlag)).toBe(true);
+
+  await stop.click();
+  await expect(page.getByRole("log").locator(".bubble.user").last()).toHaveText(/文化祭の動画できました/);
+});
+
 test("最初の画面の主役は「話しかける」と「文字で書く」", async ({ page }) => {
   await page.goto("/");
   // 下の案内に隠れず、最初から画面に入っている
