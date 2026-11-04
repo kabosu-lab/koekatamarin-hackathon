@@ -3,9 +3,11 @@ import Link from "next/link";
 import { getViewer } from "@/lib/current-person";
 import { getDatabase } from "@/lib/db";
 import { dailyQuestion } from "@/lib/daily-question";
+import { readAppearance } from "@/lib/appearance";
 import { countForNotice } from "@/lib/inbox";
 import { countKnowledgeForNotice } from "@/lib/knowledge";
 import { promiseCookieName } from "@/lib/promise-cookie";
+import { setAppearance } from "./person-actions";
 import { PersonSwitcher } from "./PersonSwitcher";
 import { Talk } from "./Talk";
 
@@ -19,12 +21,20 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
   const knowledgeTasks = countKnowledgeForNotice(db, viewer.id, new Date());
   // 知恵の画面から「聞いてみる？」で来たときの相手
   const askPerson = typeof ask === "string" && ask !== viewer.id ? people.find((person) => person.id === ask) : undefined;
-  const promiseSeen = (await cookies()).has(promiseCookieName(viewer.id));
+  const store = await cookies();
+  const promiseSeen = store.has(promiseCookieName(viewer.id));
+  const soundOn = readAppearance((name) => store.get(name)?.value).sound === "on";
   return (
     <main className="home">
       <header className="hero">
         <h1>こえかた</h1>
         <p>話すだけで、できることが増える。</p>
+        <form className="sound-toggle" action={setAppearance}>
+          <input type="hidden" name="name" value="sound" />
+          <button type="submit" name="value" value={soundOn ? "off" : "on"} aria-pressed={soundOn}>
+            音 {soundOn ? "オン" : "オフ"}
+          </button>
+        </form>
       </header>
       <PersonSwitcher viewerId={viewer.id} people={people} />
       {/* Claude との話は本人だけのもの。人物を切り替えたら会話を持ち越さない */}

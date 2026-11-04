@@ -21,7 +21,7 @@ export const APPEARANCE_OPTIONS = [
   },
   {
     name: "sound",
-    label: "音（校内で使うので、初めは消しています）",
+    label: "音（いつでも消せます。最初の画面からも切り替えられます）",
     options: [
       { value: "off", label: "音なし" },
       { value: "on", label: "音あり" },
@@ -38,7 +38,7 @@ export const APPEARANCE_COOKIES: Record<AppearanceName, string> = {
   sound: "koekata_sound",
 };
 
-const DEFAULTS: Appearance = { theme: "modern", size: "normal", sound: "off" };
+const DEFAULTS: Appearance = { theme: "modern", size: "normal", sound: "on" };
 
 export function isAppearanceValue(name: string, value: string): name is AppearanceName {
   const group = APPEARANCE_OPTIONS.find((g) => g.name === name);

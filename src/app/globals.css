@@ -1809,3 +1809,31 @@ h2 {
     transform: none;
   }
 }
+
+/* 最初の画面からすぐ音を切り替える */
+.hero {
+  position: relative;
+}
+
+.hero .sound-toggle {
+  position: absolute;
+  top: 0.6rem;
+  right: 0;
+}
+
+.hero .sound-toggle button {
+  min-height: 2.75rem;
+  padding: 0.35rem 0.8rem;
+  border: 2px solid var(--accent);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--accent);
+  font-size: 0.85rem;
+  font-weight: 700;
+  box-shadow: none;
+}
+
+.hero .sound-toggle button[aria-pressed="false"] {
+  border-color: var(--line, #8a8fa3);
+  color: var(--ink);
+}

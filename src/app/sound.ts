@@ -108,7 +108,7 @@ function whoosh(at: number, duration: number, volume: number) {
   source.start(at);
 }
 
-/** 送ったときの音：ポポポ（言葉）、シューン（飛ぶ）、ポン（届く）。「音あり」を選んだ人にだけ鳴らす。 */
+/** 送ったときの音：ポポポ（言葉）、シューン（飛ぶ）、ポン（届く）。音を消している人には鳴らさない。 */
 export function playSendSound(words: string): void {
   if (document.documentElement.dataset.sound !== "on") return;
   try {
@@ -128,7 +128,7 @@ export function playSendSound(words: string): void {
   }
 }
 
-/** 人に届いた瞬間の小さな音（応援、返信、ありがとう）。「音あり」を選んだ人にだけ鳴らす。 */
+/** 人に届いた瞬間の小さな音（応援、返信、ありがとう）。音を消している人には鳴らさない。 */
 export function playReachedSound(): void {
   if (document.documentElement.dataset.sound !== "on") return;
   try {

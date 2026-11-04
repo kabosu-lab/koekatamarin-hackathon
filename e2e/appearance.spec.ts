@@ -45,11 +45,58 @@ test("文字を大きくしても、どの画面も横にはみ出さない", as
   }
 });
 
-test("音は初めは消えていて、選ぶと入る", async ({ page }) => {
+test("音は初めから入っていて、最初の画面ですぐ消せて、設定が残る", async ({ page }) => {
   await page.goto("/");
+  expect(await page.locator("html").getAttribute("data-sound")).toBe("on");
+  await page.getByRole("button", { name: "音 オン" }).click();
+  await expect(page.getByRole("button", { name: "音 オフ" })).toBeVisible();
   expect(await page.locator("html").getAttribute("data-sound")).toBe("off");
+  await page.reload();
+  await expect(page.getByRole("button", { name: "音 オフ" })).toBeVisible();
+  await page.goto("/me");
+  await expect(page.getByRole("button", { name: "音を試す" })).toHaveCount(0);
   await choose(page, "音あり");
   expect(await page.locator("html").getAttribute("data-sound")).toBe("on");
+});
+
+/** 作られた音の部品を数える。 */
+async function countAudio(page: Page) {
+  await page.addInitScript(() => {
+    const Real = window.AudioContext;
+    const counter = window as unknown as { audioMade: number };
+    counter.audioMade = 0;
+    window.AudioContext = class extends Real {
+      constructor() {
+        super();
+        counter.audioMade++;
+      }
+    };
+  });
+  return () => page.evaluate(() => (window as unknown as { audioMade: number }).audioMade);
+}
+
+test("開いただけでは鳴らさない", async ({ page }) => {
+  const made = await countAudio(page);
+  await page.goto("/");
+  await expect(page.getByRole("button", { name: "音 オン" })).toBeVisible();
+  expect(await made()).toBe(0);
+});
+
+test("音を消すと、送っても音を作らない", async ({ page }) => {
+  const made = await countAudio(page);
+  await page.goto("/");
+  await page.getByRole("button", { name: "音 オン" }).click();
+  await expect(page.getByRole("button", { name: "音 オフ" })).toBeVisible();
+  await send(page, `静かな言葉 ${test.info().testId}`);
+  await expect(page.locator(".sent")).toBeVisible();
+  expect(await made()).toBe(0);
+});
+
+test("音が入っていれば、送ったときに音を作る", async ({ page }) => {
+  const made = await countAudio(page);
+  await send(page, `鳴らす言葉 ${test.info().testId}`);
+  await expect(page.locator(".sent")).toBeVisible();
+  expect(await made()).toBeGreaterThan(0);
 });
 
 async function send(page: Page, words: string) {
@@ -76,8 +123,6 @@ test("音ありでは音を試せて、送っても画面が乱れない", async
   const problems: string[] = [];
   page.on("pageerror", (error) => problems.push(error.message));
   await page.goto("/me");
-  await expect(page.getByRole("button", { name: "音を試す" })).toHaveCount(0);
-  await page.getByRole("button", { name: "音あり" }).click();
   await page.getByRole("button", { name: "音を試す" }).click();
   await send(page, `音の言葉 ${test.info().testId}`);
   await expect(page.locator(".sent")).toBeVisible();
@@ -102,7 +147,6 @@ test("音ありで応援しても、画面が乱れない", async ({ page }) => 
   const problems: string[] = [];
   page.on("pageerror", (error) => problems.push(error.message));
   await page.goto("/me");
-  await page.getByRole("button", { name: "音あり" }).click();
   await expect(page.getByRole("button", { name: "音を試す" })).toBeVisible();
   await page.goto("/today");
   const cheer = page.getByRole("button", { name: "応援する" });
