@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getViewer } from "@/lib/current-person";
 import { getDatabase } from "@/lib/db";
 import { listAlertsFor } from "@/lib/safety";
+import { isTrialMode } from "@/lib/trial";
 
 import { BackLink } from "@/app/BackLink";
 export const metadata: Metadata = { title: "相談室への知らせ｜こえかた" };
@@ -19,6 +20,16 @@ const timeFormat = new Intl.DateTimeFormat("ja-JP", {
 export default async function SoudanPage() {
   const { viewer } = await getViewer();
   const alerts = listAlertsFor(getDatabase(), viewer.id);
+
+  if (isTrialMode()) {
+    return (
+      <main className="soudan">
+        <BackLink href="/">話すへもどる</BackLink>
+        <h1>相談室への知らせ</h1>
+        <p>これは試用なので、相談室に知らせは届きません。本当に困ったことは、先生や近くの大人に直接話してください。</p>
+      </main>
+    );
+  }
 
   return (
     <main className="soudan">

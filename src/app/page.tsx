@@ -1,5 +1,6 @@
 import { Icon } from "./Icon";
 import { listAlertsFor } from "@/lib/safety";
+import { isTrialMode } from "@/lib/trial";
 import { counselorId } from "@/lib/seed-data";
 import { cookies } from "next/headers";
 import Link from "next/link";
@@ -45,7 +46,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
   syncRibbons(db, viewer.id, new Date());
   syncGiftEggs(db, viewer.id, new Date());
   const eggs = rewards ? listGiftEggs(db, viewer.id).length : 0;
-  const hasAlerts = viewer.role !== "student" && (viewer.id === counselorId || listAlertsFor(db, viewer.id).length > 0);
+  const hasAlerts = !isTrialMode() && viewer.role !== "student" && (viewer.id === counselorId || listAlertsFor(db, viewer.id).length > 0);
   return (
     <main className="home stage-home">
       {rewards && <RibbonMoment key={`ribbon-${viewer.id}`} ribbons={listNewRibbons(db, viewer.id)} />}

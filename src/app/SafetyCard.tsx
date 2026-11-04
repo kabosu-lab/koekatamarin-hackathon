@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { hotlineList } from "./hotlines";
+import { useTrial } from "./TrialContext";
 
 export type SafetyNotice = {
   alertId: string;
@@ -9,7 +10,42 @@ export type SafetyNotice = {
   candidates: { id: string; name: string; label: string }[];
 };
 
+function HotlineList() {
+  return (
+    <ul>
+      {hotlineList.map((line) => (
+        <li key={line.name}>
+          {line.name}
+          {line.note && `（${line.note}）`}
+          <span className="tel">{line.number}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** 試用では誰にも届かない。届いたと読める言葉や、先生を選ぶ欄を出さない。 */
+function TrialSafetyCard() {
+  return (
+    <section className="safety-card" aria-label="大事なお知らせ">
+      <h2>これは試用なので、誰にも届いていません</h2>
+      <p>話してくれたことは、相談室にも先生にも伝わっていません。</p>
+      <p>
+        <strong>つらいことや心配なことがあれば、先生や近くの信頼できる大人に、直接話してください。</strong>
+      </p>
+      <h3>今すぐ話せるところ</h3>
+      <HotlineList />
+      <p className="caveat">相棒は AI なので、見逃すことも、間違えることもあります。</p>
+    </section>
+  );
+}
+
 export function SafetyCard({ notice }: { notice: SafetyNotice }) {
+  const trial = useTrial();
+  return trial ? <TrialSafetyCard /> : <RealSafetyCard notice={notice} />;
+}
+
+function RealSafetyCard({ notice }: { notice: SafetyNotice }) {
   const [selected, setSelected] = useState<string[]>([]);
   const [sharedNames, setSharedNames] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
@@ -85,15 +121,7 @@ export function SafetyCard({ notice }: { notice: SafetyNotice }) {
       )}
 
       <h3>今すぐ話せるところ</h3>
-      <ul>
-        {hotlineList.map((line) => (
-          <li key={line.name}>
-            {line.name}
-            {line.note && `（${line.note}）`}
-            <span className="tel">{line.number}</span>
-          </li>
-        ))}
-      </ul>
+      <HotlineList />
 
       {notice.candidates.length > 0 && (
         <>

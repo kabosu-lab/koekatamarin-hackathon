@@ -2,7 +2,7 @@ import type { DatabaseSync } from "node:sqlite";
 import { ComposeError, reviewPost, type Draft, type DraftChannel, type Review } from "./claude/compose";
 import type { ClaudeClient } from "./claude/types";
 import type { PostDestination } from "./destination/types";
-import { assessSafety, assessWithoutClaude, isCounselingOpen, listShareCandidates, recordAlert, type ShareCandidate } from "./safety";
+import { assessSafety, assessWithoutClaude, createSafetyNotice, type SafetyNoticeBody } from "./safety";
 
 const MAX_TOKENS = 4000;
 export const MAX_WALK_TEXT = 20_000;
@@ -88,7 +88,7 @@ export async function summarizeWalk(claude: ClaudeClient, spoken: string, channe
   return { summary, drafts: drafts.slice(0, MAX_DRAFTS) };
 }
 
-export type WalkSafety = { alertId: string; counselingOpen: boolean; candidates: ShareCandidate[] };
+export type WalkSafety = SafetyNoticeBody;
 
 async function checkSafety(claude: ClaudeClient, db: DatabaseSync, viewerId: string, text: string, now: Date): Promise<WalkSafety | undefined> {
   const assessment = await assessSafety(claude, [], text).catch((error: unknown) => {
@@ -96,12 +96,7 @@ async function checkSafety(claude: ClaudeClient, db: DatabaseSync, viewerId: str
     console.error("命や安全の確認に失敗", error instanceof Error ? error.name : "unknown");
     return assessWithoutClaude(text);
   });
-  if (!assessment.concern) return undefined;
-  return {
-    alertId: recordAlert(db, viewerId, assessment.summary, now),
-    counselingOpen: isCounselingOpen(now),
-    candidates: listShareCandidates(db, viewerId),
-  };
+  return assessment.concern ? createSafetyNotice(db, viewerId, assessment.summary, now) : undefined;
 }
 
 function spokenText(input: unknown): string | null {

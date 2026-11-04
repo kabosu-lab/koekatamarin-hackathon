@@ -1,4 +1,5 @@
-import { companionSystemPrompt, refusalReply } from "./persona";
+import { isTrialMode } from "../trial";
+import { companionSystemPrompt, refusalReply, trialCompanionSystemPrompt } from "./persona";
 import type { ChatMessage, ClaudeClient } from "./types";
 
 const MAX_REPLY_TOKENS = 4000;
@@ -15,9 +16,10 @@ export async function converse(
   userText: string,
   memory: string = "",
 ): Promise<ConverseResult> {
+  const prompt = isTrialMode() ? trialCompanionSystemPrompt : companionSystemPrompt;
   const { text, refused } = await claude.complete({
     task: "converse",
-    system: memory ? `${companionSystemPrompt}\n\n${memory}` : companionSystemPrompt,
+    system: memory ? `${prompt}\n\n${memory}` : prompt,
     messages: [...history, { role: "user", content: userText }],
     maxTokens: MAX_REPLY_TOKENS,
   });

@@ -62,6 +62,8 @@ export function listInbox(db: DatabaseSync, viewerId: string): InboxItem[] {
 
 /** 通知してよい時間か（平日の 7:00〜19:00）。受信箱そのものはいつでも開ける。 */
 export function isNoticeHours(now: Date): boolean {
+  // 画面テストが、動かす時刻で結果を変えないようにする
+  if (process.env.KOEKATA_NOTICE_ALWAYS === "1") return true;
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone: "Asia/Tokyo",
     weekday: "short",

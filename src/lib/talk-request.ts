@@ -4,13 +4,9 @@ import type { ClaudeClient } from "./claude/types";
 import { getDestination } from "./destination/current";
 import { goalsForPrompt } from "./goals";
 import { memoryForPrompt } from "./memory";
-import { assessSafety, assessWithoutClaude, isCounselingOpen, listShareCandidates, recordAlert, type ShareCandidate } from "./safety";
+import { assessSafety, assessWithoutClaude, createSafetyNotice, type SafetyNoticeBody } from "./safety";
 
-export type SafetyNoticeBody = {
-  alertId: string;
-  counselingOpen: boolean;
-  candidates: ShareCandidate[];
-};
+export type { SafetyNoticeBody };
 
 /** 相棒の返事と、命や安全の確認を同時に進める。確認に失敗しても会話は止めず、はっきりした言葉は見逃さない。 */
 export async function handleTalk(
@@ -36,14 +32,9 @@ export async function handleTalk(
       : null,
   ]);
 
-  let safety: SafetyNoticeBody | undefined;
-  if (assessment?.concern) {
-    safety = {
-      alertId: recordAlert(db, viewerId, assessment.summary, now),
-      counselingOpen: isCounselingOpen(now),
-      candidates: listShareCandidates(db, viewerId),
-    };
-  }
+  const safety: SafetyNoticeBody | undefined = assessment?.concern
+    ? createSafetyNotice(db, viewerId, assessment.summary, now)
+    : undefined;
 
   // 返事が作れなくても、相談室に伝えたことは本人に知らせる
   return { status: outcome.status, body: { ...outcome.body, safety } };

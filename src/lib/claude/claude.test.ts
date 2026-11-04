@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { createAnthropicClaude, MODEL, type MessagesApi } from "./anthropic";
 import { converse } from "./converse";
 import { createClaude } from "./index";
-import { companionSystemPrompt, openingLines, refusalReply } from "./persona";
+import { companionSystemPrompt, openingLines, refusalReply, trialCompanionSystemPrompt } from "./persona";
 import { createScriptedClaude } from "./scripted";
 
 function stubApi(response: { content: unknown[]; stop_reason: string }) {
@@ -111,6 +111,10 @@ describe("最初の一言", () => {
     expect(companionSystemPrompt).toContain("連絡した・伝えたと言わない");
     expect(companionSystemPrompt).toContain("要点だけが相談室の先生に届き");
     expect(companionSystemPrompt).toContain("「伝わらない」「大丈夫」と言い切らず");
+    // 試用では誰にも届かないので、届くと言わせない
+    expect(trialCompanionSystemPrompt).toContain("誰にも届きません");
+    expect(trialCompanionSystemPrompt).not.toContain("要点だけが相談室の先生に届き");
+    expect(trialCompanionSystemPrompt).toContain("110 番や 119 番");
   });
 
   it("相棒の指示に、相手のトーンに合わせる決まりがある", () => {

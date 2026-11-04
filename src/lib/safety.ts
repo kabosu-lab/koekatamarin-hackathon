@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
 import type { ChatMessage, ClaudeClient } from "./claude/types";
 import { counselorId } from "./seed-data";
+import { isTrialMode } from "./trial";
 
 const MAX_TOKENS = 2000;
 const RECENT_MESSAGES = 6;
@@ -161,6 +162,22 @@ export function recordAlert(db: DatabaseSync, personId: string, summary: string,
     "INSERT INTO safety_alerts (id, person_id, summary, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
   ).run(id, personId, summary, now.toISOString(), now.toISOString());
   return id;
+}
+
+export type SafetyNoticeBody = {
+  alertId: string;
+  counselingOpen: boolean;
+  candidates: ShareCandidate[];
+};
+
+/** 心配があったときの知らせを作る。試用では誰にも届かないので、記録せず、伝える先も出さない。 */
+export function createSafetyNotice(db: DatabaseSync, personId: string, summary: string, now: Date): SafetyNoticeBody {
+  if (isTrialMode()) return { alertId: `trial-${randomUUID()}`, counselingOpen: false, candidates: [] };
+  return {
+    alertId: recordAlert(db, personId, summary, now),
+    counselingOpen: isCounselingOpen(now),
+    candidates: listShareCandidates(db, personId),
+  };
 }
 
 /** 本人が選べる、ほかに伝える先。相談室はすでに届いているので出さず、生徒には届けない。 */

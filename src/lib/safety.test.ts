@@ -1,9 +1,9 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { DatabaseSync } from "node:sqlite";
 import { createScriptedClaude } from "./claude/scripted";
 import type { ClaudeClient } from "./claude/types";
 import { openDatabase } from "./db";
-import { assessSafety, isCounselingOpen, listAlertsFor, listShareCandidates, recordAlert, shareAlert, disputeAlert, assessWithoutClaude } from "./safety";
+import { assessSafety, createSafetyNotice, isCounselingOpen, listAlertsFor, listShareCandidates, recordAlert, shareAlert, disputeAlert, assessWithoutClaude } from "./safety";
 import { hotlines } from "./safety-hotlines";
 import { seedDatabase } from "./seed";
 import { handleTalk } from "./talk-request";
@@ -281,5 +281,28 @@ describe("外部の窓口", () => {
     expect(text).toContain("0120-0-78310");
     expect(text).toContain("110");
     expect(text).toContain("119");
+  });
+});
+
+describe("試用モードの知らせ", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("合言葉があるときは記録せず、伝える先も出さない", () => {
+    vi.stubEnv("KOEKATA_ACCESS_CODE", "test-code");
+    const notice = createSafetyNotice(db, "aoki", "要点", NOW);
+    expect(notice.candidates).toEqual([]);
+    expect(notice.alertId).toMatch(/^trial-/);
+    const { count } = db.prepare("SELECT count(*) AS count FROM safety_alerts").get() as { count: number };
+    expect(count).toBe(0);
+  });
+
+  it("合言葉がなければ今までどおり相談室に届く", () => {
+    vi.stubEnv("KOEKATA_ACCESS_CODE", "");
+    const notice = createSafetyNotice(db, "aoki", "要点", NOW);
+    expect(notice.candidates.length).toBeGreaterThan(0);
+    const { count } = db.prepare("SELECT count(*) AS count FROM safety_alerts").get() as { count: number };
+    expect(count).toBe(1);
   });
 });

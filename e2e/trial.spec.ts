@@ -1,0 +1,113 @@
+import { expect, type Page, test } from "@playwright/test";
+
+// 合言葉つきの試用モード。playwright.config.ts の「試用」から、別のサーバーに向けて動く
+const CODE = "test-code";
+const NOTICE = "試用です。実名や個人情報は入れないでください。本当に困ったことは先生へ。ここに書いても誰にも届きません。";
+
+async function enter(page: Page) {
+  await page.goto("/access");
+  await page.getByLabel("合言葉").fill(CODE);
+  await page.getByRole("button", { name: "入る" }).click();
+  await expect(page.locator(".talk")).toBeVisible();
+}
+
+test("合言葉がなければ、ページも API も止まる", async ({ page, request }) => {
+  await page.goto("/");
+  await expect(page).toHaveURL(/\/access$/);
+  await expect(page.getByLabel("合言葉")).toBeVisible();
+  await expect(page.getByText(NOTICE)).toBeVisible();
+
+  for (const path of ["/soudan", "/teams", "/_next/static/none.js"]) {
+    const response = await request.get(path, { maxRedirects: 0 });
+    expect(response.status(), path).toBe(303);
+  }
+  expect((await request.get("/api/inbox")).status()).toBe(401);
+  expect((await request.post("/api/converse", { data: { text: "こんにちは", history: [] } })).status()).toBe(401);
+  expect((await request.get("/api/health")).status()).toBe(200);
+});
+
+test("違う合言葉では入れず、正しければ cookie で通る", async ({ page, context }) => {
+  await page.goto("/access");
+  await page.getByLabel("合言葉").fill("ちがう");
+  await page.getByRole("button", { name: "入る" }).click();
+  await expect(page.getByRole("alert")).toContainText("合言葉が違います");
+  expect((await context.cookies()).some((c) => c.name === "koekata_access")).toBe(false);
+
+  await enter(page);
+  const cookie = (await context.cookies()).find((c) => c.name === "koekata_access");
+  expect(cookie?.httpOnly).toBe(true);
+  expect(cookie?.secure).toBe(true);
+  expect(cookie?.sameSite).toBe("Lax");
+  expect(cookie?.value).not.toContain(CODE);
+});
+
+test("試用の表示はどの画面にも出て、相談室に届くとは書かない", async ({ page }) => {
+  await enter(page);
+  await expect(page.getByText(NOTICE)).toBeVisible();
+  const promise = page.locator(".promise");
+  await expect(promise).toContainText("相談室にも先生にも届きません");
+  await expect(promise).not.toContainText("要点だけ");
+  await page.goto("/soudan");
+  await expect(page.getByText(NOTICE)).toBeVisible();
+  await expect(page.locator("main")).toContainText("相談室に知らせは届きません");
+  await page.goto("/teams");
+  await expect(page.getByText(NOTICE)).toBeVisible();
+});
+
+test("命や安全に関わる話では、誰にも届いていないことと窓口を伝え、記録しない", async ({ page }) => {
+  await enter(page);
+  await page.getByRole("button", { name: "文字で書く" }).click();
+  await page.getByLabel("相棒に書く").fill("親に殴られている");
+  await page.getByRole("button", { name: "相棒に送る" }).click();
+
+  const card = page.getByRole("region", { name: "大事なお知らせ" });
+  await expect(card).toContainText("誰にも届いていません");
+  await expect(card).toContainText("直接話してください");
+  await expect(card).toContainText("0120-0-78310");
+  await expect(card).not.toContainText("要点だけ伝えました");
+  await expect(card.getByRole("checkbox")).toHaveCount(0);
+  await expect(card.getByRole("button")).toHaveCount(0);
+  await expect(page.getByRole("region", { name: "相談室に伝えました" })).toHaveCount(0);
+
+  await page.getByLabel("使う人").selectOption({ label: "白石 文（養護・相談室）" });
+  await page.getByRole("button", { name: "切り替え" }).click();
+  await expect(page.locator('.talk[data-viewer="白石 文"]')).toBeVisible();
+  await expect(page.getByRole("link", { name: "相談室への知らせを見る" })).toHaveCount(0);
+});
+
+test("外の URL から開いても、サーバーの処理と API を拒まない", async ({ page, request }) => {
+  await enter(page);
+  const actionRequest = page.waitForRequest((r) => r.method() === "POST" && Boolean(r.headers()["next-action"]));
+  await page.getByLabel("使う人").selectOption({ label: "木下 蓮（3年・ものづくり部）" });
+  await page.getByRole("button", { name: "切り替え" }).click();
+  const original = await actionRequest;
+  const headers = await original.allHeaders();
+  const replay = (host: string, origin: string) =>
+    request.post("/", {
+      headers: { ...headers, host, origin },
+      data: original.postDataBuffer() ?? undefined,
+      maxRedirects: 0,
+    });
+
+  // 一時 URL のホストが、そのまま届く場合
+  expect((await replay("abc.trycloudflare.com", "https://abc.trycloudflare.com")).status()).toBeLessThan(400);
+  // ホストが書き換わって届いても、KOEKATA_ALLOWED_ORIGINS に合えば通る
+  expect((await replay("127.0.0.1:3101", "https://abc.trycloudflare.com")).status()).toBeLessThan(400);
+  // 許していない場所からは通さない
+  expect((await replay("127.0.0.1:3101", "https://other.example.com")).status()).toBeGreaterThanOrEqual(400);
+
+  const api = await page.request.post("/api/converse", {
+    headers: { host: "abc.trycloudflare.com", origin: "https://abc.trycloudflare.com" },
+    data: { text: "こんにちは", history: [] },
+  });
+  expect(api.status()).toBe(200);
+});
+
+test("外の URL から開いたときの入力画面への案内は、Mac の住所に飛ばさない", async ({ playwright }) => {
+  const outside = await playwright.request.newContext({ baseURL: "http://127.0.0.1:3101" });
+  const response = await outside.get("/", { headers: { host: "abc.trycloudflare.com" }, maxRedirects: 0 });
+  expect(response.status()).toBe(303);
+  expect(response.headers().location).not.toContain("127.0.0.1");
+  expect(response.headers().location).toMatch(/\/access$/);
+  await outside.dispose();
+});

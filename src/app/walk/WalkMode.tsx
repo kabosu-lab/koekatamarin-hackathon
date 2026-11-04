@@ -5,7 +5,9 @@ import type { Draft, Review } from "@/lib/claude/compose";
 import type { ChannelView, PersonView } from "@/lib/destination/types";
 import { AIZUCHI_INTERVAL_MS, PAUSE_MS, aizuchiAt, detectCommand, withoutEndWord } from "@/lib/walk-command";
 import { Compose, type ComposeStart } from "../Compose";
+import { TRIAL_SAFETY_SPEECH } from "@/lib/trial";
 import { SafetyCard, type SafetyNotice } from "../SafetyCard";
+import { useTrial } from "../TrialContext";
 import { SendBurst } from "../SendBurst";
 import { playSendSound } from "../sound";
 import { isSpeechSupported, startSession, type ListeningSession } from "../speech";
@@ -44,6 +46,7 @@ async function postJson(url: string, body: unknown) {
 }
 
 export function WalkMode({ viewer, viewerId }: { viewer: { name: string; label: string }; viewerId: string }) {
+  const trial = useTrial();
   const [phase, setPhase] = useState<Phase>("ready");
   const [spoken, setSpoken] = useState("");
   const [lastReply, setLastReply] = useState("");
@@ -152,10 +155,14 @@ export function WalkMode({ viewer, viewerId }: { viewer: { name: string; label: 
       setSafety(value as SafetyNotice);
       if (!safetySpokenRef.current) {
         safetySpokenRef.current = true;
-        void speak("大事な話やと思うから、相談室の先生に要点だけ伝えました。今すぐ話したいときは、画面の窓口につながるよ。すぐ危ないときは、110番か119番に電話してね。");
+        void speak(
+          trial
+            ? TRIAL_SAFETY_SPEECH
+            : "大事な話やと思うから、相談室の先生に要点だけ伝えました。今すぐ話したいときは、画面の窓口につながるよ。すぐ危ないときは、110番か119番に電話してね。",
+        );
       }
     },
-    [speak],
+    [speak, trial],
   );
 
   /** 話している途中でも、命や安全の確認を通す。話の流れは止めない。 */

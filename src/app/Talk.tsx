@@ -7,6 +7,8 @@ import type { ChatMessage } from "@/lib/claude/types";
 import type { ChannelView, PersonView } from "@/lib/destination/types";
 import type { KnowledgeResult } from "@/lib/knowledge";
 import { PROMISE_FULL, PROMISE_SHORT, promiseCookieName } from "@/lib/promise-cookie";
+import { TRIAL_PROMISE_FULL, TRIAL_PROMISE_SHORT } from "@/lib/trial";
+import { useTrial } from "./TrialContext";
 import { KnowledgeResults } from "./chie/KnowledgeResults";
 import { Compose, type ComposeStart } from "./Compose";
 import { ConnectCard, type ConnectSuggestion } from "./ConnectCard";
@@ -59,6 +61,7 @@ export function Talk({
   const [uploading, setUploading] = useState(false);
   const [remembered, setRemembered] = useState<number[]>([]);
   const [askTarget, setAskTarget] = useState(initialAsk);
+  const trial = useTrial();
   const [acknowledged, setAcknowledged] = useState(promiseSeen);
   const [finding, setFinding] = useState(false);
   const [found, setFound] = useState<KnowledgeResult[] | null>(null);
@@ -373,7 +376,7 @@ export function Talk({
       <div className="log" role="log" aria-label="相棒との会話">
         {!acknowledged && (
           <section className="promise promise-card" aria-label="最初にお伝えすること">
-            <p>{PROMISE_FULL}</p>
+            <p>{trial ? TRIAL_PROMISE_FULL : PROMISE_FULL}</p>
             <button
               type="button"
               onClick={() => {
@@ -555,7 +558,7 @@ export function Talk({
         </button>
       )}
 
-      {acknowledged && <p className="promise promise-short">{PROMISE_SHORT}</p>}
+      {acknowledged && <p className="promise promise-short">{trial ? TRIAL_PROMISE_SHORT : PROMISE_SHORT}</p>}
 
       <div className="side-actions">
       {attachment ? (
