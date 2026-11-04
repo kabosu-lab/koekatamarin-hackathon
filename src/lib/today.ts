@@ -96,6 +96,7 @@ export function listTodayCards(
   now: Date,
   hidden: ReadonlySet<string> = new Set(),
   myWords: readonly string[] = [],
+  celebrated: ReadonlySet<string> = new Set(),
 ): TodayCard[] {
   const seed = `${japanDate(now)}|${viewerId}|`;
   const order = (id: string) => createHash("sha256").update(seed + id).digest("hex");
@@ -111,8 +112,12 @@ export function listTodayCards(
     const shared = keywords.find((word) => post.body.includes(word));
     if (shared) related.set(post.id, `同じ「${shared}」の話`);
   }
+  // 頑張りたいことを乗り越えた投稿を前に。褒めるのは人。順位は付けない
+  for (const post of shuffled) if (celebrated.has(post.id)) related.set(post.id, "頑張ってきたことが、できた投稿");
 
-  const relatedPosts = shuffled.filter((post) => related.has(post.id));
+  const relatedPosts = shuffled
+    .filter((post) => related.has(post.id))
+    .sort((a, b) => Number(celebrated.has(b.id)) - Number(celebrated.has(a.id)));
   const others = shuffled.filter((post) => !related.has(post.id));
   const mixed: typeof shuffled = [];
   for (let i = 0; i < Math.max(relatedPosts.length, others.length); i++) {

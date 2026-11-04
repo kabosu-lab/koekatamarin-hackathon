@@ -12,6 +12,8 @@ export type ComposeStart = {
   channels: ChannelView[];
   people: PersonView[];
   asked?: { id: string; name: string };
+  /** 頑張りたいことを乗り越えた投稿のとき */
+  goalId?: string;
   attachment?: AttachmentView & { notices: AttachmentNotice[] };
 };
 
@@ -56,6 +58,7 @@ export function Compose({
   channels,
   people,
   asked,
+  goalId,
   attachment,
   viewer,
   onCancel,
@@ -111,6 +114,7 @@ export function Compose({
         kind: draft.kind,
         researchedWithAi: draft.researchedWithAi,
         askedPersonId: asked?.id,
+        goalId,
         scope,
         scopePersonId: scope === "person" ? scopePersonId : undefined,
         attachmentId: attachment?.id,

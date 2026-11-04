@@ -59,6 +59,14 @@ function scriptedLookback(prompt: string) {
   return { ready: true, text: `この期間に、${lines.length} 個のやり取りがありました。${lines[0].replace(/^.*?：/, "")}` };
 }
 
+function scriptedGoalCheck(prompt: string) {
+  const last = [...prompt.matchAll(/^本人：(.*)$/gm)].at(-1)?.[1] ?? "";
+  const firstId = prompt.match(/<頑張りたいこと>\n([^：\n]+)：/)?.[1] ?? "";
+  const done = /できた|見た|終わった|歩いた/.test(last) ? firstId : "";
+  const goal = !done && /(したい|頑張りたい|取りたい|歩きたい|やせたい|見たい)/.test(last) ? last.slice(0, 30) : "";
+  return { goal, doneGoalId: done };
+}
+
 function scriptedDaily(prompt: string) {
   const lines = [...prompt.matchAll(/^(?:本人：|投稿：|返信：|ありがとう：|勉強：)(.*)$/gm)]
     .map((match) => match[1].trim())
@@ -170,6 +178,7 @@ export function createScriptedClaude(): ClaudeClient {
     async complete({ task, messages, jsonSchema }) {
       if (task === "title_suggest") return { text: JSON.stringify({ titles: ["台本の相談役", "台本の師匠", "台本の達人"] }), refused: false };
       if (task === "avatar_pick") return { text: JSON.stringify(scriptedAvatarPick()), refused: false };
+      if (task === "goal_check") return { text: JSON.stringify(scriptedGoalCheck(messages[0].content as string)), refused: false };
       if (task === "walk") return { text: JSON.stringify(scriptedWalk(messages[0].content as string, jsonSchema)), refused: false };
       if (task === "draft") return { text: JSON.stringify(scriptedDraft(messages[0].content, jsonSchema)), refused: false };
       if (task === "attachment_draft") return { text: JSON.stringify(scriptedAttachmentDraft(messages[0].content, jsonSchema)), refused: false };

@@ -4,6 +4,7 @@ import { getViewer } from "@/lib/current-person";
 import { getDatabase } from "@/lib/db";
 import { getAvatar } from "@/lib/avatar";
 import { dailyQuestion } from "@/lib/daily-question";
+import { getGoal, goalQuestion } from "@/lib/goals";
 import { readAppearance } from "@/lib/appearance";
 import { countForNotice } from "@/lib/inbox";
 import { countKnowledgeForNotice } from "@/lib/knowledge";
@@ -19,8 +20,8 @@ import { Talk } from "./Talk";
 
 export const dynamic = "force-dynamic";
 
-export default async function HomePage({ searchParams }: { searchParams: Promise<{ ask?: string | string[] }> }) {
-  const { ask } = await searchParams;
+export default async function HomePage({ searchParams }: { searchParams: Promise<{ ask?: string | string[]; goal?: string | string[] }> }) {
+  const { ask, goal } = await searchParams;
   const { viewer, people } = await getViewer();
   const db = getDatabase();
   const waiting = countForNotice(db, viewer.id, new Date());
@@ -32,6 +33,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
     typeof ask === "string" && ask !== viewer.id && !(isStudent(viewer.id) && isStudent(ask))
       ? people.find((person) => person.id === ask)
       : undefined;
+  const doneGoal = typeof goal === "string" ? getGoal(db, viewer.id, goal) : null;
   const store = await cookies();
   const promiseSeen = store.has(promiseCookieName(viewer.id));
   const appearance = readAppearance((name) => store.get(name)?.value);
@@ -78,7 +80,8 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
         viewerId={viewer.id}
         promiseSeen={promiseSeen}
         avatarImage={rewards ? getAvatar(db, viewer.id).image : undefined}
-        question={dailyQuestion(new Date())}
+        question={goalQuestion(db, viewer.id, new Date()) ?? dailyQuestion(new Date())}
+        initialGoal={doneGoal?.status === "done" ? { id: doneGoal.id, text: doneGoal.text } : null}
         initialAsk={askPerson ? { id: askPerson.id, name: askPerson.name } : null}
       />
       <HomeAside db={db} viewerId={viewer.id} rewards={rewards} />

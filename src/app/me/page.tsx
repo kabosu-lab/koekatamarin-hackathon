@@ -15,6 +15,8 @@ import { APPEARANCE_OPTIONS, readAppearance } from "@/lib/appearance";
 import { setAppearance } from "../person-actions";
 import { SoundTest } from "./SoundTest";
 import { HiddenPeople } from "./HiddenPeople";
+import { GoalsPanel } from "./GoalsPanel";
+import { getNudge, listGoals } from "@/lib/goals";
 import { listHiddenPeople } from "@/lib/hidden-people";
 import { getDestination } from "@/lib/destination/current";
 import { listMemories } from "@/lib/memory";
@@ -102,6 +104,7 @@ export default async function MePage() {
       {rewards && <Ribbons key={`${viewer.id}-ribbons`} initial={listRibbons(db, viewer.id)} slots={STICKER_SLOTS} eventSlots={EVENT_SLOTS} />}
       {rewards && <RibbonMoment key={`${viewer.id}-moment`} ribbons={listNewRibbons(db, viewer.id)} />}
 
+      <GoalsPanel key={`${viewer.id}-goals`} initial={listGoals(db, viewer.id)} initialNudge={getNudge(db, viewer.id)} />
       <TitleCollection key={`${viewer.id}-titles`} initial={listTitles(db, viewer.id)} />
 
       <section className="card" aria-label="プロフィール">

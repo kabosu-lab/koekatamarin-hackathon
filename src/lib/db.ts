@@ -286,6 +286,24 @@ const MIGRATIONS: readonly string[] = [
   // リボンをもらった物語。誰の役に立ったかの一言と、その日
   `ALTER TABLE person_ribbons ADD COLUMN story TEXT;
    ALTER TABLE person_ribbons ADD COLUMN story_at TEXT;`,
+  // 頑張りたいこと。本人だけのもの。乗り越えた投稿の印は、投稿が消えると消える
+  `CREATE TABLE goals (
+     id TEXT PRIMARY KEY,
+     person_id TEXT NOT NULL REFERENCES people (id),
+     text TEXT NOT NULL,
+     status TEXT NOT NULL CHECK (status IN ('active', 'done')),
+     created_at TEXT NOT NULL,
+     updated_at TEXT NOT NULL
+   ) STRICT;
+   CREATE INDEX goals_by_person ON goals (person_id, status);
+   CREATE TABLE goal_settings (
+     person_id TEXT PRIMARY KEY REFERENCES people (id),
+     nudge TEXT NOT NULL CHECK (nudge IN ('gentle', 'blunt'))
+   ) STRICT;
+   CREATE TABLE goal_posts (
+     post_id TEXT PRIMARY KEY REFERENCES posts (id) ON DELETE CASCADE,
+     created_at TEXT NOT NULL
+   ) STRICT;`,
 ];
 
 export const SCHEMA_VERSION

@@ -9,7 +9,7 @@ test("仲間を探す画面はなくなり、入口もない", async ({ page }) 
 
 test("関連する投稿には理由が付く", async ({ page }) => {
   await page.goto("/today");
-  await expect(page.locator(".related-line").first()).toContainText("の話");
+  await expect(page.locator(".related-line").first()).toContainText(/の話|できた投稿/);
 });
 
 test("しばらく出さないは本人にだけ効き、相手には何も見えず、本人が「じぶん」から戻せる", async ({ page }) => {

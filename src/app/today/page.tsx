@@ -6,6 +6,7 @@ import { getDatabase } from "@/lib/db";
 import { getAvatar } from "@/lib/avatar";
 import { getDestination } from "@/lib/destination/current";
 import { listHiddenIds } from "@/lib/hidden-people";
+import { listCelebratedPostIds } from "@/lib/goals";
 import { listPopularCards, listQuietPosts, listSeenNotes, listTodayCards, viewerPublicWords } from "@/lib/today";
 import { PersonSwitcher } from "../PersonSwitcher";
 import { CardReply } from "./CardReply";
@@ -23,7 +24,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
   const teams = getDestination(db);
   const now = new Date();
   const hidden = listHiddenIds(db, viewer.id);
-  const cards = popular ? listPopularCards(teams, viewer.id, hidden) : listTodayCards(teams, viewer.id, now, hidden, viewerPublicWords(db, teams, viewer.id));
+  const cards = popular ? listPopularCards(teams, viewer.id, hidden) : listTodayCards(teams, viewer.id, now, hidden, viewerPublicWords(db, teams, viewer.id), listCelebratedPostIds(db, now));
   const seen = listSeenNotes(db, viewer.id, now);
   const quiet = listQuietPosts(db, teams, viewer.id, now);
 

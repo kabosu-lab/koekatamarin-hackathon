@@ -30,6 +30,7 @@ export function Talk({
   viewerId,
   promiseSeen = false,
   avatarImage,
+  initialGoal = null,
 }: {
   viewer: { name: string; label: string };
   question: string | null;
@@ -37,6 +38,8 @@ export function Talk({
   viewerId: string;
   promiseSeen?: boolean;
   avatarImage?: string;
+  /** 頑張りたいことを乗り越えて「みんなに言っておく」で来たとき */
+  initialGoal?: { id: string; text: string } | null;
 }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState("");
@@ -58,6 +61,10 @@ export function Talk({
   const [acknowledged, setAcknowledged] = useState(promiseSeen);
   const [finding, setFinding] = useState(false);
   const [found, setFound] = useState<KnowledgeResult[] | null>(null);
+  const [goalSuggestion, setGoalSuggestion] = useState<string | null>(null);
+  const [goalDone, setGoalDone] = useState<{ id: string; text: string } | null>(null);
+  const [goalForPost, setGoalForPost] = useState<{ id: string; text: string } | null>(initialGoal);
+  const goalAsked = useRef(false);
   const connectDone = useRef(false);
   const [sentTo, setSentTo] = useState<{ channel: ChannelView; postId: string; isPublic: boolean } | null>(null);
   const stopRef = useRef<(() => void) | null>(null);
@@ -78,7 +85,10 @@ export function Talk({
     }
     restored.current = true;
     const saved = loadTalk(viewer.name);
-    if (saved.length > 0) setMessages(saved);
+    const goalLine = initialGoal ? `頑張りたいことの「${initialGoal.text}」ができた！` : null;
+    const withGoal: ChatMessage[] =
+      goalLine && saved.at(-1)?.content !== goalLine ? [...saved, { role: "user", content: goalLine }] : saved;
+    if (withGoal.length > 0) setMessages(withGoal);
   }, [messages, viewer.name]);
 
   function rememberPromiseSeen() {
@@ -119,6 +129,7 @@ export function Talk({
       // 命や安全の案内が出ているときは、人の紹介をしない
       if (notice) connectDone.current = true;
       void checkConnect(updated);
+      if (!notice) void checkGoals(updated);
     } catch {
       // 話した言葉を失わないよう、書く欄に戻す
       setMessages(messages);
@@ -150,7 +161,38 @@ export function Talk({
     }
   }
 
-  async function startCompose(asked?: { id: string; name: string }) {
+  // 話の中に頑張りたいことや「できた」があれば聞く。残すかは本人が押して決める
+  async function checkGoals(history: ChatMessage[]) {
+    try {
+      const response = await fetch("/api/goals/check", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ history: history.slice(-MAX_HISTORY) }),
+      });
+      if (!response.ok) return;
+      const body = (await response.json()) as { suggestion: string | null; done: { id: string; text: string } | null };
+      if (body.done) setGoalDone(body.done);
+      else if (body.suggestion && !goalAsked.current) {
+        // 売り込まないよう、1回の会話で聞くのは1度だけ
+        goalAsked.current = true;
+        setGoalSuggestion(body.suggestion);
+      }
+    } catch {
+      // 声かけは無くても困らないので、黙って見送る
+    }
+  }
+
+  async function saveGoal(body: Record<string, unknown>): Promise<boolean> {
+    const response = await fetch("/api/goals", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }).catch(() => null);
+    if (!response?.ok) setNotice("残せませんでした。もう一度押してください。");
+    return response?.ok === true;
+  }
+
+  async function startCompose(asked?: { id: string; name: string }, goal = goalForPost) {
     setPreparing(true);
     setNotice("");
     setSentTo(null);
@@ -173,7 +215,7 @@ export function Talk({
         return;
       }
       setSuggestion(null);
-      setComposing({ draft, review, channels, people, asked, attachment: checked });
+      setComposing({ draft, review, channels, people, asked, attachment: checked, goalId: goal?.id });
     } catch {
       setNotice("下書きを作れませんでした。もう一度押してください。");
     } finally {
@@ -303,6 +345,7 @@ export function Talk({
           onSent={(channel, postId, words, isPublic) => {
             setComposing(null);
             setSentTo({ channel, postId, isPublic });
+            setGoalForPost(null);
             setAttachment(null);
             setBurst(words);
             playSendSound(words);
@@ -386,6 +429,71 @@ export function Talk({
           onAccept={() => void startCompose({ id: suggestion.personId, name: suggestion.name })}
           onDecline={() => setSuggestion(null)}
         />
+      )}
+
+      {goalSuggestion && (
+        <section className="connect-card" aria-label="頑張りたいことの提案">
+          <p>これ、頑張りたいことにしておく？</p>
+          <p className="person">{goalSuggestion}</p>
+          <div className="connect-actions">
+            <button
+              type="button"
+              onClick={() => {
+                const text = goalSuggestion;
+                setGoalSuggestion(null);
+                void saveGoal({ action: "add", text }).then((ok) => ok && setNotice("頑張りたいことに残しました。「じぶん」で直したり消したりできます。"));
+              }}
+            >
+              しておく
+            </button>
+            <button type="button" className="secondary" onClick={() => setGoalSuggestion(null)}>
+              今はいい
+            </button>
+          </div>
+        </section>
+      )}
+
+      {goalDone && (
+        <section className="connect-card" aria-label="頑張りたいことができた">
+          <p>「{goalDone.text}」、できたんだね！みんなに言っておく？</p>
+          <div className="connect-actions">
+            <button
+              type="button"
+              disabled={preparing}
+              onClick={() => {
+                const goal = goalDone;
+                setGoalDone(null);
+                void saveGoal({ action: "done", id: goal.id }).then((ok) => {
+                  if (!ok) return;
+                  setGoalForPost(goal);
+                  void startCompose(askTarget ?? undefined, goal);
+                });
+              }}
+            >
+              みんなに言っておく
+            </button>
+            <button
+              type="button"
+              className="secondary"
+              onClick={() => {
+                const goal = goalDone;
+                setGoalDone(null);
+                void saveGoal({ action: "done", id: goal.id });
+              }}
+            >
+              自分だけでいい
+            </button>
+            <button type="button" className="secondary" onClick={() => setGoalDone(null)}>
+              まだ途中
+            </button>
+          </div>
+        </section>
+      )}
+
+      {goalForPost && (
+        <p className="sent" role="status">
+          「{goalForPost.text}」、やったね！「言葉にして送る」で、校内のみんなに伝えられます。
+        </p>
       )}
 
       {safety && <SafetyCard key={safety.alertId} notice={safety} />}

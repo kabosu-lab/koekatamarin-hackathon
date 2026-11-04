@@ -1,3 +1,4 @@
+import { markCelebrated } from "./goals";
 import type { DatabaseSync } from "node:sqlite";
 import {
   type AttachmentNotice,
@@ -141,7 +142,7 @@ export async function handlePublish(
   input: unknown,
   db?: DatabaseSync,
 ): Promise<PublishOutcome> {
-  const { text, channelId, kind, researchedWithAi, askedPersonId, scope, scopePersonId, attachmentId } = fields(input);
+  const { goalId, text, channelId, kind, researchedWithAi, askedPersonId, scope, scopePersonId, attachmentId } = fields(input);
   if (attachmentId !== undefined && (typeof attachmentId !== "string" || !db || !loadPending(db, viewerId, attachmentId))) {
     return { status: 400, body: { error: "添付が見つかりません。もう一度付けてください" } };
   }
@@ -178,6 +179,7 @@ export async function handlePublish(
       needsLook: review.verdict === "caution",
     });
     if (typeof attachmentId === "string" && db) linkAttachment(db, viewerId, attachmentId, postId);
+    if (db) markCelebrated(db, viewerId, goalId, postId, new Date());
     return { status: 200, body: { postId, channelId } };
   } catch (error) {
     if (error instanceof DestinationError) return { status: 400, body: { error: error.message } };

@@ -2,6 +2,7 @@ import type { DatabaseSync } from "node:sqlite";
 import { handleConverse, parseConverseInput } from "./claude/converse-request";
 import type { ClaudeClient } from "./claude/types";
 import { getDestination } from "./destination/current";
+import { goalsForPrompt } from "./goals";
 import { memoryForPrompt } from "./memory";
 import { assessSafety, assessWithoutClaude, isCounselingOpen, listShareCandidates, recordAlert, type ShareCandidate } from "./safety";
 
@@ -21,7 +22,11 @@ export async function handleTalk(
 ) {
   const parsed = parseConverseInput(input);
   const [outcome, assessment] = await Promise.all([
-    handleConverse(claude, input, parsed ? memoryForPrompt(db, getDestination(db), viewerId) : ""),
+    handleConverse(
+      claude,
+      input,
+      parsed ? [memoryForPrompt(db, getDestination(db), viewerId), goalsForPrompt(db, viewerId)].filter(Boolean).join("\n\n") : "",
+    ),
     parsed
       ? assessSafety(claude, parsed.history, parsed.text).catch((error: unknown) => {
           // 話の中身をログに残さない

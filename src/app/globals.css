@@ -3152,3 +3152,67 @@ html[data-avatar="hide"] .burst-speaker {
 .quiet-note .card-reply-open {
   display: block;
 }
+
+/* 頑張りたいこと */
+.goals .goal-list {
+  margin: 0.75rem 0;
+  padding: 0;
+  list-style: none;
+}
+
+.goals .goal-list li {
+  padding: 0.6rem 0;
+  border-top: 1px solid var(--line, #ddd);
+}
+
+.goals .goal-list li p {
+  margin: 0 0 0.4rem;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.goals .goal-list li[data-status="done"] p {
+  font-weight: 400;
+}
+
+.goals .goal-mark {
+  margin-left: 0.25rem;
+  font-size: 0.85em;
+}
+
+.goals .row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.goals .goal-add,
+.goals .goal-list form {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.goals input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  padding: 0.5rem 0.6rem;
+}
+
+.goals .goal-done {
+  margin: 0.75rem 0;
+  padding: 0.75rem;
+  border: 2px solid currentcolor;
+  border-radius: 0.75rem;
+}
+
+.goals .goal-done p {
+  margin: 0 0 0.5rem;
+  font-weight: 700;
+}
+
+.goals .goal-tell {
+  display: inline-block;
+  padding: 0.5rem 0.75rem;
+  font-weight: 700;
+}

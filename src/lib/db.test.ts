@@ -6,8 +6,8 @@ import { afterEach, describe, expect, it } from "vitest";
 import { ensureMigrated, openDatabase, readSchemaVersion, SCHEMA_VERSION } from "./db";
 import { seedDatabase } from "./seed";
 
-/** 反応の移行より前の版。反応の移行はいちばん最後ではなくなっても、この数は変えない */
-const SCHEMA_VERSION_BEFORE_REACTIONS = SCHEMA_VERSION - 7;
+/** 反応の移行より前の版。新しい変更を足したら、この差を1つ増やす */
+const SCHEMA_VERSION_BEFORE_REACTIONS = SCHEMA_VERSION - 8;
 
 const dirs: string[] = [];
 
@@ -69,6 +69,9 @@ describe("知恵の反応の移行", () => {
     raw.exec(`
       PRAGMA foreign_keys = OFF;
       DROP TABLE person_titles;
+      DROP TABLE goal_posts;
+      DROP TABLE goal_settings;
+      DROP TABLE goals;
       DROP TABLE gift_egg_credits;
       DROP TABLE gift_eggs;
       DROP TABLE avatar_companions;
