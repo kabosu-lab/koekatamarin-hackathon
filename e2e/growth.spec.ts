@@ -119,7 +119,16 @@ test("Teams の写真（ダミー）から分身を作れて、写真のない�
   const section = page.getByRole("region", { name: "写真から分身を作る" });
   await expect(section).toContainText("保存しません");
   await section.getByRole("button", { name: "写真から卵を作る" }).click();
+  // 写真 → 読み取り → 卵 → 誕生 → 得意なこと
+  const hatch = page.getByRole("dialog", { name: "相棒の誕生" });
+  await expect(hatch.getByText("写真の色と雰囲気を読んでいます")).toBeVisible();
+  await expect(hatch.getByRole("heading", { name: /生まれた！$/ }).last()).toBeVisible({ timeout: 20_000 });
+  await expect(hatch).toContainText("雲の子が生まれた！", { timeout: 20_000 });
+  await expect(hatch).toContainText("得意：");
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0);
+  await hatch.getByRole("button", { name: "よろしくね" }).click();
   await expect(section).toHaveCount(0);
+  await expect(page.getByRole("region", { name: "相棒", exact: true })).toContainText("得意：");
   const image = page.getByRole("region", { name: "相棒" }).locator("img");
   await expect(image).toHaveAttribute("src", /\/api\/avatar\/art\//);
   await expect.poll(() => image.evaluate((el: HTMLImageElement) => el.complete && el.naturalWidth > 0)).toBe(true);
@@ -133,14 +142,14 @@ test("Teams の写真（ダミー）から分身を作れて、写真のない�
   await page.context().close();
 });
 
-test("描いた絵の配信は SVG で、文字もスクリプトも動かさない", async ({ page, request }) => {
+test("分身の絵の配信は、ほかの場所のものを動かさない", async ({ page, request }) => {
   await page.goto("/study/room");
   const src = await page.locator(".study-buddy .pose.study").first().getAttribute("src");
   const response = await request.get(src as string);
-  expect(response.headers()["content-type"]).toContain("image/svg+xml");
+  expect(response.headers()["content-type"]).toMatch(/image\/(svg\+xml|png)/);
   expect(response.headers()["content-security-policy"]).toContain("sandbox");
   expect(response.headers()["x-content-type-options"]).toBe("nosniff");
-  expect(await response.text()).not.toMatch(/<text|<script/);
+  if (response.headers()["content-type"].includes("svg")) expect(await response.text()).not.toMatch(/<text|<script/);
   expect((await request.get("/api/avatar/art/unknown/study")).status()).toBe(404);
   expect((await request.get(`${(src as string).replace("/study", "/shout")}`)).status()).toBe(404);
 });

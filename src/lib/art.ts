@@ -1,19 +1,18 @@
 import { readFile } from "node:fs/promises";
+import { allArtNames } from "./avatar-catalog";
 
 /**
  * 絵は公開リポジトリに入れず、手元の .private/art/ から読む（運営に確認が取れるまで）。
+ * KOEKATA_AVATAR_ART=code で、分身の絵だけをコードの絵に切り替えられる。
  * ない環境では、コードで描いた簡単な代わりを返すので、誰の手元でも画面は壊れない。
  */
 export const ART_DIR = ".private/art";
 
-const CREATURES = ["dragon", "bird", "spirit", "beast"];
-const HUMANS = ["coat", "jacket", "craft", "elder"];
 const SEASONS = ["haru", "natsu", "aki", "fuyu"];
 
 const allowed = new Set<string>([
   "egg.png",
-  ...CREATURES.flatMap((f) => [1, 2, 3].map((n) => `${f}-${n}.png`)),
-  ...HUMANS.flatMap((f) => [1, 2, 3, 4, 5].map((n) => `${f}-${n}.png`)),
+  ...allArtNames(),
   ...SEASONS.map((s) => `school-${s}.jpg`),
 ]);
 
@@ -25,6 +24,7 @@ const FAMILY_COLOR: Record<string, string> = {
   dragon: "#8fcfa8",
   bird: "#9db8e8",
   spirit: "#f4b183",
+  cloud: "#bfe3f7",
   beast: "#e8a9c0",
   coat: "#d7d3e0",
   jacket: "#8a8fa8",
@@ -57,8 +57,16 @@ export function placeholderSvg(name: string): string {
 export type ArtResponse = { body: Uint8Array | string; contentType: string; placeholder: boolean };
 
 /** 決まった名前の絵だけを返す。名前を一覧と照らすので、他のファイルは読めない。 */
-export async function loadArt(name: string, dir: string = ART_DIR): Promise<ArtResponse | null> {
+export async function loadArt(
+  name: string,
+  dir: string = ART_DIR,
+  env: Record<string, string | undefined> = process.env,
+): Promise<ArtResponse | null> {
   if (!isArtName(name)) return null;
+  // 分身の絵は、運営の回答しだいで使えなくなる。背景はこの切り替えの対象にしない
+  if (env.KOEKATA_AVATAR_ART === "code" && !name.startsWith("school-")) {
+    return { body: placeholderSvg(name), contentType: "image/svg+xml", placeholder: true };
+  }
   try {
     // ビルドツールがプロジェクト全体を追跡しないよう、この読み込みは追跡から外す
     const body = await readFile(/* turbopackIgnore: true */ [dir, name].join("/"));

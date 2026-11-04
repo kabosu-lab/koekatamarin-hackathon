@@ -1699,11 +1699,6 @@ h2 {
   }
 }
 
-/* 描いた分身は、なめらかに表示する */
-.avatar-image[src^="/api/avatar/"] {
-  image-rendering: auto;
-}
-
 /* 自習室：分身だけが動く。動きは transform だけ */
 .study-room {
   display: grid;
@@ -2359,4 +2354,167 @@ body:has(.stage-home) {
     grid-column: 2 / -1;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
+}
+
+/* 絵は大きさがそろっていないので、箱いっぱいに収める。ドット絵はにじませない */
+.avatar-image,
+.study-buddy .pose,
+.sticker {
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
+/* B ステッカー：白い縁と、大胆な単色の背景 */
+.sticker {
+  filter: drop-shadow(3px 0 0 #fff) drop-shadow(-3px 0 0 #fff) drop-shadow(0 3px 0 #fff) drop-shadow(0 -3px 0 #fff) drop-shadow(0 6px 0 rgb(0 0 0 / 28%));
+}
+
+.hatch-stage {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.25rem;
+  padding: 1.5rem;
+  overflow: auto;
+  background: #ffd23f;
+  color: #14131a;
+  text-align: center;
+  animation: hatch-in 0.25s ease-out;
+}
+
+.hatch-words h2 {
+  margin: 0;
+  font-size: 1.6rem;
+  font-weight: 900;
+}
+
+.hatch-words {
+  width: min(100%, 22rem);
+  padding: 0.9rem 1rem;
+  border-radius: 1.25rem;
+  background: #fff;
+  color: #14131a;
+}
+
+.hatch-talent {
+  display: inline-block;
+  margin: 0.5rem 0 0;
+  padding: 0.3rem 0.9rem;
+  border-radius: 999px;
+  background: #14131a;
+  color: #fff;
+  font-weight: 800;
+  animation: hatch-pop 0.4s cubic-bezier(0.34, 1.8, 0.64, 1) 0.35s backwards;
+}
+
+.hatch-reason {
+  margin: 0.5rem 0 0.75rem;
+}
+
+.partner-talent {
+  display: inline-block;
+  margin: 0.2rem 0;
+  padding: 0.15rem 0.7rem;
+  border-radius: 999px;
+  background: #14131a;
+  color: #fff;
+  font-weight: 800;
+}
+
+.hatch-photo {
+  position: relative;
+  overflow: hidden;
+  border: 6px solid #fff;
+  border-radius: 1.25rem;
+  line-height: 0;
+}
+
+.hatch-scan {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 35%, rgb(255 255 255 / 85%) 50%, transparent 65%);
+  animation: hatch-scan 1.1s ease-in-out infinite;
+}
+
+.hatch-egg {
+  animation: hatch-pop 0.45s cubic-bezier(0.34, 1.8, 0.64, 1);
+}
+
+.hatch-stage.crack .hatch-egg {
+  animation: hatch-shake 0.14s ease-in-out infinite alternate;
+}
+
+.hatch-born {
+  animation: hatch-born 0.6s cubic-bezier(0.34, 1.8, 0.64, 1);
+}
+
+@keyframes hatch-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes hatch-scan {
+  from {
+    transform: translateY(-70%);
+  }
+  to {
+    transform: translateY(70%);
+  }
+}
+
+@keyframes hatch-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+}
+
+@keyframes hatch-shake {
+  from {
+    transform: rotate(-7deg) scale(1.03, 0.97);
+  }
+  to {
+    transform: rotate(7deg) scale(0.97, 1.03);
+  }
+}
+
+@keyframes hatch-born {
+  0% {
+    opacity: 0;
+    transform: scale(0.2, 0.2) translateY(30%);
+  }
+  55% {
+    opacity: 1;
+    transform: scale(1.12, 0.92);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hatch-stage,
+  .hatch-talent,
+  .hatch-scan,
+  .hatch-egg,
+  .hatch-stage.crack .hatch-egg,
+  .hatch-born {
+    animation: none;
+  }
+}
+
+.hatch-words button {
+  min-height: 3rem;
+  padding: 0.6rem 1.75rem;
+  border: 0;
+  border-radius: 999px;
+  background: #14131a;
+  color: #fff;
+  font: inherit;
+  font-weight: 800;
 }

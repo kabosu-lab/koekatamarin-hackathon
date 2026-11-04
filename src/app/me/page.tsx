@@ -15,8 +15,7 @@ import { HiddenPeople } from "./HiddenPeople";
 import { listHiddenPeople } from "@/lib/hidden-people";
 import { getDestination } from "@/lib/destination/current";
 import { listMemories } from "@/lib/memory";
-import { getPhotoAvatarState, refreshAvatarArt } from "@/lib/avatar-art";
-import { createClaude } from "@/lib/claude";
+import { getPhotoAvatarState, roomToken } from "@/lib/avatar-art";
 import { createDummyPhotos } from "@/lib/profile-photo/dummy";
 import { ArtRefresher, AvatarFromPhoto, AvatarQuiz, MemoryList, ProfileEditor, ThanksForm } from "./MeActions";
 
@@ -28,8 +27,6 @@ export default async function MePage() {
   const store = await cookies();
   const appearance = readAppearance((name) => store.get(name)?.value);
   const db = getDatabase();
-  // 段階が変わったときだけ、裏で描き直す。画面は待たない
-  void refreshAvatarArt(createClaude(), db, viewer.id);
   const photos = createDummyPhotos();
   const photoState = await getPhotoAvatarState(db, photos, viewer.id);
   const avatar = getAvatar(db, viewer.id);
@@ -54,12 +51,13 @@ export default async function MePage() {
             <strong>{viewer.name}</strong>
           </p>
           <p className="muted">{avatar.label}</p>
+                    {photoState.talent && <p className="partner-talent">得意：{photoState.talent}</p>}
           <p className="muted">人とやり取りすると育ちます。休んでも減りません。</p>
         </div>
       </section>
 
       {photoState.status === "pending" && <ArtRefresher />}
-      {photoState.canUsePhoto && <AvatarFromPhoto label={photos.label} failed={photoState.status === "failed"} />}
+      {photoState.canUsePhoto && <AvatarFromPhoto label={photos.label} failed={photoState.status === "failed"} eggImage={`/api/avatar/art/${roomToken(db, viewer.id)}/egg`} />}
 
       {!avatar.family && (
         <AvatarQuiz

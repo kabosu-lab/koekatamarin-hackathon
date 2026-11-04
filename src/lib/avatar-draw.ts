@@ -71,7 +71,7 @@ export function drawEgg({ colors: [main, accent] }: AvatarTraits): string {
   return `<ellipse cx="100" cy="110" rx="56" ry="70" fill="${main}"/><path d="M50 118q25 18 50 0t50 0" fill="none" stroke="${accent}" stroke-width="10" stroke-linecap="round"/><circle cx="82" cy="78" r="9" fill="#ffffff" fill-opacity="0.7"/>`;
 }
 
-/** 配信の形にする。この関数に通すのは sanitizeSvgFragment を通った断片か、コードで描いた断片だけ。 */
+/** 配信の形にする。この関数に通すのは、コードで描いた断片だけ。 */
 export function toSvg(...fragments: string[]): string {
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${VIEW_BOX}" width="200" height="200">${fragments.join("")}</svg>`;
 }

@@ -227,6 +227,9 @@ const MIGRATIONS: readonly string[] = [
      person_id TEXT NOT NULL REFERENCES people (id),
      PRIMARY KEY (note_id, person_id)
    ) STRICT;`,
+  `ALTER TABLE avatars ADD COLUMN shown_stage INTEGER;
+   ALTER TABLE avatar_art ADD COLUMN talent TEXT;
+   ALTER TABLE avatar_art ADD COLUMN reason TEXT;`,
 ];
 
 export const SCHEMA_VERSION

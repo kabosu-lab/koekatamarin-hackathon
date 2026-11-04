@@ -131,3 +131,27 @@ export function createDummyPhotos(): ProfilePhotoSource {
     },
   };
 }
+
+/** 桜色の飲み物。試用の入口でだけ使う。 */
+export function drawDrink(): Uint8Array {
+  const canvas = new Canvas([255, 228, 236]);
+  canvas.taper(84, 220, 58, 40, [250, 150, 180]);
+  canvas.taper(84, 110, 58, 54, [255, 245, 248]);
+  canvas.circle(128, 76, 44, [255, 250, 252]);
+  canvas.circle(150, 48, 14, [214, 40, 72]);
+  canvas.rect(150, 18, 156, 46, [60, 130, 70]);
+  return canvas.toPng();
+}
+
+/** 夜の街。試用の入口でだけ使う。 */
+export function drawNightCity(): Uint8Array {
+  const canvas = new Canvas([16, 18, 52]);
+  canvas.circle(196, 58, 28, [248, 236, 190]);
+  canvas.rect(0, 150, 70, 256, [32, 36, 84]);
+  canvas.rect(70, 110, 140, 256, [44, 40, 104]);
+  canvas.rect(140, 170, 256, 256, [28, 32, 76]);
+  for (const [x, y] of [[18, 170], [42, 196], [86, 134], [112, 160], [96, 200], [160, 190], [200, 210], [226, 186]]) {
+    canvas.rect(x, y, x + 12, y + 14, [255, 214, 120]);
+  }
+  return canvas.toPng();
+}

@@ -1,4 +1,5 @@
 import type { DatabaseSync } from "node:sqlite";
+import { catalogEntry } from "./avatar-catalog";
 
 export type Kind = "creature" | "human";
 export type Style = "listen" | "make" | "lead" | "think";
@@ -27,8 +28,12 @@ export const KIND_QUESTION = {
   ],
 } as const;
 
-/** 写真から作った分身。卵から育つ */
-const CREATURE_FAMILIES = new Set<string>([...Object.values(FAMILIES.creature), "photo"]);
+/** 写真を読んでいる間の仮の系統。卵のまま待つ */
+export const PENDING_FAMILY = "photo";
+
+function isCreature(family: string): boolean {
+  return family === PENDING_FAMILY || catalogEntry(family)?.group === "creature";
+}
 
 export type Contributions = {
   posts: number;
@@ -87,38 +92,46 @@ export function stageFor(family: string, contributions: Contributions): number {
     contributions.goals * 2 +
     contributions.assists * 2 +
     contributions.thanksReceived * 2;
-  const steps = CREATURE_FAMILIES.has(family) ? [1, 4, 10] : [3, 7, 12, 20];
+  const steps = isCreature(family) ? [1, 4, 10] : [3, 7, 12, 20];
   const passed = steps.filter((step) => score >= step).length;
-  return CREATURE_FAMILIES.has(family) ? passed : passed + 1;
+  return isCreature(family) ? passed : passed + 1;
+}
+
+/** 見せる段階。本人が進化を選ぶまでは今の姿のまま。記録がない人は、育った分をそのまま見せる。 */
+export function shownStage(db: DatabaseSync, personId: string, family: string, shown: number | null): number {
+  return shown ?? stageFor(family, countContributions(db, personId));
 }
 
 export function getAvatar(db: DatabaseSync, personId: string): AvatarView {
-  const row = db.prepare("SELECT family FROM avatars WHERE person_id = ?").get(personId) as
-    | { family: string }
+  const row = db.prepare("SELECT family, shown_stage FROM avatars WHERE person_id = ?").get(personId) as
+    | { family: string; shown_stage: number | null }
     | undefined;
   if (!row) return { family: null, stage: 0, image: "egg.png", label: "まだ卵です" };
 
-  const stage = stageFor(row.family, countContributions(db, personId));
-  const art = db.prepare("SELECT token, body, status FROM avatar_art WHERE person_id = ? AND (body IS NOT NULL OR status IN ('pending', 'failed'))").get(personId) as
-    | { token: string; body: string | null; status: string }
+  const stage = shownStage(db, personId, row.family, row.shown_stage);
+  const art = db.prepare("SELECT token, status FROM avatar_art WHERE person_id = ? AND status != 'none'").get(personId) as
+    | { token: string; status: string }
     | undefined;
   if (art) {
-    // 描いた絵は段階ごとに変わるので、段階を URL に入れて古い絵を残さない
-    // 描けなかったときは、コードで描いた絵が normal で出る
-    const asEgg = stage === 0 || (!art.body && art.status === "pending");
+    // 絵は系統と段階で変わるので、URL に入れて古い絵を残さない
+    // 読み取れなかったときは、コードで描いた絵が normal で出る
+    const asEgg = stage === 0 || art.status === "pending";
     const pose = asEgg ? "egg" : "normal";
-    const label = asEgg ? "写真の色の卵" : `${stage} 段階目の相棒`;
-    return { family: row.family, stage, image: `/api/avatar/art/${art.token}/${pose}?v=${stage}`, label };
+    const label = asEgg ? "もうすぐ生まれそうな卵" : `${stage} 段階目の相棒`;
+    return { family: row.family, stage, image: `/api/avatar/art/${art.token}/${pose}?v=${row.family}-${stage}`, label };
   }
   if (stage === 0) return { family: row.family, stage, image: "egg.png", label: "もうすぐ生まれそうな卵" };
   return { family: row.family, stage, image: `${row.family}-${stage}.png`, label: `${stage} 段階目の相棒` };
 }
 
+
 export function chooseAvatar(db: DatabaseSync, personId: string, kind: unknown, style: unknown): boolean {
   const family = familyFor(kind, style);
   if (!family) return false;
   // 選び直しで育ちが消えないよう、一度決めた系統は変えない
-  const result = db.prepare("INSERT OR IGNORE INTO avatars (person_id, family) VALUES (?, ?)").run(personId, family);
+  const result = db
+    .prepare("INSERT OR IGNORE INTO avatars (person_id, family, shown_stage) VALUES (?, ?, ?)")
+    .run(personId, family, stageFor(family, countContributions(db, personId)));
   return result.changes === 1;
 }
 

@@ -1,4 +1,3 @@
-import { drawWithCode } from "../avatar-draw";
 import { openingLines } from "./persona";
 import type { ClaudeClient } from "./types";
 
@@ -138,16 +137,16 @@ function scriptedReview(post: string) {
  * 審査員がキーなしで触るときと、テストで使う。
  */
 /** 台本の絵。写真は読まず、コードで描いた絵を返す。 */
-function scriptedAvatarArt() {
-  const traits = { colors: ["#2545f0", "#ff6b4a", "#14213d"] as [string, string, string], motif: "台本", mood: "台本" };
-  return { usable: true, traits, ...drawWithCode(traits, 1) };
+function scriptedAvatarPick() {
+  const traits = { colors: ["#2545f0", "#ff6b4a", "#14213d"], motif: "台本", mood: "台本" };
+  return { usable: true, family: "cloud", reason: "台本の例：ふんわりした雰囲気に合いそう。", talent: "ふんわり聞き上手", traits };
 }
 
 export function createScriptedClaude(): ClaudeClient {
   return {
     mode: "scripted",
     async complete({ task, messages, jsonSchema }) {
-      if (task === "avatar_art") return { text: JSON.stringify(scriptedAvatarArt()), refused: false };
+      if (task === "avatar_pick") return { text: JSON.stringify(scriptedAvatarPick()), refused: false };
       if (task === "draft") return { text: JSON.stringify(scriptedDraft(messages[0].content, jsonSchema)), refused: false };
       if (task === "attachment_draft") return { text: JSON.stringify(scriptedAttachmentDraft(messages[0].content, jsonSchema)), refused: false };
       if (task === "lookback") return { text: JSON.stringify(scriptedLookback(messages[0].content)), refused: false };

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { MemoryItem } from "@/lib/memory";
 import type { ProfileDraft } from "@/lib/profile";
+import { PhotoHatch } from "./PhotoHatch";
 
 async function postJson(url: string, body: unknown) {
   const response = await fetch(url, {
@@ -241,17 +242,18 @@ export function ThanksForm({ people }: { people: { id: string; name: string; lab
   );
 }
 
-/** 本人が押したときだけ、登録した写真を読む。描いている間も画面は待たせない。 */
-export function AvatarFromPhoto({ label, failed }: { label: string; failed: boolean }) {
+/** 本人が押したときだけ、登録した写真を読む。読み終わるまで、誕生の演出を見せる。 */
+export function AvatarFromPhoto({ label, failed, eggImage }: { label: string; failed: boolean; eggImage: string }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
+  const [hatching, setHatching] = useState(false);
   const [problem, setProblem] = useState("");
 
   async function start() {
     setBusy(true);
     setProblem("");
     const { ok, data } = await postJson("/api/avatar/photo", {}).catch(() => ({ ok: false, data: {} as Record<string, unknown> }));
-    if (ok) router.refresh();
+    if (ok) setHatching(true);
     else setProblem(typeof data.error === "string" ? data.error : "うまくいきませんでした。もう一度押してください。");
     setBusy(false);
   }
@@ -259,9 +261,9 @@ export function AvatarFromPhoto({ label, failed }: { label: string; failed: bool
   return (
     <section className="card" aria-label="写真から分身を作る">
       <h2>{label}を、相棒の卵にする</h2>
-      {failed && <p className="notice">前回はうまく描けなかったので、シンプルな絵にしています。もう一度試せます。</p>}
+      {failed && <p className="notice">前回はうまく読めなかったので、シンプルな絵にしています。もう一度試せます。</p>}
       <p className="muted">
-        写真の色や持ち物の雰囲気から、あなただけの相棒が生まれます。本人に似せることはしません。写真は Claude に1度だけ見せて、保存しません。
+        写真の色や持ち物の雰囲気から、合う相棒を選びます。本人に似せることはしません。写真は Claude に1度だけ見せて、保存しません。
       </p>
       <button type="button" disabled={busy} onClick={() => void start()}>
         写真から卵を作る
@@ -271,11 +273,21 @@ export function AvatarFromPhoto({ label, failed }: { label: string; failed: bool
           {problem}
         </p>
       )}
+      {hatching && (
+        <PhotoHatch
+          eggImage={eggImage}
+          onFailed={() => {
+            setHatching(false);
+            router.refresh();
+          }}
+        />
+      )}
     </section>
   );
 }
 
-/** 裏で描いている間だけ、ときどき画面を新しくする。 */
+
+/** 裏で選んでいる間だけ、ときどき画面を新しくする。 */
 export function ArtRefresher() {
   const router = useRouter();
   useEffect(() => {
@@ -286,5 +298,5 @@ export function ArtRefresher() {
     }, 3000);
     return () => clearInterval(timer);
   }, [router]);
-  return <p className="muted" role="status">相棒を描いています。ほかのことをしていて大丈夫です。</p>;
+  return <p className="muted" role="status">相棒を選んでいます。ほかのことをしていて大丈夫です。</p>;
 }
