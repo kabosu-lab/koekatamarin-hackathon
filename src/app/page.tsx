@@ -36,12 +36,14 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
   const promiseSeen = store.has(promiseCookieName(viewer.id));
   const appearance = readAppearance((name) => store.get(name)?.value);
   const soundOn = appearance.sound === "on";
+  const rewards = showsRewards(appearance);
+  const isModern = appearance.theme === "modern";
   syncRibbons(db, viewer.id, new Date());
   syncGiftEggs(db, viewer.id, new Date());
-  const eggs = showsRewards(appearance) ? listGiftEggs(db, viewer.id).length : 0;
+  const eggs = rewards ? listGiftEggs(db, viewer.id).length : 0;
   return (
     <main className="home stage-home">
-      {showsRewards(appearance) && <RibbonMoment key={viewer.id} ribbons={listNewRibbons(db, viewer.id)} />}
+      {rewards && <RibbonMoment key={viewer.id} ribbons={listNewRibbons(db, viewer.id)} />}
       <header className="hero">
         <h1>こえかた</h1>
         <p>話すだけで、できることが増える。</p>
@@ -49,6 +51,12 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
           <input type="hidden" name="name" value="sound" />
           <button type="submit" name="value" value={soundOn ? "off" : "on"} aria-pressed={soundOn}>
             音 {soundOn ? "オン" : "オフ"}
+          </button>
+        </form>
+        <form className="theme-toggle" action={setAppearance}>
+          <input type="hidden" name="name" value="theme" />
+          <button type="submit" name="value" value={isModern ? "pop" : "modern"}>
+            {isModern ? "ポップに" : "モダンに"}
           </button>
         </form>
       </header>
@@ -68,11 +76,11 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
         viewer={{ name: viewer.name, label: viewer.label }}
         viewerId={viewer.id}
         promiseSeen={promiseSeen}
-        avatarImage={getAvatar(db, viewer.id).image}
+        avatarImage={rewards ? getAvatar(db, viewer.id).image : undefined}
         question={dailyQuestion(new Date())}
         initialAsk={askPerson ? { id: askPerson.id, name: askPerson.name } : null}
       />
-      <HomeAside db={db} viewerId={viewer.id} />
+      <HomeAside db={db} viewerId={viewer.id} rewards={rewards} />
     </main>
   );
 }

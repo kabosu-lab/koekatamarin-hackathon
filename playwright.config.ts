@@ -14,7 +14,25 @@ export default defineConfig({
   // デモの通し確認の写真（e2e/demo.spec.ts）を、成功しても残す
   preserveOutput: "always",
   reporter: "list",
-  use: { baseURL: `http://127.0.0.1:${PORT}` },
+  use: {
+    baseURL: `http://127.0.0.1:${PORT}`,
+    // 既存の画面テストは分身のいるポップで見る。モダン（初期）は e2e/modern.spec.ts で確かめる
+    storageState: {
+      cookies: [
+        {
+          name: "koekata_theme",
+          value: "pop",
+          domain: "127.0.0.1",
+          path: "/",
+          expires: -1,
+          httpOnly: false,
+          secure: false,
+          sameSite: "Lax",
+        },
+      ],
+      origins: [],
+    },
+  },
   projects: [{ name: "スマホ", use: { ...devices["Pixel 7"] } }],
   webServer: {
     command: `npm run build && npm run start -- --hostname 127.0.0.1 --port ${PORT}`,

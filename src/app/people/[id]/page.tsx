@@ -1,3 +1,6 @@
+import { cookies } from "next/headers";
+import { readAppearance } from "@/lib/appearance";
+import { showsRewards } from "@/lib/rewards-view";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -18,14 +21,16 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
   if (!person) notFound();
   const avatar = getAvatar(db, id);
   const counts = countContributions(db, id);
-  const ribbons = listPublicRibbons(db, id);
+  const store = await cookies();
+  const rewards = showsRewards(readAppearance((name) => store.get(name)?.value));
+  const ribbons = rewards ? listPublicRibbons(db, id) : [];
 
   return (
     <main className="home">
       <h1>{person.name}</h1>
       <p>{person.label}</p>
       <section className="card partner" aria-label="相棒">
-        <Avatar image={avatar.image} alt={`${person.name}さんの相棒`} />
+        {rewards && <Avatar image={avatar.image} alt={`${person.name}さんの相棒`} />}
         <p>{person.public_profile || "プロフィールはまだありません。"}</p>
       </section>
       {ribbons.length > 0 && (

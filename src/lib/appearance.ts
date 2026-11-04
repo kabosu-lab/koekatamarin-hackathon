@@ -5,6 +5,7 @@ export const APPEARANCE_OPTIONS = [
     label: "きせかえ",
     options: [
       { value: "modern", label: "モダン" },
+      { value: "pop", label: "ポップ" },
       { value: "game", label: "ゲーム" },
       { value: "clear", label: "くっきり" },
     ],

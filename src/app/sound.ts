@@ -53,6 +53,11 @@ export function playSendSound(words: string): void {
   try {
     const { audio, out } = setup();
     void audio.resume();
+    // モダンは小さな音1つだけ
+    if (document.documentElement.dataset.theme === "modern") {
+      schedulePop(audio, out, audio.currentTime + 0.02, 79, 0.2);
+      return;
+    }
     scheduleSendSound(audio, out, audio.currentTime + 0.02, splitIntoWords(words).length);
   } catch {
     // 音が出せなくても、送るのには関係ない

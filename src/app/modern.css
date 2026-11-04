@@ -1,0 +1,485 @@
+/*
+ * モダン：大人向けの見た目。形まで変えるので、きせかえの変数とは別に置く。
+ * 余白、文字の階層、細い線で見せる。絵、丸い飾り、影、色面は使わない。
+ */
+
+/* 分身と飾りは一切出さない（ふつうは画面が出さないが、ここでも止める） */
+html[data-theme="modern"] .avatar-image,
+html[data-theme="modern"] .sticker,
+html[data-theme="modern"] .speaker,
+html[data-theme="modern"] .petal,
+html[data-theme="modern"] .sakura-scene,
+html[data-theme="modern"] .study-room,
+html[data-theme="modern"] .gathering,
+html[data-theme="modern"] .event-banner,
+html[data-theme="modern"] .ribbons,
+html[data-theme="modern"] .ribbon-moment,
+html[data-theme="modern"] .send-burst {
+  display: none;
+}
+
+html[data-theme="modern"] body,
+html[data-theme="modern"] body:has(.stage-home) {
+  background: var(--ground);
+  color: var(--ink);
+  letter-spacing: 0.01em;
+}
+
+/* 見出しは明朝で静かに。太さで押さない */
+html[data-theme="modern"] .home h1,
+html[data-theme="modern"] .stage-home .hero h1,
+html[data-theme="modern"] .chie > h1,
+html[data-theme="modern"] main h1 {
+  font-family: "Hiragino Mincho ProN", "Yu Mincho", "Noto Serif JP", serif;
+  font-size: 1.85rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: var(--ink);
+}
+
+html[data-theme="modern"] .stage-home .hero h1::after,
+html[data-theme="modern"] .home h1::after {
+  content: none;
+}
+
+html[data-theme="modern"] .stage-home .hero p,
+html[data-theme="modern"] .home header p {
+  color: var(--muted);
+  font-size: 0.92rem;
+  font-weight: 400;
+}
+
+html[data-theme="modern"] h2,
+html[data-theme="modern"] .card h2 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+/* カードの箱をやめ、細い線で区切る */
+html[data-theme="modern"] .card,
+html[data-theme="modern"] .talk.inbox-item,
+html[data-theme="modern"] .talk .chie-card,
+html[data-theme="modern"] .today-card {
+  padding: 1.25rem 0;
+  border: 0;
+  border-top: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+html[data-theme="modern"] button,
+html[data-theme="modern"] .card button,
+html[data-theme="modern"] .talk button,
+html[data-theme="modern"] .talk .primary,
+html[data-theme="modern"] .home .switcher button,
+html[data-theme="modern"] .hero .sound-toggle button,
+html[data-theme="modern"] .hero .theme-toggle button,
+html[data-theme="modern"] .stage-home .attach-button {
+  border: 1px solid var(--input-line);
+  border-radius: 0.45rem;
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: 500;
+  box-shadow: none;
+}
+
+/* 主な操作だけ、1色で */
+html[data-theme="modern"] .talk .primary,
+html[data-theme="modern"] .talk .actions button:first-child,
+html[data-theme="modern"] .card button:not(.secondary),
+html[data-theme="modern"] .talk .write button {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+html[data-theme="modern"] .talk .actions button:not(:first-child),
+html[data-theme="modern"] .card button.secondary {
+  border-color: var(--input-line);
+  background: var(--surface);
+  color: var(--ink);
+}
+
+html[data-theme="modern"] .card button.secondary[aria-pressed="true"],
+html[data-theme="modern"] .appearance .row button[aria-pressed="true"] {
+  border-color: var(--accent);
+  background: var(--good);
+  color: var(--accent);
+}
+
+html[data-theme="modern"] button:disabled {
+  opacity: 0.45;
+}
+
+html[data-theme="modern"] button:active:not(:disabled),
+html[data-theme="modern"] .hub-links a:active,
+html[data-theme="modern"] .bottom-nav a:active {
+  transform: none;
+  background: var(--soft);
+}
+
+html[data-theme="modern"] .talk .primary:active:not(:disabled),
+html[data-theme="modern"] .card button:not(.secondary):active:not(:disabled) {
+  background: var(--accent-deep);
+}
+
+html[data-theme="modern"] .hero .sound-toggle button,
+html[data-theme="modern"] .hero .theme-toggle button {
+  min-height: 2.25rem;
+  padding: 0.2rem 0.65rem;
+  border-color: transparent;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+/* 入口は色のかたまりをやめ、文字と細い線の一覧に */
+html[data-theme="modern"] .hub-links {
+  display: block;
+  margin-block: 1rem;
+  border-top: 1px solid var(--line);
+}
+
+html[data-theme="modern"] .hub-links a,
+html[data-theme="modern"] .hub-links a:nth-child(n) {
+  --tile: transparent;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 3.25rem;
+  padding: 0.75rem 0;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
+  color: var(--ink);
+  font-size: 1rem;
+  font-weight: 400;
+  text-decoration: none;
+  box-shadow: none;
+}
+
+html[data-theme="modern"] .hub-links a::after {
+  content: "→";
+  color: var(--muted);
+  font-weight: 400;
+}
+
+html[data-theme="modern"] .stage-home .quick-links a,
+html[data-theme="modern"] .quick-links a {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--accent);
+  font-size: 0.88rem;
+  font-weight: 400;
+  box-shadow: none;
+}
+
+html[data-theme="modern"] main a {
+  color: var(--accent);
+  text-underline-offset: 0.2em;
+  text-decoration-thickness: 1px;
+}
+
+/* 話す画面 */
+html[data-theme="modern"] .stage-home .daily-question {
+  margin-block: 1.5rem 0.5rem;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--ink);
+  font-family: "Hiragino Mincho ProN", "Yu Mincho", "Noto Serif JP", serif;
+  font-size: 1.3rem;
+  font-weight: 500;
+  line-height: 1.6;
+  text-align: left;
+}
+
+html[data-theme="modern"] .stage-home .talk .hint {
+  color: var(--muted);
+  font-weight: 400;
+  text-align: left;
+}
+
+html[data-theme="modern"] .stage-home .talk .promise,
+html[data-theme="modern"] .talk .promise {
+  padding: 0.85rem 0;
+  border: 0;
+  border-block: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 400;
+}
+
+html[data-theme="modern"] .stage-home .talk .promise-short {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 400;
+}
+
+html[data-theme="modern"] .talk .bubble,
+html[data-theme="modern"] .stage-home .talk .bubble {
+  border: 0;
+  border-radius: 0.5rem;
+  background: transparent;
+  box-shadow: none;
+  font-weight: 400;
+}
+
+html[data-theme="modern"] .talk .bubble.user,
+html[data-theme="modern"] .stage-home .talk .bubble.user {
+  background: var(--bubble-user);
+  color: var(--ink);
+}
+
+html[data-theme="modern"] .stage-home .talk .remember,
+html[data-theme="modern"] .talk .remember {
+  color: var(--muted);
+  border: 0;
+  background: transparent;
+  font-weight: 400;
+}
+
+html[data-theme="modern"] .stage-home .attach-button,
+html[data-theme="modern"] .stage-home .talk .compose-start {
+  border: 1px solid var(--input-line);
+  border-radius: 0.45rem;
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: 400;
+  box-shadow: none;
+}
+
+html[data-theme="modern"] .stage-home .talk .actions {
+  background: var(--ground);
+  border-top: 1px solid var(--line);
+  box-shadow: none;
+}
+
+html[data-theme="modern"] .talk .sent {
+  border: 0;
+  border-left: 2px solid var(--accent);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+html[data-theme="modern"] textarea,
+html[data-theme="modern"] select,
+html[data-theme="modern"] .home select,
+html[data-theme="modern"] input[type="text"] {
+  border: 1px solid var(--input-line);
+  border-radius: 0.45rem;
+  background: var(--surface);
+  box-shadow: none;
+}
+
+html[data-theme="modern"] .home .switcher label {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+/* ナビは影も色面もなく、今いる所に細い線 */
+html[data-theme="modern"] .bottom-nav {
+  border-color: var(--line);
+  background: var(--ground);
+  box-shadow: none;
+}
+
+html[data-theme="modern"] .bottom-nav a {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+html[data-theme="modern"] .bottom-nav a[aria-current="page"] {
+  background: transparent;
+  color: var(--ink);
+  font-weight: 600;
+  box-shadow: inset 0 2px 0 var(--accent);
+}
+
+html[data-theme="modern"] .bottom-nav a[aria-current="page"]::before {
+  content: none;
+}
+
+html[data-theme="modern"] .today-card .hide-person {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  box-shadow: none;
+  font-weight: 400;
+}
+
+html[data-theme="modern"] .thanks-card {
+  border: 0;
+  border-left: 2px solid var(--line);
+  border-radius: 0;
+  background: transparent;
+}
+
+/* モダンの「校内のようす」：絵の代わりに数字と文 */
+.modern-figure {
+  margin-block: 1.5rem;
+  padding-block: 1.25rem;
+  border-block: 1px solid var(--line);
+}
+
+.modern-figure strong {
+  display: block;
+  font-family: "Hiragino Mincho ProN", "Yu Mincho", "Noto Serif JP", serif;
+  font-size: 2.5rem;
+  font-weight: 400;
+  line-height: 1.2;
+}
+
+.modern-figure span {
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.pop-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.75rem;
+  margin-block: 0.75rem;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+html[data-theme="modern"] .pop-note button {
+  min-height: 2.25rem;
+  padding: 0.15rem 0.6rem;
+  border-color: var(--input-line);
+  background: var(--surface);
+  color: var(--accent);
+  font-size: 0.85rem;
+}
+
+/* モダンの声：話した一行が、すっと上へ飛んで消える */
+.send-line {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.send-line .line-words {
+  position: absolute;
+  bottom: 24%;
+  left: 50%;
+  max-width: min(80vw, 26rem);
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 1rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transform: translateX(-50%);
+  animation: line-rise 0.85s cubic-bezier(0.3, 0, 0.2, 1) forwards;
+}
+
+.send-line .line-reached {
+  position: absolute;
+  top: 18%;
+  left: 50%;
+  color: var(--muted);
+  font-size: 0.9rem;
+  opacity: 0;
+  transform: translateX(-50%);
+  animation: line-reached 0.9s ease-out 0.6s forwards;
+}
+
+@keyframes line-rise {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 0.5rem);
+  }
+  18% {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -48vh);
+  }
+}
+
+@keyframes line-reached {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  30%,
+  70% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .send-line {
+    display: none;
+  }
+}
+
+/* 広い画面の欄も、箱をやめて線で区切る */
+html[data-theme="modern"] .home-aside section {
+  padding: 1rem 0;
+  border: 0;
+  border-top: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+html[data-theme="modern"] .bottom-nav a,
+html[data-theme="modern"] .bottom-nav a[aria-current="page"] {
+  border-radius: 0;
+}
+
+@media (min-width: 768px) {
+  html[data-theme="modern"] .bottom-nav a[aria-current="page"] {
+    box-shadow: inset 2px 0 0 var(--accent);
+  }
+}
+
+html[data-theme="modern"] .today-card .words {
+  font-size: 1.15rem;
+  font-weight: 400;
+  line-height: 1.7;
+}
+
+html[data-theme="modern"] details > summary,
+html[data-theme="modern"] .chie-list a,
+html[data-theme="modern"] .chie strong,
+html[data-theme="modern"] .chie strong a {
+  font-weight: 500;
+}
+
+html[data-theme="modern"] .today-tabs {
+  gap: 1.25rem;
+  border-bottom: 1px solid var(--line);
+}
+
+html[data-theme="modern"] .today-tabs a,
+html[data-theme="modern"] .today-tabs a[aria-current="page"] {
+  padding: 0.5rem 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--muted);
+}
+
+html[data-theme="modern"] .today-tabs a[aria-current="page"] {
+  color: var(--ink);
+  box-shadow: inset 0 -2px 0 var(--accent);
+}

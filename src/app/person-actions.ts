@@ -13,7 +13,7 @@ export async function setAppearance(form: FormData) {
   const value = form.get("value");
   if (typeof name !== "string" || typeof value !== "string" || !isAppearanceValue(name, value)) return;
   // 隠している間も育っている。切り替えたら、育った姿で出す
-  if (name === "avatar") catchUpAvatar(getDatabase(), (await getViewer()).viewer.id);
+  if (name === "avatar" || name === "theme") catchUpAvatar(getDatabase(), (await getViewer()).viewer.id);
   (await cookies()).set(APPEARANCE_COOKIES[name], value, { sameSite: "lax", path: "/", maxAge: 60 * 60 * 24 * 365 });
   revalidatePath("/", "layout");
 }

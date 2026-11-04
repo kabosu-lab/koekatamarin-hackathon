@@ -1,3 +1,4 @@
+import { showsRewards } from "./rewards-view";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { isAppearanceValue, readAppearance } from "./appearance";
@@ -23,7 +24,7 @@ function contrast(a: string, b: string): number {
   return (hi + 0.05) / (lo + 0.05);
 }
 
-const THEMES = [":root", 'html[data-theme="game"]', 'html[data-theme="clear"]'];
+const THEMES = [":root", 'html[data-theme="modern"]', 'html[data-theme="game"]', 'html[data-theme="clear"]'];
 
 describe("きせかえ", () => {
   it.each(THEMES)("%s は文字が読みやすい（AA の 4.5 以上）", (selector) => {
@@ -73,7 +74,17 @@ describe("設定の読み取り", () => {
   it("おかしな値は使わない", () => {
     expect(readAppearance(() => '"><script>')).toEqual({ theme: "modern", size: "normal", sound: "on", avatar: "show" });
     expect(isAppearanceValue("theme", "game")).toBe(true);
+    expect(isAppearanceValue("theme", "pop")).toBe(true);
     expect(isAppearanceValue("theme", "evil")).toBe(false);
     expect(isAppearanceValue("evil", "game")).toBe(false);
+  });
+});
+
+describe("報酬を出すか", () => {
+  it("モダンでは出さず、ほかのきせかえでは隠す設定に従う", () => {
+    expect(showsRewards({ theme: "modern", avatar: "show" })).toBe(false);
+    expect(showsRewards({ theme: "pop", avatar: "show" })).toBe(true);
+    expect(showsRewards({ theme: "pop", avatar: "hide" })).toBe(false);
+    expect(showsRewards({ theme: "game", avatar: "show" })).toBe(true);
   });
 });

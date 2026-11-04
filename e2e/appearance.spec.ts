@@ -177,3 +177,10 @@ test("送るときの音は、実物のブラウザで例外なく作れて、�
   expect(result.finite).toBe(true);
   expect(result.peak).toBeGreaterThan(0.05);
 });
+
+test("ポップの最初の画面は、黄色の面に分身がいる", async ({ page }) => {
+  await page.goto("/");
+  expect(await page.locator("html").getAttribute("data-theme")).toBe("pop");
+  expect(await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--stage").trim())).toBe("#ffd23f");
+  await expect(page.locator(".speaker")).toBeVisible();
+});

@@ -23,6 +23,32 @@
   --font: "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
 }
 
+/* モダン：初めに出す、大人向けの見た目。静かな紙の色に、深い緑を1色だけ（細かい形は modern.css） */
+html[data-theme="modern"] {
+  --stage: #fbfaf7;
+  --lump: #1f5c4d;
+  --line-bold: #dedbd2;
+  --ground: #fbfaf7;
+  --surface: #ffffff;
+  --ink: #1d1c19;
+  --muted: #65635b;
+  --accent: #1f5c4d;
+  --accent-deep: #174a3e;
+  --pop: #1f5c4d;
+  --lift: none;
+  --on-accent: #ffffff;
+  --line: #e4e1d9;
+  --input-line: #bdb9ae;
+  --bubble-user: #eef2ee;
+  --soft: #f3f2ed;
+  --warn: #f6efd9;
+  --good: #e4f0ea;
+  --danger: #f6e4df;
+  --thanks: #f3ede6;
+  --caption: rgb(255 255 255 / 96%);
+  --font: "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
+}
+
 /* きせかえは色と書体だけを変える。配置と余白はここでは変えない */
 html[data-theme="game"] {
   --stage: #2a2f58;
@@ -2761,4 +2787,23 @@ html[data-avatar="hide"] .burst-speaker {
 
 .event-banner strong {
   font-size: 1.15rem;
+}
+
+/* 見た目の切り替え：音のボタンの下に小さく */
+.hero .theme-toggle {
+  position: absolute;
+  top: 3.5rem;
+  right: 0;
+}
+
+.hero .theme-toggle button {
+  min-height: 2.75rem;
+  padding: 0.35rem 0.8rem;
+  border: 2px solid var(--line, #8a8fa3);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 0.85rem;
+  font-weight: 700;
+  box-shadow: none;
 }

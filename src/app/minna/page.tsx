@@ -28,7 +28,8 @@ export default async function MinnaPage({ searchParams }: { searchParams: Promis
   const now = new Date();
   const sakura = getSakura(db, now, parseSeason(requested) ?? undefined);
   const store = await cookies();
-  const events = showsRewards(readAppearance((name) => store.get(name)?.value)) ? activeEvents(now) : [];
+  const rewards = showsRewards(readAppearance((name) => store.get(name)?.value));
+  const events = rewards ? activeEvents(now) : [];
   const inEvent = events.length > 0;
 
   return (
@@ -38,6 +39,7 @@ export default async function MinnaPage({ searchParams }: { searchParams: Promis
         <p>{schoolName}</p>
       </header>
 
+      {rewards ? (
       <section
         className="sakura-scene"
         data-time={timeOfDay(now)}
@@ -57,6 +59,12 @@ export default async function MinnaPage({ searchParams }: { searchParams: Promis
           {sakura.message}（今年の葉 {sakura.leaves} 枚）
         </p>
       </section>
+      ) : (
+        <section className="modern-figure" aria-label="今年のやり取り">
+          <strong>{sakura.leaves}</strong>
+          <span>今年、校内で人に届いたやり取り</span>
+        </section>
+      )}
       {events.map((event) => (
         <section className="event-banner" key={event.id} aria-label="期間限定のイベント">
           <strong>{event.name}</strong>
@@ -64,6 +72,7 @@ export default async function MinnaPage({ searchParams }: { searchParams: Promis
           <small>期間限定のリボン「{event.ribbon.name}」：{event.ribbon.description}と届きます</small>
         </section>
       ))}
+      {rewards && (
       <p className="season-links" aria-label="季節を見る">
         {SEASON_LABEL.map(([value, label]) => (
           <Link key={value} href={`/minna?season=${value}`}>
@@ -71,6 +80,7 @@ export default async function MinnaPage({ searchParams }: { searchParams: Promis
           </Link>
         ))}
       </p>
+      )}
 
       <div className="hub-links">
         <Link href="/today">今日の3人</Link>
@@ -79,6 +89,7 @@ export default async function MinnaPage({ searchParams }: { searchParams: Promis
         <Link href="/teams">校内チャネル（Teams）</Link>
       </div>
 
+      {rewards && (
       <section className="card" aria-label="桜のまわりの相棒たち">
         <h2>桜のまわりの相棒たち</h2>
         <div className="gathering">
@@ -90,6 +101,7 @@ export default async function MinnaPage({ searchParams }: { searchParams: Promis
           ))}
         </div>
       </section>
+      )}
     </main>
   );
 }

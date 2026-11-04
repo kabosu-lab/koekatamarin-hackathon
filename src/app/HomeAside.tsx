@@ -12,7 +12,7 @@ const KNOWLEDGE = 3;
 const GATHERING = 8;
 
 /** 広い画面だけに出す（CSS）。校内のチャネルと知恵、分身と桜。どれも校内に公開されたものだけ。 */
-export function HomeAside({ db, viewerId }: { db: DatabaseSync; viewerId: string }) {
+export function HomeAside({ db, viewerId, rewards }: { db: DatabaseSync; viewerId: string; rewards: boolean }) {
   const now = new Date();
   const posts = listPopularCards(getDestination(db), viewerId).slice(0, POSTS);
   const knowledge = listSharedKnowledge(db, viewerId).slice(0, KNOWLEDGE);
@@ -49,6 +49,7 @@ export function HomeAside({ db, viewerId }: { db: DatabaseSync; viewerId: string
           </ul>
         </section>
       </div>
+      {rewards ? (
       <div className="aside-column">
         <section aria-label="分身と桜">
           <h2>桜のまわり</h2>
@@ -70,6 +71,14 @@ export function HomeAside({ db, viewerId }: { db: DatabaseSync; viewerId: string
           </div>
         </section>
       </div>
+      ) : (
+        <div className="aside-column">
+          <section aria-label="今年のやり取り" className="modern-figure">
+            <strong>{sakura.leaves}</strong>
+            <span>今年、校内で人に届いたやり取り</span>
+          </section>
+        </div>
+      )}
     </aside>
   );
 }

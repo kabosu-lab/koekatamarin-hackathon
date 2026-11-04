@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { lumpFrames, sendTiming, speakerFrames, splitIntoWords, trailFrames } from "@/lib/lumps";
 import { Avatar } from "./Avatar";
 
@@ -17,11 +17,32 @@ const SPOTS: [string, string][] = [
   ["0vw", "-13rem"],
 ];
 
+const MODERN_MS = 1500;
+
+/** モダンの声：かたまりも花びらも出さず、話した一行がすっと飛んで消え、静かに知らせる。動きを減らす設定では出さない（CSS）。 */
+function SendLine({ words, onDone }: { words: string; onDone(): void }) {
+  useEffect(() => {
+    const timer = setTimeout(onDone, MODERN_MS);
+    return () => clearTimeout(timer);
+  }, [onDone]);
+  return (
+    <div className="send-line" aria-hidden="true">
+      <span className="line-words">{words}</span>
+      <span className="line-reached">届きました</span>
+    </div>
+  );
+}
+
+export function SendBurst({ words, avatarImage, onDone }: { words: string; avatarImage?: string; onDone(): void }) {
+  const [modern] = useState(() => document.documentElement.dataset.theme === "modern");
+  return modern ? <SendLine words={words} onDone={onDone} /> : <PopBurst words={words} avatarImage={avatarImage} onDone={onDone} />;
+}
+
 /**
  * 話した言葉が少しずつ固まり、固まる速さが加速して、ためてからヒューンと飛び、届くと花びらになる。
  * 動きを減らす設定では出さない（CSS）。
  */
-export function SendBurst({ words, avatarImage, onDone }: { words: string; avatarImage?: string; onDone(): void }) {
+function PopBurst({ words, avatarImage, onDone }: { words: string; avatarImage?: string; onDone(): void }) {
   const pieces = useMemo(() => splitIntoWords(words), [words]);
   const timing = useMemo(() => sendTiming(pieces.length), [pieces.length]);
   const lump = useRef<HTMLSpanElement>(null);

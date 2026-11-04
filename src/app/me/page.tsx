@@ -57,6 +57,7 @@ export default async function MePage() {
         <PersonSwitcher viewerId={viewer.id} people={people} />
       </header>
 
+      {rewards && (
       <section className="card partner" aria-label="相棒">
         <Avatar image={avatar.image} alt={`${viewer.name}さんの相棒（${avatar.label}）`} />
         <div>
@@ -68,13 +69,23 @@ export default async function MePage() {
           <p className="muted">人とやり取りすると育ちます。休んでも減りません。</p>
         </div>
       </section>
+      )}
 
-      {appearance.avatar === "hide" && <p className="muted">分身は隠しています。裏で育っています。</p>}
-      {evolution !== null && appearance.avatar === "show" && <EvolutionCard key={evolution} />}
-      {photoState.status === "pending" && <ArtRefresher />}
-      {photoState.canUsePhoto && <AvatarFromPhoto label={photos.label} failed={photoState.status === "failed"} eggImage={`/api/avatar/art/${roomToken(db, viewer.id)}/egg`} />}
+      {appearance.theme === "modern" && (
+        <form className="pop-note" action={setAppearance}>
+          <span>相棒が裏で育っています。ポップに切り替えると会えます。</span>
+          <input type="hidden" name="name" value="theme" />
+          <button type="submit" name="value" value="pop">
+            ポップに切り替える
+          </button>
+        </form>
+      )}
+      {appearance.theme !== "modern" && appearance.avatar === "hide" && <p className="muted">分身は隠しています。裏で育っています。</p>}
+      {evolution !== null && rewards && <EvolutionCard key={evolution} />}
+      {rewards && photoState.status === "pending" && <ArtRefresher />}
+      {rewards && photoState.canUsePhoto && <AvatarFromPhoto label={photos.label} failed={photoState.status === "failed"} eggImage={`/api/avatar/art/${roomToken(db, viewer.id)}/egg`} />}
 
-      {!avatar.family && (
+      {rewards && !avatar.family && (
         <AvatarQuiz
           kindQuestion={{ question: KIND_QUESTION.question, options: KIND_QUESTION.options }}
           styleQuestion={{ question: STYLE_QUESTION.question, options: STYLE_QUESTION.options }}
@@ -101,7 +112,7 @@ export default async function MePage() {
 
       <section className="card appearance" aria-label="見た目">
         <h2>見た目</h2>
-        {APPEARANCE_OPTIONS.map((group) => (
+        {APPEARANCE_OPTIONS.filter((group) => group.name !== "avatar" || appearance.theme !== "modern").map((group) => (
           <form action={setAppearance} key={group.name}>
             <input type="hidden" name="name" value={group.name} />
             <p className="muted">{group.label}</p>
