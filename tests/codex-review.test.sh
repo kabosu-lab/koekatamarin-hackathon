@@ -122,7 +122,8 @@ if command -v perl >/dev/null 2>&1; then
   if STUB_HANG=1 CODEX_REVIEW_TIMEOUT=1 PATH="$WORK/only-perl" "$BASH" "$REPO/scripts/codex-review.sh" >/dev/null 2>&1; then
     fail "perl の時間切れが伝わっていない"
   fi
-  [ "$((SECONDS - start))" -lt 4 ] || fail "perl の時間切れで止まっていない"
+  # 作ったばかりの PATH の初回実行は Mac で数秒余分にかかる。固まる処理の 30 秒より十分短ければよい
+  [ "$((SECONDS - start))" -lt 10 ] || fail "perl の時間切れで止まっていない"
   [ -s "$WORK/log/child" ] || fail "perl の手段で Codex を呼んでいない"
   [ "$(reviews)" = "$before" ] || fail "perl の時間切れなのに結果を保存した"
   child_gone "perl"
