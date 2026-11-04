@@ -227,3 +227,46 @@ test("リボンが届いて飾られ、公開を選ぶとプロフィールに�
   await viewer.context().close();
   await page.context().close();
 });
+
+test("贈り物の卵を開け、生まれた相棒を選べる", async ({ browser }) => {
+  const page = await (await browser.newContext()).newPage();
+  await page.goto("/");
+  await switchPerson(page, "野田 翔（情報・ものづくり部顧問）");
+  await expect(page.getByRole("link", { name: "贈り物の卵が届いています" })).toBeVisible();
+  await page.goto("/me");
+  const section = page.getByRole("region", { name: "贈り物の卵" });
+  await section.getByRole("button", { name: "開ける" }).first().click();
+  const stage = page.getByRole("dialog", { name: "贈り物の卵" });
+  await expect(stage.getByRole("heading", { name: /が生まれた！/ })).toBeVisible();
+  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0);
+  await stage.getByRole("button", { name: "今の相棒にする" }).click();
+  await expect(stage).toHaveCount(0);
+  await expect(section.getByRole("button", { name: /今の相棒/ })).toBeDisabled();
+  await page.context().close();
+});
+
+for (const width of [768, 1280]) {
+  test(`贈り物の卵とリボンは ${width} 幅でも、はみ出さない`, async ({ browser }) => {
+    const page = await (await browser.newContext({ viewport: { width, height: 900 } })).newPage();
+    await page.goto("/");
+    await switchPerson(page, "野田 翔（情報・ものづくり部顧問）");
+    await page.goto("/me");
+    await expect(page.getByRole("region", { name: "リボン" })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0);
+    await page.context().close();
+  });
+}
+
+test("分身を隠すと報酬も出ないが、見せると裏で集まっている", async ({ browser }) => {
+  const page = await (await browser.newContext()).newPage();
+  await page.goto("/");
+  await switchPerson(page, "白石 文（養護・相談室）");
+  await page.goto("/me");
+  await page.getByRole("button", { name: "隠す", exact: true }).click();
+  await expect(page.getByText("分身は隠しています")).toBeVisible();
+  await expect(page.getByRole("region", { name: "リボン" })).toHaveCount(0);
+  await expect(page.getByRole("region", { name: "贈り物の卵" })).toHaveCount(0);
+  await page.getByRole("button", { name: "表示する", exact: true }).click();
+  await expect(page.getByRole("region", { name: "リボン" })).toBeVisible();
+  await page.context().close();
+});

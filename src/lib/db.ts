@@ -245,6 +245,32 @@ const MIGRATIONS: readonly string[] = [
      seen_at TEXT,
      PRIMARY KEY (person_id, ribbon_id)
    ) STRICT;`,
+  `CREATE TABLE gift_eggs (
+     id TEXT PRIMARY KEY,
+     person_id TEXT NOT NULL REFERENCES people (id),
+     earned_at TEXT NOT NULL,
+     opened_at TEXT,
+     family TEXT,
+     reason TEXT
+   ) STRICT;
+   CREATE INDEX gift_eggs_by_person ON gift_eggs (person_id, earned_at);
+   CREATE TABLE gift_egg_credits (
+     person_id TEXT NOT NULL REFERENCES people (id),
+     source_id TEXT NOT NULL,
+     partner_id TEXT NOT NULL REFERENCES people (id),
+     day TEXT NOT NULL,
+     created_at TEXT NOT NULL,
+     egg_id TEXT REFERENCES gift_eggs (id),
+     PRIMARY KEY (person_id, source_id),
+     UNIQUE (person_id, partner_id, day)
+   ) STRICT;
+   CREATE TABLE avatar_companions (
+     person_id TEXT NOT NULL REFERENCES people (id),
+     family TEXT NOT NULL,
+     shown_stage INTEGER NOT NULL,
+     obtained_at TEXT NOT NULL,
+     PRIMARY KEY (person_id, family)
+   ) STRICT;`,
 ];
 
 export const SCHEMA_VERSION

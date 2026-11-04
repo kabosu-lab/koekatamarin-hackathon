@@ -19,6 +19,8 @@ import { getPhotoAvatarState, roomToken } from "@/lib/avatar-art";
 import { pendingEvolution } from "@/lib/avatar-evolve";
 import { createDummyPhotos } from "@/lib/profile-photo/dummy";
 import { EvolutionCard } from "./EvolutionCard";
+import { GiftEggs } from "./GiftEggs";
+import { listCompanions, listGiftEggs, syncGiftEggs } from "@/lib/gift-eggs";
 import { RibbonMoment } from "../RibbonMoment";
 import { Ribbons } from "./Ribbons";
 import { listNewRibbons, listRibbons, syncRibbons } from "@/lib/ribbons";
@@ -35,6 +37,7 @@ export default async function MePage() {
   const db = getDatabase();
   // 隠している人にも裏で集まる
   syncRibbons(db, viewer.id, new Date());
+  syncGiftEggs(db, viewer.id, new Date());
   const rewards = showsRewards(appearance);
   const photos = createDummyPhotos();
   const photoState = await getPhotoAvatarState(db, photos, viewer.id);
@@ -78,6 +81,7 @@ export default async function MePage() {
         />
       )}
 
+      {rewards && <GiftEggs key={`${viewer.id}-eggs`} eggs={listGiftEggs(db, viewer.id)} companions={listCompanions(db, viewer.id)} />}
       {rewards && <Ribbons key={`${viewer.id}-ribbons`} initial={listRibbons(db, viewer.id)} />}
       {rewards && <RibbonMoment key={`${viewer.id}-moment`} ribbons={listNewRibbons(db, viewer.id)} />}
 

@@ -10,6 +10,7 @@ import { countKnowledgeForNotice } from "@/lib/knowledge";
 import { promiseCookieName } from "@/lib/promise-cookie";
 import { HomeAside } from "./HomeAside";
 import { RibbonMoment } from "./RibbonMoment";
+import { listGiftEggs, syncGiftEggs } from "@/lib/gift-eggs";
 import { listNewRibbons, syncRibbons } from "@/lib/ribbons";
 import { showsRewards } from "@/lib/rewards-view";
 import { setAppearance } from "./person-actions";
@@ -36,6 +37,8 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
   const appearance = readAppearance((name) => store.get(name)?.value);
   const soundOn = appearance.sound === "on";
   syncRibbons(db, viewer.id, new Date());
+  syncGiftEggs(db, viewer.id, new Date());
+  const eggs = showsRewards(appearance) ? listGiftEggs(db, viewer.id).length : 0;
   return (
     <main className="home stage-home">
       {showsRewards(appearance) && <RibbonMoment key={viewer.id} ribbons={listNewRibbons(db, viewer.id)} />}
@@ -52,6 +55,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
       <PersonSwitcher viewerId={viewer.id} people={people} />
       {/* Claude との話は本人だけのもの。人物を切り替えたら会話を持ち越さない */}
       <nav className="quick-links" aria-label="届いているもの">
+        {eggs > 0 && <Link href="/me">贈り物の卵が届いています</Link>}
         <Link href="/inbox">
           受信箱
           {waiting > 0 && `（お願いが ${waiting} 件）`}
