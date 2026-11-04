@@ -34,6 +34,12 @@ export default async function KnowledgePage({ params }: { params: Promise<{ id: 
         {item.likeCount > 0 && <p className="muted">{item.likeCount}人がいいねしました。</p>}
         <p>
           <Link href={`/teams?channel=${item.channelId}#post-${item.sourcePostId}`}>元の投稿を見る</Link>
+          {item.askInChannel && (
+            <>
+              {" "}
+              <Link href={`/teams?channel=${item.channelId}`}>チャネルをのぞいてみる？</Link>
+            </>
+          )}
         </p>
       </section>
 

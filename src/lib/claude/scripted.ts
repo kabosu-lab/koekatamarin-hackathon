@@ -86,14 +86,6 @@ function scriptedConnect(prompt: string, jsonSchema: Record<string, unknown> | u
   return { moment, personId, message: moment === "none" ? "" : "この話、くわしい人にも聞いてみる？" };
 }
 
-function scriptedNakama(jsonSchema: Record<string, unknown> | undefined) {
-  const properties = (jsonSchema?.properties ?? {}) as {
-    suggestions?: { items?: { properties?: { personId?: { enum?: string[] } } } };
-  };
-  const ids = properties.suggestions?.items?.properties?.personId?.enum ?? [];
-  return { suggestions: ids.slice(0, 2).map((personId) => ({ personId, reason: "公開の投稿に、近い話題があります。" })) };
-}
-
 function scriptedKnowledgeDraft(prompt: string) {
   const post = prompt.match(/^投稿：[^：]*：(.*)$/m)?.[1]?.trim() ?? "";
   const answers = [...prompt.matchAll(/^返事：(.*)$/gm)].map((match) => match[1].trim());
@@ -164,7 +156,6 @@ export function createScriptedClaude(): ClaudeClient {
       if (task === "cheer") return { text: JSON.stringify(scriptedCheer(jsonSchema)), refused: false };
       if (task === "reply") return { text: JSON.stringify(scriptedReply(messages[0].content)), refused: false };
       if (task === "connect") return { text: JSON.stringify(scriptedConnect(messages[0].content, jsonSchema)), refused: false };
-      if (task === "nakama") return { text: JSON.stringify(scriptedNakama(jsonSchema)), refused: false };
       if (task === "knowledge_draft") return { text: JSON.stringify(scriptedKnowledgeDraft(messages[0].content)), refused: false };
       if (task === "knowledge_find") return { text: JSON.stringify(scriptedKnowledgeFind(messages[0].content)), refused: false };
       if (task === "safety") return { text: JSON.stringify(scriptedSafety(messages[0].content)), refused: false };

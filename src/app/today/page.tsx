@@ -4,8 +4,8 @@ import { getViewer } from "@/lib/current-person";
 import { getDatabase } from "@/lib/db";
 import { getAvatar } from "@/lib/avatar";
 import { createDummyTeams } from "@/lib/destination/dummy-teams";
-import { listHiddenIds } from "@/lib/nakama";
-import { listPopularCards, listQuietPosts, listSeenNotes, listTodayCards } from "@/lib/today";
+import { listHiddenIds } from "@/lib/hidden-people";
+import { listPopularCards, listQuietPosts, listSeenNotes, listTodayCards, viewerPublicWords } from "@/lib/today";
 import { PersonSwitcher } from "../PersonSwitcher";
 import { TodayCards } from "./TodayCards";
 
@@ -21,7 +21,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
   const teams = createDummyTeams(db);
   const now = new Date();
   const hidden = listHiddenIds(db, viewer.id);
-  const cards = popular ? listPopularCards(teams, viewer.id, hidden) : listTodayCards(teams, viewer.id, now, hidden);
+  const cards = popular ? listPopularCards(teams, viewer.id, hidden) : listTodayCards(teams, viewer.id, now, hidden, viewerPublicWords(db, teams, viewer.id));
   const seen = listSeenNotes(db, viewer.id, now);
   const quiet = listQuietPosts(db, teams, viewer.id, now);
 

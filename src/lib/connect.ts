@@ -26,6 +26,8 @@ export type ConnectSuggestionBody = {
   label: string;
   message: string;
   moment: Exclude<Moment, "none">;
+  /** 生徒に生徒を紹介しないので、本人の代わりに案内するチャネル */
+  channelId?: string;
 };
 
 /**
@@ -34,6 +36,45 @@ export type ConnectSuggestionBody = {
  */
 export function buildDirectory(db: DatabaseSync, destination: PostDestination, viewerId: string): DirectoryEntry[] {
   return buildPublicEntries(db, destination, viewerId).filter((entry) => entry.id !== viewerId);
+}
+
+const CHANNEL_PREFIX = "channel:";
+
+/**
+ * 紹介の候補。生徒には生徒本人を紹介せず、公開の投稿があるチャネル（部活動やゼミ活動）を案内する。
+ * Claude の答えを信じなくて済むよう、候補そのものから生徒を外す。
+ */
+export function buildConnectTargets(db: DatabaseSync, destination: PostDestination, viewerId: string): DirectoryEntry[] {
+  const directory = buildDirectory(db, destination, viewerId);
+  const roles = new Map(
+    (db.prepare("SELECT id, role FROM people").all() as { id: string; role: string }[]).map((row) => [row.id, row.role]),
+  );
+  if (roles.get(viewerId) !== "student") return directory;
+
+  const forgotten = forgottenSources(db);
+  const channels = destination.listChannels(viewerId).flatMap((channel): DirectoryEntry[] => {
+    const words = destination
+      .listPosts(viewerId, channel.id)
+      .filter(
+        (post) =>
+          post.scope === "everyone" &&
+          post.kind !== "notice" &&
+          post.authorId !== viewerId &&
+          !forgotten.has(`${post.authorId}|${post.id}`),
+      )
+      .map((post) => post.body);
+    if (words.length === 0) return [];
+    return [
+      {
+        id: `${CHANNEL_PREFIX}${channel.id}`,
+        name: channel.name,
+        label: "校内チャネル",
+        publicProfile: channel.description,
+        publicWords: words.slice(-POSTS_PER_PERSON),
+      },
+    ];
+  });
+  return [...directory.filter((person) => roles.get(person.id) !== "student"), ...channels];
 }
 
 /** 本人も含めた公開の材料。本人が読める範囲の言葉だけを集める。 */
@@ -77,6 +118,7 @@ moment:
 - none：それ以外。話の途中、本人が話したがっているとき、人に頼るのを嫌がっているとき、命や安全に関わる話のときは none にする。迷ったら none
 
 none 以外のときは、<人> の中から、話の内容に本当に合う人を1人選んで personId に入れる。合う人がいなければ none にする。
+<人> の中で id が channel: で始まるものは人ではなくチャネル（部活動やゼミ活動）です。生徒に別の生徒を紹介しません。チャネルを選ぶときは「のぞいてみる？」と案内し、そこにいる特定の生徒の名前は出しません。
 
 message は、本人に向けた短い声かけを、本人の話し方に合わせて書く。
 - 選んだ人に聞いてみるかを尋ねる。押しつけない
@@ -139,7 +181,15 @@ export async function suggestPerson(
   const person = directory.find((p) => p.id === personId);
   if (!person || typeof message !== "string" || message.trim() === "") return null;
 
-  return { personId: person.id, name: person.name, label: person.label, message: message.trim(), moment };
+  const channelId = person.id.startsWith(CHANNEL_PREFIX) ? person.id.slice(CHANNEL_PREFIX.length) : undefined;
+  return {
+    personId: channelId ? "" : person.id,
+    name: person.name,
+    label: person.label,
+    message: message.trim(),
+    moment,
+    ...(channelId ? { channelId } : {}),
+  };
 }
 
 export async function handleConnect(
@@ -155,7 +205,7 @@ export async function handleConnect(
     return { status: 400, body: { error: "会話の記録が正しくありません" } };
   }
   try {
-    const suggestion = await suggestPerson(claude, history, buildDirectory(db, destination, viewerId), now);
+    const suggestion = await suggestPerson(claude, history, buildConnectTargets(db, destination, viewerId), now);
     return { status: 200, body: { suggestion } };
   } catch (error) {
     console.error("人につなぐ処理に失敗", error instanceof Error ? error.name : "unknown");

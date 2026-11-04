@@ -9,12 +9,15 @@ import { seedDatabase } from "./seed";
 import {
   cheer,
   handleHints,
+  keywordsOf,
   listPopularCards,
   listSeenNotes,
   listTodayCards,
   makeCheerHints,
   recordSeen,
+  viewerPublicWords,
 } from "./today";
+import { handleMemory } from "./memory";
 
 const NOW = new Date("2026-11-04T01:00:00Z");
 const NEXT_DAY = new Date("2026-11-05T01:00:00Z");
@@ -170,5 +173,51 @@ describe("応援のきっかけ", () => {
   it("多すぎる依頼は受け付けない", async () => {
     const outcome = await handleHints(createScriptedClaude(), teams, "aoki", { postIds: ["a", "b", "c", "d"] });
     expect(outcome.status).toBe(400);
+  });
+});
+
+describe("関連する投稿", () => {
+  const word = "ロボコン";
+  const myWords = () => viewerPublicWords(db, teams, "aoki");
+
+  beforeEach(() => {
+    teams.createPost("aoki", "making", `${word}の練習を始めました`, {});
+  });
+
+  it("公開の言葉と同じ話題の投稿が先に出て、理由が付く", () => {
+    const id = teams.createPost("noda", "making", `${word}の部品を作りました`, {});
+    const cards = listTodayCards(teams, "aoki", NOW, new Set(), myWords());
+    expect(cards[0].postId).toBe(id);
+    expect(cards[0].relatedReason).toBe(`同じ「${word}」の話`);
+  });
+
+  it("関連がなければランダムのままで、理由は付かない", () => {
+    const cards = listTodayCards(teams, "aoki", NOW, new Set(), ["ここにしかない話題"]);
+    expect(cards.map((c) => c.postId)).toEqual(listTodayCards(teams, "aoki", NOW).map((c) => c.postId));
+    expect(cards.every((c) => c.relatedReason === undefined)).toBe(true);
+  });
+
+  it("相棒に覚えてもらった言葉は材料に入らない", () => {
+    handleMemory(db, "aoki", { action: "remember", text: "秘密の話題テスト" }, NOW);
+    expect(myWords().join("\n")).not.toContain("秘密の話題テスト");
+  });
+
+  it("範囲を絞った投稿は、材料にも候補にもならない", () => {
+    teams.createPost("aoki", "making", "自分だけの話題キーワード", { scope: "self" });
+    expect(myWords().join("\n")).not.toContain("自分だけの話題キーワード");
+    const scoped = teams.createPost("noda", "making", `${word}の内緒の話`, { scope: "self" });
+    const cards = listTodayCards(teams, "aoki", NOW, new Set(), myWords());
+    expect(cards.map((c) => c.postId)).not.toContain(scoped);
+  });
+
+  it("しばらく出さない人の投稿は、関連があっても出ない", () => {
+    const id = teams.createPost("noda", "making", `${word}の部品を作りました`, {});
+    const cards = listTodayCards(teams, "aoki", NOW, new Set(["noda"]), myWords());
+    expect(cards.map((c) => c.postId)).not.toContain(id);
+  });
+
+  it("語の取り出しは、どこにでも出る語を外す", () => {
+    expect(keywordsOf("今日は文化祭のロボットをAI2で作る")).toEqual(expect.arrayContaining(["文化祭", "ロボット", "AI2"]));
+    expect(keywordsOf("今日は先生と話した")).toEqual([]);
   });
 });

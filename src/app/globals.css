@@ -1217,7 +1217,7 @@ button:active:not(:disabled),
   text-decoration: underline;
 }
 
-.nakama ul {
+.hidden-people ul {
   display: grid;
   gap: 0.75rem;
   margin: 0.75rem 0 0;
@@ -1225,7 +1225,7 @@ button:active:not(:disabled),
   list-style: none;
 }
 
-.nakama li p {
+.hidden-people li p {
   margin: 0.25rem 0 0;
   overflow-wrap: anywhere;
 }

@@ -24,6 +24,7 @@ export function KnowledgeResults({
           <p className="muted">{result.people.map((person) => `${person.name}さん`).join("、")}の言葉</p>
           <p className="chie-links">
             <Link href={`/teams?channel=${result.channelId}#post-${result.postId}`}>元の投稿を見る</Link>
+            {result.askInChannel && <Link href={`/teams?channel=${result.channelId}`}>チャネルをのぞいてみる？</Link>}
             {result.askable
               .filter((person) => person.name !== viewerName)
               .map((person) =>

@@ -359,7 +359,7 @@ describe("「忘れて」と知恵", () => {
 
 describe("「聞いてみる？」の相手", () => {
   it("知恵では、質問した本人を外し、答えた人にする", () => {
-    const item = getKnowledge(db, "aoki", "knowledge-festival-video");
+    const item = getKnowledge(db, "fujimoto", "knowledge-festival-video");
     expect(item?.people.map((person) => person.id)).toContain("kawamura");
     expect(item?.askableIds).not.toContain("kawamura");
     expect(item?.askableIds).toEqual(expect.arrayContaining(["noda", "kinoshita"]));
@@ -370,12 +370,27 @@ describe("「聞いてみる？」の相手", () => {
       recording({ results: [{ id: "p-post-study-2", reason: "近い" }, { id: "p-post-clubs-1", reason: "近い" }] }).client,
       db,
       teams,
-      "aoki",
+      "fujimoto",
       { query: "小テスト" },
     );
     const results = (outcome.body as { results: { key: string; askable: { id: string }[] }[] }).results;
     const ids = (key: string) => results.find((result) => result.key === key)?.askable.map((person) => person.id);
     if (ids("p-post-study-2")) expect(ids("p-post-study-2")).not.toContain("kawamura");
     expect(ids("p-post-clubs-1")).toEqual(["nakamura"]);
+  });
+});
+
+describe("生徒に生徒を紹介しない（聞いてみる？）", () => {
+  it("生徒には答えた生徒を出さず、チャネルを案内し、言葉の名前は残す", () => {
+    const item = getKnowledge(db, "aoki", "knowledge-festival-video");
+    expect(item?.askableIds).toEqual(["noda"]);
+    expect(item?.askInChannel).toBe(true);
+    expect(item?.people.map((person) => person.id)).toContain("kinoshita");
+  });
+
+  it("先生には今のまま", () => {
+    const item = getKnowledge(db, "fujimoto", "knowledge-festival-video");
+    expect(item?.askableIds).toEqual(expect.arrayContaining(["noda", "kinoshita"]));
+    expect(item?.askInChannel).toBe(false);
   });
 });

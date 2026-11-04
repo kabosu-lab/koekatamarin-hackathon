@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 
 const ITEMS = [
   { href: "/", label: "話す", also: ["/inbox", "/soudan"] },
-  { href: "/minna", label: "みんな", also: ["/today", "/teams", "/study", "/people", "/nakama"] },
+  { href: "/minna", label: "みんな", also: ["/today", "/teams", "/study", "/people"] },
   { href: "/me", label: "じぶん", also: ["/daily", "/lookback"] },
 ];
 

@@ -69,7 +69,7 @@ export function TodayCards({ cards: allCards }: { cards: (TodayCard & { authorIm
 
   async function hideAuthor(authorId: string, authorName: string) {
     setProblem("");
-    const { ok } = await postJson("/api/nakama/hide", { personId: authorId, hidden: true }).catch(() => ({ ok: false }));
+    const { ok } = await postJson("/api/hidden", { personId: authorId, hidden: true }).catch(() => ({ ok: false }));
     if (ok) {
       setHiddenAuthors((current) => [...current, authorId]);
       setHiddenNote(`${authorName}さんをしばらく出しません。相手には伝わりません。`);
@@ -80,7 +80,7 @@ export function TodayCards({ cards: allCards }: { cards: (TodayCard & { authorIm
 
   const note = hiddenNote && (
     <p className="seen-note" role="status">
-      {hiddenNote} <Link href="/nakama">「仲間を探す」から戻せます</Link>
+      {hiddenNote} <Link href="/me">「じぶん」から戻せます</Link>
     </p>
   );
 
@@ -122,6 +122,7 @@ export function TodayCards({ cards: allCards }: { cards: (TodayCard & { authorIm
           <Avatar image={card.authorImage} alt={`${card.authorName}さんの相棒`} size={40} />
           <strong>{card.authorName}</strong>（{card.authorLabel}）
         </p>
+        {card.relatedReason && <p className="count related-line">{card.relatedReason}</p>}
         <p className="words">{card.body}</p>
         {card.researchedWithAi && <p className="count">AI と調べました</p>}
         {hints[card.postId] && <p className="hint-line">{hints[card.postId]}</p>}

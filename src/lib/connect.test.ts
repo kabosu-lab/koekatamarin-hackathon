@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createScriptedClaude } from "./claude/scripted";
 import type { ChatMessage, ClaudeClient, ClaudeRequest } from "./claude/types";
 import { handleDraft, handlePublish } from "./compose-request";
-import { buildDirectory, handleConnect, suggestPerson } from "./connect";
+import { buildConnectTargets, buildDirectory, handleConnect, suggestPerson } from "./connect";
 import { openDatabase } from "./db";
 import { createDummyTeams } from "./destination/dummy-teams";
 import type { PostDestination } from "./destination/types";
@@ -160,5 +160,47 @@ describe("聞く相手を決めて送る", () => {
     expect((await handlePublish(scripted, teams, "saeki", { ...input, askedPersonId: "nobody" })).status).toBe(400);
     const history = [{ role: "user", content: "相談がある" }];
     expect((await handleDraft(scripted, teams, "saeki", { history, askedPersonId: "nobody" })).status).toBe(400);
+  });
+});
+
+describe("生徒に生徒を紹介しない", () => {
+  const history = talk;
+
+  it("生徒の候補に生徒は入らず、先生とチャネルが入る", () => {
+    const targets = buildConnectTargets(db, teams, "aoki");
+    expect(targets.map((t) => t.id)).not.toContain("nakamura");
+    expect(targets.map((t) => t.id)).not.toContain("kinoshita");
+    expect(targets.map((t) => t.id)).toContain("noda");
+    expect(targets.map((t) => t.id)).toContain("channel:making");
+    expect(targets.map((t) => t.id)).not.toContain("channel:staffroom");
+  });
+
+  it("先生の候補は今のままで、生徒も入る", () => {
+    expect(buildConnectTargets(db, teams, "saeki").map((t) => t.id)).toEqual(buildDirectory(db, teams, "saeki").map((t) => t.id));
+  });
+
+  it("Claude が生徒を選んでも、生徒には紹介しない", async () => {
+    const claude = answering({ moment: "stuck", personId: "nakamura", message: "中村さんに聞いてみる？" });
+    expect(await suggestPerson(claude, history, buildConnectTargets(db, teams, "aoki"), MORNING)).toBeNull();
+  });
+
+  it("チャネルを選ぶと、人ではなくチャネルを案内する", async () => {
+    const claude = answering({ moment: "stuck", personId: "channel:making", message: "のぞいてみる？" });
+    const suggestion = await suggestPerson(claude, history, buildConnectTargets(db, teams, "aoki"), MORNING);
+    expect(suggestion).toMatchObject({ personId: "", channelId: "making", name: "ものづくり" });
+  });
+
+  it("handleConnect でも、生徒の候補を Claude に渡さない", async () => {
+    const seen: ClaudeRequest[] = [];
+    const claude: ClaudeClient = {
+      mode: "real",
+      complete: async (request) => {
+        seen.push(request);
+        return { text: JSON.stringify({ moment: "none", personId: "noda", message: "" }), refused: false };
+      },
+    };
+    await handleConnect(claude, db, teams, "aoki", { history }, MORNING);
+    expect(seen[0].messages[0].content).not.toContain("nakamura：");
+    expect(seen[0].system).toContain("生徒に別の生徒を紹介しません");
   });
 });

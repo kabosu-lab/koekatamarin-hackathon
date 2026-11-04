@@ -5,7 +5,7 @@ import type { ClaudeClient } from "./claude/types";
 import { MAX_BODY_LENGTH, type PostAttachment, type PostDestination, type PostView } from "./destination/types";
 import { forgottenSources } from "./memory";
 import { isNoticeHours } from "./inbox";
-import { listHiddenIds } from "./nakama";
+import { listHiddenIds } from "./hidden-people";
 
 const MAX_TOKENS = 3000;
 const MAX_RESULTS = 3;
@@ -67,6 +67,8 @@ export type KnowledgeDetail = KnowledgeSummary & {
   notes: KnowledgeNote[];
   /** 「聞いてみる？」の相手。質問した本人は入れない */
   askableIds: string[];
+  /** 生徒に生徒を紹介しないので、本人の代わりにチャネルを案内する */
+  askInChannel: boolean;
   /** 投稿した本人が載せると選んだときだけある */
   attachment: PostAttachment | null;
   /** 投稿した本人にだけある、載せるかの選択 */
@@ -84,6 +86,8 @@ export type KnowledgeResult = {
   people: KnowledgePerson[];
   /** 「聞いてみる？」の相手。質問した本人は入れない */
   askable: KnowledgePerson[];
+  /** 生徒に生徒を紹介しないので、本人の代わりにチャネルを案内する */
+  askInChannel: boolean;
   channelId: string;
   postId: string;
   researchedWithAi: boolean;
@@ -357,6 +361,16 @@ function askableIds(post: { author_id: string; kind: string }, peopleIds: string
   return post.kind === "trouble" || post.kind === "worry" || !peopleIds.includes(post.author_id) ? [] : [post.author_id];
 }
 
+/** 生徒には生徒を紹介しない。外した人がいれば、その人がいるチャネルを案内する。紹介先が先生なら今のまま。 */
+function askTargets(db: DatabaseSync, viewerId: string, ids: string[]): { ids: string[]; viaChannel: boolean } {
+  const roles = new Map(
+    (db.prepare("SELECT id, role FROM people").all() as { id: string; role: string }[]).map((row) => [row.id, row.role]),
+  );
+  if (roles.get(viewerId) !== "student") return { ids, viaChannel: false };
+  const teachers = ids.filter((id) => roles.get(id) !== "student");
+  return { ids: teachers, viaChannel: teachers.length < ids.length };
+}
+
 export function getKnowledge(db: DatabaseSync, viewerId: string, itemId: string): KnowledgeDetail | null {
   const item = loadItem(db, itemId);
   if (!item) return null;
@@ -377,6 +391,14 @@ export function getKnowledge(db: DatabaseSync, viewerId: string, itemId: string)
     | undefined;
   const posted: PostAttachment | null = attached ? { id: attached.id, mediaType: attached.media_type, fileName: attached.file_name } : null;
   const notes = item.status === "shared" ? loadNotes(db, viewerId, itemId) : [];
+  const asking = askTargets(
+    db,
+    viewerId,
+    askableIds(
+      source,
+      contributors.filter((c) => c.state === "ok").map((c) => c.id),
+    ),
+  );
   const reviews = (
     db
       .prepare(
@@ -416,10 +438,8 @@ export function getKnowledge(db: DatabaseSync, viewerId: string, itemId: string)
       db.prepare("SELECT 1 FROM knowledge_reviews WHERE item_id = ? AND reviewer_id = ? AND verdict = 'like'").get(itemId, viewerId) !== undefined,
     canAddNote: item.status === "shared",
     notes,
-    askableIds: askableIds(
-      source,
-      contributors.filter((c) => c.state === "ok").map((c) => c.id),
-    ),
+    askableIds: asking.ids,
+    askInChannel: asking.viaChannel,
     attachment: item.show_attachment === 1 ? posted : null,
     attachmentChoice: posted && source.author_id === viewerId ? { fileName: posted.fileName, shown: item.show_attachment === 1 } : null,
   };
@@ -801,6 +821,7 @@ export async function handleKnowledgeFind(
       body: item.body,
       people: item.people,
       askable: item.people.filter((person) => item.askableIds.includes(person.id)),
+      askInChannel: item.askInChannel,
       channelId: item.channelId,
       postId: item.sourcePostId,
       researchedWithAi: item.researchedWithAi,
@@ -814,7 +835,11 @@ export async function handleKnowledgeFind(
     const people = new Map([[post.authorId, asPerson(post.authorId, post.authorName, post.authorLabel)]]);
     for (const reply of replies) people.set(reply.authorId, asPerson(reply.authorId, reply.authorName, reply.authorLabel));
     const everyone = [...people.values()];
-    const askable = askableIds({ author_id: post.authorId, kind: post.kind }, everyone.map((person) => person.id));
+    const asking = askTargets(
+      db,
+      viewerId,
+      askableIds({ author_id: post.authorId, kind: post.kind }, everyone.map((person) => person.id)),
+    );
     results.set(`p-${post.id}`, {
       key: `p-${post.id}`,
       kind: "post",
@@ -822,7 +847,8 @@ export async function handleKnowledgeFind(
       title: `${post.authorName}さんの投稿`,
       body: [post.body, ...replies.map((reply) => `${reply.authorName}：${reply.body}`)].join("\n"),
       people: everyone,
-      askable: everyone.filter((person) => askable.includes(person.id)),
+      askable: everyone.filter((person) => asking.ids.includes(person.id)),
+      askInChannel: asking.viaChannel,
       channelId,
       postId: post.id,
       researchedWithAi: post.researchedWithAi,

@@ -11,6 +11,8 @@ import { cookies } from "next/headers";
 import { APPEARANCE_OPTIONS, readAppearance } from "@/lib/appearance";
 import { setAppearance } from "../person-actions";
 import { SoundTest } from "./SoundTest";
+import { HiddenPeople } from "./HiddenPeople";
+import { listHiddenPeople } from "@/lib/hidden-people";
 import { createDummyTeams } from "@/lib/destination/dummy-teams";
 import { listMemories } from "@/lib/memory";
 import { getPhotoAvatarState, refreshAvatarArt } from "@/lib/avatar-art";
@@ -104,6 +106,8 @@ export default async function MePage() {
         ))}
         {appearance.sound === "on" && <SoundTest />}
       </section>
+
+      <HiddenPeople key={`${viewer.id}-hidden`} initial={listHiddenPeople(db, viewer.id)} />
 
       <section className="card" aria-label="これまで">
         <h2>これまで</h2>

@@ -20,7 +20,12 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
   const waiting = countForNotice(db, viewer.id, new Date());
   const knowledgeTasks = countKnowledgeForNotice(db, viewer.id, new Date());
   // 知恵の画面から「聞いてみる？」で来たときの相手
-  const askPerson = typeof ask === "string" && ask !== viewer.id ? people.find((person) => person.id === ask) : undefined;
+  // 生徒に生徒を紹介しないので、生徒から生徒へは名指しの相手にしない
+  const isStudent = (id: string) => (db.prepare("SELECT role FROM people WHERE id = ?").get(id) as { role: string } | undefined)?.role === "student";
+  const askPerson =
+    typeof ask === "string" && ask !== viewer.id && !(isStudent(viewer.id) && isStudent(ask))
+      ? people.find((person) => person.id === ask)
+      : undefined;
   const store = await cookies();
   const promiseSeen = store.has(promiseCookieName(viewer.id));
   const soundOn = readAppearance((name) => store.get(name)?.value).sound === "on";

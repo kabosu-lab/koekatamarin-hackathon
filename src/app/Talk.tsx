@@ -391,7 +391,6 @@ export function Talk({
           <button type="button" className="undo" onClick={() => void undoSent()}>
             送ったものを取り消す
           </button>
-          {sentTo.isPublic && <Link href="/nakama">同じことに取り組んでいる人を探してみる？</Link>}
         </p>
       )}
 

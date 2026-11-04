@@ -62,7 +62,6 @@ export default async function MinnaPage({ searchParams }: { searchParams: Promis
         <Link href="/today">今日の3人</Link>
         <Link href="/study">一緒に勉強する</Link>
         <Link href="/chie">校内の知恵</Link>
-        <Link href="/nakama">仲間を探す</Link>
         <Link href="/teams">校内チャネル（Teams）</Link>
       </div>
 

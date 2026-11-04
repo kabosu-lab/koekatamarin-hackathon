@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
 import { ComposeError } from "./claude/compose";
 import type { ClaudeClient } from "./claude/types";
+import { buildPublicEntries } from "./connect";
 import { DestinationError, type PostDestination, type PostView } from "./destination/types";
 import { isNoticeHours } from "./inbox";
 
@@ -22,6 +23,8 @@ export type TodayCard = {
   replyCount: number;
   likedByViewer: boolean;
   researchedWithAi: boolean;
+  /** 自分と関連があるときの短い理由。公開の言葉から作る */
+  relatedReason?: string;
 };
 
 export type CheerHint = { postId: string; hint: string };
@@ -65,20 +68,55 @@ function candidates(destination: PostDestination, viewerId: string) {
   );
 }
 
-/** その人のその日のカード。同じ日は同じ順で出て、日が変わると変わる。 */
+/** 関連の材料にする、本人の公開の言葉とプロフィール。Claude との話や「覚えて」の言葉は使わない。 */
+export function viewerPublicWords(db: DatabaseSync, destination: PostDestination, viewerId: string): string[] {
+  const self = buildPublicEntries(db, destination, viewerId).find((entry) => entry.id === viewerId);
+  return self ? [self.publicProfile, ...self.publicWords] : [];
+}
+
+/** どこにでも出てくる語は、関連の手がかりにしない。 */
+const COMMON_WORDS = new Set([
+  "今日", "今週", "今月", "今年", "去年", "来週", "毎回", "毎年", "最近", "時間", "先生", "生徒", "学校", "校内", "教室", "授業", "全部", "最初", "最後", "自分", "投稿", "得意", "苦手",
+]);
+
+/** 本文から、話題になりそうな語を取り出す。漢字2文字以上、カタカナ3文字以上、英数字2文字以上。 */
+export function keywordsOf(text: string): string[] {
+  const found = text.match(/[\p{Script=Han}]{2,}|[\p{Script=Katakana}ー]{3,}|[A-Za-z0-9]{2,}/gu) ?? [];
+  return [...new Set(found)].filter((word) => !COMMON_WORDS.has(word));
+}
+
+/** その人のその日のカード。同じ日は同じ順で出て、日が変わると変わる。関連する投稿があれば、ランダムの投稿と交互に出す。 */
 export function listTodayCards(
   destination: PostDestination,
   viewerId: string,
   now: Date,
   hidden: ReadonlySet<string> = new Set(),
+  myWords: readonly string[] = [],
 ): TodayCard[] {
   const seed = `${japanDate(now)}|${viewerId}|`;
   const order = (id: string) => createHash("sha256").update(seed + id).digest("hex");
-  return candidates(destination, viewerId)
+  const shuffled = candidates(destination, viewerId)
     .filter((post) => !hidden.has(post.authorId))
-    .sort((a, b) => order(a.id).localeCompare(order(b.id)))
-    .slice(0, MAX_CARDS)
-    .map(toCard);
+    .sort((a, b) => order(a.id).localeCompare(order(b.id)));
+
+  const keywords = keywordsOf(myWords.join("\n"));
+  const related = new Map<string, string>();
+  for (const post of shuffled) {
+    const shared = keywords.find((word) => post.body.includes(word));
+    if (shared) related.set(post.id, `同じ「${shared}」の話`);
+  }
+
+  const relatedPosts = shuffled.filter((post) => related.has(post.id));
+  const others = shuffled.filter((post) => !related.has(post.id));
+  const mixed: typeof shuffled = [];
+  for (let i = 0; i < Math.max(relatedPosts.length, others.length); i++) {
+    if (relatedPosts[i]) mixed.push(relatedPosts[i]);
+    if (others[i]) mixed.push(others[i]);
+  }
+  return mixed.slice(0, MAX_CARDS).map((post) => ({
+    ...toCard(post),
+    ...(related.has(post.id) ? { relatedReason: related.get(post.id) } : {}),
+  }));
 }
 
 /** 反応の多い投稿から順に。 */

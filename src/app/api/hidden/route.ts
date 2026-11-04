@@ -1,6 +1,6 @@
 import { getViewer } from "@/lib/current-person";
 import { getDatabase } from "@/lib/db";
-import { setHidden } from "@/lib/nakama";
+import { setHidden } from "@/lib/hidden-people";
 
 export async function POST(request: Request) {
   const input = (await request.json().catch(() => null)) as { personId?: unknown; hidden?: unknown } | null;
