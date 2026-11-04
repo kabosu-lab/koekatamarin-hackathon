@@ -1,4 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
+import { build } from "esbuild";
 
 const box = (page: Page) => page.getByRole("button", { name: "話しかける" }).boundingBox();
 
@@ -155,4 +156,24 @@ test("音ありで応援しても、画面が乱れない", async ({ page }) => 
   await cheer.click();
   await expect(page.getByRole("button", { name: "応援しました" }).first()).toBeVisible();
   expect(problems).toEqual([]);
+});
+
+test("送るときの音は、実物のブラウザで例外なく作れて、ちゃんと鳴る", async ({ page }) => {
+  const { outputFiles } = await build({
+    entryPoints: ["src/lib/send-sound.ts"],
+    bundle: true,
+    write: false,
+    format: "iife",
+    globalName: "sendSound",
+  });
+  await page.goto("/me");
+  await page.addScriptTag({ content: outputFiles[0].text });
+  const result = await page.evaluate(async () => {
+    const audio = new OfflineAudioContext(1, 44100 * 4, 44100);
+    (window as unknown as { sendSound: { scheduleSendSound(a: BaseAudioContext, o: AudioNode, t: number, n: number): void } }).sendSound.scheduleSendSound(audio, audio.destination, 0.02, 5);
+    const data = (await audio.startRendering()).getChannelData(0);
+    return { peak: data.reduce((max, value) => Math.max(max, Math.abs(value)), 0), finite: data.every(Number.isFinite) };
+  });
+  expect(result.finite).toBe(true);
+  expect(result.peak).toBeGreaterThan(0.05);
 });

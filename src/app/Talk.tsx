@@ -28,12 +28,14 @@ export function Talk({
   initialAsk = null,
   viewerId,
   promiseSeen = false,
+  avatarImage,
 }: {
   viewer: { name: string; label: string };
   question: string | null;
   initialAsk?: { id: string; name: string } | null;
   viewerId: string;
   promiseSeen?: boolean;
+  avatarImage?: string;
 }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState("");
@@ -313,7 +315,7 @@ export function Talk({
 
   return (
     <div className="talk" data-viewer={viewer.name}>
-      {burst && <SendBurst words={burst} onDone={() => setBurst(null)} />}
+      {burst && <SendBurst words={burst} avatarImage={avatarImage} onDone={() => setBurst(null)} />}
       <div className="log" role="log" aria-label="相棒との会話">
         {!acknowledged && (
           <section className="promise promise-card" aria-label="最初にお伝えすること">

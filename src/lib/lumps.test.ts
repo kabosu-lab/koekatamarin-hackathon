@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { sendTiming, splitIntoWords } from "./lumps";
+import { flightPath, lumpFrames, sendTiming, speakerFrames, splitIntoWords, trailFrames } from "./lumps";
 
 describe("splitIntoWords", () => {
   it("言葉を短いかたまりに分ける", () => {
@@ -25,12 +25,60 @@ describe("splitIntoWords", () => {
 });
 
 describe("sendTiming", () => {
-  it("言葉が出て、固まり、飛んで、届く順になる", () => {
-    const t = sendTiming(5);
-    expect(t.popGap * 4).toBeLessThan(t.gather);
-    expect(t.gather).toBeLessThan(t.launch);
-    expect(t.launch).toBeLessThan(t.land);
-    expect(t.land).toBeLessThan(t.end);
-    expect(t.end).toBeLessThan(3);
+  const gaps = (times: number[]) => times.slice(1).map((time, index) => time - times[index]);
+
+  it("言葉が固まる間隔は、だんだん短くなる", () => {
+    for (const count of [3, 4, 5]) {
+      const list = gaps(sendTiming(count).wordTimes);
+      list.slice(1).forEach((gap, index) => expect(gap).toBeLessThan(list[index]));
+    }
+  });
+
+  it("固まる、ためる、飛ぶ、届くの順で、全体は約2.5秒まで", () => {
+    for (const count of [0, 1, 2, 3, 4, 5]) {
+      const t = sendTiming(count);
+      expect(t.wordTimes).toHaveLength(count);
+      const order = [...t.absorbTimes, t.gather, t.launch, t.land, t.end];
+      expect(order).toEqual([...order].sort((a, b) => a - b));
+      expect(t.end).toBeLessThanOrEqual(2.5);
+    }
+  });
+});
+
+describe("かたまりの動き", () => {
+  const t = sendTiming(5);
+
+  it("言葉を吸うたびに大きくなり、ためてから飛ぶ", () => {
+    const frames = lumpFrames(t, 400, 800);
+    const offsets = frames.map((frame) => frame.offset);
+    expect(offsets).toEqual([...offsets].sort((a, b) => a - b));
+    const grown = frames.filter((frame) => /^scale\(\d\.\d+\)$/.test(frame.transform)).map((frame) => Number(frame.transform.slice(6, -1)));
+    expect(grown[grown.length - 2]).toBeGreaterThan(grown[1]);
+    expect(frames.some((frame) => frame.transform === "scale(1.3, 0.68)")).toBe(true);
+    expect(frames.at(-1)?.opacity).toBe(0);
+  });
+
+  it("飛ぶ道は弧を描き、上へ進み、後ろほど速い", () => {
+    const path = flightPath(400, 800);
+    expect(path.some((point) => point.x < 0)).toBe(true);
+    expect(path.at(-1)?.x).toBeGreaterThan(0);
+    expect(path.at(-1)?.y).toBeLessThan(-600);
+    const step = (index: number) => Math.hypot(path[index + 1].x - path[index].x, path[index + 1].y - path[index].y);
+    expect(step(path.length - 2)).toBeGreaterThan(step(0));
+  });
+
+  it("尾は transform と opacity だけで、順に遅れて小さくなる", () => {
+    const first = trailFrames(t, 400, 800, 0);
+    const second = trailFrames(t, 400, 800, 1);
+    expect(second.delay).toBeGreaterThan(first.delay);
+    expect(Object.keys(first.frames[0]).sort()).toEqual(["offset", "opacity", "transform"]);
+  });
+
+  it("分身の動きの時刻は戻らない", () => {
+    for (const count of [0, 1, 2, 5]) {
+      const offsets = speakerFrames(sendTiming(count)).map((frame) => frame.offset);
+      expect(offsets).toEqual([...offsets].sort((a, b) => a - b));
+      expect(offsets.at(-1)).toBe(1);
+    }
   });
 });

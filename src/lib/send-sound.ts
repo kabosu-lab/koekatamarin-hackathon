@@ -1,0 +1,126 @@
+import { sendTiming } from "./lumps";
+
+/**
+ * 送るときの音の組み立て。動画の音（video/scripts/build-voice-char.mjs の pop と whoosh）を基準にする。
+ * すべてハ長調のペンタトニックにそろえ、言葉ごとに音階が上がる。
+ */
+const WORD_NOTES = [72, 74, 76, 79, 81];
+const GATHER_NOTES = [84, 86, 88, 91];
+const LAND_NOTES: [number, number][] = [
+  [0, 72],
+  [0.08, 76],
+  [0.16, 79],
+  [0.26, 84],
+];
+
+export const hz = (note: number) => 440 * 2 ** ((note - 69) / 12);
+
+/** 木琴に近い音（FM）。鳴り始めだけ明るく、すぐ落ち着く。 */
+export function schedulePop(audio: BaseAudioContext, out: AudioNode, at: number, note: number, volume: number) {
+  const frequency = hz(note);
+  const modulation = frequency * 3.5;
+  const carrier = audio.createOscillator();
+  carrier.frequency.setValueAtTime(frequency * 1.12, at);
+  carrier.frequency.setTargetAtTime(frequency, at, 1 / 90);
+
+  const modulator = audio.createOscillator();
+  modulator.frequency.value = modulation;
+  const depth = audio.createGain();
+  depth.gain.setValueAtTime(2.4 * modulation, at);
+  depth.gain.setTargetAtTime(0, at, 1 / 34);
+  modulator.connect(depth).connect(carrier.frequency);
+
+  const gain = audio.createGain();
+  gain.gain.setValueAtTime(0, at);
+  gain.gain.linearRampToValueAtTime(volume, at + 0.001);
+  gain.gain.setTargetAtTime(0, at + 0.001, 1 / 19);
+  carrier.connect(gain).connect(out);
+
+  for (const tone of [carrier, modulator]) {
+    tone.start(at);
+    tone.stop(at + 0.24);
+  }
+}
+
+function curve(length: number, value: (position: number) => number): Float32Array<ArrayBuffer> {
+  const points = new Float32Array(length);
+  for (let i = 0; i < length; i++) points[i] = value(i / (length - 1));
+  return points;
+}
+
+/** シューン：高さが上がっていく雑音。音量はなめらかに膨らんで消える。 */
+function scheduleWhoosh(audio: BaseAudioContext, out: AudioNode, at: number, duration: number, volume: number) {
+  const length = Math.floor(audio.sampleRate * duration);
+  const noise = audio.createBuffer(1, length, audio.sampleRate);
+  const samples = noise.getChannelData(0);
+  for (let i = 0; i < length; i++) samples[i] = Math.random() * 2 - 1;
+  const source = audio.createBufferSource();
+  source.buffer = noise;
+
+  const filter = audio.createBiquadFilter();
+  filter.type = "bandpass";
+  filter.Q.value = 3;
+  filter.frequency.setValueCurveAtTime(curve(32, (k) => 500 + 5200 * k * k), at, duration);
+
+  const gain = audio.createGain();
+  gain.gain.setValueCurveAtTime(curve(32, (k) => Math.sin(Math.PI * k) ** 1.2 * volume), at, duration);
+  source.connect(filter).connect(gain).connect(out);
+  source.start(at);
+  source.stop(at + duration);
+}
+
+/** ヒューン：音程がなめらかに上がり、遠ざかるときに少し下がる。 */
+function scheduleHyun(audio: BaseAudioContext, out: AudioNode, at: number, duration: number, volume: number) {
+  const pitch = (k: number) => (k < 0.8 ? 520 * (3100 / 520) ** ((k / 0.8) ** 1.5) : 3100 - 900 * ((k - 0.8) / 0.2));
+  const voices: [OscillatorType, number, number][] = [
+    ["sine", 1, 1],
+    ["triangle", 0.5, 0.35],
+  ];
+  for (const [type, ratio, level] of voices) {
+    const tone = audio.createOscillator();
+    tone.type = type;
+    tone.frequency.setValueCurveAtTime(curve(48, (k) => pitch(k) * ratio), at, duration);
+    const gain = audio.createGain();
+    gain.gain.setValueCurveAtTime(curve(32, (k) => Math.sin(Math.PI * k ** 0.7) ** 1.4 * volume * level), at, duration);
+    tone.connect(gain).connect(out);
+    tone.start(at);
+    tone.stop(at + duration);
+  }
+}
+
+/** 届いたあとの短いピアノのような音。 */
+function schedulePiano(audio: BaseAudioContext, out: AudioNode, at: number, note: number, volume: number) {
+  const partials: [number, number, number][] = [
+    [1, 1, 0.4],
+    [2, 0.42, 0.22],
+    [3, 0.16, 0.12],
+  ];
+  for (const [ratio, level, decay] of partials) {
+    const tone = audio.createOscillator();
+    tone.frequency.value = hz(note) * ratio;
+    const gain = audio.createGain();
+    gain.gain.setValueAtTime(0, at);
+    gain.gain.linearRampToValueAtTime(volume * level, at + 0.003);
+    gain.gain.setTargetAtTime(0, at + 0.003, decay);
+    tone.connect(gain).connect(out);
+    tone.start(at);
+    tone.stop(at + 1.2);
+  }
+}
+
+/** 言葉（音階が上がる）→ 固まる → ためる → ヒューン → 低い音 → 届く和音 → ピアノ。t0 は動きの始まり。 */
+export function scheduleSendSound(audio: BaseAudioContext, out: AudioNode, t0: number, wordCount: number) {
+  const timing = sendTiming(wordCount);
+  timing.wordTimes.forEach((time, index) => schedulePop(audio, out, t0 + time, WORD_NOTES[index], 0.55));
+  GATHER_NOTES.forEach((note, index) => schedulePop(audio, out, t0 + timing.gather + index * 0.045, note, 0.2));
+
+  const flight = timing.land - timing.launch;
+  scheduleHyun(audio, out, t0 + timing.launch - 0.03, flight + 0.16, 0.2);
+  scheduleWhoosh(audio, out, t0 + timing.launch, flight * 1.3, 2.4);
+  schedulePop(audio, out, t0 + timing.launch + flight * 0.44, 60, 0.55);
+
+  schedulePop(audio, out, t0 + timing.land, 60, 0.8);
+  for (const [delay, note] of LAND_NOTES) schedulePop(audio, out, t0 + timing.land + delay, note, 0.5);
+  schedulePiano(audio, out, t0 + timing.land + 0.26, 84, 0.16);
+  schedulePop(audio, out, t0 + timing.land + 0.46, 84, 0.3);
+}
