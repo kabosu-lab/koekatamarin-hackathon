@@ -10,7 +10,7 @@ import { createClaude } from "./claude";
 import { createScriptedClaude } from "./claude/scripted";
 import type { ClaudeClient, ClaudeRequest } from "./claude/types";
 import { openDatabase } from "./db";
-import { createDummyPhotos, drawFrappe } from "./profile-photo/dummy";
+import { createDummyPhotos, drawMug } from "./profile-photo/dummy";
 import type { ProfilePhotoSource } from "./profile-photo/types";
 import { seedDatabase } from "./seed";
 import { ensureDemoCompanions, getPresence } from "./study";
@@ -157,7 +157,7 @@ describe("写真から分身を作る", () => {
   });
 
   it("ダミーの写真は、本物の PNG で、写真のない人もいる", async () => {
-    expect(Buffer.from(drawFrappe()).subarray(1, 4).toString()).toBe("PNG");
+    expect(Buffer.from(drawMug()).subarray(1, 4).toString()).toBe("PNG");
     expect(await createDummyPhotos().getPhoto("noda")).toBeNull();
   });
 });

@@ -4,10 +4,11 @@ import { chromium } from "@playwright/test";
 import { drawWithClaude } from "../src/lib/avatar-art";
 import { drawWithCode, POSES, toSvg, traitsFromSeed, type AvatarTraits, type Drawing } from "../src/lib/avatar-draw";
 import { createClaude } from "../src/lib/claude/index";
-import { drawFrappe, drawLaptop } from "../src/lib/profile-photo/dummy";
+import { drawBicycle, drawLaptop, drawMug } from "../src/lib/profile-photo/dummy";
 
 const cases = [
-  { name: "フラペチーノ風", draw: drawFrappe, note: "架空の人が登録した、クリームの乗った飲み物の画像です。" },
+  { name: "夕焼け色のマグカップ", draw: drawMug, note: "架空の人が登録した、夕焼け色のマグカップの画像です。" },
+  { name: "青い自転車", draw: drawBicycle, note: "架空の人が登録した、青い自転車の画像です。" },
   { name: "ノートパソコン風", draw: drawLaptop, note: "架空の人が登録した、銀色のノートパソコンの画像です。" },
 ];
 

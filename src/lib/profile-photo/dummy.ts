@@ -78,16 +78,29 @@ function chunk(type: string, data: Buffer): Buffer {
   return Buffer.concat([length, body, crc]);
 }
 
-/** フラペチーノ風の飲み物。クリームとストローがある。 */
-export function drawFrappe(): Uint8Array {
-  const canvas = new Canvas([214, 239, 226]);
-  canvas.rect(150, 18, 162, 110, [46, 125, 90]);
-  canvas.circle(128, 96, 44, [255, 250, 240]);
-  canvas.circle(100, 106, 28, [255, 250, 240]);
-  canvas.circle(156, 106, 28, [255, 250, 240]);
-  canvas.rect(70, 112, 186, 124, [120, 72, 40]);
-  canvas.taper(124, 236, 56, 38, [176, 122, 80]);
-  canvas.taper(160, 196, 50, 45, [46, 125, 90]);
+/** 夕焼け色のマグカップ。実在の商品に寄らない架空の絵。 */
+export function drawMug(): Uint8Array {
+  const canvas = new Canvas([252, 233, 214]);
+  canvas.circle(186, 134, 38, [214, 84, 62]);
+  canvas.circle(186, 134, 22, [252, 233, 214]);
+  canvas.rect(64, 76, 188, 206, [232, 110, 72]);
+  canvas.rect(64, 76, 188, 104, [248, 170, 92]);
+  canvas.rect(50, 206, 202, 216, [120, 56, 72]);
+  return canvas.toPng();
+}
+
+/** 青い自転車。 */
+export function drawBicycle(): Uint8Array {
+  const canvas = new Canvas([226, 240, 248]);
+  for (const cx of [70, 186]) {
+    canvas.circle(cx, 168, 42, [24, 72, 150]);
+    canvas.circle(cx, 168, 32, [226, 240, 248]);
+  }
+  canvas.rect(70, 164, 186, 172, [40, 110, 210]);
+  canvas.rect(120, 92, 128, 172, [40, 110, 210]);
+  canvas.rect(100, 84, 150, 94, [24, 40, 70]);
+  canvas.rect(178, 80, 186, 170, [40, 110, 210]);
+  canvas.rect(168, 72, 212, 82, [24, 40, 70]);
   return canvas.toPng();
 }
 
@@ -103,9 +116,9 @@ export function drawLaptop(): Uint8Array {
 }
 
 const PHOTOS: Record<string, () => Uint8Array> = {
-  saeki: drawFrappe,
+  saeki: drawMug,
   kawamura: drawLaptop,
-  aoki: drawFrappe,
+  aoki: drawBicycle,
 };
 
 /** 提出版の「Teams の写真」。写真を登録していない人もいる。 */
