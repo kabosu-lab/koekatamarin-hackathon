@@ -2,7 +2,7 @@ import { expect, type Page, test } from "@playwright/test";
 
 // 合言葉つきの試用モード。playwright.config.ts の「試用」から、別のサーバーに向けて動く
 const CODE = "test-code";
-const NOTICE = "試用です。実名や個人情報は入れないでください。本当に困ったことは先生へ。ここに書いても誰にも届きません。";
+const NOTICE = "先生や相談室には届きません。投稿や相棒に覚えさせたことは、試している人に見えることがあります。実名や個人情報は入れないでください。本当に困ったことは先生へ。";
 
 async function enter(page: Page) {
   await page.goto("/access");
@@ -54,25 +54,20 @@ test("試用の表示はどの画面にも出て、相談室に届くとは書�
   await expect(page.getByText(NOTICE)).toBeVisible();
 });
 
-test("命や安全に関わる話では、誰にも届いていないことと窓口を伝え、記録しない", async ({ page }) => {
+test("命や安全に関わる話では、先生や相談室に届いていないことと窓口を伝える", async ({ page }) => {
   await enter(page);
   await page.getByRole("button", { name: "文字で書く" }).click();
   await page.getByLabel("相棒に書く").fill("親に殴られている");
   await page.getByRole("button", { name: "相棒に送る" }).click();
 
   const card = page.getByRole("region", { name: "大事なお知らせ" });
-  await expect(card).toContainText("誰にも届いていません");
+  await expect(card).toContainText("先生や相談室には届いていません");
   await expect(card).toContainText("直接話してください");
   await expect(card).toContainText("0120-0-78310");
   await expect(card).not.toContainText("要点だけ伝えました");
   await expect(card.getByRole("checkbox")).toHaveCount(0);
   await expect(card.getByRole("button")).toHaveCount(0);
   await expect(page.getByRole("region", { name: "相談室に伝えました" })).toHaveCount(0);
-
-  await page.getByLabel("使う人").selectOption({ label: "白石 文（養護・相談室）" });
-  await page.getByRole("button", { name: "切り替え" }).click();
-  await expect(page.locator('.talk[data-viewer="白石 文"]')).toBeVisible();
-  await expect(page.getByRole("link", { name: "相談室への知らせを見る" })).toHaveCount(0);
 });
 
 test("外の URL から開いても、サーバーの処理と API を拒まない", async ({ page, request }) => {
@@ -110,4 +105,60 @@ test("外の URL から開いたときの入力画面への案内は、Mac の�
   expect(response.headers().location).not.toContain("127.0.0.1");
   expect(response.headers().location).toMatch(/\/access$/);
   await outside.dispose();
+});
+
+test("選べるのは生徒だけで、最初の人物も生徒になる", async ({ page }) => {
+  await enter(page);
+  await expect(page.locator('.talk[data-viewer="青木 ひより"]')).toBeVisible();
+  const options = await page.getByLabel("使う人").locator("option").allTextContents();
+  expect(options).toEqual(["青木 ひより（2年）", "木下 蓮（3年・ものづくり部）", "中村 結衣（1年・吹奏楽部）"]);
+});
+
+test("cookie を書き換えても、先生や相談室の人物として画面も API も使えない", async ({ page, context }) => {
+  await enter(page);
+  await context.addCookies([{ name: "koekata_person", value: "shiraishi", domain: "127.0.0.1", path: "/" }]);
+  await page.goto("/");
+  await expect(page.locator('.talk[data-viewer="青木 ひより"]')).toBeVisible();
+  await expect(page.locator('.talk[data-viewer="白石 文"]')).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "相談室への知らせを見る" })).toHaveCount(0);
+
+  // API から送っても、書き換えた先生ではなく生徒の投稿になる
+  const words = `書き換えの確かめ ${test.info().testId}`;
+  await page.getByRole("button", { name: "文字で書く" }).click();
+  await page.getByLabel("相棒に書く").fill(words);
+  await page.getByRole("button", { name: "相棒に送る" }).click();
+  await expect(page.getByRole("log").locator(".bubble.assistant").last()).toBeVisible();
+  await page.getByRole("button", { name: "言葉にして送る" }).click();
+  await expect(page.getByLabel("投稿の文章")).toHaveValue(words);
+  await page.getByRole("button", { name: "本人として送る" }).click();
+  await page.getByRole("link", { name: "校内チャネルで見る" }).click();
+  const post = page.getByRole("article").filter({ hasText: words });
+  await expect(post).toContainText("青木 ひより");
+  await expect(post).not.toContainText("白石 文");
+});
+
+test("サーバーの処理を直接呼んでも、先生には切り替えられない", async ({ page, context }) => {
+  await enter(page);
+  const actionRequest = page.waitForRequest((r) => r.method() === "POST" && Boolean(r.headers()["next-action"]));
+  await page.getByLabel("使う人").selectOption({ label: "木下 蓮（3年・ものづくり部）" });
+  await page.getByRole("button", { name: "切り替え" }).click();
+  const original = await actionRequest;
+  await expect(page.locator('.talk[data-viewer="木下 蓮"]')).toBeVisible();
+
+  const headers = await original.allHeaders();
+  const body = (original.postDataBuffer() ?? Buffer.alloc(0)).toString("latin1");
+  expect(body).toContain("kinoshita");
+  const switchTo = (id: string) =>
+    page.request.post("/", {
+      headers: { ...headers },
+      data: Buffer.from(body.replace("kinoshita", id), "latin1"),
+      maxRedirects: 0,
+    });
+  const currentPerson = async () => (await context.cookies()).find((c) => c.name === "koekata_person")?.value;
+
+  // 同じ呼び方で、生徒には切り替わる（呼び方そのものが効いていることの確かめ）
+  await switchTo("nakamura");
+  expect(await currentPerson()).toBe("nakamura");
+  await switchTo("shiraishi");
+  expect(await currentPerson()).toBe("nakamura");
 });

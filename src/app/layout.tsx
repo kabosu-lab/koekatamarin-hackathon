@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { readAppearance } from "@/lib/appearance";
 import { showsRewards } from "@/lib/rewards-view";
 import { getViewer } from "@/lib/current-person";
+import { selectablePeople } from "@/lib/people";
 import { isTrialMode, TRIAL_NOTICE } from "@/lib/trial";
 import { BottomNav } from "./BottomNav";
 import { PersonSwitcher } from "./PersonSwitcher";
@@ -39,7 +40,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         )}
         <TrialProvider trial={trial}>
           {children}
-          <PersonSwitcher viewerId={viewer.id} people={people} />
+          <PersonSwitcher viewerId={viewer.id} people={selectablePeople(people, trial)} />
           <BottomNav />
         </TrialProvider>
       </body>

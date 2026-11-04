@@ -111,8 +111,9 @@ describe("最初の一言", () => {
     expect(companionSystemPrompt).toContain("連絡した・伝えたと言わない");
     expect(companionSystemPrompt).toContain("要点だけが相談室の先生に届き");
     expect(companionSystemPrompt).toContain("「伝わらない」「大丈夫」と言い切らず");
-    // 試用では誰にも届かないので、届くと言わせない
-    expect(trialCompanionSystemPrompt).toContain("誰にも届きません");
+    // 試用では先生や相談室に届かないので、届くと言わせない。投稿は見えるので、誰にも見られないとも言わせない
+    expect(trialCompanionSystemPrompt).toContain("相談室にも先生にも届きません");
+    expect(trialCompanionSystemPrompt).toContain("「誰にも伝わらない」「誰にも見られない」と言い切らない");
     expect(trialCompanionSystemPrompt).not.toContain("要点だけが相談室の先生に届き");
     expect(trialCompanionSystemPrompt).toContain("110 番や 119 番");
   });
