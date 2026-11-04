@@ -247,17 +247,17 @@ function getSchemaVersion(db: DatabaseSync): number {
   return row.user_version;
 }
 
-function migrate(db: DatabaseSync): void {
+function migrate(db: DatabaseSync, migrations: readonly string[] = MIGRATIONS): void {
   const current = getSchemaVersion(db);
-  if (current > SCHEMA_VERSION) {
+  if (current > migrations.length) {
     throw new Error(
-      `データベースの版（${current}）がアプリの版（${SCHEMA_VERSION}）より新しいため開けません`,
+      `データベースの版（${current}）がアプリの版（${migrations.length}）より新しいため開けません`,
     );
   }
-  for (let version = current; version < SCHEMA_VERSION; version += 1) {
+  for (let version = current; version < migrations.length; version += 1) {
     db.exec("BEGIN");
     try {
-      db.exec(MIGRATIONS[version]);
+      db.exec(migrations[version]);
       db.exec(`PRAGMA user_version = ${version + 1}`);
       db.exec("COMMIT");
     } catch (error) {
@@ -280,6 +280,13 @@ export function openDatabase(path: string): DatabaseSync {
   return db;
 }
 
+/** 開いたままの接続の版が古ければ、当て直す。当てたときは true。 */
+export function ensureMigrated(db: DatabaseSync, migrations: readonly string[] = MIGRATIONS): boolean {
+  if (getSchemaVersion(db) >= migrations.length) return false;
+  migrate(db, migrations);
+  return true;
+}
+
 export function readSchemaVersion(db: DatabaseSync): number {
   return getSchemaVersion(db);
 }
@@ -292,6 +299,9 @@ export function getDatabase(): DatabaseSync {
     const db = openDatabase(process.env.KOEKATA_DB_PATH ?? "data/koekata.db");
     seedDatabase(db);
     holder.koekataDb = db;
+  } else if (ensureMigrated(holder.koekataDb)) {
+    // 開発サーバーが動いたまま、新しい変更が足されたとき。再起動しなくても直る
+    seedDatabase(holder.koekataDb);
   }
   return holder.koekataDb;
 }

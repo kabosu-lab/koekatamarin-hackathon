@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { afterEach, describe, expect, it } from "vitest";
-import { openDatabase, readSchemaVersion, SCHEMA_VERSION } from "./db";
+import { ensureMigrated, openDatabase, readSchemaVersion, SCHEMA_VERSION } from "./db";
 import { seedDatabase } from "./seed";
 
 /** 反応の移行より前の版。反応の移行はいちばん最後ではなくなっても、この数は変えない */
@@ -91,6 +91,19 @@ describe("知恵の反応の移行", () => {
       { id: "a", verdict: "like", comment: "", resolved_at: null },
       { id: "b", verdict: "not_working", comment: "理由", resolved_at: "r" },
     ]);
+    db.close();
+  });
+});
+
+describe("開いたままの接続", () => {
+  it("新しい変更が足されていたら、再起動しなくても当て直す", () => {
+    const db = openDatabase(":memory:");
+    const added = [...Array.from({ length: SCHEMA_VERSION }, () => ""), "CREATE TABLE added_later (id TEXT PRIMARY KEY) STRICT;"];
+    expect(ensureMigrated(db)).toBe(false);
+    expect(ensureMigrated(db, added)).toBe(true);
+    expect(db.prepare("SELECT name FROM sqlite_master WHERE name = 'added_later'").get()).toBeTruthy();
+    expect(readSchemaVersion(db)).toBe(SCHEMA_VERSION + 1);
+    expect(ensureMigrated(db, added)).toBe(false);
     db.close();
   });
 });
