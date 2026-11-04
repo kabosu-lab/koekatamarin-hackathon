@@ -2863,3 +2863,13 @@ html[data-avatar="hide"] .burst-speaker {
 .title-ideas {
   flex-wrap: wrap;
 }
+
+/* 音と見た目のボタンが、題の下の一言に重ならないように */
+.hero .sound-toggle,
+.hero .theme-toggle {
+  top: 0;
+}
+
+.stage-home .hero p {
+  margin-top: 0.4rem;
+}
