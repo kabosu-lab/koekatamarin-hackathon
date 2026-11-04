@@ -75,3 +75,9 @@ test("じぶんの画面に、ポップへの入口が一行で置いてある",
   await expect(page.locator("html")).toHaveAttribute("data-theme", "pop");
   await expect(page.getByRole("region", { name: "相棒", exact: true })).toBeVisible();
 });
+
+test("合言葉がなければ、改善点の入口も送り先も出ない", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.getByRole("button", { name: "改善点を送る" })).toHaveCount(0);
+  expect((await page.request.post("/api/feedback", { data: { kind: "よかった" } })).status()).toBe(404);
+});

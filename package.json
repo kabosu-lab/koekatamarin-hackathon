@@ -29,6 +29,7 @@
     "try:lookback": "tsx --env-file-if-exists=.env scripts/try-lookback.ts",
     "try:attachment": "tsx --env-file-if-exists=.env scripts/try-attachment.ts",
     "try:avatar": "tsx --env-file-if-exists=.env scripts/try-avatar.ts",
+    "feedback:list": "tsx scripts/feedback-list.ts",
     "try:goal": "tsx --env-file-if-exists=.env scripts/try-goal.ts",
     "try:walk": "tsx --env-file-if-exists=.env scripts/try-walk.ts",
     "try:title": "tsx --env-file-if-exists=.env scripts/try-title.ts",

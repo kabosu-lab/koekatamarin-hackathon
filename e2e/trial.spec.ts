@@ -162,3 +162,68 @@ test("サーバーの処理を直接呼んでも、先生には切り替えら�
   await switchTo("shiraishi");
   expect(await currentPerson()).toBe("nakamura");
 });
+
+test("改善点は種類だけでも送れて、ありがとうと出て、続けて送れる", async ({ page }) => {
+  await enter(page);
+  await page.getByRole("button", { name: "改善点を送る" }).click();
+  const sheet = page.getByRole("dialog", { name: "改善点を送る" });
+  await expect(sheet).toContainText("名前は書かないでください。ここは相談先ではありません。困っていることは先生に直接話してください。");
+  await expect(sheet.getByRole("button", { name: "送る", exact: true })).toBeDisabled();
+
+  await sheet.getByRole("radio", { name: "よかった" }).check();
+  await sheet.getByRole("button", { name: "送る", exact: true }).click();
+  await expect(sheet).toBeHidden();
+  await expect(page.locator(".feedback-thanks")).toHaveText("ありがとう");
+
+  await page.getByRole("button", { name: "改善点を送る" }).click();
+  await expect(sheet.getByRole("radio", { name: "よかった" })).not.toBeChecked();
+  await sheet.getByRole("radio", { name: "動かない" }).check();
+  await sheet.getByLabel("くわしく").fill("<script>alert(1)</script>");
+  await sheet.getByRole("button", { name: "送る", exact: true }).click();
+  await expect(sheet).toBeHidden();
+});
+
+test("改善点の書きかけは、画面を移っても消えない", async ({ page }) => {
+  await enter(page);
+  await page.getByRole("button", { name: "改善点を送る" }).click();
+  const sheet = page.getByRole("dialog", { name: "改善点を送る" });
+  await sheet.getByRole("radio", { name: "こうしたい" }).check();
+  await sheet.getByLabel("くわしく").fill("書きかけの言葉");
+  await sheet.getByRole("button", { name: "閉じる" }).click();
+
+  await page.goto("/teams");
+  await page.getByRole("button", { name: "改善点を送る" }).click();
+  await expect(sheet.getByLabel("くわしく")).toHaveValue("書きかけの言葉");
+  await expect(sheet.getByRole("radio", { name: "こうしたい" })).toBeChecked();
+});
+
+test("改善点は投稿にも他の画面にも出ず、入口は下のナビにかぶらない", async ({ page }) => {
+  await enter(page);
+  const secret = `改善の本文 ${test.info().testId}`;
+  const response = await page.request.post("/api/feedback", { data: { kind: "こうしたい", body: secret, path: "/" } });
+  expect(response.status()).toBe(200);
+  for (const path of ["/", "/teams", "/minna", "/me", "/chie"]) {
+    await page.goto(path);
+    await expect(page.getByText(secret), path).toHaveCount(0);
+  }
+  const open = await page.getByRole("button", { name: "改善点を送る" }).boundingBox();
+  const nav = await page.getByRole("navigation", { name: "画面の切り替え" }).boundingBox();
+  expect(open && nav && open.y + open.height <= nav.y).toBe(true);
+});
+
+test("改善点は合言葉がないと送れず、同じ端末の連打を止める", async ({ page, playwright }) => {
+  const outside = await playwright.request.newContext({ baseURL: "http://127.0.0.1:3101" });
+  expect((await outside.post("/api/feedback", { data: { kind: "よかった" } })).status()).toBe(401);
+  await outside.dispose();
+
+  await enter(page);
+  // ほかのテストの回数と混ざらないよう、このテストだけの端末の印を付ける
+  await page.context().addCookies([{ name: "koekata_feedback_device", value: test.info().testId, domain: "127.0.0.1", path: "/" }]);
+  const statuses: number[] = [];
+  for (let i = 0; i < 11; i += 1) {
+    statuses.push((await page.request.post("/api/feedback", { data: { kind: "よかった", path: "/" } })).status());
+  }
+  expect(statuses.slice(0, 10).every((status) => status === 200)).toBe(true);
+  expect(statuses[10]).toBe(429);
+  expect((await page.request.post("/api/feedback", { data: { kind: "違う" } })).status()).toBe(429);
+});

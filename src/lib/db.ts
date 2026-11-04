@@ -304,6 +304,15 @@ const MIGRATIONS: readonly string[] = [
      post_id TEXT PRIMARY KEY REFERENCES posts (id) ON DELETE CASCADE,
      created_at TEXT NOT NULL
    ) STRICT;`,
+  // 試用中の生徒からの改善点。誰が送ったかは残さない（人物、cookie、IP の列を作らない）
+  `CREATE TABLE trial_feedback (
+     id TEXT PRIMARY KEY,
+     kind TEXT NOT NULL,
+     body TEXT NOT NULL,
+     path TEXT NOT NULL,
+     screen_width INTEGER,
+     created_at TEXT NOT NULL
+   ) STRICT;`,
 ];
 
 export const SCHEMA_VERSION

@@ -435,3 +435,108 @@ html body .card {
   line-height: 1.4;
   text-align: center;
 }
+
+/* 試用の改善点。バナーの中に入口を置き、下のナビや話すボタンにかぶせない */
+.trial-banner .feedback-open {
+  min-height: 32px;
+  margin: 2px 0 2px 4px;
+  padding: 2px 10px;
+  border: 1px solid #fff;
+  border-radius: 999px;
+  background: transparent;
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+.trial-banner .feedback-thanks {
+  margin-left: 6px;
+  font-weight: 700;
+}
+.feedback-sheet {
+  width: min(92vw, 420px);
+  max-height: 88dvh;
+  padding: 16px;
+  border: 0;
+  border-radius: 14px;
+  background: #fff;
+  color: #1f2933;
+  font-size: 1rem;
+  text-align: left;
+}
+.feedback-sheet::backdrop {
+  background: rgb(0 0 0 / 45%);
+}
+.feedback-sheet h2 {
+  margin: 0 0 6px;
+  font-size: 1.15rem;
+}
+.feedback-sheet p {
+  margin: 0 0 10px;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+.feedback-sheet fieldset {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 0 0 10px;
+  padding: 0;
+  border: 0;
+}
+.feedback-sheet legend {
+  margin-bottom: 6px;
+  font-weight: 700;
+}
+.feedback-sheet fieldset label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 10px;
+  border: 1px solid #66717c;
+  border-radius: 10px;
+}
+.feedback-sheet fieldset label.chosen {
+  border-color: #1f2933;
+  background: #1f2933;
+  color: #fff;
+}
+.feedback-body {
+  display: block;
+  margin-bottom: 10px;
+  font-weight: 700;
+}
+.feedback-body textarea {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 6px;
+  padding: 8px;
+  border: 1px solid #66717c;
+  border-radius: 10px;
+  background: #fff;
+  color: inherit;
+  font: inherit;
+  font-weight: 400;
+}
+.feedback-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.feedback-actions button {
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid #1f2933;
+  border-radius: 10px;
+  background: #fff;
+  color: #1f2933;
+  font-weight: 700;
+}
+.feedback-actions button[type="submit"] {
+  background: #1f2933;
+  color: #fff;
+}
+.feedback-actions button:disabled {
+  opacity: 0.45;
+}

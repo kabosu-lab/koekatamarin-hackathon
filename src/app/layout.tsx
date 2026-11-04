@@ -7,6 +7,7 @@ import { getViewer } from "@/lib/current-person";
 import { selectablePeople } from "@/lib/people";
 import { isTrialMode, TRIAL_NOTICE } from "@/lib/trial";
 import { BottomNav } from "./BottomNav";
+import { FeedbackSheet } from "./FeedbackSheet";
 import { PersonSwitcher } from "./PersonSwitcher";
 import { TrialProvider } from "./TrialContext";
 import "./globals.css";
@@ -34,9 +35,9 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
     <html lang="ja" data-theme={theme} data-size={size} data-sound={sound} data-avatar={showsRewards(appearance) ? "show" : "hide"}>
       <body>
         {trial && (
-          <p className="trial-banner" role="note">
-            {TRIAL_NOTICE}
-          </p>
+          <div className="trial-banner">
+            <span role="note">{TRIAL_NOTICE}</span> <FeedbackSheet />
+          </div>
         )}
         <TrialProvider trial={trial}>
           {children}
