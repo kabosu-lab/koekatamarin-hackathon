@@ -2,7 +2,7 @@
 
 import { playReachedSound } from "@/app/sound";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { MemoryItem } from "@/lib/memory";
 import type { ProfileDraft } from "@/lib/profile";
 
@@ -239,4 +239,52 @@ export function ThanksForm({ people }: { people: { id: string; name: string; lab
       {notice && <p role="status">{notice}</p>}
     </section>
   );
+}
+
+/** 本人が押したときだけ、登録した写真を読む。描いている間も画面は待たせない。 */
+export function AvatarFromPhoto({ label, failed }: { label: string; failed: boolean }) {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const [problem, setProblem] = useState("");
+
+  async function start() {
+    setBusy(true);
+    setProblem("");
+    const { ok, data } = await postJson("/api/avatar/photo", {}).catch(() => ({ ok: false, data: {} as Record<string, unknown> }));
+    if (ok) router.refresh();
+    else setProblem(typeof data.error === "string" ? data.error : "うまくいきませんでした。もう一度押してください。");
+    setBusy(false);
+  }
+
+  return (
+    <section className="card" aria-label="写真から分身を作る">
+      <h2>{label}を、相棒の卵にする</h2>
+      {failed && <p className="notice">前回はうまく描けなかったので、シンプルな絵にしています。もう一度試せます。</p>}
+      <p className="muted">
+        写真の色や持ち物の雰囲気から、あなただけの相棒が生まれます。本人に似せることはしません。写真は Claude に1度だけ見せて、保存しません。
+      </p>
+      <button type="button" disabled={busy} onClick={() => void start()}>
+        写真から卵を作る
+      </button>
+      {problem && (
+        <p className="notice" role="alert">
+          {problem}
+        </p>
+      )}
+    </section>
+  );
+}
+
+/** 裏で描いている間だけ、ときどき画面を新しくする。 */
+export function ArtRefresher() {
+  const router = useRouter();
+  useEffect(() => {
+    let count = 0;
+    const timer = setInterval(() => {
+      if (++count > 40) clearInterval(timer);
+      else router.refresh();
+    }, 3000);
+    return () => clearInterval(timer);
+  }, [router]);
+  return <p className="muted" role="status">相棒を描いています。ほかのことをしていて大丈夫です。</p>;
 }

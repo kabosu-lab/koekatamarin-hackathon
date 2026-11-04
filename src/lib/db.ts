@@ -187,6 +187,18 @@ const MIGRATIONS: readonly string[] = [
    CREATE INDEX attachments_pending ON attachments (owner_id, post_id);
    ALTER TABLE knowledge_items ADD COLUMN show_attachment INTEGER NOT NULL DEFAULT 0 CHECK (show_attachment IN (0, 1));`,
   `ALTER TABLE daily_reports ADD COLUMN made_by TEXT NOT NULL DEFAULT 'manual' CHECK (made_by IN ('manual', 'agent'));`,
+  `CREATE TABLE avatar_art (
+     person_id TEXT PRIMARY KEY REFERENCES people (id),
+     token TEXT NOT NULL UNIQUE,
+     room_token TEXT NOT NULL UNIQUE,
+     status TEXT NOT NULL CHECK (status IN ('none', 'pending', 'ready', 'failed')),
+     source TEXT CHECK (source IN ('claude', 'code')),
+     stage INTEGER NOT NULL,
+     traits TEXT,
+     body TEXT,
+     poses TEXT,
+     updated_at TEXT NOT NULL
+   ) STRICT;`,
 ];
 
 export const SCHEMA_VERSION

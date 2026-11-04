@@ -4,7 +4,7 @@ export type ChatMessage = {
   content: string;
 };
 
-export type ClaudeTask = "converse" | "draft" | "review" | "safety" | "connect" | "reply" | "cheer" | "profile" | "daily" | "lookback" | "nakama" | "knowledge_draft" | "knowledge_find" | "attachment_draft";
+export type ClaudeTask = "converse" | "draft" | "review" | "safety" | "connect" | "reply" | "cheer" | "profile" | "daily" | "lookback" | "nakama" | "knowledge_draft" | "knowledge_find" | "attachment_draft" | "avatar_art";
 
 /** 下書きの材料として Claude に渡す添付。1回の呼び出しに1つだけ。 */
 export type ClaudeAttachment = {

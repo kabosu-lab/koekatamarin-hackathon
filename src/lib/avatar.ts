@@ -27,7 +27,8 @@ export const KIND_QUESTION = {
   ],
 } as const;
 
-const CREATURE_FAMILIES = new Set(Object.values(FAMILIES.creature));
+/** 写真から作った分身。卵から育つ */
+const CREATURE_FAMILIES = new Set<string>([...Object.values(FAMILIES.creature), "photo"]);
 
 export type Contributions = {
   posts: number;
@@ -98,6 +99,17 @@ export function getAvatar(db: DatabaseSync, personId: string): AvatarView {
   if (!row) return { family: null, stage: 0, image: "egg.png", label: "まだ卵です" };
 
   const stage = stageFor(row.family, countContributions(db, personId));
+  const art = db.prepare("SELECT token, body, status FROM avatar_art WHERE person_id = ? AND (body IS NOT NULL OR status IN ('pending', 'failed'))").get(personId) as
+    | { token: string; body: string | null; status: string }
+    | undefined;
+  if (art) {
+    // 描いた絵は段階ごとに変わるので、段階を URL に入れて古い絵を残さない
+    // 描けなかったときは、コードで描いた絵が normal で出る
+    const asEgg = stage === 0 || (!art.body && art.status === "pending");
+    const pose = asEgg ? "egg" : "normal";
+    const label = asEgg ? "写真の色の卵" : `${stage} 段階目の相棒`;
+    return { family: row.family, stage, image: `/api/avatar/art/${art.token}/${pose}?v=${stage}`, label };
+  }
   if (stage === 0) return { family: row.family, stage, image: "egg.png", label: "もうすぐ生まれそうな卵" };
   return { family: row.family, stage, image: `${row.family}-${stage}.png`, label: `${stage} 段階目の相棒` };
 }

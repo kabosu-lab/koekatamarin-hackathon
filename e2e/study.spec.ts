@@ -63,3 +63,21 @@ test("スマホ幅で横にはみ出さない", async ({ page }) => {
     expect(overflow).toBe(0);
   }
 });
+
+test("自習室の分身は言葉を話さず、人は見るだけで、絵が読み込まれる", async ({ page }) => {
+  await page.goto("/study/room");
+  const room = page.getByRole("region", { name: "自習室" });
+  await expect(room).toHaveText(/^いま \d+ 人が勉強しています$/);
+  await expect(room.locator("button, input, textarea, video, audio")).toHaveCount(0);
+  const study = room.locator(".pose.study").first();
+  await expect.poll(() => study.evaluate((el: HTMLImageElement) => el.complete && el.naturalWidth > 0)).toBe(true);
+});
+
+test("動きを減らす設定では、分身は勉強の姿のままで動かない", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/study/room");
+  const buddy = page.locator(".study-buddy").first();
+  await expect(buddy).toHaveCSS("animation-name", "none");
+  await expect(buddy.locator(".pose.highfive")).toHaveCSS("transform", "matrix(0, 0, 0, 0, 0, 0)");
+  await expect(buddy.locator(".pose.study")).toHaveCSS("transform", "none");
+});

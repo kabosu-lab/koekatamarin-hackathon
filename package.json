@@ -29,6 +29,7 @@
     "try:evening": "tsx --env-file-if-exists=.env scripts/try-evening.ts",
     "try:lookback": "tsx --env-file-if-exists=.env scripts/try-lookback.ts",
     "try:attachment": "tsx --env-file-if-exists=.env scripts/try-attachment.ts",
+    "try:avatar": "tsx --env-file-if-exists=.env scripts/try-avatar.ts",
     "demo:attachments": "tsx scripts/make-demo-attachments.ts"
   },
   "dependencies": {

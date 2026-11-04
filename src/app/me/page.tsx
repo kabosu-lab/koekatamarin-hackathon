@@ -13,7 +13,10 @@ import { setAppearance } from "../person-actions";
 import { SoundTest } from "./SoundTest";
 import { createDummyTeams } from "@/lib/destination/dummy-teams";
 import { listMemories } from "@/lib/memory";
-import { AvatarQuiz, MemoryList, ProfileEditor, ThanksForm } from "./MeActions";
+import { getPhotoAvatarState, refreshAvatarArt } from "@/lib/avatar-art";
+import { createClaude } from "@/lib/claude";
+import { createDummyPhotos } from "@/lib/profile-photo/dummy";
+import { ArtRefresher, AvatarFromPhoto, AvatarQuiz, MemoryList, ProfileEditor, ThanksForm } from "./MeActions";
 
 export const metadata: Metadata = { title: "じぶん｜こえかた" };
 export const dynamic = "force-dynamic";
@@ -23,6 +26,10 @@ export default async function MePage() {
   const store = await cookies();
   const appearance = readAppearance((name) => store.get(name)?.value);
   const db = getDatabase();
+  // 段階が変わったときだけ、裏で描き直す。画面は待たない
+  void refreshAvatarArt(createClaude(), db, viewer.id);
+  const photos = createDummyPhotos();
+  const photoState = await getPhotoAvatarState(db, photos, viewer.id);
   const avatar = getAvatar(db, viewer.id);
   const counts = countContributions(db, viewer.id);
   const { public_profile: profile } = db.prepare("SELECT public_profile FROM people WHERE id = ?").get(viewer.id) as {
@@ -48,6 +55,9 @@ export default async function MePage() {
           <p className="muted">人とやり取りすると育ちます。休んでも減りません。</p>
         </div>
       </section>
+
+      {photoState.status === "pending" && <ArtRefresher />}
+      {photoState.canUsePhoto && <AvatarFromPhoto label={photos.label} failed={photoState.status === "failed"} />}
 
       {!avatar.family && (
         <AvatarQuiz

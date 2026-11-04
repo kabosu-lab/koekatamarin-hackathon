@@ -110,3 +110,37 @@ test("スマホ幅で横にはみ出さない", async ({ page }) => {
     expect(overflow).toBe(0);
   }
 });
+
+test("Teams の写真（ダミー）から分身を作れて、写真のない人には出ない", async ({ browser }) => {
+  const page = await (await browser.newContext()).newPage();
+  await page.goto("/");
+  await switchPerson(page, "川村 陽菜（理科・1年副担任）");
+  await page.goto("/me");
+  const section = page.getByRole("region", { name: "写真から分身を作る" });
+  await expect(section).toContainText("保存しません");
+  await section.getByRole("button", { name: "写真から卵を作る" }).click();
+  await expect(section).toHaveCount(0);
+  const image = page.getByRole("region", { name: "相棒" }).locator("img");
+  await expect(image).toHaveAttribute("src", /\/api\/avatar\/art\//);
+  await expect.poll(() => image.evaluate((el: HTMLImageElement) => el.complete && el.naturalWidth > 0)).toBe(true);
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  expect(overflow).toBe(0);
+
+  await page.goto("/");
+  await switchPerson(page, "野田 翔（情報・ものづくり部顧問）");
+  await page.goto("/me");
+  await expect(page.getByRole("region", { name: "写真から分身を作る" })).toHaveCount(0);
+  await page.context().close();
+});
+
+test("描いた絵の配信は SVG で、文字もスクリプトも動かさない", async ({ page, request }) => {
+  await page.goto("/study/room");
+  const src = await page.locator(".study-buddy .pose.study").first().getAttribute("src");
+  const response = await request.get(src as string);
+  expect(response.headers()["content-type"]).toContain("image/svg+xml");
+  expect(response.headers()["content-security-policy"]).toContain("sandbox");
+  expect(response.headers()["x-content-type-options"]).toBe("nosniff");
+  expect(await response.text()).not.toMatch(/<text|<script/);
+  expect((await request.get("/api/avatar/art/unknown/study")).status()).toBe(404);
+  expect((await request.get(`${(src as string).replace("/study", "/shout")}`)).status()).toBe(404);
+});

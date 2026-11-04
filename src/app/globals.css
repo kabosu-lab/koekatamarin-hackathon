@@ -1648,3 +1648,164 @@ h2 {
     transform: none;
   }
 }
+
+/* 描いた分身は、なめらかに表示する */
+.avatar-image[src^="/api/avatar/"] {
+  image-rendering: auto;
+}
+
+/* 自習室：分身だけが動く。動きは transform だけ */
+.study-room {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(7rem, 1fr));
+  gap: 0.75rem 0.25rem;
+  justify-items: center;
+  padding: 0.75rem 0.25rem;
+  border-radius: 1rem;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--surface) 88%, #2545f0) 0 72%, color-mix(in srgb, var(--surface) 76%, #ff6b4a) 72%);
+}
+
+.study-buddy {
+  position: relative;
+  width: 104px;
+  height: 104px;
+  animation: buddy-bob 3.2s ease-in-out var(--wait, 0s) infinite;
+}
+
+.study-buddy.left {
+  animation: buddy-meet-left 20s cubic-bezier(0.34, 1.4, 0.64, 1) var(--wait, 0s) infinite;
+}
+
+.study-buddy.right {
+  animation: buddy-meet-right 20s cubic-bezier(0.34, 1.4, 0.64, 1) var(--wait, 0s) infinite;
+}
+
+.study-buddy .pose {
+  position: absolute;
+  inset: 0;
+  transform: scale(0);
+  transform-origin: 50% 90%;
+  animation-duration: 20s;
+  animation-delay: var(--wait, 0s);
+  animation-iteration-count: infinite;
+  animation-timing-function: cubic-bezier(0.34, 1.6, 0.64, 1);
+}
+
+.study-buddy .pose.study {
+  animation-name: pose-study;
+}
+
+.study-buddy .pose.highfive {
+  animation-name: pose-highfive;
+}
+
+.study-buddy .pose.cheer {
+  animation-name: pose-cheer;
+}
+
+.study-buddy .pose.stretch {
+  animation-name: pose-stretch;
+}
+
+/* 隣がいない分身は、ハイタッチも応援もしない */
+.study-buddy.solo .pose.study {
+  animation-name: pose-solo-study;
+}
+
+.study-buddy.solo .pose.highfive,
+.study-buddy.solo .pose.cheer {
+  animation-name: none;
+}
+
+.study-buddy.solo .pose.stretch {
+  animation-name: pose-solo-stretch;
+}
+
+@keyframes buddy-bob {
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+@keyframes buddy-meet-left {
+  0%, 44%, 66%, 100% {
+    transform: translateX(0);
+  }
+  48%, 58% {
+    transform: translateX(22px);
+  }
+}
+
+@keyframes buddy-meet-right {
+  0%, 44%, 66%, 100% {
+    transform: translateX(0);
+  }
+  48%, 58% {
+    transform: translateX(-22px) scaleX(-1);
+  }
+}
+
+@keyframes pose-study {
+  0%, 44%, 80%, 100% {
+    transform: scale(1);
+  }
+  46%, 78% {
+    transform: scale(0);
+  }
+}
+
+@keyframes pose-highfive {
+  0%, 45%, 58%, 100% {
+    transform: scale(0);
+  }
+  47%, 56% {
+    transform: scale(1);
+  }
+}
+
+@keyframes pose-cheer {
+  0%, 57%, 68%, 100% {
+    transform: scale(0);
+  }
+  59%, 66% {
+    transform: scale(1);
+  }
+}
+
+@keyframes pose-stretch {
+  0%, 67%, 80%, 100% {
+    transform: scale(0);
+  }
+  69%, 78% {
+    transform: scale(1);
+  }
+}
+
+@keyframes pose-solo-study {
+  0%, 60%, 80%, 100% {
+    transform: scale(1);
+  }
+  62%, 78% {
+    transform: scale(0);
+  }
+}
+
+@keyframes pose-solo-stretch {
+  0%, 61%, 80%, 100% {
+    transform: scale(0);
+  }
+  63%, 78% {
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .study-buddy,
+  .study-buddy .pose {
+    animation: none !important;
+  }
+
+  .study-buddy .pose.study {
+    transform: none;
+  }
+}

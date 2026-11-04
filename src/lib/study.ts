@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
-import { getAvatar } from "./avatar";
+import { roomToken } from "./avatar-art";
 import { examPeriods } from "./seed-data";
 
 export const STUDY_MS = 25 * 60 * 1000;
@@ -15,8 +15,8 @@ const DEMO_COMPANIONS = ["aoki", "nakamura"];
 
 /** 残り時間はサーバーの時計で数える。端末の時計がずれていても、すぐ終わったりしない。 */
 export type StudySession = { id: string; remainingMs: number };
-/** 自習室に見せるもの。人数と相棒だけで、名前は出さない。 */
-export type StudyPresence = { count: number; images: string[] };
+/** 自習室に見せるもの。人数と相棒の印だけで、名前は出さない。 */
+export type StudyPresence = { count: number; tokens: string[] };
 
 function japanParts(now: Date) {
   const text = new Intl.DateTimeFormat("sv-SE", {
@@ -120,7 +120,7 @@ export function getPresence(db: DatabaseSync, now: Date): StudyPresence {
       "SELECT DISTINCT person_id FROM study_sessions WHERE finished_at IS NULL AND ends_at > ? ORDER BY person_id",
     )
     .all(now.toISOString()) as { person_id: string }[];
-  return { count: rows.length, images: rows.map((row) => getAvatar(db, row.person_id).image) };
+  return { count: rows.length, tokens: rows.map((row) => roomToken(db, row.person_id, now)) };
 }
 
 export function handleStudy(db: DatabaseSync, personId: string, input: unknown, now: Date = new Date()) {
