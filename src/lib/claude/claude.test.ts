@@ -109,6 +109,8 @@ describe("最初の一言", () => {
     expect(companionSystemPrompt).toContain("人のふりをせず");
     expect(companionSystemPrompt).toContain("売り込まない");
     expect(companionSystemPrompt).toContain("連絡した・伝えたと言わない");
+    expect(companionSystemPrompt).toContain("要点だけが相談室の先生に届き");
+    expect(companionSystemPrompt).toContain("「伝わらない」「大丈夫」と言い切らず");
   });
 
   it("相棒の指示に、相手のトーンに合わせる決まりがある", () => {
