@@ -271,6 +271,18 @@ const MIGRATIONS: readonly string[] = [
      obtained_at TEXT NOT NULL,
      PRIMARY KEY (person_id, family)
    ) STRICT;`,
+  `CREATE TABLE person_titles (
+     id TEXT PRIMARY KEY,
+     person_id TEXT NOT NULL REFERENCES people (id),
+     from_person_id TEXT NOT NULL REFERENCES people (id),
+     title TEXT NOT NULL,
+     state TEXT NOT NULL CHECK (state IN ('offered', 'accepted', 'declined')),
+     worn INTEGER NOT NULL DEFAULT 0 CHECK (worn IN (0, 1)),
+     created_at TEXT NOT NULL,
+     decided_at TEXT,
+     UNIQUE (person_id, from_person_id, title)
+   ) STRICT;
+   CREATE UNIQUE INDEX person_titles_one_worn ON person_titles (person_id) WHERE worn = 1;`,
 ];
 
 export const SCHEMA_VERSION

@@ -5,6 +5,9 @@ import { getViewer } from "@/lib/current-person";
 import { getDatabase } from "@/lib/db";
 import { getDraft } from "@/lib/profile";
 import { listThanks } from "@/lib/thanks";
+import { listTitles, wornTitle } from "@/lib/titles";
+import { PersonTitle } from "../PersonTitle";
+import { TitleCollection } from "./TitleCollection";
 import { Avatar } from "../Avatar";
 import { PersonSwitcher } from "../PersonSwitcher";
 import { cookies } from "next/headers";
@@ -54,6 +57,9 @@ export default async function MePage() {
     <main className="home">
       <header>
         <h1>じぶん</h1>
+        <p className="me-name">
+          {viewer.name} <PersonTitle title={wornTitle(db, viewer.id)} />
+        </p>
         <PersonSwitcher viewerId={viewer.id} people={people} />
       </header>
 
@@ -95,6 +101,8 @@ export default async function MePage() {
       {rewards && <GiftEggs key={`${viewer.id}-eggs`} eggs={listGiftEggs(db, viewer.id)} companions={listCompanions(db, viewer.id)} />}
       {rewards && <Ribbons key={`${viewer.id}-ribbons`} initial={listRibbons(db, viewer.id)} />}
       {rewards && <RibbonMoment key={`${viewer.id}-moment`} ribbons={listNewRibbons(db, viewer.id)} />}
+
+      <TitleCollection key={`${viewer.id}-titles`} initial={listTitles(db, viewer.id)} />
 
       <section className="card" aria-label="プロフィール">
         <h2>プロフィール</h2>

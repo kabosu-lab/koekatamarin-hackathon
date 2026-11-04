@@ -3,6 +3,7 @@ import type { DatabaseSync } from "node:sqlite";
 import { reviewPost } from "./claude/compose";
 import type { ClaudeClient } from "./claude/types";
 import { MAX_BODY_LENGTH } from "./destination/types";
+import { cleanTitle, offerTitle } from "./titles";
 
 export type ThanksCard = { id: string; fromName: string; message: string; createdAt: string };
 
@@ -25,7 +26,7 @@ export async function handleSendThanks(
   input: unknown,
   now: Date = new Date(),
 ) {
-  const { toPersonId, message } = (typeof input === "object" && input !== null ? input : {}) as Record<string, unknown>;
+  const { toPersonId, message, title } = (typeof input === "object" && input !== null ? input : {}) as Record<string, unknown>;
   if (typeof toPersonId !== "string" || toPersonId === fromId) {
     return { status: 400, body: { error: "送る相手が正しくありません" } };
   }
@@ -35,9 +36,13 @@ export async function handleSendThanks(
   if (!db.prepare("SELECT 1 FROM people WHERE id = ?").get(toPersonId)) {
     return { status: 400, body: { error: "送る相手が正しくありません" } };
   }
+  const giving = title === undefined || title === null ? null : cleanTitle(title);
+  if (title !== undefined && title !== null && giving === null) {
+    return { status: 400, body: { error: "肩書きが空か、長すぎます" } };
+  }
 
   try {
-    const review = await reviewPost(claude, message);
+    const review = await reviewPost(claude, giving ? `${message}\n肩書き：${giving}` : message);
     if (review.verdict === "block") return { status: 422, body: { error: review.perception } };
   } catch (error) {
     console.error("ありがとうの確認に失敗", error instanceof Error ? error.name : "unknown");
@@ -52,5 +57,6 @@ export async function handleSendThanks(
     message.trim(),
     now.toISOString(),
   );
+  if (giving) offerTitle(db, fromId, toPersonId, giving, now);
   return { status: 200, body: { id } };
 }

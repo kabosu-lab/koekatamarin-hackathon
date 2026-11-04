@@ -2789,11 +2789,11 @@ html[data-avatar="hide"] .burst-speaker {
   font-size: 1.15rem;
 }
 
-/* 見た目の切り替え：音のボタンの下に小さく */
+/* 見た目の切り替え：音のボタンの左に小さく */
 .hero .theme-toggle {
   position: absolute;
-  top: 3.5rem;
-  right: 0;
+  top: 0.6rem;
+  right: 5.2rem;
 }
 
 .hero .theme-toggle button {
@@ -2806,4 +2806,60 @@ html[data-avatar="hide"] .burst-speaker {
   font-size: 0.85rem;
   font-weight: 700;
   box-shadow: none;
+}
+
+/* 人から贈られた肩書き。名前の横に小さく */
+.person-title {
+  display: inline-block;
+  padding: 0.05rem 0.5rem;
+  border: 1px solid var(--accent);
+  border-radius: 0.35rem;
+  color: var(--accent);
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.me-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.25rem 0 0.5rem;
+}
+
+.title-list {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.title-list li {
+  display: grid;
+  gap: 0.4rem;
+  padding-block: 0.6rem;
+  border-top: 1px solid var(--line);
+}
+
+.title-list small {
+  display: block;
+  color: var(--muted);
+}
+
+.card input[type="text"] {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid var(--input-line);
+  border-radius: 0.5rem;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+}
+
+.title-ideas {
+  flex-wrap: wrap;
 }

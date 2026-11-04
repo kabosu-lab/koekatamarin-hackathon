@@ -1,3 +1,4 @@
+import { wornTitle } from "@/lib/titles";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { getViewer } from "@/lib/current-person";
@@ -57,7 +58,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
 
       <TodayCards
         key={`${viewer.id}-${popular ? "popular" : "today"}`}
-        cards={cards.map((card) => ({ ...card, authorImage: getAvatar(db, card.authorId).image }))}
+        cards={cards.map((card) => ({ ...card, authorImage: getAvatar(db, card.authorId).image, authorTitle: wornTitle(db, card.authorId) }))}
       />
 
       <p className="staff-link">

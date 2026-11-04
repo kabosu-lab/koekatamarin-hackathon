@@ -58,6 +58,21 @@ function syncKnowledge(db: DatabaseSync): void {
   db.prepare("INSERT INTO app_meta (key, value) VALUES (?, '1')").run(KNOWLEDGE_SEEDED);
 }
 
+const TITLES_SEEDED = "seed_titles";
+
+/** 最初の肩書きを、前からある DB にも1度だけ入れる。名前の横の例と、受け取りを待つ例。 */
+function syncTitles(db: DatabaseSync): void {
+  if (db.prepare("SELECT 1 FROM app_meta WHERE key = ?").get(TITLES_SEEDED)) return;
+  const insert = db.prepare(
+    `INSERT OR IGNORE INTO person_titles (id, person_id, from_person_id, title, state, worn, created_at, decided_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+  );
+  const stamp = "2026-10-31T08:00:00.000Z";
+  insert.run("title-noda", "noda", "saeki", "3D プリンターの相談役", "accepted", 1, stamp, stamp);
+  insert.run("title-saeki", "saeki", "kawamura", "作文の一言名人", "offered", 0, stamp, null);
+  db.prepare("INSERT INTO app_meta (key, value) VALUES (?, '1')").run(TITLES_SEEDED);
+}
+
 /** ダミーのデータを入れる。すでに人物がいるときは入れ直さない（デモの続きを消さない）。 */
 const NOTES_SEEDED = "seed_knowledge_notes";
 
@@ -80,6 +95,7 @@ export function seedDatabase(db: DatabaseSync): void {
     syncPeople(db);
     syncKnowledge(db);
     syncKnowledgeNotes(db);
+    syncTitles(db);
     return;
   }
 
@@ -124,6 +140,7 @@ export function seedDatabase(db: DatabaseSync): void {
     });
     syncKnowledge(db);
     syncKnowledgeNotes(db);
+    syncTitles(db);
     db.exec("COMMIT");
   } catch (error) {
     db.exec("ROLLBACK");

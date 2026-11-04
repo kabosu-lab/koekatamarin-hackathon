@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { CheerHint, TodayCard } from "@/lib/today";
 import { Avatar } from "../Avatar";
+import { PersonTitle } from "../PersonTitle";
 
 const BATCH = 3;
 
@@ -18,7 +19,7 @@ async function postJson(url: string, body: unknown) {
 }
 
 /** カードは1枚ずつ。押さないと次は出ず、自動で流れ続けない。 */
-export function TodayCards({ cards: allCards }: { cards: (TodayCard & { authorImage: string })[] }) {
+export function TodayCards({ cards: allCards }: { cards: (TodayCard & { authorImage: string; authorTitle: string | null })[] }) {
   const [hiddenAuthors, setHiddenAuthors] = useState<string[]>([]);
   const [hiddenNote, setHiddenNote] = useState("");
   const cards = useMemo(() => allCards.filter((c) => !hiddenAuthors.includes(c.authorId)), [allCards, hiddenAuthors]);
@@ -120,7 +121,7 @@ export function TodayCards({ cards: allCards }: { cards: (TodayCard & { authorIm
         </p>
         <p className="who">
           <Avatar image={card.authorImage} alt={`${card.authorName}さんの相棒`} size={40} />
-          <strong>{card.authorName}</strong>（{card.authorLabel}）
+          <strong>{card.authorName}</strong> <PersonTitle title={card.authorTitle} />（{card.authorLabel}）
         </p>
         {card.relatedReason && <p className="count related-line">{card.relatedReason}</p>}
         <p className="words">{card.body}</p>

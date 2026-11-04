@@ -146,6 +146,7 @@ export function createScriptedClaude(): ClaudeClient {
   return {
     mode: "scripted",
     async complete({ task, messages, jsonSchema }) {
+      if (task === "title_suggest") return { text: JSON.stringify({ titles: ["台本の相談役", "台本の師匠", "台本の達人"] }), refused: false };
       if (task === "avatar_pick") return { text: JSON.stringify(scriptedAvatarPick()), refused: false };
       if (task === "draft") return { text: JSON.stringify(scriptedDraft(messages[0].content, jsonSchema)), refused: false };
       if (task === "attachment_draft") return { text: JSON.stringify(scriptedAttachmentDraft(messages[0].content, jsonSchema)), refused: false };

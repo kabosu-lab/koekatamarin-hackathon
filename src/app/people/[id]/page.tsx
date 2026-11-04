@@ -1,3 +1,5 @@
+import { wornTitle } from "@/lib/titles";
+import { PersonTitle } from "../../PersonTitle";
 import { cookies } from "next/headers";
 import { readAppearance } from "@/lib/appearance";
 import { showsRewards } from "@/lib/rewards-view";
@@ -28,6 +30,7 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
   return (
     <main className="home">
       <h1>{person.name}</h1>
+      <PersonTitle title={wornTitle(db, id)} />
       <p>{person.label}</p>
       <section className="card partner" aria-label="相棒">
         {rewards && <Avatar image={avatar.image} alt={`${person.name}さんの相棒`} />}
