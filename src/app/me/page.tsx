@@ -1,3 +1,4 @@
+import { Icon } from "../Icon";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { countContributions, getAvatar, KIND_QUESTION, STYLE_QUESTION } from "@/lib/avatar";
@@ -9,7 +10,6 @@ import { listTitles, wornTitle } from "@/lib/titles";
 import { PersonTitle } from "../PersonTitle";
 import { TitleCollection } from "./TitleCollection";
 import { Avatar } from "../Avatar";
-import { PersonSwitcher } from "../PersonSwitcher";
 import { cookies } from "next/headers";
 import { APPEARANCE_OPTIONS, readAppearance } from "@/lib/appearance";
 import { setAppearance } from "../person-actions";
@@ -62,9 +62,17 @@ export default async function MePage() {
         <p className="me-name">
           {viewer.name} <PersonTitle title={wornTitle(db, viewer.id)} />
         </p>
-        <PersonSwitcher viewerId={viewer.id} people={people} />
       </header>
 
+      <nav className="me-jump" aria-label="じぶんの中の行き先">
+        <a href="#mine"><Icon name="me" />わたし</a>
+        <a href="#records"><Icon name="note" />記録</a>
+        <a href="#thanks"><Icon name="thanks" />ありがとう</a>
+        {rewards && <a href="#collect"><Icon name="gift" />集める</a>}
+        <a href="#settings"><Icon name="settings" />設定</a>
+      </nav>
+
+      <h2 className="group-title" id="mine"><Icon name="me" />わたし</h2>
       {rewards && (
       <section className="card partner" aria-label="相棒">
         <Avatar image={avatar.image} alt={`${viewer.name}さんの相棒（${avatar.label}）`} />
@@ -88,7 +96,7 @@ export default async function MePage() {
           </button>
         </form>
       )}
-      {appearance.theme !== "modern" && appearance.avatar === "hide" && <p className="muted">分身は隠しています。裏で育っています。</p>}
+      {appearance.theme !== "modern" && appearance.avatar === "hide" && <p className="muted">相棒は隠しています。裏で育っています。</p>}
       {evolution !== null && rewards && <EvolutionCard key={evolution} />}
       {rewards && photoState.status === "pending" && <ArtRefresher />}
       {rewards && photoState.canUsePhoto && <AvatarFromPhoto label={photos.label} failed={photoState.status === "failed"} eggImage={`/api/avatar/art/${roomToken(db, viewer.id)}/egg`} />}
@@ -100,11 +108,6 @@ export default async function MePage() {
         />
       )}
 
-      {rewards && <GiftEggs key={`${viewer.id}-eggs`} eggs={listGiftEggs(db, viewer.id)} companions={listCompanions(db, viewer.id)} />}
-      {rewards && <Ribbons key={`${viewer.id}-ribbons`} initial={listRibbons(db, viewer.id)} slots={STICKER_SLOTS} eventSlots={EVENT_SLOTS} />}
-      {rewards && <RibbonMoment key={`${viewer.id}-moment`} ribbons={listNewRibbons(db, viewer.id)} />}
-
-      <GoalsPanel key={`${viewer.id}-goals`} initial={listGoals(db, viewer.id)} initialNudge={getNudge(db, viewer.id)} />
       <TitleCollection key={`${viewer.id}-titles`} initial={listTitles(db, viewer.id)} />
 
       <section className="card" aria-label="プロフィール">
@@ -113,14 +116,47 @@ export default async function MePage() {
         <ProfileEditor key={viewer.id} initialDraft={getDraft(db, viewer.id)} hasProfile={profile !== ""} />
       </section>
 
+      <section className="card" aria-label="これまで">
+        <h2>これまで</h2>
+        <p className="counts">
+          <span>投稿 {counts.posts}</span>
+          <span>コメント {counts.comments}</span>
+          <span>応援 {counts.cheers}</span>
+          <span>解決 {counts.goals}</span>
+          <span>つないだ {counts.assists}</span>
+        </p>
+      </section>
+
+      <h2 className="group-title" id="records"><Icon name="note" />記録</h2>
       <div className="hub-links">
-        <Link href="/daily">{viewer.role === "student" ? "今日の日記" : "今日の日報"}</Link>
-        {viewer.role !== "student" && <Link href="/daily/received">届いた日報と日記</Link>}
-        <Link href="/lookback">ふりかえり</Link>
+        <Link href="/daily"><Icon name="note" />{viewer.role === "student" ? "今日の日記" : "今日の日報"}</Link>
+        {viewer.role !== "student" && <Link href="/daily/received"><Icon name="inbox" />届いた日報と日記</Link>}
+        <Link href="/lookback"><Icon name="clock" />ふりかえり</Link>
+        <Link href="/inbox"><Icon name="inbox" />受信箱</Link>
       </div>
+      <GoalsPanel key={`${viewer.id}-goals`} initial={listGoals(db, viewer.id)} initialNudge={getNudge(db, viewer.id)} />
 
-      <MemoryList key={`${viewer.id}-memory`} initial={listMemories(db, getDestination(db), viewer.id)} />
+      <h2 className="group-title" id="thanks"><Icon name="thanks" />ありがとう</h2>
+      <ThanksForm key={`${viewer.id}-thanks`} people={others} />
+      <section className="card" aria-label="もらったありがとう">
+        <h2>もらったありがとう</h2>
+        {thanks.length === 0 ? (
+          <p className="muted">これから届きます。</p>
+        ) : (
+          thanks.map((card) => (
+            <p className="thanks-card" key={card.id}>
+              <strong>{card.fromName}さん</strong>：{card.message}
+            </p>
+          ))
+        )}
+      </section>
 
+      {rewards && <h2 className="group-title" id="collect"><Icon name="gift" />集める</h2>}
+      {rewards && <GiftEggs key={`${viewer.id}-eggs`} eggs={listGiftEggs(db, viewer.id)} companions={listCompanions(db, viewer.id)} />}
+      {rewards && <Ribbons key={`${viewer.id}-ribbons`} initial={listRibbons(db, viewer.id)} slots={STICKER_SLOTS} eventSlots={EVENT_SLOTS} />}
+      {rewards && <RibbonMoment key={`${viewer.id}-moment`} ribbons={listNewRibbons(db, viewer.id)} />}
+
+      <h2 className="group-title" id="settings"><Icon name="settings" />設定</h2>
       <section className="card appearance" aria-label="見た目">
         <h2>見た目</h2>
         {APPEARANCE_OPTIONS.filter((group) => group.name !== "avatar" || appearance.theme !== "modern").map((group) => (
@@ -146,33 +182,8 @@ export default async function MePage() {
         {appearance.sound === "on" && <SoundTest />}
       </section>
 
+      <MemoryList key={`${viewer.id}-memory`} initial={listMemories(db, getDestination(db), viewer.id)} />
       <HiddenPeople key={`${viewer.id}-hidden`} initial={listHiddenPeople(db, viewer.id)} />
-
-      <section className="card" aria-label="これまで">
-        <h2>これまで</h2>
-        <p className="counts">
-          <span>投稿 {counts.posts}</span>
-          <span>コメント {counts.comments}</span>
-          <span>応援 {counts.cheers}</span>
-          <span>ゴール {counts.goals}</span>
-          <span>アシスト {counts.assists}</span>
-        </p>
-      </section>
-
-      <section className="card" aria-label="もらったありがとう">
-        <h2>もらったありがとう</h2>
-        {thanks.length === 0 ? (
-          <p className="muted">これから届きます。</p>
-        ) : (
-          thanks.map((card) => (
-            <p className="thanks-card" key={card.id}>
-              <strong>{card.fromName}さん</strong>：{card.message}
-            </p>
-          ))
-        )}
-      </section>
-
-      <ThanksForm key={`${viewer.id}-thanks`} people={others} />
     </main>
   );
 }

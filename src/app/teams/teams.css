@@ -26,7 +26,7 @@
 
 .teams .bar p {
   margin: 0;
-  font-size: 0.8rem;
+  font-size: 0.875rem;
 }
 
 .teams .switcher {
@@ -38,7 +38,7 @@
 
 .teams .switcher label {
   display: grid;
-  font-size: 0.8rem;
+  font-size: 0.875rem;
 }
 
 .teams select,
@@ -130,7 +130,7 @@
 
 .teams .author {
   margin: 0;
-  font-size: 0.8rem;
+  font-size: 0.875rem;
   color: var(--muted);
 }
 
@@ -150,14 +150,14 @@
   padding: 0.4rem 0.6rem;
   border-radius: 0.4rem;
   background: #fff3cf;
-  font-size: 0.85rem;
+  font-size: 0.875rem;
 }
 
 .teams .share-concern {
   margin-bottom: 0.5rem;
   background: #fff;
   color: var(--accent);
-  font-size: 0.85rem;
+  font-size: 0.875rem;
 }
 
 .teams .asked {
@@ -173,7 +173,7 @@
   padding: 0.1rem 0.5rem;
   border-radius: 1rem;
   background: #e8e7f6;
-  font-size: 0.8rem;
+  font-size: 0.875rem;
 }
 
 .teams .likes {

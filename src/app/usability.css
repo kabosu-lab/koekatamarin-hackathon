@@ -1,0 +1,415 @@
+/* 迷わず押せるための共通の決まり。見た目の個性（ポップ、モダン）はほかの CSS が持つ。 */
+
+.icon {
+  flex: none;
+}
+
+button:has(> .icon),
+a:has(> .icon),
+label:has(> .icon),
+summary:has(> .icon) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45em;
+}
+
+/* 押す場所は 44px 以上 */
+select,
+summary,
+.undo,
+.quick-links a,
+.season-links a,
+.chie-links a,
+.chie-links button,
+.staff-link a {
+  min-height: 44px;
+}
+
+.quick-links a,
+.season-links a,
+.chie-links a,
+.staff-link a,
+summary {
+  display: inline-flex;
+  align-items: center;
+}
+
+input[type="checkbox"] {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+label:has(> input[type="checkbox"]) {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 44px;
+}
+
+/* 下のタブ：アイコンの下に文字 */
+html .bottom-nav a {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.1rem;
+  min-height: 3.5rem;
+}
+
+html .bottom-nav .icon {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+@media (min-width: 768px) {
+  html .bottom-nav a {
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 0.6rem;
+  }
+}
+
+/* もどるは左上の同じ場所 */
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 44px;
+  margin-bottom: 0.25rem;
+  color: var(--ink);
+  font-weight: 700;
+  text-decoration: none;
+  grid-column: 1 / -1;
+  justify-self: start;
+}
+
+/* デモ用の切り替えは、全画面の一番下に小さく */
+html .demo-switcher {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 40rem;
+  margin: 1.5rem auto calc(5rem + env(safe-area-inset-bottom));
+  padding: 0.5rem 1rem;
+  color: var(--ink);
+  font-size: 0.875rem;
+}
+
+html .demo-switcher label {
+  display: flex;
+  flex: 1 1 14rem;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  font-size: 0.875rem;
+}
+
+html .demo-switcher select {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  font-size: 0.875rem;
+}
+
+html .demo-switcher button {
+  min-height: 44px;
+  padding: 0 0.9rem;
+  font-size: 0.875rem;
+}
+
+@media (min-width: 768px) {
+  html .demo-switcher {
+    margin-bottom: 1rem;
+  }
+}
+
+/* 最初の画面の設定は、右上に1つだけ */
+.hero {
+  position: relative;
+  padding-right: 6rem;
+}
+
+.home-settings {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 5;
+}
+
+.home-settings > summary {
+  gap: 0.35em;
+  padding: 0 0.8rem;
+  border: 2px solid var(--line-bold, currentColor);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 0.95rem;
+  font-weight: 700;
+  list-style: none;
+  cursor: pointer;
+}
+
+.home-settings > summary::-webkit-details-marker {
+  display: none;
+}
+
+.home-settings-menu {
+  position: absolute;
+  top: calc(100% + 0.4rem);
+  right: 0;
+  display: grid;
+  gap: 0.4rem;
+  width: 12rem;
+  padding: 0.6rem;
+  border: 2px solid var(--line-bold, currentColor);
+  border-radius: 1rem;
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.home-settings-menu button,
+.home-settings-menu a {
+  width: 100%;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.45em;
+  padding: 0 0.6rem;
+  border: 0;
+  border-radius: 0.6rem;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-weight: 700;
+  box-shadow: none;
+  cursor: pointer;
+}
+
+html[data-theme="modern"] .home-settings > summary,
+html[data-theme="modern"] .home-settings-menu {
+  border-width: 1px;
+  border-color: var(--line, #d8d6cf);
+  font-weight: 500;
+}
+
+/* 写真と歩くは、話す・書くの上に同じ大きさで */
+.side-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.side-actions > .attachment-chip {
+  grid-column: 1 / -1;
+}
+
+.side-actions .attach-button,
+.side-actions .walk-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4em;
+  box-sizing: border-box;
+  min-height: 3rem;
+  margin: 0;
+  padding: 0.3rem 0.5rem;
+  border: 2px solid var(--line-bold, currentColor);
+  border-radius: 0.9rem;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1.25;
+  text-align: center;
+  text-decoration: none;
+}
+
+html[data-theme="modern"] .side-actions .attach-button,
+html[data-theme="modern"] .side-actions .walk-link {
+  border-width: 1px;
+  border-color: var(--line, #d8d6cf);
+  font-weight: 500;
+}
+
+/* 確定は右、やめるは左（画面の読み上げの順は変えない） */
+.confirm-row > :first-child {
+  order: 2;
+}
+
+/* じぶんの行き先 */
+.me-jump {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(4.5rem, 1fr));
+  gap: 0.25rem;
+  grid-column: 1 / -1;
+  margin: 0.5rem 0 0.25rem;
+}
+
+.me-jump a {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.1rem;
+  min-height: 3.5rem;
+  border-radius: 0.8rem;
+  color: var(--ink);
+  font-size: 0.875rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.group-title {
+  display: flex;
+  align-items: center;
+  gap: 0.45em;
+  grid-column: 1 / -1;
+  margin: 1.75rem 0 0.25rem;
+  scroll-margin-top: 1rem;
+  font-size: 1.05rem;
+}
+
+/* 入口のアイコンは文字の左へ */
+html .hub-links a:has(> .icon) {
+  justify-content: flex-start;
+}
+
+/* 文字をとても大きくしても、横にあふれない */
+html[data-size="xlarge"] .side-actions,
+html[data-size="large"] .side-actions {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+html[data-size="xlarge"] .bottom-nav a {
+  font-size: 1rem;
+}
+
+/* 細い画面や大きな文字でも、入口の文字は折り返す */
+html .hub-links {
+  grid-template-columns: repeat(auto-fit, minmax(min(9rem, 100%), 1fr));
+}
+
+html .hub-links a {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+html .promise button {
+  min-height: 44px;
+}
+
+/* どの画面のボタンも 44px 以上 */
+html body button,
+html body summary,
+html body select {
+  min-height: 44px !important;
+}
+
+/* 先頭の「もどる」は左に寄せる */
+html .back-link {
+  display: flex;
+  width: fit-content;
+  align-self: flex-start;
+  margin-right: auto;
+  text-align: left;
+}
+
+/* 入口はスマホでは1列にして、文字を途中で折らない */
+@media (max-width: 767px) {
+  html .hub-links {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  html .hub-links a {
+    min-height: 3.5rem;
+    aspect-ratio: auto;
+  }
+}
+
+html .hub-links a:has(> .icon) {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.6em;
+  text-align: left;
+}
+
+html .hub-links a:has(> .icon)::after {
+  margin-left: auto;
+}
+
+/* 文章の外にある単独のリンクも押しやすく */
+html .chie-list a,
+html .today-tabs a,
+.today-card a,
+.sent a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
+
+html .card a:not(.back-link):only-child {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
+
+/* 長い言葉でも横にあふれない */
+html body {
+  overflow-wrap: anywhere;
+}
+
+/* 題の右に設定を置いても、一言は広く使う */
+html .hero {
+  padding-right: 0;
+}
+
+html .hero h1 {
+  padding-right: 6rem;
+}
+
+html .stage-home .hero p {
+  max-width: none;
+  padding-right: 0;
+}
+
+html .home-settings > summary {
+  list-style: none;
+}
+
+/* 広い画面でも、話す・書くは横に並べて、分身は控えめに */
+@media (min-width: 768px) {
+  html .stage-home .talk .actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  html .stage-home .speaker img,
+  html .stage-home .speaker .avatar-image {
+    max-height: 9rem;
+    width: auto;
+  }
+}
+
+small {
+  font-size: 0.875rem;
+}
+
+/* 入力欄が横幅を押し広げない */
+html body input,
+html body textarea,
+html body select {
+  min-width: 0;
+  max-width: 100%;
+}
+
+html body form,
+html body .card {
+  min-width: 0;
+  max-width: 100%;
+}

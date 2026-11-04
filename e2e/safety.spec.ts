@@ -38,6 +38,9 @@ test("心配な話は要点だけ相談室に届き、本人が選んだ先生�
   await expect(alert).toContainText("大河原 誠");
   await expect(page.getByText("秘密の言葉")).toHaveCount(0);
 
+  await page.goto("/");
+  await switchPerson(page, "川村 陽菜（理科・1年副担任）");
+  await expect(page.getByRole("link", { name: "相談室への知らせを見る" })).toHaveCount(0);
   await switchTo2(page, "川村 陽菜（理科・1年副担任）");
   await expect(page.getByRole("article", { name: "木下 蓮さんについての知らせ" })).toHaveCount(0);
   await switchTo2(page, "大河原 誠（英語・学年主任）");
@@ -48,7 +51,6 @@ test("心配な話は要点だけ相談室に届き、本人が選んだ先生�
 async function switchTo2(page: Page, name: string) {
   await page.goto("/");
   await switchPerson(page, name);
-  await expect(page.getByRole("link", { name: "相談室への知らせを見る" })).toBeVisible();
   await page.goto("/soudan");
 }
 

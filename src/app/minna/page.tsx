@@ -1,3 +1,4 @@
+import { Icon } from "@/app/Icon";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { getAvatar } from "@/lib/avatar";
@@ -39,6 +40,25 @@ export default async function MinnaPage({ searchParams }: { searchParams: Promis
         <p>{schoolName}</p>
       </header>
 
+      <div className="hub-links">
+        <Link href="/today">
+          <Icon name="heart" />
+          今日の3人
+        </Link>
+        <Link href="/study">
+          <Icon name="book" />
+          一緒に勉強する
+        </Link>
+        <Link href="/chie">
+          <Icon name="idea" />
+          校内の知恵
+        </Link>
+        <Link href="/teams">
+          <Icon name="chat" />
+          校内チャネル（Teams）
+        </Link>
+      </div>
+
       {rewards ? (
       <section
         className="sakura-scene"
@@ -72,22 +92,7 @@ export default async function MinnaPage({ searchParams }: { searchParams: Promis
           <small>期間限定のリボン「{event.ribbon.name}」：{event.ribbon.description}と届きます</small>
         </section>
       ))}
-      {rewards && (
-      <p className="season-links" aria-label="季節を見る">
-        {SEASON_LABEL.map(([value, label]) => (
-          <Link key={value} href={`/minna?season=${value}`}>
-            {label}を見る
-          </Link>
-        ))}
-      </p>
-      )}
 
-      <div className="hub-links">
-        <Link href="/today">今日の3人</Link>
-        <Link href="/study">一緒に勉強する</Link>
-        <Link href="/chie">校内の知恵</Link>
-        <Link href="/teams">校内チャネル（Teams）</Link>
-      </div>
 
       {rewards && (
       <section className="card" aria-label="桜のまわりの相棒たち">
@@ -101,6 +106,15 @@ export default async function MinnaPage({ searchParams }: { searchParams: Promis
           ))}
         </div>
       </section>
+      )}
+      {rewards && (
+      <p className="season-links" aria-label="季節を見る">
+        {SEASON_LABEL.map(([value, label]) => (
+          <Link key={value} href={`/minna?season=${value}`}>
+            {label}を見る
+          </Link>
+        ))}
+      </p>
       )}
     </main>
   );

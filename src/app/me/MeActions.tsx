@@ -100,7 +100,7 @@ export function ProfileEditor({ initialDraft, hasProfile }: { initialDraft: Prof
         <div className="card" aria-label="プロフィールの下書き" role="group">
           <h2>こう載せていい？</h2>
           <p className="draft-text">{draft.text}</p>
-          <div className="row">
+          <div className="row confirm-row">
             <button type="button" disabled={busy} onClick={() => void run("publish")}>
               これで載せる
             </button>
@@ -128,7 +128,7 @@ export function ProfileEditor({ initialDraft, hasProfile }: { initialDraft: Prof
           )}
         </div>
       ) : (
-        <div className="row">
+        <div className="row confirm-row">
           <button type="button" disabled={busy} onClick={() => void run("draft")}>
             プロフィールを更新する
           </button>

@@ -1,3 +1,4 @@
+import { openHomeSettings } from "./helpers";
 import { expect, type Page, test } from "@playwright/test";
 import { build } from "esbuild";
 
@@ -49,10 +50,12 @@ test("文字を大きくしても、どの画面も横にはみ出さない", as
 test("音は初めから入っていて、最初の画面ですぐ消せて、設定が残る", async ({ page }) => {
   await page.goto("/");
   expect(await page.locator("html").getAttribute("data-sound")).toBe("on");
+  await openHomeSettings(page);
   await page.getByRole("button", { name: "音 オン" }).click();
   await expect(page.getByRole("button", { name: "音 オフ" })).toBeVisible();
   expect(await page.locator("html").getAttribute("data-sound")).toBe("off");
   await page.reload();
+  await openHomeSettings(page);
   await expect(page.getByRole("button", { name: "音 オフ" })).toBeVisible();
   await page.goto("/me");
   await expect(page.getByRole("button", { name: "音を試す" })).toHaveCount(0);
@@ -79,13 +82,14 @@ async function countAudio(page: Page) {
 test("開いただけでは鳴らさない", async ({ page }) => {
   const made = await countAudio(page);
   await page.goto("/");
-  await expect(page.getByRole("button", { name: "音 オン" })).toBeVisible();
+  await expect(page.locator(".home-settings")).toBeVisible();
   expect(await made()).toBe(0);
 });
 
 test("音を消すと、送っても音を作らない", async ({ page }) => {
   const made = await countAudio(page);
   await page.goto("/");
+  await openHomeSettings(page);
   await page.getByRole("button", { name: "音 オン" }).click();
   await expect(page.getByRole("button", { name: "音 オフ" })).toBeVisible();
   await send(page, `静かな言葉 ${test.info().testId}`);

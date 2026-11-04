@@ -1,3 +1,4 @@
+import { openHomeSettings } from "./helpers";
 import { expect, type Page, test } from "@playwright/test";
 
 // 初めて開く人は Cookie を持たない
@@ -57,9 +58,11 @@ test("送るとかたまりは出ず、話した一行がすっと飛んで「�
 
 test("最初の画面から切り替えられ、ポップでは分身が出て、モダンに戻せる", async ({ page }) => {
   await page.goto("/");
+  await openHomeSettings(page);
   await page.getByRole("button", { name: "ポップに", exact: true }).click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "pop");
   await expect(page.locator(".speaker")).toBeVisible();
+  await openHomeSettings(page);
   await page.getByRole("button", { name: "モダンに", exact: true }).click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "modern");
   await expect(page.locator(".speaker")).toHaveCount(0);

@@ -89,7 +89,7 @@ for (const theme of ["pop", "modern"] as const) {
     await page.getByRole("button", { name: "声で話す" }).click();
     await page.getByRole("button", { name: "話し終わった" }).click();
     await expect(page.getByLabel("話したこと")).toHaveValue(words);
-    await page.getByRole("button", { name: "返信の言葉にする" }).click();
+    await page.getByRole("button", { name: "文章にする" }).click();
     await expect(page.getByLabel("返信の文章")).toHaveValue(words);
     await page.getByRole("button", { name: "本人として返信する" }).click();
     await expect(page.getByText("返信を届けました。")).toBeVisible();
@@ -104,7 +104,7 @@ test("文字で書いても返信でき、中身がなければ聞き返す", as
   await page.goto("/today");
   await page.getByRole("button", { name: "話して返信する" }).click();
   await page.getByLabel("話したこと").fill("わからん");
-  await page.getByRole("button", { name: "返信の言葉にする" }).click();
+  await page.getByRole("button", { name: "文章にする" }).click();
   await expect(page.getByRole("status").filter({ hasText: "あなたのときはどうでしたか" })).toBeVisible();
   await expect(page.getByLabel("返信の文章")).toHaveCount(0);
 });

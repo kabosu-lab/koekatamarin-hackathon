@@ -1,3 +1,4 @@
+import { BackLink } from "@/app/BackLink";
 import { wornTitles } from "@/lib/titles";
 import { PersonTitle } from "../PersonTitle";
 import type { Metadata } from "next";
@@ -12,7 +13,6 @@ import { forgottenSources } from "@/lib/memory";
 import { schoolName } from "@/lib/seed-data";
 import { AttachmentPreview } from "../AttachmentPreview";
 import { Avatar } from "../Avatar";
-import { PersonSwitcher } from "../PersonSwitcher";
 import { createPost, createReply, shareConcern, toggleLike } from "./actions";
 import "./teams.css";
 
@@ -62,9 +62,9 @@ function Post({
       <Author name={post.authorName} label={post.authorLabel} time={post.createdAt} image={images[post.authorId]} title={titles[post.authorId]} />
       {post.askedPersonName && (
         <p className="asked">
-          {post.passedThrough.map((name) => `${name}さんのパス → `).join("")}
+          {post.passedThrough.map((name) => `${name}さんがつないで → `).join("")}
           {post.askedPersonName}さんへ
-          {post.answered && "（ゴール！）"}
+          {post.answered && "（解決！）"}
         </p>
       )}
       <p className="body">{post.body}</p>
@@ -139,12 +139,12 @@ export default async function TeamsPage({
 
   return (
     <div className="teams">
+      <BackLink href="/minna">みんなへもどる</BackLink>
       <header className="bar">
         <div>
           <h1>校内チャネル</h1>
           <p>{schoolName}・Teams 風のダミー画面</p>
         </div>
-        <PersonSwitcher viewerId={viewer.id} people={people} />
       </header>
 
       <div className="columns">

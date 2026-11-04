@@ -1,5 +1,6 @@
 "use client";
 
+import { Icon } from "./Icon";
 import { useState } from "react";
 import type { Draft, Review } from "@/lib/claude/compose";
 import type { AttachmentNotice, AttachmentNoticeKind, AttachmentView } from "@/lib/attachment";
@@ -268,9 +269,11 @@ export function Compose({
 
       <div className="compose-actions">
         <button type="button" className="secondary" disabled={busy} onClick={onCancel}>
+          <Icon name="cancel" />
           取り消す
         </button>
         <button type="button" disabled={busy || !checked || blocked || missingPerson || noticesOpen} onClick={() => void send()}>
+          <Icon name="send" />
           本人として送る
         </button>
       </div>

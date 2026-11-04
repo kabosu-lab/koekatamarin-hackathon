@@ -23,21 +23,21 @@ test("お願いに話して返すと、本人の話した言葉で届いてゴ�
   await page.goto("/inbox");
   const card = page.getByRole("region").filter({ hasText: words });
   await card.getByLabel("話したこと").fill("わからん");
-  await card.getByRole("button", { name: "返信の言葉にする" }).click();
+  await card.getByRole("button", { name: "文章にする" }).click();
   await expect(card.locator(".question")).toContainText("あなたのとき");
   await expect(card.getByLabel("返信の文章")).toHaveCount(0);
 
   const answer = `私は声に出して読んでます ${test.info().testId}`;
   await card.getByLabel("話したこと").fill(answer);
-  await card.getByRole("button", { name: "返信の言葉にする" }).click();
+  await card.getByRole("button", { name: "文章にする" }).click();
   await expect(card.getByLabel("返信の文章")).toHaveValue(answer);
   await card.getByRole("button", { name: "本人として返信する" }).click();
-  await expect(page.getByText("ゴール！")).toBeVisible();
+  await expect(page.getByText("解決！")).toBeVisible();
 
   await page.goto("/teams?channel=study");
   const post = page.getByRole("article").filter({ hasText: words });
   await expect(post.locator(".reply")).toContainText(answer);
-  await expect(post.locator(".asked")).toContainText("ゴール");
+  await expect(post.locator(".asked")).toContainText("解決");
 });
 
 test("詳しくないことはパスでき、相手の受信箱に届く", async ({ page }) => {
@@ -46,9 +46,9 @@ test("詳しくないことはパスでき、相手の受信箱に届く", async
 
   await page.goto("/inbox");
   const card = page.getByRole("region").filter({ hasText: words });
-  await card.getByText("もっと詳しい人にパスする").click();
-  await card.getByLabel("パスする相手").selectOption({ label: OTHER });
-  await card.getByRole("button", { name: "パスする" }).click();
+  await card.getByText("もっと詳しい人につなぐ").click();
+  await card.getByLabel("つなぐ相手").selectOption({ label: OTHER });
+  await card.getByRole("button", { name: "つなぐ" }).click();
   await expect(page.getByText("つないでくれてありがとう")).toBeVisible();
 
   await page.goto("/");

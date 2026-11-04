@@ -197,7 +197,7 @@ test("育つと進化の候補から本人が選び、隠している間も育�
 
   // 隠しても画面は壊れず、戻すと分身が出る
   await page.getByRole("button", { name: "隠す" }).click();
-  await expect(page.getByText("分身は隠しています")).toBeVisible();
+  await expect(page.getByText("相棒は隠しています")).toBeVisible();
   await expect(companion.locator("img")).toBeHidden();
   await page.getByRole("button", { name: "表示する" }).click();
   await expect(companion.locator("img")).toBeVisible();
@@ -268,7 +268,7 @@ test("分身を隠すと報酬も出ないが、見せると裏で集まって�
   await switchPerson(page, "白石 文（養護・相談室）");
   await page.goto("/me");
   await page.getByRole("button", { name: "隠す", exact: true }).click();
-  await expect(page.getByText("分身は隠しています")).toBeVisible();
+  await expect(page.getByText("相棒は隠しています")).toBeVisible();
   await expect(page.getByRole("region", { name: "リボン" })).toHaveCount(0);
   await expect(page.getByRole("region", { name: "贈り物の卵" })).toHaveCount(0);
   await page.getByRole("button", { name: "表示する", exact: true }).click();
@@ -283,7 +283,7 @@ test("期間中はイベントが桜の画面に出て、分身を隠すと出�
   await expect(page.getByText("テスト前の応援週間", { exact: true })).toBeVisible();
   await page.goto("/me");
   await page.getByRole("button", { name: "隠す", exact: true }).click();
-  await expect(page.getByText("分身は隠しています")).toBeVisible();
+  await expect(page.getByText("相棒は隠しています")).toBeVisible();
   await page.goto("/minna");
   await expect(page.getByRole("region", { name: "期間限定のイベント" })).toHaveCount(0);
   await page.context().close();

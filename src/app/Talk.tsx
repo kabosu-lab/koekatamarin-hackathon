@@ -17,6 +17,7 @@ import { playSendSound, SendBurst } from "./SendBurst";
 import type { AttachmentView } from "@/lib/attachment";
 import { loadTalk, saveTalk } from "./talk-storage";
 import { isSpeechSupported, startListening } from "./speech";
+import { Icon } from "./Icon";
 
 const MAX_TEXT_LENGTH = 2000;
 const MAX_HISTORY = 40;
@@ -387,7 +388,6 @@ export function Talk({
         {messages.length === 0 && !listening && (
           <>
             {question && <p className="daily-question">{question}</p>}
-            <p className="hint">今日の頑張りでも、調べ物でも、困りごとでも。思いついたことから、どうぞ。</p>
           </>
         )}
         {messages.map((message, index) => (
@@ -543,18 +543,21 @@ export function Talk({
 
       {canCompose && !listening && (
         <button type="button" className="compose-start" disabled={sending || preparing} onClick={() => void startCompose(askTarget ?? undefined)}>
+          <Icon name="send" />
           {preparing ? "言葉にしています…" : "言葉にして送る"}
         </button>
       )}
 
       {canCompose && !listening && !safety && (
         <button type="button" className="compose-start" disabled={sending || finding} onClick={() => void findKnowledge()}>
+          <Icon name="idea" />
           {finding ? "探しています…" : "校内の知恵を探す"}
         </button>
       )}
 
       {acknowledged && <p className="promise promise-short">{PROMISE_SHORT}</p>}
 
+      <div className="side-actions">
       {attachment ? (
         <section className="attachment-chip" aria-label="付けたファイル">
           <AttachmentPreview attachment={attachment} />
@@ -566,6 +569,7 @@ export function Talk({
       ) : (
         !listening && (
           <label className="attach-button">
+            <Icon name="attach" />
             {uploading ? "付けています…" : "写真か PDF を付ける"}
             <input
               type="file"
@@ -580,15 +584,24 @@ export function Talk({
           </label>
         )
       )}
+      {!listening && (
+        <Link className="walk-link" href="/walk">
+          <Icon name="walk" />
+          歩きながら話す
+        </Link>
+      )}
+      </div>
 
       <div className="actions">
         {listening ? (
           <button type="button" className="primary stop" onClick={() => stopRef.current?.()}>
+            <Icon name="stop" />
             話し終わった
           </button>
         ) : (
           <>
             <button type="button" className="primary" onClick={listen} disabled={sending}>
+              <Icon name="talk" />
               話しかける
             </button>
             <button
@@ -597,6 +610,7 @@ export function Talk({
               aria-expanded={writing}
               onClick={() => setWriting((value) => !value)}
             >
+              <Icon name="write" />
               文字で書く
             </button>
           </>

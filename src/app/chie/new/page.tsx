@@ -6,6 +6,7 @@ import { getDestination } from "@/lib/destination/current";
 import { loadMaterial } from "@/lib/knowledge";
 import { KnowledgeNew } from "./KnowledgeNew";
 
+import { BackLink } from "@/app/BackLink";
 export const metadata: Metadata = { title: "知恵に残す｜こえかた" };
 export const dynamic = "force-dynamic";
 
@@ -17,6 +18,7 @@ export default async function NewKnowledgePage({ searchParams }: { searchParams:
 
   return (
     <main className="home chie">
+      <BackLink href="/chie">校内の知恵へもどる</BackLink>
       <h1>知恵に残す</h1>
       {material ? (
         <>
@@ -35,9 +37,6 @@ export default async function NewKnowledgePage({ searchParams }: { searchParams:
       ) : (
         <p>このやり取りは知恵に残せません。校内に公開され、ほかの人の返事があるやり取りに関わった人が残せます。</p>
       )}
-      <p className="staff-link">
-        <Link href="/chie">校内の知恵へもどる</Link>
-      </p>
     </main>
   );
 }

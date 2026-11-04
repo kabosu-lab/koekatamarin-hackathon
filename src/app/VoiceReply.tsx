@@ -170,7 +170,7 @@ export function VoiceReply({
               </button>
             )}
             <button type="button" disabled={locked || listening || spoken.trim() === ""} onClick={() => void makeReply()}>
-              返信の言葉にする
+              文章にする
             </button>
           </div>
         </>

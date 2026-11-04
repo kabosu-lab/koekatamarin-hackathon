@@ -3,25 +3,24 @@ import Link from "next/link";
 import { getViewer } from "@/lib/current-person";
 import { getDatabase } from "@/lib/db";
 import { listKnowledgeTasks, listSharedKnowledge } from "@/lib/knowledge";
-import { PersonSwitcher } from "../PersonSwitcher";
 import { KnowledgeFinder } from "./KnowledgeFinder";
 import { KnowledgeTasks } from "./KnowledgeTasks";
 
+import { BackLink } from "@/app/BackLink";
 export const metadata: Metadata = { title: "校内の知恵｜こえかた" };
 export const dynamic = "force-dynamic";
 
 export default async function ChiePage() {
-  const { viewer, people } = await getViewer();
+  const { viewer } = await getViewer();
   const db = getDatabase();
   const items = listSharedKnowledge(db, viewer.id);
 
   return (
     <main className="home chie">
+      <BackLink href="/minna">みんなへもどる</BackLink>
       <header>
         <h1>校内の知恵</h1>
-        <p>みんなのやり取りから生まれた知恵です。言葉を使われた本人たちが確かめたものだけが広がります。</p>
-        <p className="muted">やった人の経験です。公式の規程ではありません。古くなったら、みんなで直せます。</p>
-        <PersonSwitcher viewerId={viewer.id} people={people} />
+        <p>やった人の経験です。公式の規程ではありません。古くなったら、みんなで直せます。</p>
       </header>
       <KnowledgeFinder key={viewer.id} viewerName={viewer.name} />
       <KnowledgeTasks tasks={listKnowledgeTasks(db, viewer.id)} />
@@ -49,9 +48,6 @@ export default async function ChiePage() {
           </ul>
         )}
       </section>
-      <p className="staff-link">
-        <Link href="/minna">みんなへもどる</Link>
-      </p>
     </main>
   );
 }

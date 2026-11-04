@@ -11,6 +11,7 @@ import { getDatabase } from "@/lib/db";
 import { listPublicRibbons } from "@/lib/ribbons";
 import { Avatar } from "../../Avatar";
 
+import { BackLink } from "@/app/BackLink";
 export const metadata: Metadata = { title: "プロフィール｜こえかた" };
 export const dynamic = "force-dynamic";
 
@@ -29,6 +30,7 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
 
   return (
     <main className="home">
+      <BackLink href="/minna">みんなへもどる</BackLink>
       <h1>{person.name}</h1>
       <PersonTitle title={wornTitle(db, id)} />
       <p>{person.label}</p>
@@ -59,9 +61,6 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
         </p>
         <p className="muted">人と比べるものではありません。</p>
       </section>
-      <p className="staff-link">
-        <Link href="/minna">みんなへもどる</Link>
-      </p>
     </main>
   );
 }

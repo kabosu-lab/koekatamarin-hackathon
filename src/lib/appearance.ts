@@ -22,7 +22,7 @@ export const APPEARANCE_OPTIONS = [
   },
   {
     name: "avatar",
-    label: "分身（隠しても、裏で育ちます）",
+    label: "相棒（隠しても、裏で育ちます）",
     options: [
       { value: "show", label: "表示する" },
       { value: "hide", label: "隠す" },

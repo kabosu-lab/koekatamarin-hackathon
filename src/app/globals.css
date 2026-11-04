@@ -207,7 +207,7 @@ body {
 
 .talk .listening-label {
   display: block;
-  font-size: 0.85rem;
+  font-size: 0.875rem;
   font-weight: 700;
   color: var(--accent);
 }
@@ -225,7 +225,7 @@ body {
 
 .talk .scripted {
   margin: 0;
-  font-size: 0.8rem;
+  font-size: 0.875rem;
   color: var(--muted);
 }
 
@@ -291,7 +291,7 @@ body {
   display: grid;
   flex: 1;
   min-width: 12rem;
-  font-size: 0.85rem;
+  font-size: 0.875rem;
 }
 
 .home select {
@@ -382,7 +382,7 @@ body {
 
 .compose-card .channel {
   display: grid;
-  font-size: 0.85rem;
+  font-size: 0.875rem;
 }
 
 .compose-card .preview {
@@ -399,11 +399,11 @@ body {
 .compose-card .preview-title {
   margin-bottom: 0.4rem !important;
   color: var(--muted);
-  font-size: 0.8rem;
+  font-size: 0.875rem;
 }
 
 .compose-card .preview-author {
-  font-size: 0.8rem;
+  font-size: 0.875rem;
 }
 
 .compose-card .preview-body {
@@ -417,7 +417,7 @@ body {
   padding: 0.1rem 0.5rem;
   border-radius: 1.25rem;
   background: var(--soft);
-  font-size: 0.8rem;
+  font-size: 0.875rem;
 }
 
 .compose-actions {
@@ -437,7 +437,7 @@ body {
   padding: 0.5rem 0.75rem;
   border-radius: 0.9rem;
   background: var(--soft);
-  font-size: 0.85rem;
+  font-size: 0.875rem;
 }
 
 .daily-question {
@@ -499,7 +499,7 @@ body {
 
 .safety-card .caveat {
   color: var(--muted);
-  font-size: 0.85rem;
+  font-size: 0.875rem;
 }
 
 .safety-card label {
@@ -549,7 +549,7 @@ body {
 
 .soudan .meta {
   color: var(--muted);
-  font-size: 0.85rem;
+  font-size: 0.875rem;
 }
 
 .connect-card {
@@ -567,7 +567,7 @@ body {
 
 .connect-card .person {
   color: var(--muted);
-  font-size: 0.85rem;
+  font-size: 0.875rem;
 }
 
 .connect-actions {
@@ -610,7 +610,7 @@ body {
 
 .inbox-item .from {
   color: var(--muted);
-  font-size: 0.85rem;
+  font-size: 0.875rem;
 }
 
 .inbox-item .passed {
@@ -663,7 +663,7 @@ body {
 
 .inbox-item .pass label {
   display: grid;
-  font-size: 0.85rem;
+  font-size: 0.875rem;
 }
 
 .inbox-counts {
@@ -715,7 +715,7 @@ body {
 
 .today-card .count {
   color: var(--muted);
-  font-size: 0.85rem;
+  font-size: 0.875rem;
 }
 
 .today-card .who {
@@ -802,7 +802,7 @@ body {
 
 .card .muted {
   color: var(--muted);
-  font-size: 0.85rem;
+  font-size: 0.875rem;
 }
 
 .card textarea,
@@ -820,7 +820,7 @@ body {
 
 .card label {
   display: grid;
-  font-size: 0.85rem;
+  font-size: 0.875rem;
 }
 
 .card button {
@@ -940,7 +940,7 @@ body {
   display: flex;
   flex-wrap: wrap;
   gap: 0.25rem 0.75rem;
-  font-size: 0.85rem;
+  font-size: 0.875rem;
 }
 
 .gathering {
@@ -955,7 +955,7 @@ body {
   justify-items: center;
   width: 4.5rem;
   color: inherit;
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   text-align: center;
   text-decoration: none;
 }
@@ -1027,7 +1027,7 @@ body {
 .compose-card .preview-scope {
   margin-top: 0.4rem !important;
   color: var(--accent);
-  font-size: 0.85rem;
+  font-size: 0.875rem;
   font-weight: 700;
 }
 
@@ -1051,7 +1051,7 @@ body {
   background: transparent;
   border: 0;
   color: var(--accent);
-  font-size: 0.8rem;
+  font-size: 0.875rem;
   font-weight: 400;
   text-decoration: underline;
 }
@@ -1289,7 +1289,7 @@ button:active:not(:disabled),
   border: 0;
   background: none;
   color: var(--muted, inherit);
-  font-size: 0.85rem;
+  font-size: 0.875rem;
   text-decoration: underline;
 }
 
@@ -1409,7 +1409,7 @@ button:active:not(:disabled),
 
 .attachment-caveat {
   margin: 0;
-  font-size: 0.85rem;
+  font-size: 0.875rem;
   font-weight: 700;
 }
 
@@ -1508,7 +1508,7 @@ h2 {
   align-items: center;
   min-width: 0;
   color: var(--muted);
-  font-size: 0.8rem;
+  font-size: 0.875rem;
   white-space: nowrap;
 }
 
@@ -1518,7 +1518,7 @@ h2 {
   min-height: 2.25rem;
   padding: 0.15rem 0.4rem;
   border-color: var(--line);
-  font-size: 0.8rem;
+  font-size: 0.875rem;
 }
 
 .home .switcher button {
@@ -1527,7 +1527,7 @@ h2 {
   padding-inline: 0.6rem;
   border-color: var(--line);
   color: var(--muted);
-  font-size: 0.8rem;
+  font-size: 0.875rem;
   box-shadow: none;
 }
 
@@ -1543,7 +1543,7 @@ h2 {
   border-radius: 2rem;
   background: var(--soft);
   color: var(--accent);
-  font-size: 0.85rem;
+  font-size: 0.875rem;
   font-weight: 700;
   text-decoration: none;
 }
@@ -1572,7 +1572,7 @@ h2 {
   padding: 0;
   background: none;
   color: var(--muted);
-  font-size: 0.8rem;
+  font-size: 0.875rem;
   text-align: center;
 }
 
@@ -1899,7 +1899,7 @@ h2 {
   border-radius: 999px;
   background: var(--surface);
   color: var(--accent);
-  font-size: 0.85rem;
+  font-size: 0.875rem;
   font-weight: 700;
   box-shadow: none;
 }
@@ -2234,7 +2234,7 @@ body:has(.stage-home) {
 
 .aside-list .who {
   color: var(--muted);
-  font-size: 0.8rem;
+  font-size: 0.875rem;
 }
 
 @media (min-width: 768px) {
@@ -2583,7 +2583,7 @@ html[data-avatar="hide"] .burst-speaker {
 }
 
 .evolve-choices small {
-  font-size: 0.85rem;
+  font-size: 0.875rem;
 }
 
 .evolve-flash {
@@ -2645,7 +2645,7 @@ html[data-avatar="hide"] .burst-speaker {
 
 .ribbon-list label {
   margin-top: 0.2rem;
-  font-size: 0.85rem;
+  font-size: 0.875rem;
 }
 
 .ribbon-mark {
@@ -2712,7 +2712,7 @@ html[data-avatar="hide"] .burst-speaker {
 }
 
 .ribbon-card small {
-  font-size: 0.8rem;
+  font-size: 0.875rem;
 }
 
 .ribbon-card-story {
@@ -2834,7 +2834,7 @@ html[data-avatar="hide"] .burst-speaker {
   flex-direction: column;
   align-items: center;
   width: 6rem;
-  font-size: 0.8rem;
+  font-size: 0.875rem;
   text-align: center;
 }
 
@@ -2846,7 +2846,7 @@ html[data-avatar="hide"] .burst-speaker {
 .ribbon-date {
   display: block;
   color: inherit;
-  font-size: 0.8rem;
+  font-size: 0.875rem;
   opacity: 0.7;
 }
 
@@ -2892,7 +2892,7 @@ html[data-avatar="hide"] .burst-speaker {
   width: 6.5rem;
   min-height: 7.5rem;
   gap: 0.2rem;
-  font-size: 0.85rem;
+  font-size: 0.875rem;
 }
 
 .companion-list button small {
@@ -2953,7 +2953,7 @@ html[data-avatar="hide"] .burst-speaker {
   border-radius: 999px;
   background: var(--surface);
   color: var(--ink);
-  font-size: 0.85rem;
+  font-size: 0.875rem;
   font-weight: 700;
   box-shadow: none;
 }
@@ -2965,7 +2965,7 @@ html[data-avatar="hide"] .burst-speaker {
   border: 1px solid var(--accent);
   border-radius: 0.35rem;
   color: var(--accent);
-  font-size: 0.78rem;
+  font-size: 0.875rem;
   font-weight: 600;
   line-height: 1.5;
 }

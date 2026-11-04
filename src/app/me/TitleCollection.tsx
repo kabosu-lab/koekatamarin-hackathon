@@ -50,7 +50,7 @@ export function TitleCollection({ initial }: { initial: TitleEntry[] }) {
               <strong>{title.title}</strong>
               <small>{title.fromName}さんから</small>
             </div>
-            <div className="row">
+            <div className="row confirm-row">
               {title.state === "offered" ? (
                 <>
                   <button type="button" onClick={() => void act(title.id, "accept")}>

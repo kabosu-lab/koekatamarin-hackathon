@@ -29,7 +29,7 @@ export function InboxCard({ item, candidates }: { item: InboxItem; candidates: P
       if (!ok) throw new Error("pass failed");
       setDone("passed");
     } catch {
-      setNotice("パスできませんでした。もう一度押してください。");
+      setNotice("つなげませんでした。もう一度押してください。");
     } finally {
       setBusy(false);
     }
@@ -38,7 +38,7 @@ export function InboxCard({ item, candidates }: { item: InboxItem; candidates: P
   if (done) {
     return (
       <section className="talk inbox-item" aria-label={`${item.authorName}さんからのお願い`} role="status">
-        <p>{done === "replied" ? "返信が届きました。ゴール！" : "パスしました。つないでくれてありがとう。"}</p>
+        <p>{done === "replied" ? "返信が届きました。解決！" : "つなぎました。つないでくれてありがとう。"}</p>
         <Link href={`/teams?channel=${item.channelId}`}>校内チャネルで見る</Link>
       </section>
     );
@@ -70,10 +70,10 @@ export function InboxCard({ item, candidates }: { item: InboxItem; candidates: P
 
       {candidates.length > 0 && (
         <details>
-          <summary>もっと詳しい人にパスする</summary>
+          <summary>もっと詳しい人につなぐ</summary>
           <div className="pass">
             <label>
-              パスする相手
+              つなぐ相手
               <select value={passTo} onChange={(event) => setPassTo(event.target.value)}>
                 <option value="">選んでください</option>
                 {candidates.map((candidate) => (
@@ -84,7 +84,7 @@ export function InboxCard({ item, candidates }: { item: InboxItem; candidates: P
               </select>
             </label>
             <button type="button" disabled={busy || passTo === ""} onClick={() => void pass()}>
-              パスする
+              つなぐ
             </button>
           </div>
         </details>

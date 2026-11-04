@@ -26,10 +26,10 @@ async function say(page: Page, text: string) {
 async function replyFromInbox(page: Page, from: RegExp, spoken: string) {
   const card = page.getByRole("region", { name: from });
   await card.getByLabel("話したこと").fill(spoken);
-  await card.getByRole("button", { name: "返信の言葉にする" }).click();
+  await card.getByRole("button", { name: "文章にする" }).click();
   await expect(card.getByLabel("返信の文章")).toHaveValue(spoken);
   await card.getByRole("button", { name: "本人として返信する" }).click();
-  await expect(page.getByText("返信が届きました。ゴール！")).toBeVisible();
+  await expect(page.getByText("返信が届きました。解決！")).toBeVisible();
 }
 
 test("先生の一日：話しかける、返す、パス、サンクス、日報、桜", async ({ page }) => {
@@ -56,9 +56,9 @@ test("先生の一日：話しかける、返す、パス、サンクス、日�
 
   // 詳しくないことは、別の先生へパス
   const maker = page.getByRole("region", { name: /木下 蓮さんからのお願い/ });
-  await maker.getByText("もっと詳しい人にパスする").click();
-  await maker.getByLabel("パスする相手").selectOption({ label: EXPERT });
-  await maker.getByRole("button", { name: "パスする" }).click();
+  await maker.getByText("もっと詳しい人につなぐ").click();
+  await maker.getByLabel("つなぐ相手").selectOption({ label: EXPERT });
+  await maker.getByRole("button", { name: "つなぐ" }).click();
   await expect(page.getByText("つないでくれてありがとう")).toBeVisible();
   await shot(page, "04-パス");
 
@@ -71,7 +71,7 @@ test("先生の一日：話しかける、返す、パス、サンクス、日�
 
   await page.goto("/teams?channel=making");
   await expect(page.getByRole("article").filter({ hasText: "しおり立ての底を広くしたら" }).locator(".asked")).toContainText(
-    "佐伯 みどりさんのパス → 野田 翔さんへ（ゴール！）",
+    "佐伯 みどりさんがつないで → 野田 翔さんへ（解決！）",
   );
   await shot(page, "05-ゴール");
 
@@ -95,8 +95,8 @@ test("先生の一日：話しかける、返す、パス、サンクス、日�
     await quiz.getByRole("button", { name: "じっくり話を聞く" }).click();
     await expect(quiz).toHaveCount(0);
   }
-  await expect(page.getByRole("region", { name: "これまで" })).toContainText(/ゴール [1-9]/);
-  await expect(page.getByRole("region", { name: "これまで" })).toContainText(/アシスト [1-9]/);
+  await expect(page.getByRole("region", { name: "これまで" })).toContainText(/解決 [1-9]/);
+  await expect(page.getByRole("region", { name: "これまで" })).toContainText(/つないだ [1-9]/);
   await expect(page.getByRole("region", { name: "もらったありがとう" })).toContainText("つないでくれて");
   await shot(page, "06-相棒とありがとう");
 

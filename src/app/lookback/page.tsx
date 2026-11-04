@@ -4,14 +4,14 @@ import { getViewer } from "@/lib/current-person";
 import { getDatabase } from "@/lib/db";
 import { getDestination } from "@/lib/destination/current";
 import { LOOKBACK_PERIODS } from "@/lib/lookback";
-import { PersonSwitcher } from "../PersonSwitcher";
 import { LookbackPanel } from "./LookbackPanel";
 
+import { BackLink } from "@/app/BackLink";
 export const metadata: Metadata = { title: "ふりかえり｜こえかた" };
 export const dynamic = "force-dynamic";
 
 export default async function LookbackPage() {
-  const { viewer, people } = await getViewer();
+  const { viewer } = await getViewer();
   const channels = getDestination(getDatabase())
     .listChannels(viewer.id)
     .map(({ id, name }) => ({ id, name }));
@@ -22,14 +22,11 @@ export default async function LookbackPage() {
 
   return (
     <main className="home">
+      <BackLink href="/me">じぶんへもどる</BackLink>
       <header>
         <h1>ふりかえり</h1>
-        <PersonSwitcher viewerId={viewer.id} people={people} />
       </header>
       <LookbackPanel key={viewer.id} periods={periods} channels={channels} />
-      <p className="staff-link">
-        <Link href="/me">じぶんへもどる</Link>
-      </p>
     </main>
   );
 }

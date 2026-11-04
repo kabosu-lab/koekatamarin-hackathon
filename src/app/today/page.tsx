@@ -8,15 +8,15 @@ import { getDestination } from "@/lib/destination/current";
 import { listHiddenIds } from "@/lib/hidden-people";
 import { listCelebratedPostIds } from "@/lib/goals";
 import { listPopularCards, listQuietPosts, listSeenNotes, listTodayCards, viewerPublicWords } from "@/lib/today";
-import { PersonSwitcher } from "../PersonSwitcher";
 import { CardReply } from "./CardReply";
 import { TodayCards } from "./TodayCards";
 
+import { BackLink } from "@/app/BackLink";
 export const metadata: Metadata = { title: "今日の3人｜こえかた" };
 export const dynamic = "force-dynamic";
 
 export default async function TodayPage({ searchParams }: { searchParams: Promise<{ view?: string | string[] }> }) {
-  const { viewer, people } = await getViewer();
+  const { viewer } = await getViewer();
   const { view } = await searchParams;
   const popular = view === "popular";
 
@@ -30,10 +30,10 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
 
   return (
     <main className="home">
+      <BackLink href="/minna">みんなへもどる</BackLink>
       <header>
         <h1>今日の3人</h1>
         <p>10秒で、誰かの頑張りを応援できます。</p>
-        <PersonSwitcher viewerId={viewer.id} people={people} />
       </header>
 
       {seen.map((note) => (
@@ -63,10 +63,6 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
         key={`${viewer.id}-${popular ? "popular" : "today"}`}
         cards={cards.map((card) => ({ ...card, authorImage: getAvatar(db, card.authorId).image, authorTitle: wornTitle(db, card.authorId) }))}
       />
-
-      <p className="staff-link">
-        <Link href="/">もどる</Link>
-      </p>
     </main>
   );
 }

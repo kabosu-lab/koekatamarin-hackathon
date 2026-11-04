@@ -132,7 +132,7 @@ html[data-theme="modern"] .hero .theme-toggle button {
   border-color: transparent;
   background: transparent;
   color: var(--muted);
-  font-size: 0.8rem;
+  font-size: 0.875rem;
 }
 
 /* 入口は色のかたまりをやめ、文字と細い線の一覧に */
@@ -216,13 +216,13 @@ html[data-theme="modern"] .talk .promise {
   background: transparent;
   box-shadow: none;
   color: var(--muted);
-  font-size: 0.85rem;
+  font-size: 0.875rem;
   font-weight: 400;
 }
 
 html[data-theme="modern"] .stage-home .talk .promise-short {
   color: var(--muted);
-  font-size: 0.8rem;
+  font-size: 0.875rem;
   font-weight: 400;
 }
 
@@ -362,7 +362,7 @@ html[data-theme="modern"] .pop-note button {
   border-color: var(--input-line);
   background: var(--surface);
   color: var(--accent);
-  font-size: 0.85rem;
+  font-size: 0.875rem;
 }
 
 /* モダンの声：話した一行が、すっと上へ飛んで消える */

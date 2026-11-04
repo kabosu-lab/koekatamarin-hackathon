@@ -4,6 +4,7 @@ import { getViewer } from "@/lib/current-person";
 import { getDatabase } from "@/lib/db";
 import { listAlertsFor } from "@/lib/safety";
 
+import { BackLink } from "@/app/BackLink";
 export const metadata: Metadata = { title: "相談室への知らせ｜こえかた" };
 export const dynamic = "force-dynamic";
 
@@ -21,6 +22,7 @@ export default async function SoudanPage() {
 
   return (
     <main className="soudan">
+      <BackLink href="/">話すへもどる</BackLink>
       <h1>相談室への知らせ</h1>
       <p>{viewer.name}さんに届いているものだけが見えます。チームでどう共有するかは、相談室の先生が判断します。</p>
       <p>AI の判断には、見逃しも誤りもあります。人の見守りの代わりにはなりません。</p>
@@ -42,10 +44,6 @@ export default async function SoudanPage() {
           </article>
         ))
       )}
-
-      <p>
-        <Link href="/">もどる</Link>
-      </p>
     </main>
   );
 }

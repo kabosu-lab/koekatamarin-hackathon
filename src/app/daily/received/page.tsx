@@ -3,22 +3,22 @@ import Link from "next/link";
 import { getViewer } from "@/lib/current-person";
 import { listReceived } from "@/lib/daily";
 import { getDatabase } from "@/lib/db";
-import { PersonSwitcher } from "../../PersonSwitcher";
 import { RespondForm } from "./RespondForm";
 
+import { BackLink } from "@/app/BackLink";
 export const metadata: Metadata = { title: "届いた日報と日記｜こえかた" };
 export const dynamic = "force-dynamic";
 
 export default async function ReceivedPage() {
-  const { viewer, people } = await getViewer();
+  const { viewer } = await getViewer();
   const reports = listReceived(getDatabase(), viewer.id);
 
   return (
     <main className="home">
+      <BackLink href="/me">じぶんへもどる</BackLink>
       <header>
         <h1>届いた日報と日記</h1>
         <p>本人がチェックを付けて届けた項目だけが見えます。</p>
-        <PersonSwitcher viewerId={viewer.id} people={people} />
       </header>
       {reports.length === 0 ? (
         <p className="seen-note">届いているものはありません。</p>
@@ -43,9 +43,6 @@ export default async function ReceivedPage() {
           </article>
         ))
       )}
-      <p className="staff-link">
-        <Link href="/me">じぶんへもどる</Link>
-      </p>
     </main>
   );
 }

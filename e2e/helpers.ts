@@ -7,3 +7,9 @@ export async function switchPerson(page: Page, option: string) {
   const name = option.split("（")[0];
   await expect(page.locator(`.talk[data-viewer="${name}"]`)).toBeVisible();
 }
+
+/** 最初の画面の「設定」を開く。音ときせかえはここにしまってある。 */
+export async function openHomeSettings(page: Page) {
+  const settings = page.locator(".home-settings");
+  if ((await settings.getAttribute("open")) === null) await settings.locator("summary").click();
+}
