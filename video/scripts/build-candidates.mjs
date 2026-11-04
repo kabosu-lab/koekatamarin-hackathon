@@ -1,8 +1,9 @@
 /* 候補 A〜D の音と絵を用意する。音はすべてコードで作り、絵は Codex で作ったものを .private/art から使う
    （絵は、使ってよいと確認が取れるまで公開しない。public/ は Git に入らない） */
-import { mkdirSync, copyFileSync, rmSync, readFileSync } from "node:fs";
+import { mkdirSync, rmSync, readFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { mix, pad, pen, piano, reverb, save, tick } from "./audio-lib.mjs";
+import { copyArt, hasSay, noteSkippedVoice } from "./asset-tools.mjs";
 
 const pub = new URL("../public/", import.meta.url);
 const cand = new URL("../src/candidates/lines.json", import.meta.url);
@@ -10,9 +11,9 @@ const LINES = JSON.parse(readFileSync(cand, "utf8"));
 mkdirSync(pub, { recursive: true });
 
 for (const name of ["night-staffroom.png", "morning-corridor.png", "letter-paper.png"]) {
-  copyFileSync(new URL(`../../.private/art/video/${name}`, import.meta.url), new URL(name, pub));
+  copyArt(new URL(`../../.private/art/video/${name}`, import.meta.url), new URL(name, pub));
 }
-copyFileSync(new URL("../../.private/art/school-haru.jpg", import.meta.url), new URL("school.jpg", pub));
+copyArt(new URL("../../.private/art/school-haru.jpg", import.meta.url), new URL("school.jpg", pub));
 
 /* A：間の多いピアノ。夜は低く、朝で明るくなる */
 {
@@ -56,7 +57,8 @@ copyFileSync(new URL("../../.private/art/school-haru.jpg", import.meta.url), new
 }
 
 /* 仮の声（Mac の Kyoko）。本番は作り手の声に替える */
-for (const v of LINES.voice) {
+if (!hasSay()) noteSkippedVoice(LINES.voice.length);
+else for (const v of LINES.voice) {
   const aiff = new URL(`${v.id}.aiff`, pub).pathname, out = new URL(`${v.id}.wav`, pub).pathname;
   execFileSync("say", ["-v", "Kyoko", "-r", String(v.rate ?? 170), "-o", aiff, v.text]);
   execFileSync("ffmpeg", ["-y", "-loglevel", "error", "-i", aiff, "-ar", "44100", "-ac", "2", out]);

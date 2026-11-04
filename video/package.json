@@ -7,7 +7,7 @@
     "still": "remotion still src/index.jsx",
     "assets:candidates": "node scripts/build-candidates.mjs",
     "capture:app": "node scripts/capture-app.mjs",
-    "render": "npm run assets && remotion render src/index.jsx Trial out/koekata-trial.mp4 --codec=h264 --crf=18 --browser-executable=\"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome\""
+    "render": "npm run assets && node scripts/render.mjs"
   },
   "dependencies": {
     "@remotion/cli": "4.0.300",

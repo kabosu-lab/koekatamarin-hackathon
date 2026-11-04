@@ -1,7 +1,8 @@
 /* 音楽と仮の声をコードで作り、絵と一緒に public/ に置く */
-import { writeFileSync, mkdirSync, rmSync, copyFileSync } from "node:fs";
+import { writeFileSync, mkdirSync, rmSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { createRequire } from "node:module";
+import { copyArt, hasSay, noteSkippedVoice } from "./asset-tools.mjs";
 const require = createRequire(import.meta.url);
 const T = require("../src/timing.json");
 const pub = new URL("../public/", import.meta.url);
@@ -9,7 +10,7 @@ mkdirSync(pub, { recursive: true });
 
 /* --- 絵：Codex で作った絵を .private/art から使う（使ってよいと確認が取れるまで公開しない） --- */
 for (const [from, to] of [["beast-2.png", "partner.png"], ["coat-3.png", "colleague.png"], ["jacket-2.png", "student.png"], ["craft-3.png", "senior.png"], ["school-haru.jpg", "school.jpg"]]) {
-  copyFileSync(new URL(`../../.private/art/${from}`, import.meta.url), new URL(to, pub));
+  copyArt(new URL(`../../.private/art/${from}`, import.meta.url), new URL(to, pub));
 }
 
 /* --- 音楽：120 BPM。拍は 15 コマ --- */
@@ -69,7 +70,8 @@ for (let i = 0; i < N; i++) { wav.writeInt16LE(L[i] * gain * 32767 | 0, 44 + i *
 writeFileSync(new URL("music.wav", pub), wav);
 
 /* --- 仮の声（Mac の Kyoko） --- */
-for (const v of T.voice) {
+if (!hasSay()) noteSkippedVoice(T.voice.length);
+else for (const v of T.voice) {
   const aiff = new URL(`${v.id}.aiff`, pub).pathname, out = new URL(`${v.id}.wav`, pub).pathname;
   execFileSync("say", ["-v", "Kyoko", "-r", "205", "-o", aiff, v.text]);
   execFileSync("ffmpeg", ["-y", "-loglevel", "error", "-i", aiff, "-ar", "44100", "-ac", "2", out]);

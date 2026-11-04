@@ -2,6 +2,7 @@
 import { readFileSync, rmSync, writeFileSync } from "node:fs";
 import { execFileSync, execSync } from "node:child_process";
 import { mix, pad, piano, reverb, save } from "./audio-lib.mjs";
+import { hasSay, noteSkippedVoice } from "./asset-tools.mjs";
 
 const pub = new URL("../public/", import.meta.url);
 const FULL = JSON.parse(readFileSync(new URL("../src/candidates/story.json", import.meta.url), "utf8"));
@@ -19,7 +20,8 @@ for (let t = 15, i = 0; t < SEC; t += 8, i++) {
 }
 reverb(m, .3); save(m, "music-full.wav", .34);
 
-for (const v of FULL.voice) {
+if (!hasSay()) noteSkippedVoice(FULL.voice.length);
+else for (const v of FULL.voice) {
   const aiff = new URL(`${v.id}.aiff`, pub).pathname, out = new URL(`${v.id}.wav`, pub).pathname;
   execFileSync("say", ["-v", "Kyoko", "-r", "190", "-o", aiff, v.text]);
   execFileSync("ffmpeg", ["-y", "-loglevel", "error", "-i", aiff, "-ar", "44100", "-ac", "2", out]);
