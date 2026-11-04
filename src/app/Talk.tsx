@@ -12,6 +12,7 @@ import { Compose, type ComposeStart } from "./Compose";
 import { ConnectCard, type ConnectSuggestion } from "./ConnectCard";
 import { SafetyCard, type SafetyNotice } from "./SafetyCard";
 import { AttachmentPreview } from "./AttachmentPreview";
+import { Avatar } from "./Avatar";
 import { playSendSound, SendBurst } from "./SendBurst";
 import type { AttachmentView } from "@/lib/attachment";
 import { loadTalk, saveTalk } from "./talk-storage";
@@ -316,6 +317,15 @@ export function Talk({
   return (
     <div className="talk" data-viewer={viewer.name}>
       {burst && <SendBurst words={burst} avatarImage={avatarImage} onDone={() => setBurst(null)} />}
+      {avatarImage && (
+        <div
+          className="speaker"
+          data-state={listening ? "listening" : sending ? "thinking" : "idle"}
+          data-size={messages.length > 0 && !listening ? "small" : "large"}
+        >
+          <Avatar image={avatarImage} alt={`${viewer.name}さんの相棒`} size={176} />
+        </div>
+      )}
       <div className="log" role="log" aria-label="相棒との会話">
         {!acknowledged && (
           <section className="promise promise-card" aria-label="最初にお伝えすること">

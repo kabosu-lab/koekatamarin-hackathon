@@ -124,6 +124,8 @@ export function chooseAvatar(db: DatabaseSync, personId: string, kind: unknown, 
 
 export function handleChooseAvatar(db: DatabaseSync, personId: string, input: unknown) {
   const { kind, style } = (typeof input === "object" && input !== null ? input : {}) as Record<string, unknown>;
-  if (!chooseAvatar(db, personId, kind, style)) return { status: 400, body: { error: "選べませんでした" } };
+  if (!familyFor(kind, style)) return { status: 400, body: { error: "選べませんでした" } };
+  // 別の画面ですでに決めていても、失敗にしない（一度決めた系統は変わらない）
+  chooseAvatar(db, personId, kind, style);
   return { status: 200, body: { avatar: getAvatar(db, personId) } };
 }

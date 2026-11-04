@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import Link from "next/link";
 import { getViewer } from "@/lib/current-person";
 import { getDatabase } from "@/lib/db";
+import { getAvatar } from "@/lib/avatar";
 import { dailyQuestion } from "@/lib/daily-question";
 import { readAppearance } from "@/lib/appearance";
 import { countForNotice } from "@/lib/inbox";
@@ -30,7 +31,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
   const promiseSeen = store.has(promiseCookieName(viewer.id));
   const soundOn = readAppearance((name) => store.get(name)?.value).sound === "on";
   return (
-    <main className="home">
+    <main className="home stage-home">
       <header className="hero">
         <h1>こえかた</h1>
         <p>話すだけで、できることが増える。</p>
@@ -56,6 +57,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
         viewer={{ name: viewer.name, label: viewer.label }}
         viewerId={viewer.id}
         promiseSeen={promiseSeen}
+        avatarImage={getAvatar(db, viewer.id).image}
         question={dailyQuestion(new Date())}
         initialAsk={askPerson ? { id: askPerson.id, name: askPerson.name } : null}
       />

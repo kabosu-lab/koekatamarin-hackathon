@@ -1,25 +1,25 @@
 :root {
-  --ground: #f4f6fe;
+  --ground: #fffdf5;
   --surface: #ffffff;
-  --ink: #141a3c;
-  --muted: #525a7c;
-  --accent: #2545f0;
-  --accent-deep: #1830b0;
-  --pop: #ff5a4e;
+  --ink: #15131f;
+  --muted: #55526a;
+  --accent: #15131f;
+  --accent-deep: #ff5a3c;
+  --pop: #ff5a3c;
   --on-accent: #ffffff;
-  --line: #dfe3f4;
-  --input-line: #858cae;
-  --bubble-user: #dfe6ff;
-  --soft: #edf0fe;
-  --warn: #fff3c4;
-  --good: #dcf6e8;
-  --danger: #ffe0dc;
-  --thanks: #fff0ec;
+  --line: #15131f;
+  --input-line: #15131f;
+  --bubble-user: #ffe58a;
+  --soft: #fff4cf;
+  --warn: #ffe9a8;
+  --good: #c9f5e4;
+  --danger: #ffd9d2;
+  --thanks: #ffe3da;
   --stage: #ffd23f;
   --lump: #ff5a3c;
   --line-bold: #15131f;
   --caption: rgb(255 255 255 / 92%);
-  --lift: 0 0.35rem 1.4rem rgb(32 44 130 / 8%);
+  --lift: none;
   --font: "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
 }
 
@@ -1899,4 +1899,297 @@ h2 {
 
 .chie-form details > summary {
   cursor: pointer;
+}
+
+/* ---- 分身とかたまりが主役。太い線、大きな色面、大きな文字 ---- */
+.home > h1,
+.home > header h1,
+.chie > h1 {
+  font-size: 2.6rem;
+  font-weight: 900;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+}
+
+/* カードで囲まず、太い線で区切る */
+.card {
+  margin-top: 1.5rem;
+  padding: 1rem 0 0;
+  border: 0;
+  border-top: 3px solid var(--line-bold);
+  border-radius: 0;
+  background: none;
+}
+
+.card h2 {
+  font-size: 1.5rem;
+  font-weight: 900;
+}
+
+.talk.inbox-item {
+  padding: 1rem 0 0;
+  border: 0;
+  border-top: 3px solid var(--line-bold);
+  border-radius: 0;
+  background: none;
+}
+
+/* 1枚ずつ見るものは、ステッカーのように厚くする */
+.talk.today-card,
+.connect-card,
+.talk .chie-card {
+  border: 3px solid var(--line-bold);
+  border-radius: 1.5rem;
+  box-shadow: 0.35rem 0.35rem 0 var(--line-bold);
+}
+
+.today-card .words {
+  font-size: 1.3rem;
+  font-weight: 800;
+}
+
+.talk .hide-person,
+.today-card .hide-person {
+  min-height: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.talk .hide-person:active:not(:disabled),
+.today-card .hide-person:active:not(:disabled) {
+  box-shadow: none;
+  transform: none;
+}
+
+/* みんな：入口は色のかたまり */
+.hub-links {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.6rem;
+}
+
+.hub-links a {
+  align-items: flex-end;
+  min-height: 6.5rem;
+  padding: 0.9rem;
+  border: 3px solid var(--line-bold);
+  border-radius: 1.3rem;
+  background: var(--tile, var(--stage));
+  color: #15131f;
+  font-size: 1.15rem;
+  font-weight: 900;
+  line-height: 1.3;
+}
+
+.hub-links a::after {
+  color: #15131f;
+}
+
+.hub-links a:nth-child(5n + 1) {
+  --tile: #ffd23f;
+}
+
+.hub-links a:nth-child(5n + 2) {
+  --tile: #ff8a70;
+}
+
+.hub-links a:nth-child(5n + 3) {
+  --tile: #5fe0bd;
+}
+
+.hub-links a:nth-child(5n + 4) {
+  --tile: #b9a7ff;
+}
+
+.hub-links a:nth-child(5n + 5) {
+  --tile: #8ec5ff;
+}
+
+.sakura-scene {
+  border: 3px solid var(--line-bold);
+  border-radius: 1.5rem;
+}
+
+/* 話す画面：大胆な単色の上に、分身がいる */
+body:has(.stage-home) {
+  background: var(--stage);
+}
+
+.stage-home .hero h1 {
+  color: var(--ink);
+  font-size: 1.9rem;
+  font-weight: 900;
+}
+
+.stage-home .hero p {
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+/* 使う人の切り替えはデモのための道具なので、いちばん下へ */
+.home .switcher {
+  order: 9;
+  margin-top: 1.25rem;
+}
+
+.stage-home .quick-links a {
+  border: 2px solid var(--line-bold);
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.speaker {
+  align-self: center;
+  width: 9.5rem;
+  height: 9.5rem;
+  transform-origin: 50% 100%;
+  transition:
+    width 0.3s cubic-bezier(0.34, 1.6, 0.64, 1),
+    height 0.3s cubic-bezier(0.34, 1.6, 0.64, 1);
+}
+
+.speaker[data-size="small"] {
+  width: 5rem;
+  height: 5rem;
+}
+
+.speaker .avatar-image,
+.burst-speaker .avatar-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  /* 白い縁のステッカー */
+  filter: drop-shadow(3px 0 0 #fff) drop-shadow(-3px 0 0 #fff) drop-shadow(0 3px 0 #fff) drop-shadow(0 -3px 0 #fff) drop-shadow(0 0.35rem 0 rgb(21 19 31 / 28%));
+}
+
+.stage-home .daily-question {
+  position: relative;
+  align-self: center;
+  padding: 0.75rem 1.1rem;
+  border: 3px solid var(--line-bold);
+  text-align: center;
+  font-size: 1.35rem;
+  font-weight: 900;
+}
+
+.stage-home .talk .hint {
+  color: var(--ink);
+  font-weight: 700;
+  text-align: center;
+}
+
+.stage-home .talk .promise {
+  border: 2px solid var(--line-bold);
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.stage-home .talk .promise-short {
+  border: 0;
+  background: none;
+  color: var(--ink);
+}
+
+.stage-home .talk .bubble {
+  border: 3px solid var(--line-bold);
+  background: var(--surface);
+  font-weight: 600;
+}
+
+.stage-home .talk .bubble.user {
+  background: var(--lump);
+  color: #15131f;
+}
+
+.stage-home .talk .remember {
+  color: var(--ink);
+}
+
+.stage-home .attach-button {
+  border-color: var(--line-bold);
+  color: var(--ink);
+}
+
+.stage-home .talk .compose-start {
+  border: 3px solid var(--line-bold);
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 0.25rem 0 var(--line-bold);
+  font-size: 1.1rem;
+  font-weight: 900;
+}
+
+/* 主役のボタンはいつも見える場所に */
+.stage-home .talk .actions {
+  position: sticky;
+  bottom: 3.9rem;
+  z-index: 5;
+  box-shadow: 0 -0.6rem 0 var(--stage), 0 0.6rem 0 var(--stage);
+  background: var(--stage);
+}
+
+.talk .primary {
+  font-size: 1.4rem;
+  font-weight: 900;
+}
+
+.bottom-nav {
+  border-top: 3px solid var(--line-bold);
+  box-shadow: none;
+}
+
+.bottom-nav a[aria-current="page"] {
+  background: var(--stage);
+  color: var(--ink);
+}
+
+.bottom-nav a[aria-current="page"]::before {
+  display: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .speaker[data-state="idle"] {
+    animation: speaker-breathe 2.6s ease-in-out infinite;
+  }
+
+  .speaker[data-state="listening"] {
+    animation: speaker-listen 0.5s ease-in-out infinite alternate;
+  }
+
+  .speaker[data-state="thinking"] {
+    animation: speaker-think 0.9s ease-in-out infinite;
+  }
+}
+
+@keyframes speaker-breathe {
+  0%,
+  100% {
+    transform: scale(1, 1);
+  }
+  50% {
+    transform: scale(1.03, 0.97);
+  }
+}
+
+@keyframes speaker-listen {
+  from {
+    transform: scale(0.97, 1.05);
+  }
+  to {
+    transform: scale(1.06, 0.94);
+  }
+}
+
+@keyframes speaker-think {
+  0%,
+  100% {
+    transform: rotate(-3deg);
+  }
+  50% {
+    transform: rotate(3deg);
+  }
 }
