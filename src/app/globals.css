@@ -2873,3 +2873,109 @@ html[data-avatar="hide"] .burst-speaker {
 .stage-home .hero p {
   margin-top: 0.4rem;
 }
+
+/* 歩きながら話す：画面を見ずに使うので、大きく、少なく */
+.walk {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.walk button {
+  min-height: 2.75rem;
+  border: 0;
+  border-radius: 1.1rem;
+  background: var(--accent);
+  color: var(--on-accent);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.walk button {
+  min-height: 3.25rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.walk-start .primary,
+.walk-live .primary {
+  width: 100%;
+  min-height: 5rem;
+  font-size: 1.4rem;
+}
+
+.walk-help {
+  margin: 1rem 0 0;
+  padding-left: 1.2rem;
+  line-height: 1.7;
+}
+
+.walk-state {
+  margin: 0;
+  font-size: 1.6rem;
+  font-weight: 800;
+}
+
+.walk-caution {
+  margin: 0;
+  font-weight: 700;
+}
+
+.walk-words {
+  min-height: 5rem;
+  font-size: 1.15rem;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+.walk-reply {
+  padding: 0.75rem 1rem;
+  border-left: 4px solid currentcolor;
+  line-height: 1.7;
+}
+
+.walk-toggle {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin: 0.75rem 0;
+}
+
+.walk-summary ul {
+  padding-left: 1.2rem;
+  line-height: 1.8;
+}
+
+.walk-drafts article {
+  padding: 1rem 0;
+  border-top: 2px solid currentcolor;
+}
+
+.walk-draft-text {
+  margin: 0 0 0.75rem;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.walk .row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.walk .row button {
+  flex: 1 1 8rem;
+}
+
+.walk .link-button {
+  margin-top: 0.75rem;
+  border: 0;
+  background: none;
+  min-height: 2.5rem;
+  color: inherit;
+  font-size: 0.95rem;
+  font-weight: 400;
+  text-decoration: underline;
+}

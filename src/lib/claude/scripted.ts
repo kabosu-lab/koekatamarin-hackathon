@@ -9,6 +9,22 @@ const replies: Record<(typeof openingLines)[number], string> = {
   私は嫌やわ: "そっか、嫌かあ。無理に使わんでええよ。どのへんが嫌やった？",
 };
 
+function scriptedWalk(content: string, jsonSchema: Record<string, unknown> | undefined) {
+  const spoken = content.match(/<話>\n([\s\S]*)\n<\/話>/)?.[1]?.trim() ?? "";
+  const drafts = (jsonSchema?.properties as { drafts?: { items?: { properties?: { channelId?: { enum?: string[] } } } } } | undefined)?.drafts;
+  const channels = drafts?.items?.properties?.channelId?.enum ?? [];
+  const channelId = channels[1] ?? channels[0] ?? "";
+  if (!spoken) return { summary: [], drafts: [] };
+  return {
+    summary: [`話したこと：${spoken.slice(0, 40)}`],
+    drafts: [
+      { text: `${spoken}（報告）`, channelId, kind: "report", researchedWithAi: false },
+      { text: `${spoken}（みんなに聞く）`, channelId, kind: "trouble", researchedWithAi: false },
+      { text: `${spoken}（コツの共有）`, channelId, kind: "effort", researchedWithAi: false },
+    ],
+  };
+}
+
 function scriptedDraft(transcript: string, jsonSchema: Record<string, unknown> | undefined) {
   const spoken = [...transcript.matchAll(/^本人：(.*)$/gm)]
     .map((match) => match[1].trim())
@@ -148,6 +164,7 @@ export function createScriptedClaude(): ClaudeClient {
     async complete({ task, messages, jsonSchema }) {
       if (task === "title_suggest") return { text: JSON.stringify({ titles: ["台本の相談役", "台本の師匠", "台本の達人"] }), refused: false };
       if (task === "avatar_pick") return { text: JSON.stringify(scriptedAvatarPick()), refused: false };
+      if (task === "walk") return { text: JSON.stringify(scriptedWalk(messages[0].content as string, jsonSchema)), refused: false };
       if (task === "draft") return { text: JSON.stringify(scriptedDraft(messages[0].content, jsonSchema)), refused: false };
       if (task === "attachment_draft") return { text: JSON.stringify(scriptedAttachmentDraft(messages[0].content, jsonSchema)), refused: false };
       if (task === "lookback") return { text: JSON.stringify(scriptedLookback(messages[0].content)), refused: false };

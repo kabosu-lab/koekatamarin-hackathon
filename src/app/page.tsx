@@ -69,6 +69,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
           {waiting > 0 && `（お願いが ${waiting} 件）`}
           {knowledgeTasks > 0 && `（知恵の確認が ${knowledgeTasks} 件）`}
         </Link>
+        <Link href="/walk">歩きながら話す</Link>
         {viewer.role !== "student" && <Link href="/soudan">相談室への知らせを見る</Link>}
       </nav>
       <Talk
