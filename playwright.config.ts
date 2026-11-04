@@ -7,6 +7,10 @@ const PORT = 3100;
 export default defineConfig({
   testDir: "./e2e",
   forbidOnly: true,
+  // 他のアプリでメモリが埋まっている Mac でも、時間切れで偽の失敗を出さない
+  workers: 3,
+  timeout: 90_000,
+  expect: { timeout: 15_000 },
   // デモの通し確認の写真（e2e/demo.spec.ts）を、成功しても残す
   preserveOutput: "always",
   reporter: "list",
