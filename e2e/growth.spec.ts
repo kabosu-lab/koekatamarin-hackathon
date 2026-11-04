@@ -270,3 +270,16 @@ test("分身を隠すと報酬も出ないが、見せると裏で集まって�
   await expect(page.getByRole("region", { name: "リボン" })).toBeVisible();
   await page.context().close();
 });
+
+test("期間中はイベントが桜の画面に出て、分身を隠すと出ない", async ({ browser }) => {
+  const page = await (await browser.newContext()).newPage();
+  await page.goto("/minna");
+  await expect(page.getByRole("region", { name: "期間限定のイベント" }).first()).toBeVisible();
+  await expect(page.getByText("テスト前の応援週間", { exact: true })).toBeVisible();
+  await page.goto("/me");
+  await page.getByRole("button", { name: "隠す", exact: true }).click();
+  await expect(page.getByText("分身は隠しています")).toBeVisible();
+  await page.goto("/minna");
+  await expect(page.getByRole("region", { name: "期間限定のイベント" })).toHaveCount(0);
+  await page.context().close();
+});

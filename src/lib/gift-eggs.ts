@@ -163,7 +163,7 @@ export async function chooseFromEgg(
   random: () => number = Math.random,
 ): Promise<{ family: string; reason: string }> {
   const choices = shuffled(candidates, random).slice(0, CHOICES_FOR_CLAUDE);
-  const fallback = { family: choices[0].id, reason: `${choices[0].mood.split("、").slice(0, 2).join("、")}の相棒です` };
+  const fallback = { family: choices[0].id, reason: `「${choices[0].mood.split("、").slice(0, 2).join("、")}」な雰囲気の相棒です` };
   if (claude.mode !== "real" || words.length === 0) return fallback;
   try {
     const list = choices.map((entry) => `- ${entry.id}（${entry.name}）：${entry.mood}`).join("\n");
