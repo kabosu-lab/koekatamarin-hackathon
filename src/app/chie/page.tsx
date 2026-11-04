@@ -19,8 +19,8 @@ export default async function ChiePage() {
     <main className="home chie">
       <header>
         <h1>校内の知恵</h1>
-        <p className="muted">やった人の経験です。公式の規程ではありません。古くなったら、みんなで直せます。</p>
         <p>みんなのやり取りから生まれた知恵です。言葉を使われた本人たちが確かめたものだけが広がります。</p>
+        <p className="muted">やった人の経験です。公式の規程ではありません。古くなったら、みんなで直せます。</p>
         <PersonSwitcher viewerId={viewer.id} people={people} />
       </header>
       <KnowledgeFinder key={viewer.id} viewerName={viewer.name} />

@@ -1,5 +1,6 @@
 "use client";
 
+import { playReachedSound } from "@/app/sound";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { MemoryItem } from "@/lib/memory";
@@ -201,6 +202,7 @@ export function ThanksForm({ people }: { people: { id: string; name: string; lab
       if (ok) {
         const name = people.find((p) => p.id === to)?.name ?? "";
         setNotice(`${name}さんに、ありがとうが届きました。`);
+        playReachedSound();
         setMessage("");
         setTo("");
       } else {

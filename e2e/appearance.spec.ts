@@ -12,6 +12,8 @@ async function choose(page: Page, label: string) {
 }
 
 test("きせかえを変えると色は変わり、配置は変わらず、開き直しても残る", async ({ page }) => {
+  // 出るときの動きの途中で位置を測らない
+  await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/");
   const before = await box(page);
   const color = () => page.evaluate(() => getComputedStyle(document.body).backgroundColor);
@@ -94,4 +96,19 @@ test("分身が今日のカードと校内チャネルでも見える", async ({
   await expect(page.locator(".today-card .avatar-image")).toBeVisible();
   await page.goto("/teams?channel=making");
   await expect(page.getByRole("article").first().locator(".avatar-image").first()).toBeVisible();
+});
+
+test("音ありで応援しても、画面が乱れない", async ({ page }) => {
+  const problems: string[] = [];
+  page.on("pageerror", (error) => problems.push(error.message));
+  await page.goto("/me");
+  await page.getByRole("button", { name: "音あり" }).click();
+  await expect(page.getByRole("button", { name: "音を試す" })).toBeVisible();
+  await page.goto("/today");
+  const cheer = page.getByRole("button", { name: "応援する" });
+  // すでに応援した投稿は飛ばす
+  while ((await cheer.count()) === 0) await page.getByRole("button", { name: "次へ" }).click();
+  await cheer.click();
+  await expect(page.getByRole("button", { name: "応援しました" }).first()).toBeVisible();
+  expect(problems).toEqual([]);
 });

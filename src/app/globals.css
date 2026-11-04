@@ -1,19 +1,22 @@
 :root {
-  --ground: #fff8f3;
+  --ground: #f4f6fe;
   --surface: #ffffff;
-  --ink: #2c2420;
-  --muted: #6b5d55;
-  --accent: #9c3412;
+  --ink: #141a3c;
+  --muted: #525a7c;
+  --accent: #2545f0;
+  --accent-deep: #1830b0;
+  --pop: #ff5a4e;
   --on-accent: #ffffff;
-  --line: #eadfd8;
-  --input-line: #a89a90;
-  --bubble-user: #ffd9c7;
-  --soft: #f6ece5;
-  --warn: #fff0c9;
-  --good: #e3f4e0;
-  --danger: #ffd9d2;
-  --thanks: #fbeef3;
+  --line: #dfe3f4;
+  --input-line: #858cae;
+  --bubble-user: #dfe6ff;
+  --soft: #edf0fe;
+  --warn: #fff3c4;
+  --good: #dcf6e8;
+  --danger: #ffe0dc;
+  --thanks: #fff0ec;
   --caption: rgb(255 255 255 / 92%);
+  --lift: 0 0.35rem 1.4rem rgb(32 44 130 / 8%);
   --font: "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
 }
 
@@ -24,6 +27,9 @@ html[data-theme="game"] {
   --ink: #f6f1e0;
   --muted: #c9c5dc;
   --accent: #ffd257;
+  --accent-deep: #b98c1c;
+  --pop: #ff8e7a;
+  --lift: none;
   --on-accent: #231c3a;
   --line: #4d5390;
   --input-line: #8d92c4;
@@ -43,6 +49,9 @@ html[data-theme="clear"] {
   --ink: #000000;
   --muted: #2b2b2b;
   --accent: #0b3a8c;
+  --accent-deep: #000000;
+  --pop: #0b3a8c;
+  --lift: none;
   --on-accent: #ffffff;
   --line: #000000;
   --input-line: #000000;
@@ -81,6 +90,7 @@ body {
   background: var(--ground);
   color: var(--ink);
   font-family: var(--font);
+  font-feature-settings: "palt";
   line-height: 1.7;
 }
 
@@ -139,7 +149,7 @@ body {
   max-width: 85%;
   margin: 0;
   padding: 0.6rem 0.85rem;
-  border-radius: 1rem;
+  border-radius: 1.25rem;
   overflow-wrap: anywhere;
   white-space: pre-wrap;
 }
@@ -174,7 +184,7 @@ body {
 .talk .notice {
   margin: 0;
   padding: 0.6rem 0.85rem;
-  border-radius: 0.5rem;
+  border-radius: 0.9rem;
   background: var(--warn);
 }
 
@@ -193,7 +203,7 @@ body {
 .talk button {
   min-height: 2.75rem;
   border: 0;
-  border-radius: 0.75rem;
+  border-radius: 1.1rem;
   background: var(--accent);
   color: var(--on-accent);
   font: inherit;
@@ -222,7 +232,7 @@ body {
   min-width: 0;
   padding: 0.5rem 0.65rem;
   border: 1px solid var(--input-line);
-  border-radius: 0.5rem;
+  border-radius: 0.9rem;
   background: var(--surface);
   color: inherit;
   font: inherit;
@@ -254,7 +264,7 @@ body {
   min-height: 2.75rem;
   padding: 0.4rem 0.5rem;
   border: 1px solid var(--input-line);
-  border-radius: 0.5rem;
+  border-radius: 0.9rem;
   background: var(--surface);
   color: inherit;
   font: inherit;
@@ -265,7 +275,7 @@ body {
   min-height: 2.75rem;
   padding-inline: 0.85rem;
   border: 1px solid var(--accent);
-  border-radius: 0.5rem;
+  border-radius: 0.9rem;
   background: var(--surface);
   color: var(--accent);
   font: inherit;
@@ -281,7 +291,7 @@ body {
 .talk .sent {
   margin: 0;
   padding: 0.6rem 0.85rem;
-  border-radius: 0.5rem;
+  border-radius: 0.9rem;
   background: var(--good);
 }
 
@@ -299,7 +309,7 @@ body {
   width: 100%;
   padding: 0.5rem 0.65rem;
   border: 1px solid var(--input-line);
-  border-radius: 0.5rem;
+  border-radius: 0.9rem;
   background: var(--surface);
   color: inherit;
   font: inherit;
@@ -310,7 +320,7 @@ body {
   display: grid;
   gap: 0.5rem;
   padding: 0.6rem 0.85rem;
-  border-radius: 0.5rem;
+  border-radius: 0.9rem;
   background: var(--good);
 }
 
@@ -343,7 +353,7 @@ body {
 .compose-card .preview {
   padding: 0.75rem;
   border: 1px solid var(--line);
-  border-radius: 0.5rem;
+  border-radius: 0.9rem;
   background: var(--surface);
 }
 
@@ -370,7 +380,7 @@ body {
   display: inline-block;
   margin-top: 0.4rem !important;
   padding: 0.1rem 0.5rem;
-  border-radius: 1rem;
+  border-radius: 1.25rem;
   background: var(--soft);
   font-size: 0.8rem;
 }
@@ -390,7 +400,7 @@ body {
 .talk .promise {
   margin: 0;
   padding: 0.5rem 0.75rem;
-  border-radius: 0.5rem;
+  border-radius: 0.9rem;
   background: var(--soft);
   font-size: 0.85rem;
 }
@@ -398,7 +408,7 @@ body {
 .daily-question {
   margin: 0;
   padding: 0.6rem 0.85rem;
-  border-radius: 1rem;
+  border-radius: 1.25rem;
   background: var(--surface);
   border: 1px solid var(--line);
   font-weight: 700;
@@ -407,7 +417,7 @@ body {
 .quiet-note {
   margin: 0.75rem 0 0;
   padding: 0.6rem 0.85rem;
-  border-radius: 0.5rem;
+  border-radius: 0.9rem;
   background: var(--warn);
 }
 
@@ -426,7 +436,7 @@ body {
   gap: 0.6rem;
   padding: 0.85rem;
   border: 2px solid var(--accent);
-  border-radius: 0.75rem;
+  border-radius: 1.1rem;
   background: var(--surface);
 }
 
@@ -498,7 +508,7 @@ body {
   gap: 0.35rem;
   padding: 0.75rem;
   border: 1px solid var(--line);
-  border-radius: 0.5rem;
+  border-radius: 0.9rem;
   background: var(--surface);
 }
 
@@ -512,7 +522,7 @@ body {
   gap: 0.6rem;
   padding: 0.85rem;
   border: 1px solid var(--line);
-  border-radius: 0.75rem;
+  border-radius: 1.1rem;
   background: var(--surface);
 }
 
@@ -555,7 +565,7 @@ body {
   margin: 0;
   padding: 0.85rem;
   border: 1px solid var(--line);
-  border-radius: 0.75rem;
+  border-radius: 1.1rem;
   background: var(--surface);
 }
 
@@ -579,7 +589,7 @@ body {
   width: 100%;
   padding: 0.5rem 0.65rem;
   border: 1px solid var(--input-line);
-  border-radius: 0.5rem;
+  border-radius: 0.9rem;
   background: var(--surface);
   color: inherit;
   font: inherit;
@@ -588,7 +598,7 @@ body {
 
 .inbox-item .question {
   padding: 0.6rem 0.85rem;
-  border-radius: 1rem;
+  border-radius: 1.25rem;
   background: var(--soft);
 }
 
@@ -650,7 +660,7 @@ body {
 .seen-note {
   margin: 0.75rem 0 0;
   padding: 0.6rem 0.85rem;
-  border-radius: 0.5rem;
+  border-radius: 0.9rem;
   background: var(--good);
 }
 
@@ -660,7 +670,7 @@ body {
   margin-top: 1rem;
   padding: 1rem;
   border: 1px solid var(--line);
-  border-radius: 1rem;
+  border-radius: 1.25rem;
   background: var(--surface);
 }
 
@@ -685,7 +695,7 @@ body {
 
 .today-card .hint-line {
   padding: 0.5rem 0.75rem;
-  border-radius: 1rem;
+  border-radius: 1.25rem;
   background: var(--soft);
   font-size: 0.95rem;
 }
@@ -742,7 +752,7 @@ body {
   margin-top: 1rem;
   padding: 1rem;
   border: 1px solid var(--line);
-  border-radius: 1rem;
+  border-radius: 1.25rem;
   background: var(--surface);
 }
 
@@ -766,7 +776,7 @@ body {
   min-height: 2.75rem;
   padding: 0.5rem 0.65rem;
   border: 1px solid var(--input-line);
-  border-radius: 0.5rem;
+  border-radius: 0.9rem;
   background: var(--surface);
   color: inherit;
   font: inherit;
@@ -782,7 +792,7 @@ body {
   min-height: 2.75rem;
   padding: 0.4rem 0.9rem;
   border: 1px solid var(--accent);
-  border-radius: 0.75rem;
+  border-radius: 1.1rem;
   background: var(--accent);
   color: var(--on-accent);
   font: inherit;
@@ -808,7 +818,7 @@ body {
 
 .card .notice {
   padding: 0.5rem 0.75rem;
-  border-radius: 0.5rem;
+  border-radius: 0.9rem;
   background: var(--warn);
 }
 
@@ -827,7 +837,7 @@ body {
 
 .thanks-card {
   padding: 0.6rem 0.85rem;
-  border-radius: 0.75rem;
+  border-radius: 1.1rem;
   background: var(--thanks);
 }
 
@@ -836,7 +846,7 @@ body {
   overflow: hidden;
   min-height: 13rem;
   margin-top: 1rem;
-  border-radius: 1rem;
+  border-radius: 1.25rem;
   background-size: cover;
   background-position: center;
 }
@@ -924,7 +934,7 @@ body {
 .hub-links a {
   padding: 0.85rem 1rem;
   border: 1px solid var(--line);
-  border-radius: 0.75rem;
+  border-radius: 1.1rem;
   background: var(--surface);
   color: inherit;
   font-weight: 700;
@@ -970,7 +980,7 @@ body {
 
 .response-card {
   padding: 0.6rem 0.85rem;
-  border-radius: 0.75rem;
+  border-radius: 1.1rem;
   background: var(--good);
 }
 
@@ -1063,7 +1073,7 @@ main a {
   bottom: 24%;
   left: 50%;
   padding: 0.35rem 0.7rem;
-  border-radius: 1rem;
+  border-radius: 1.25rem;
   background: linear-gradient(135deg, #ff7a59, #ff4d8d);
   color: #fff;
   font-size: 0.95rem;
@@ -1265,7 +1275,7 @@ button:active:not(:disabled),
   gap: 0.5rem;
   padding: 0.75rem;
   border: 1px solid var(--line);
-  border-radius: 1rem;
+  border-radius: 1.25rem;
   background: var(--surface);
 }
 
@@ -1364,4 +1374,277 @@ button:active:not(:disabled),
 .talk .attachment-check button[aria-pressed="true"] {
   background: var(--accent, #9a3412);
   color: #fff;
+}
+
+/* ===== 見た目と触り心地 ===== */
+h1,
+h2 {
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  line-height: 1.35;
+}
+
+.home h1 {
+  font-size: 2.1rem;
+}
+
+.card,
+.talk.inbox-item,
+.connect-card,
+.chie-card,
+.hub-links a,
+.today-card {
+  box-shadow: var(--lift);
+}
+
+/* 最初の画面 */
+.hero h1 {
+  color: var(--accent);
+  font-size: 2.6rem;
+  line-height: 1.2;
+}
+
+.hero h1::after {
+  content: "";
+  display: inline-block;
+  width: 0.34em;
+  height: 0.34em;
+  margin-left: 0.14em;
+  border-radius: 50%;
+  background: var(--pop);
+}
+
+.hero p {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.home .switcher {
+  gap: 0.35rem;
+  flex-wrap: nowrap;
+  margin-top: 0.75rem;
+}
+
+.home .switcher label {
+  display: flex;
+  flex: 1;
+  gap: 0.4rem;
+  align-items: center;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+.home .switcher select {
+  flex: 1;
+  min-width: 0;
+  min-height: 2.25rem;
+  padding: 0.15rem 0.4rem;
+  border-color: var(--line);
+  font-size: 0.8rem;
+}
+
+.home .switcher button {
+  flex: none;
+  min-height: 2.25rem;
+  padding-inline: 0.6rem;
+  border-color: var(--line);
+  color: var(--muted);
+  font-size: 0.8rem;
+  box-shadow: none;
+}
+
+.quick-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.6rem;
+}
+
+.quick-links a {
+  padding: 0.3rem 0.8rem;
+  border-radius: 2rem;
+  background: var(--soft);
+  color: var(--accent);
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.talk .promise-card {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.85rem 1rem;
+  border: 2px solid var(--line);
+  border-radius: 1.1rem;
+  background: var(--surface);
+  font-size: 0.95rem;
+}
+
+.talk .promise-card p {
+  margin: 0;
+}
+
+.talk .promise-card button {
+  justify-self: end;
+  min-height: 2.5rem;
+  padding-inline: 1.25rem;
+}
+
+.talk .promise-short {
+  padding: 0;
+  background: none;
+  color: var(--muted);
+  font-size: 0.8rem;
+  text-align: center;
+}
+
+.daily-question {
+  padding: 0.9rem 1.1rem;
+  border: 0;
+  border-radius: 1.4rem;
+  background: var(--surface);
+  box-shadow: var(--lift);
+  font-size: 1.25rem;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
+/* ボタン：下に厚みがあり、押すと沈む */
+.talk button,
+.card button {
+  border-radius: 1.1rem;
+  font-weight: 800;
+  box-shadow: 0 0.25rem 0 var(--accent-deep);
+  transition: transform 0.2s cubic-bezier(0.34, 1.6, 0.64, 1);
+}
+
+.talk .primary {
+  min-height: 5rem;
+  border-radius: 1.4rem;
+  font-size: 1.25rem;
+}
+
+.talk .compose-start,
+.talk .alternative,
+.talk .compose-actions .secondary,
+.talk .connect-actions .secondary,
+.card button.secondary {
+  box-shadow: 0 0.25rem 0 var(--line);
+}
+
+.talk .remember,
+.talk .undo,
+.card button.hide-person,
+.talk button:disabled,
+.card button:disabled {
+  box-shadow: none;
+}
+
+.talk button:active:not(:disabled),
+.card button:active:not(:disabled) {
+  box-shadow: 0 0.06rem 0 var(--accent-deep);
+  transform: translateY(0.18rem);
+}
+
+.talk .compose-start:active:not(:disabled),
+.talk .alternative:active:not(:disabled),
+.talk .compose-actions .secondary:active:not(:disabled),
+.talk .connect-actions .secondary:active:not(:disabled),
+.card button.secondary:active:not(:disabled) {
+  box-shadow: 0 0.06rem 0 var(--line);
+}
+
+.hub-links a {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border: 0;
+  font-weight: 800;
+}
+
+.hub-links a::after {
+  content: "→";
+  color: var(--accent);
+}
+
+.bottom-nav {
+  border-top: 0;
+  box-shadow: 0 -0.2rem 1.2rem rgb(32 44 130 / 7%);
+}
+
+.bottom-nav a[aria-current="page"] {
+  box-shadow: none;
+  font-weight: 800;
+}
+
+.bottom-nav a[aria-current="page"]::before {
+  content: "";
+  display: block;
+  width: 0.4rem;
+  height: 0.4rem;
+  margin: -0.45rem auto 0.05rem;
+  border-radius: 50%;
+  background: var(--pop);
+}
+
+.talk .bubble.assistant {
+  border: 0;
+  box-shadow: var(--lift);
+}
+
+/* 動き：出るときだけ、短く。動きを減らす設定の人には出さない */
+@media (prefers-reduced-motion: no-preference) {
+  .home,
+  .soudan {
+    animation: page-in 0.2s ease-out backwards;
+  }
+
+  .card,
+  .talk.inbox-item,
+  .connect-card,
+  .safety-card,
+  .chie-card,
+  .sent {
+    animation: card-in 0.24s cubic-bezier(0.34, 1.5, 0.64, 1) backwards;
+  }
+
+  .talk .bubble.user {
+    animation: bubble-in 0.2s cubic-bezier(0.34, 1.6, 0.64, 1) backwards;
+    transform-origin: 100% 100%;
+  }
+
+  .talk .bubble.assistant {
+    animation: bubble-in 0.22s cubic-bezier(0.34, 1.6, 0.64, 1) backwards;
+    transform-origin: 0% 100%;
+  }
+
+  @keyframes page-in {
+    from {
+      opacity: 0;
+      transform: translateY(0.4rem);
+    }
+  }
+
+  @keyframes card-in {
+    from {
+      opacity: 0;
+      transform: translateY(0.5rem) scale(0.98);
+    }
+  }
+
+  @keyframes bubble-in {
+    from {
+      opacity: 0;
+      transform: scale(0.8);
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .talk button:active:not(:disabled),
+  .card button:active:not(:disabled) {
+    transform: none;
+  }
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { playReachedSound } from "@/app/sound";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import type { Review } from "@/lib/claude/compose";
@@ -96,6 +97,7 @@ export function InboxCard({ item, candidates }: { item: InboxItem; candidates: P
       const { ok, status, data } = await postJson("/api/inbox/reply", { postId: item.postId, text });
       if (ok) {
         setDone("replied");
+        playReachedSound();
         return;
       }
       if (status === 422 && data.review) {

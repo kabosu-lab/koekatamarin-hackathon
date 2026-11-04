@@ -1,5 +1,6 @@
 "use client";
 
+import { playReachedSound } from "@/app/sound";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { CheerHint, TodayCard } from "@/lib/today";
@@ -59,7 +60,10 @@ export function TodayCards({ cards: allCards }: { cards: (TodayCard & { authorIm
   async function sendCheer(postId: string) {
     setProblem("");
     const { ok } = await postJson("/api/today/cheer", { postId }).catch(() => ({ ok: false }));
-    if (ok) setCheered((current) => [...current, postId]);
+    if (ok) {
+      setCheered((current) => [...current, postId]);
+      playReachedSound();
+    }
     else setProblem("応援を届けられませんでした。もう一度押してください。");
   }
 

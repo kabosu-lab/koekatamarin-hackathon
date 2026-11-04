@@ -127,3 +127,17 @@ export function playSendSound(words: string): void {
     // 音が出せなくても、送るのには関係ない
   }
 }
+
+/** 人に届いた瞬間の小さな音（応援、返信、ありがとう）。「音あり」を選んだ人にだけ鳴らす。 */
+export function playReachedSound(): void {
+  if (document.documentElement.dataset.sound !== "on") return;
+  try {
+    const { audio } = setup();
+    void audio.resume();
+    const t0 = audio.currentTime + 0.02;
+    pop(t0, 79, 0.4);
+    pop(t0 + 0.09, 84, 0.45);
+  } catch {
+    // 音が出せなくても、操作には関係ない
+  }
+}

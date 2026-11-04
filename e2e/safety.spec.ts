@@ -133,3 +133,17 @@ test("返事が作れなくても、相談室に伝えたことは本人に見�
   await expect(page.getByRole("region", { name: "相談室に伝えました" })).toBeVisible();
   await expect(page.getByLabel("相棒に書く")).toHaveValue("大事な話");
 });
+
+test("最初の約束は、初めはカードで全文を見せ、わかったあとも入口の近くに短く残る", async ({ page }) => {
+  await page.goto("/");
+  const promise = page.locator(".promise");
+  await expect(promise).toContainText("話した言葉ではなく要点だけを相談室の先生に伝えます");
+  await page.getByRole("button", { name: "わかった" }).click();
+  await expect(promise).toContainText("要点だけ相談室の先生へ");
+  await page.reload();
+  await expect(promise).toContainText("要点だけ相談室の先生へ");
+  await expect(page.getByRole("button", { name: "わかった" })).toHaveCount(0);
+
+  await switchPerson(page, "青木 ひより（2年）");
+  await expect(promise).toContainText("話した言葉ではなく要点だけを相談室の先生に伝えます");
+});

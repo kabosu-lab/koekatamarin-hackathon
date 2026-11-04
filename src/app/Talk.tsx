@@ -6,6 +6,7 @@ import type { Draft, Review } from "@/lib/claude/compose";
 import type { ChatMessage } from "@/lib/claude/types";
 import type { ChannelView, PersonView } from "@/lib/destination/types";
 import type { KnowledgeResult } from "@/lib/knowledge";
+import { PROMISE_FULL, PROMISE_SHORT, promiseCookieName } from "@/lib/promise-cookie";
 import { KnowledgeResults } from "./chie/KnowledgeResults";
 import { Compose, type ComposeStart } from "./Compose";
 import { ConnectCard, type ConnectSuggestion } from "./ConnectCard";
@@ -25,10 +26,14 @@ export function Talk({
   viewer,
   question,
   initialAsk = null,
+  viewerId,
+  promiseSeen = false,
 }: {
   viewer: { name: string; label: string };
   question: string | null;
   initialAsk?: { id: string; name: string } | null;
+  viewerId: string;
+  promiseSeen?: boolean;
 }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState("");
@@ -47,6 +52,7 @@ export function Talk({
   const [uploading, setUploading] = useState(false);
   const [remembered, setRemembered] = useState<number[]>([]);
   const [askTarget, setAskTarget] = useState(initialAsk);
+  const [acknowledged, setAcknowledged] = useState(promiseSeen);
   const [finding, setFinding] = useState(false);
   const [found, setFound] = useState<KnowledgeResult[] | null>(null);
   const connectDone = useRef(false);
@@ -72,7 +78,12 @@ export function Talk({
     if (saved.length > 0) setMessages(saved);
   }, [messages, viewer.name]);
 
+  function rememberPromiseSeen() {
+    document.cookie = `${promiseCookieName(viewerId)}=1; path=/; max-age=31536000; samesite=lax`;
+  }
+
   async function send(raw: string) {
+    rememberPromiseSeen();
     const text = raw.trim();
     if (!text || sending) return;
 
@@ -304,11 +315,24 @@ export function Talk({
     <div className="talk" data-viewer={viewer.name}>
       {burst && <SendBurst words={burst} onDone={() => setBurst(null)} />}
       <div className="log" role="log" aria-label="相棒との会話">
-        <p className="promise">ここでの話はあなただけのものです。ただし、命や安全に関わるときは、話した言葉ではなく要点だけを相談室の先生に伝えます。</p>
+        {!acknowledged && (
+          <section className="promise promise-card" aria-label="最初にお伝えすること">
+            <p>{PROMISE_FULL}</p>
+            <button
+              type="button"
+              onClick={() => {
+                rememberPromiseSeen();
+                setAcknowledged(true);
+              }}
+            >
+              わかった
+            </button>
+          </section>
+        )}
         {messages.length === 0 && !listening && (
           <>
             {question && <p className="daily-question">{question}</p>}
-            <p className="hint">調べ物でも、悩みでも、今日の頑張りでも。思いついたことから、どうぞ。</p>
+            <p className="hint">今日の頑張りでも、調べ物でも、困りごとでも。思いついたことから、どうぞ。</p>
           </>
         )}
         {messages.map((message, index) => (
@@ -409,6 +433,8 @@ export function Talk({
           {finding ? "探しています…" : "校内の知恵を探す"}
         </button>
       )}
+
+      {acknowledged && <p className="promise promise-short">{PROMISE_SHORT}</p>}
 
       {attachment ? (
         <section className="attachment-chip" aria-label="付けたファイル">

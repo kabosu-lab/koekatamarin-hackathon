@@ -7,7 +7,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "こえかた",
-  description: "一人で抱えない。AI に話しかけるところから、人に頼れる学校へ。",
+  description: "話すだけで、できることが増える。AI と仲間の力を借りて、もっと楽しく、もっと早く。",
 };
 
 export const viewport: Viewport = {
