@@ -7,7 +7,7 @@ import { ensureMigrated, openDatabase, readSchemaVersion, SCHEMA_VERSION } from 
 import { seedDatabase } from "./seed";
 
 /** 反応の移行より前の版。反応の移行はいちばん最後ではなくなっても、この数は変えない */
-const SCHEMA_VERSION_BEFORE_REACTIONS = SCHEMA_VERSION - 6;
+const SCHEMA_VERSION_BEFORE_REACTIONS = SCHEMA_VERSION - 7;
 
 const dirs: string[] = [];
 

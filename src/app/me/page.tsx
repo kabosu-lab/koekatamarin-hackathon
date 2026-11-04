@@ -26,7 +26,7 @@ import { GiftEggs } from "./GiftEggs";
 import { listCompanions, listGiftEggs, syncGiftEggs } from "@/lib/gift-eggs";
 import { RibbonMoment } from "../RibbonMoment";
 import { Ribbons } from "./Ribbons";
-import { listNewRibbons, listRibbons, syncRibbons } from "@/lib/ribbons";
+import { EVENT_SLOTS, listNewRibbons, listRibbons, STICKER_SLOTS, syncRibbons } from "@/lib/ribbons";
 import { showsRewards } from "@/lib/rewards-view";
 import { ArtRefresher, AvatarFromPhoto, AvatarQuiz, MemoryList, ProfileEditor, ThanksForm } from "./MeActions";
 
@@ -99,7 +99,7 @@ export default async function MePage() {
       )}
 
       {rewards && <GiftEggs key={`${viewer.id}-eggs`} eggs={listGiftEggs(db, viewer.id)} companions={listCompanions(db, viewer.id)} />}
-      {rewards && <Ribbons key={`${viewer.id}-ribbons`} initial={listRibbons(db, viewer.id)} />}
+      {rewards && <Ribbons key={`${viewer.id}-ribbons`} initial={listRibbons(db, viewer.id)} slots={STICKER_SLOTS} eventSlots={EVENT_SLOTS} />}
       {rewards && <RibbonMoment key={`${viewer.id}-moment`} ribbons={listNewRibbons(db, viewer.id)} />}
 
       <TitleCollection key={`${viewer.id}-titles`} initial={listTitles(db, viewer.id)} />

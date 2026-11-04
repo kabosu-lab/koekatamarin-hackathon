@@ -65,6 +65,26 @@ export function playSendSound(words: string): void {
 }
 
 /** 人に届いた瞬間の小さな音（応援、返信、ありがとう）。音を消している人には鳴らさない。 */
+/** リボンが贈られた瞬間のファンファーレ。短く、同じ調で上がる。 */
+export function playRibbonSound(): void {
+  if (document.documentElement.dataset.sound !== "on") return;
+  try {
+    const { audio, out } = setup();
+    void audio.resume();
+    const t0 = audio.currentTime + 0.02;
+    [
+      [0, 72, 0.4],
+      [0.1, 76, 0.42],
+      [0.2, 79, 0.45],
+      [0.32, 84, 0.5],
+      [0.32, 76, 0.3],
+      [0.52, 88, 0.42],
+    ].forEach(([delay, note, volume]) => schedulePop(audio, out, t0 + delay, note, volume));
+  } catch {
+    // 音が出せなくても、操作には関係ない
+  }
+}
+
 export function playReachedSound(): void {
   if (document.documentElement.dataset.sound !== "on") return;
   try {

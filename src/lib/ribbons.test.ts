@@ -39,7 +39,7 @@ describe("リボン", () => {
   it("並びは定義の順だけで、順位や点数を返さない", () => {
     syncRibbons(db, "noda", NOW);
     const [first] = listRibbons(db, "noda");
-    expect(Object.keys(first).sort()).toEqual(["description", "id", "isPublic", "name"]);
+    expect(Object.keys(first).sort()).toEqual(["description", "id", "isPublic", "name", "story", "storyAt"]);
   });
 
   it("他の人には、本人が公開を選んだものだけ見える", () => {
@@ -93,5 +93,44 @@ describe("イベント", () => {
     expect(real).toBeTruthy();
     syncRibbons(db, "aoki", NOW);
     expect(ids("aoki")).toContain(real?.ribbon.id);
+  });
+});
+
+describe("もらった物語", () => {
+  const story = (personId: string, id: string) => listRibbons(db, personId).find((ribbon) => ribbon.id === id)?.story;
+
+  it("公開の相談なら、誰の役に立ったかの一言と、その日が残る", () => {
+    syncRibbons(db, "ogawara", NOW);
+    const ribbon = listRibbons(db, "ogawara").find((r) => r.id === "first-answer");
+    expect(ribbon?.story).toMatch(/さんの相談に、初めて答えた日$/);
+    expect(ribbon?.storyAt).toBeTruthy();
+    expect(new Date(ribbon?.storyAt ?? "").getTime()).toBeLessThan(NOW.getTime());
+  });
+
+  it("範囲を絞った相談では、相手の名前も中身も出さない", () => {
+    db.prepare("UPDATE posts SET scope = 'self' WHERE id IN (SELECT post_id FROM replies WHERE author_id = 'ogawara')").run();
+    syncRibbons(db, "ogawara", NOW);
+    expect(story("ogawara", "first-answer")).toBe("誰かの相談に、初めて答えた日");
+  });
+
+  it("一度決まった物語は、あとで投稿が変わっても書き換えない", () => {
+    syncRibbons(db, "ogawara", NOW);
+    const before = story("ogawara", "first-answer");
+    db.prepare("UPDATE posts SET scope = 'self'").run();
+    syncRibbons(db, "ogawara", NOW);
+    expect(story("ogawara", "first-answer")).toBe(before);
+  });
+
+  it("他の人のプロフィールに、物語は出さない", () => {
+    syncRibbons(db, "ogawara", NOW);
+    handleRibbon(db, "ogawara", { action: "public", id: "first-answer", isPublic: true }, NOW);
+    const [ribbon] = listPublicRibbons(db, "ogawara");
+    expect(ribbon).toBeDefined();
+    expect(JSON.stringify(ribbon)).not.toContain("さんの相談");
+  });
+
+  it("もらった瞬間にも物語を渡す", () => {
+    syncRibbons(db, "ogawara", NOW);
+    expect(listNewRibbons(db, "ogawara")[0].story.length).toBeGreaterThan(0);
   });
 });

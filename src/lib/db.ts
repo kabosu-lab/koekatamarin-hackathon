@@ -283,6 +283,9 @@ const MIGRATIONS: readonly string[] = [
      UNIQUE (person_id, from_person_id, title)
    ) STRICT;
    CREATE UNIQUE INDEX person_titles_one_worn ON person_titles (person_id) WHERE worn = 1;`,
+  // リボンをもらった物語。誰の役に立ったかの一言と、その日
+  `ALTER TABLE person_ribbons ADD COLUMN story TEXT;
+   ALTER TABLE person_ribbons ADD COLUMN story_at TEXT;`,
 ];
 
 export const SCHEMA_VERSION

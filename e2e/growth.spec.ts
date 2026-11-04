@@ -211,6 +211,11 @@ test("リボンが届いて飾られ、公開を選ぶとプロフィールに�
   await page.goto("/me");
   const ribbons = page.getByRole("region", { name: "リボン" });
   await expect(ribbons.getByText("はじめての一言")).toBeVisible();
+  // シール帳：もらったものはシールになり、残りは影で見える。数や割合は出さない
+  await expect(ribbons.locator('[data-slot="first-answer"][data-earned="true"]')).toBeAttached();
+  await expect(ribbons.locator('[data-earned="false"]').first()).toBeAttached();
+  await expect(ribbons.locator(".sticker-book")).not.toContainText(/\d|％|%/);
+  await expect(ribbons.locator(".ribbon-story").first()).toContainText("日");
   const row = ribbons.getByRole("listitem").filter({ hasText: "はじめての一言" });
   await expect(page.getByRole("region", { name: "リボン" }).locator("li").first()).toBeVisible();
 
