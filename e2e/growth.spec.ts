@@ -153,3 +153,53 @@ test("分身の絵の配信は、ほかの場所のものを動かさない", as
   expect((await request.get("/api/avatar/art/unknown/study")).status()).toBe(404);
   expect((await request.get(`${(src as string).replace("/study", "/shout")}`)).status()).toBe(404);
 });
+
+test("育つと進化の候補から本人が選び、隠している間も育つ", async ({ browser }) => {
+  const page = await (await browser.newContext()).newPage();
+  await page.goto("/");
+  await switchPerson(page, "白石 文（養護・相談室）");
+  // 今の段階を起点にする
+  await page.goto("/me");
+  const companion = page.getByRole("region", { name: "相棒", exact: true });
+  const before = await companion.locator("img").getAttribute("src");
+
+  // 周りの人からのありがとうで育つ
+  const sender = await browser.newContext();
+  const senderPage = await sender.newPage();
+  await senderPage.goto("/");
+  for (let i = 0; i < 12; i++) {
+    await senderPage.evaluate(
+      async (message) =>
+        fetch("/api/thanks", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ toPersonId: "shiraishi", message }),
+        }),
+      `助かりました ${i}`,
+    );
+  }
+  await sender.close();
+  
+  await page.reload();
+  const card = page.getByRole("region", { name: "進化", exact: true });
+  await expect(card).toBeVisible();
+  // 選ぶまで今の姿のまま
+  expect(await companion.locator("img").getAttribute("src")).toBe(before);
+  await card.getByRole("button", { name: "進化の候補を見る" }).click();
+  const choices = card.locator(".evolve-choices button");
+  await expect(choices.first()).toBeVisible();
+  expect(await choices.count()).toBeGreaterThanOrEqual(2);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0);
+  await choices.last().click();
+  await expect(page.getByRole("status").filter({ hasText: "進化！" })).toBeVisible();
+  // 選ぶと姿が変わる。たくさん育っていれば、次の段階でまた選べる
+  await expect.poll(() => companion.locator("img").getAttribute("src"), { timeout: 15_000 }).not.toBe(before);
+
+  // 隠しても画面は壊れず、戻すと分身が出る
+  await page.getByRole("button", { name: "隠す" }).click();
+  await expect(page.getByText("分身は隠しています")).toBeVisible();
+  await expect(companion.locator("img")).toBeHidden();
+  await page.getByRole("button", { name: "表示する" }).click();
+  await expect(companion.locator("img")).toBeVisible();
+  await page.context().close();
+});

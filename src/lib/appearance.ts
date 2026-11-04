@@ -20,6 +20,14 @@ export const APPEARANCE_OPTIONS = [
     ],
   },
   {
+    name: "avatar",
+    label: "分身（隠しても、裏で育ちます）",
+    options: [
+      { value: "show", label: "表示する" },
+      { value: "hide", label: "隠す" },
+    ],
+  },
+  {
     name: "sound",
     label: "音（いつでも消せます。最初の画面からも切り替えられます）",
     options: [
@@ -36,9 +44,10 @@ export const APPEARANCE_COOKIES: Record<AppearanceName, string> = {
   theme: "koekata_theme",
   size: "koekata_size",
   sound: "koekata_sound",
+  avatar: "koekata_avatar",
 };
 
-const DEFAULTS: Appearance = { theme: "modern", size: "normal", sound: "on" };
+const DEFAULTS: Appearance = { theme: "modern", size: "normal", sound: "on", avatar: "show" };
 
 export function isAppearanceValue(name: string, value: string): name is AppearanceName {
   const group = APPEARANCE_OPTIONS.find((g) => g.name === name);
@@ -50,5 +59,5 @@ export function readAppearance(read: (cookie: string) => string | undefined): Ap
     const value = read(APPEARANCE_COOKIES[name]);
     return value !== undefined && isAppearanceValue(name, value) ? value : DEFAULTS[name];
   };
-  return { theme: get("theme"), size: get("size"), sound: get("sound") };
+  return { theme: get("theme"), size: get("size"), sound: get("sound"), avatar: get("avatar") };
 }

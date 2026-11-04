@@ -67,11 +67,11 @@ describe("きせかえ", () => {
 
 describe("設定の読み取り", () => {
   it("初めはモダン、ふつうの大きさ、音なし", () => {
-    expect(readAppearance(() => undefined)).toEqual({ theme: "modern", size: "normal", sound: "on" });
+    expect(readAppearance(() => undefined)).toEqual({ theme: "modern", size: "normal", sound: "on", avatar: "show" });
   });
 
   it("おかしな値は使わない", () => {
-    expect(readAppearance(() => '"><script>')).toEqual({ theme: "modern", size: "normal", sound: "on" });
+    expect(readAppearance(() => '"><script>')).toEqual({ theme: "modern", size: "normal", sound: "on", avatar: "show" });
     expect(isAppearanceValue("theme", "game")).toBe(true);
     expect(isAppearanceValue("theme", "evil")).toBe(false);
     expect(isAppearanceValue("evil", "game")).toBe(false);

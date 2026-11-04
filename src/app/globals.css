@@ -2518,3 +2518,79 @@ body:has(.stage-home) {
   font: inherit;
   font-weight: 800;
 }
+
+/* 分身を隠す人の画面。自習室は分身そのものの場所なので、そのまま */
+html[data-avatar="hide"] .avatar-image,
+html[data-avatar="hide"] .speaker,
+html[data-avatar="hide"] .burst-speaker {
+  display: none;
+}
+
+.evolve-card {
+  background: #ffd23f;
+}
+
+.evolve-choices {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.evolve-choices button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 12rem;
+  padding: 0.75rem;
+  border: 3px solid #14131a;
+  border-radius: 1.1rem;
+  background: #fff;
+  color: #14131a;
+  font: inherit;
+  text-align: center;
+}
+
+.evolve-choices strong {
+  font-size: 1.05rem;
+}
+
+.evolve-choices small {
+  font-size: 0.85rem;
+}
+
+.evolve-flash {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 1.5rem;
+  background: #ff6b3d;
+  animation: hatch-in 0.2s ease-out;
+}
+
+.evolve-flash h2 {
+  margin: 0;
+  padding: 0.5rem 1.25rem;
+  border-radius: 999px;
+  background: #fff;
+  color: #14131a;
+  font-size: 1.6rem;
+  font-weight: 900;
+}
+
+.evolve-flash img {
+  animation: hatch-born 0.6s cubic-bezier(0.34, 1.8, 0.64, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .evolve-flash,
+  .evolve-flash img {
+    animation: none;
+  }
+}

@@ -230,6 +230,13 @@ const MIGRATIONS: readonly string[] = [
   `ALTER TABLE avatars ADD COLUMN shown_stage INTEGER;
    ALTER TABLE avatar_art ADD COLUMN talent TEXT;
    ALTER TABLE avatar_art ADD COLUMN reason TEXT;`,
+  `CREATE TABLE avatar_evolutions (
+     person_id TEXT NOT NULL REFERENCES people (id),
+     target_stage INTEGER NOT NULL,
+     candidates TEXT NOT NULL,
+     created_at TEXT NOT NULL,
+     PRIMARY KEY (person_id, target_stage)
+   ) STRICT;`,
 ];
 
 export const SCHEMA_VERSION

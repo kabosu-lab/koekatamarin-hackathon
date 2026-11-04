@@ -16,7 +16,9 @@ import { listHiddenPeople } from "@/lib/hidden-people";
 import { getDestination } from "@/lib/destination/current";
 import { listMemories } from "@/lib/memory";
 import { getPhotoAvatarState, roomToken } from "@/lib/avatar-art";
+import { pendingEvolution } from "@/lib/avatar-evolve";
 import { createDummyPhotos } from "@/lib/profile-photo/dummy";
+import { EvolutionCard } from "./EvolutionCard";
 import { ArtRefresher, AvatarFromPhoto, AvatarQuiz, MemoryList, ProfileEditor, ThanksForm } from "./MeActions";
 
 export const metadata: Metadata = { title: "じぶん｜こえかた" };
@@ -29,6 +31,7 @@ export default async function MePage() {
   const db = getDatabase();
   const photos = createDummyPhotos();
   const photoState = await getPhotoAvatarState(db, photos, viewer.id);
+  const evolution = pendingEvolution(db, viewer.id);
   const avatar = getAvatar(db, viewer.id);
   const counts = countContributions(db, viewer.id);
   const { public_profile: profile } = db.prepare("SELECT public_profile FROM people WHERE id = ?").get(viewer.id) as {
@@ -56,6 +59,8 @@ export default async function MePage() {
         </div>
       </section>
 
+      {appearance.avatar === "hide" && <p className="muted">分身は隠しています。裏で育っています。</p>}
+      {evolution !== null && appearance.avatar === "show" && <EvolutionCard key={evolution} />}
       {photoState.status === "pending" && <ArtRefresher />}
       {photoState.canUsePhoto && <AvatarFromPhoto label={photos.label} failed={photoState.status === "failed"} eggImage={`/api/avatar/art/${roomToken(db, viewer.id)}/egg`} />}
 
