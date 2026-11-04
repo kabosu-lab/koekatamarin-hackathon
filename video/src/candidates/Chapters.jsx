@@ -11,7 +11,7 @@ const Rule = ({ f, at }) => <div style={{ width: lerp(f, at, at + 24, 0, 120, sm
 
 const TitleCard = ({ f, name }) => (
   <AbsoluteFill style={{ background: PAPER, justifyContent: "center", paddingLeft: 170, opacity: inOut(f, 0, 180, 12) }}>
-    <Label f={f}>デモ・高校の校内チャット × 声 × Claude</Label>
+    <Label f={f}>デモ・学校の校内チャット × 声 × Claude</Label>
     <div style={{ fontFamily: MINCHO, fontWeight: 400, fontSize: 150, letterSpacing: ".12em", color: INK, marginTop: 26, lineHeight: 1.2 }}><Quiet text={NAMES[name]} f={f} at={8} stagger={3} blur={0} /></div>
     <Rule f={f} at={22} />
     <div style={{ fontFamily: GOTHIC, fontWeight: 300, fontSize: 50, color: INK, opacity: lerp(f, 30, 46, 0, 1) }}>話すだけで、校内のチャットに言葉を届ける窓口。</div>

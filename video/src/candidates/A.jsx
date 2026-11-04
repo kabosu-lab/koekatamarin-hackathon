@@ -30,7 +30,7 @@ export const CandidateA = ({ name = "hira", art = "codex" }) => {
       <AbsoluteFill style={{ background: "linear-gradient(90deg, rgba(20,16,20,.62), rgba(20,16,20,.18) 62%, rgba(20,16,20,0))", opacity: toDay }} />
       <AbsoluteFill style={{ background: "rgba(16,12,16,.34)", opacity: toTitle }} />
 
-      <Line f={f} at={16} end={108} top={420} size={46}><span style={{ color: "#b9ae9c" }}><Quiet text="高校の先生の、午後九時。" f={f} at={16} /></span></Line>
+      <Line f={f} at={16} end={108} top={420} size={46}><span style={{ color: "#b9ae9c" }}><Quiet text="学校の先生の、午後九時。" f={f} at={16} /></span></Line>
       <Line f={f} at={44} end={118} top={510}><Quiet text="今日のこと、誰にも話さなかった。" f={f} at={44} /></Line>
       <Line f={f} at={124} end={214} top={420}><Quiet text="AI には、聞けた。" f={f} at={124} /></Line>
       <Line f={f} at={150} end={214} top={540}><Quiet text="同僚には、聞けなかった。" f={f} at={150} /></Line>

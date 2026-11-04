@@ -176,7 +176,7 @@ export const Opening = ({ name = "hira" }) => {
     <AbsoluteFill style={{ background: "#05070c" }}>
       {f < 172 && <AbsoluteFill style={{ opacity: lerp(f, 0, 20, 0, 1), transform: `scale(${lerp(f, 0, 170, 1, 1.05)})`, transformOrigin: "86% 42%" }}><Img src={staticFile("night-staffroom.png")} style={{ width: 1920, height: 1080, objectFit: "cover" }} /></AbsoluteFill>}
       {f < 172 && <div style={{ position: "absolute", left: 140, top: 430, fontFamily: MINCHO, fontWeight: 300, color: "#f2ebdd", letterSpacing: ".06em", textShadow: "0 2px 24px rgba(0,0,0,.65)", opacity: inOut(f, 10, 158, 12) }}>
-        <div style={{ fontSize: 46, color: "#cfc5b4" }}><Quiet text="高校の先生の、午後九時。" f={f} at={12} /></div>
+        <div style={{ fontSize: 46, color: "#cfc5b4" }}><Quiet text="学校の先生の、午後九時。" f={f} at={12} /></div>
         <div style={{ fontSize: 68, marginTop: 30 }}><Quiet text="今日のこと、誰にも話さなかった。" f={f} at={44} /></div>
       </div>}
       {f >= 150 && f < 330 && <AbsoluteFill style={{ opacity: lerp(f, 150, 166, 0, 1, smooth) }}>
@@ -214,7 +214,7 @@ export const CandidateE = ({ name = "kata" }) => {
   return (
     <AbsoluteFill style={{ background: PAPER }}>
       <div style={{ position: "absolute", left: 0, right: 0, top: 410, textAlign: "center", fontFamily: GOTHIC, fontWeight: 300, fontSize: 66, lineHeight: 1.65, color: INK, opacity: inOut(f, 4, 84, 10) }}>
-        <div><Quiet text="高校の先生は、良かったことも、" f={f} at={4} stagger={.8} blur={0} /></div>
+        <div><Quiet text="学校の先生は、良かったことも、" f={f} at={4} stagger={.8} blur={0} /></div>
         <div><Quiet text="困ったことも、一人で抱えがち。" f={f} at={28} stagger={.8} blur={0} /></div>
       </div>
       {f >= 78 && f < 326 && <AbsoluteFill style={{ opacity: lerp(f, 78, 90, 0, 1, smooth) }}>

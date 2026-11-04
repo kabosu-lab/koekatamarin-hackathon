@@ -32,7 +32,7 @@ export const CandidateC = ({ name = "hira", art = "codex" }) => {
       </AbsoluteFill>
 
       {/* 誰の手紙か */}
-      <Vertical style={{ left: 120, top: 90, fontSize: 40, letterSpacing: ".14em", fontWeight: 300, color: "#6f6455", opacity: inOut(f, 10, 222, 14) }}><Quiet text="ある高校の先生の手紙" f={f} at={10} rise={0} blur={2} /></Vertical>
+      <Vertical style={{ left: 120, top: 90, fontSize: 40, letterSpacing: ".14em", fontWeight: 300, color: "#6f6455", opacity: inOut(f, 10, 222, 14) }}><Quiet text="ある学校の先生の手紙" f={f} at={10} rise={0} blur={2} /></Vertical>
       <Vertical style={{ left: 330, top: 110, fontSize: 52, letterSpacing: ".08em", fontWeight: 300, color: SUMI, opacity: inOut(f, 228, 366, 12) }}><Quiet text="声が、言葉になって、人へ届く。" f={f} at={228} stagger={2} rise={0} blur={3} /></Vertical>
 
       <Vertical style={{ left: 300, top: 120, fontSize: 158, letterSpacing: ".1em", fontWeight: 300, color: SUMI, lineHeight: 1, opacity: lerp(f, 378, 408, 0, 1, smooth) }}>{NAMES[name]}</Vertical>

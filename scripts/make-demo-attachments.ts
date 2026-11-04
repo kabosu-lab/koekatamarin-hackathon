@@ -17,14 +17,14 @@ const CERTIFICATE = `${BASE}
   <p style="font-size:30px;text-align:left;margin:0 40px 30px">青木 ひより 殿</p>
   <p style="font-size:30px;line-height:1.9;margin:0 40px">あなたは、校内ロボットコンテスト（架空）において、<br>三回の失敗を乗り越えてアームを動かし、<br>準優勝の成績を収めました。ここに賞します。</p>
   <p style="font-size:26px;margin-top:50px">令和八年十月三十日</p>
-  <p style="font-size:30px">こえかた高校（架空） 校長 架空 太郎</p>
+  <p style="font-size:30px">こえかた学校（架空） 校長 架空 太郎</p>
 </div>`;
 
 const REPORT = `${BASE}
 <div style="padding:50px;font-size:18px;line-height:1.9">
   <h1 style="font-size:30px">探究活動の報告書（架空）</h1>
   <p>テーマ：図書室のしおり立てを 3D プリンターで作る</p>
-  <p>報告者：木下 蓮（こえかた高校（架空））　連絡先：000-0000-0000</p>
+  <p>報告者：木下 蓮（こえかた学校（架空））　連絡先：000-0000-0000</p>
   <h2 style="font-size:22px">やったこと</h2>
   <p>底の広さを 3 通り試作し、倒れにくさを比べた。底を 1.5 倍に広げると倒れなくなったが、反りが出た。</p>
   <h2 style="font-size:22px">わかったこと</h2>

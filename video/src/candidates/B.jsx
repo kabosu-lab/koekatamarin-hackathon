@@ -48,7 +48,7 @@ export const CandidateB = ({ name = "kata" }) => {
   const phoneOut = lerp(f, 232, 250, 1, 0, smooth), deskOut = lerp(f, 366, 384, 1, 0, smooth);
   return (
     <AbsoluteFill style={{ background: BG }}>
-      <Say f={f} at={6} end={82} text="高校の先生は、AI には話せても、" top={420} size={74} />
+      <Say f={f} at={6} end={82} text="学校の先生は、AI には話せても、" top={420} size={74} />
       <Say f={f} at={30} end={82} text="同僚には、話せない。" top={540} size={74} />
 
       {f > 80 && <div style={{ opacity: phoneOut }}><Phone f={f} /></div>}

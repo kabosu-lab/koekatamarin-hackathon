@@ -22,7 +22,7 @@ const Floor = ({ f }) => {
     <AbsoluteFill style={{ background: NAVY, overflow: "hidden" }}>
       <div style={{ position: "absolute", left: 0, top: 0, width: 1920, height: 1080, display: "flex", alignItems: "center", justifyContent: "center", transformOrigin: "960px 540px", transform: `perspective(1100px) translateY(${60 * (tilt / 56)}px) rotateX(${tilt}deg) translateY(${dolly}px) translateZ(${z}px)` }}>
         <div style={{ position: "absolute", left: -1400, top: -1400, width: 4720, height: 3880, backgroundImage: "linear-gradient(rgba(210,220,240,.07) 1px, transparent 1px), linear-gradient(90deg, rgba(210,220,240,.07) 1px, transparent 1px)", backgroundSize: "150px 150px" }} />
-        <div style={{ position: "relative", fontFamily: GOTHIC, fontWeight: 300, fontSize: 210, letterSpacing: ".06em", color: PAPER, whiteSpace: "nowrap" }}><Quiet text="高校の先生は" f={f} at={2} stagger={4} rise={30} blur={0} /></div>
+        <div style={{ position: "relative", fontFamily: GOTHIC, fontWeight: 300, fontSize: 210, letterSpacing: ".06em", color: PAPER, whiteSpace: "nowrap" }}><Quiet text="学校の先生は" f={f} at={2} stagger={4} rise={30} blur={0} /></div>
       </div>
     </AbsoluteFill>
   );

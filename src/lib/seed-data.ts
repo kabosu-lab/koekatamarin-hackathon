@@ -1,6 +1,6 @@
 // ダミーのデータ。学校も人物も投稿もすべて架空で、実在のものとは関係ない。
 
-export const schoolName = "こえかた高校（架空）";
+export const schoolName = "こえかた学校（架空）";
 
 export type Role = "teacher" | "admin" | "student";
 export type Audience = "everyone" | "staff";

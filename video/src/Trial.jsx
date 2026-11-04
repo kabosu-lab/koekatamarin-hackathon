@@ -37,7 +37,7 @@ const Floor = ({ f }) => {
       <World transform={`translateY(${60 * (tilt / 54)}px) rotateX(${tilt}deg) translateY(${dolly}px) translateZ(${z}px)`}>
         <AbsoluteFill style={{ inset: -1400, backgroundImage: "linear-gradient(rgba(130,160,255,.2) 2px, transparent 2px), linear-gradient(90deg, rgba(130,160,255,.2) 2px, transparent 2px)", backgroundSize: "150px 150px" }} />
         <div style={{ position: "absolute", left: -400, right: -400, top: 330, textAlign: "center", fontFamily: GOTHIC, fontWeight: 900, fontSize: 262, letterSpacing: "-.01em", color: "#fff", whiteSpace: "nowrap", textShadow: "0 16px 0 #2b3a8f" }}>
-          {"高校の先生は".split("").map((c, i) => <Word key={i} c={c} f={f} delay={2 + i * 5} drop={160} />)}
+          {"学校の先生は".split("").map((c, i) => <Word key={i} c={c} f={f} delay={2 + i * 5} drop={160} />)}
         </div>
         {[-980, -780, -580, -380, -180, 30, 720, 930, 1130].map((y, r) => <div key={r} style={{ position: "absolute", left: -900, right: -900, top: y, textAlign: "center", whiteSpace: "nowrap", fontFamily: GOTHIC, fontWeight: 800, fontSize: 118, color: `rgba(170,190,255,${.16 + (r % 3) * .09})` }}>{Array.from({ length: 12 }).map((_, i) => ["職員室", "教室", "放課後", "部活", "廊下", "進路室"][(i + r * 2) % 6]).join("　　")}</div>)}
       </World>
