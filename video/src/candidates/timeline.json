@@ -1,0 +1,413 @@
+{
+ "bpm": 120,
+ "beatsPerBar": 4,
+ "barSec": 2,
+ "bars": 87,
+ "scenes": [
+  {
+   "bar": 0,
+   "bars": 2,
+   "stage": "冒頭",
+   "screen": "大きな数字と出典",
+   "head": "先生の時間が、週平均10時間生まれた。",
+   "sub": "100人・6か月の試行（Gemini、北アイルランド。Google 公表）",
+   "engine": "fact"
+  },
+  {
+   "bar": 2,
+   "bars": 1,
+   "stage": "冒頭",
+   "screen": "数字が声のかたまりに変わる",
+   "head": "次は、人とつながる番。",
+   "sub": "",
+   "engine": "fact"
+  },
+  {
+   "bar": 3,
+   "bars": 2,
+   "stage": "冒頭",
+   "screen": "分身の雲の子がぽ、ぽ、ぽぽ、ぽと言葉を出す",
+   "head": "話すだけで。",
+   "sub": "",
+   "engine": "open"
+  },
+  {
+   "bar": 5,
+   "bars": 2,
+   "stage": "冒頭",
+   "screen": "言葉が固まり、文章の箱に入って開く",
+   "head": "言葉になる。",
+   "sub": "AI が下書きにする",
+   "engine": "open"
+  },
+  {
+   "bar": 7,
+   "bars": 1,
+   "stage": "冒頭",
+   "screen": "かたまりが箱から飛び出す",
+   "head": "シューン、と届く。",
+   "sub": "",
+   "engine": "open"
+  },
+  {
+   "bar": 8,
+   "bars": 1,
+   "stage": "冒頭",
+   "screen": "広がる色の中から作品名",
+   "head": "こえかた",
+   "sub": "学校の先生と生徒のための、声の窓口",
+   "engine": "title"
+  },
+  {
+   "bar": 9,
+   "bars": 2,
+   "stage": "話す",
+   "screen": "実画面：話しかけるボタンを押す",
+   "head": "話しかける。",
+   "sub": "言葉にならないことも",
+   "take": 1.0
+  },
+  {
+   "bar": 11,
+   "bars": 2,
+   "stage": "話す",
+   "screen": "実画面：聞き取った文字が増える",
+   "head": "声が、文字になる。",
+   "sub": "",
+   "take": 4.0
+  },
+  {
+   "bar": 13,
+   "bars": 2,
+   "stage": "話す",
+   "screen": "実画面：相棒の問い返し（本物の Claude）",
+   "head": "相棒が、聞き返す。",
+   "sub": "どこを見て、そう思った？",
+   "take": 9.6
+  },
+  {
+   "bar": 15,
+   "bars": 2,
+   "stage": "話す",
+   "screen": "実画面：もう一度話す",
+   "head": "経験が、言葉になる。",
+   "sub": "",
+   "take": 12.0
+  },
+  {
+   "bar": 17,
+   "bars": 2,
+   "stage": "話す",
+   "screen": "実画面：下書きに切り替わる",
+   "head": "下書きができる。",
+   "sub": "明るく、自分らしく",
+   "take": 15.2
+  },
+  {
+   "bar": 19,
+   "bars": 2,
+   "stage": "話す",
+   "screen": "実画面：Teams での見え方",
+   "head": "どう見えるか、先に確かめる。",
+   "sub": "",
+   "take": 23.4
+  },
+  {
+   "bar": 21,
+   "bars": 2,
+   "stage": "話す",
+   "screen": "実画面：本人として送る→かたまりが飛ぶ",
+   "head": "送るのは、本人。",
+   "sub": "",
+   "take": 30.6
+  },
+  {
+   "bar": 23,
+   "bars": 2,
+   "stage": "つながる",
+   "screen": "実画面：校内チャネルに投稿が届く",
+   "head": "校内に届く。",
+   "sub": "今ある Teams へ",
+   "desk": "teams-1-posted"
+  },
+  {
+   "bar": 25,
+   "bars": 2,
+   "stage": "つながる",
+   "screen": "実画面：返事が付く",
+   "head": "返事が来る。",
+   "sub": "",
+   "desk": "teams-2-replied"
+  },
+  {
+   "bar": 27,
+   "bars": 2,
+   "stage": "つながる",
+   "screen": "実画面：朝の3枚のカード",
+   "head": "朝は3枚。",
+   "sub": "10秒で応援",
+   "img": "feature-today"
+  },
+  {
+   "bar": 29,
+   "bars": 2,
+   "stage": "つながる",
+   "screen": "実画面：受信箱のお願い",
+   "head": "お願いが届く。",
+   "sub": "",
+   "img": "feature-inbox"
+  },
+  {
+   "bar": 31,
+   "bars": 2,
+   "stage": "つながる",
+   "screen": "実画面：話して返信の下書き",
+   "head": "話して、返す。",
+   "sub": "",
+   "img": "feature-inbox-reply"
+  },
+  {
+   "bar": 33,
+   "bars": 2,
+   "stage": "つながる",
+   "screen": "実画面：パス",
+   "head": "詳しい人へ、つなげる。",
+   "sub": "",
+   "img": "feature-inbox-reply"
+  },
+  {
+   "bar": 35,
+   "bars": 2,
+   "stage": "つながる",
+   "screen": "実画面：ありがとうカード",
+   "head": "ありがとうが届く。",
+   "sub": "",
+   "img": "feature-thanks"
+  },
+  {
+   "bar": 37,
+   "bars": 2,
+   "stage": "たまる",
+   "screen": "実画面：投稿から「知恵に残す」",
+   "head": "経験を、知恵に残す。",
+   "sub": "",
+   "img": "feature-chie"
+  },
+  {
+   "bar": 39,
+   "bars": 2,
+   "stage": "たまる",
+   "screen": "実画面：関わった本人の確認",
+   "head": "本人が確かめる。",
+   "sub": "",
+   "img": "feature-chie-detail"
+  },
+  {
+   "bar": 41,
+   "bars": 2,
+   "stage": "たまる",
+   "screen": "実画面：校内の知恵の一覧",
+   "head": "校内の知恵がたまる。",
+   "sub": "コツも、手順も",
+   "img": "feature-chie"
+  },
+  {
+   "bar": 43,
+   "bars": 2,
+   "stage": "たまる",
+   "screen": "実画面：いいね、うまくいかなかった",
+   "head": "人が確かめる。",
+   "sub": "いいねと注釈。AI はレビューしない",
+   "img": "feature-chie-detail"
+  },
+  {
+   "bar": 45,
+   "bars": 2,
+   "stage": "たまる",
+   "screen": "実画面：賞状を付ける",
+   "head": "賞状や報告書も。",
+   "sub": "隠したいものには、気づいて知らせる",
+   "img": "feature-attach"
+  },
+  {
+   "bar": 47,
+   "bars": 2,
+   "stage": "たまる",
+   "screen": "実画面：相棒に聞く→誰の知恵かが出る",
+   "head": "次の人が聞ける。",
+   "sub": "",
+   "img": "feature-chie-find"
+  },
+  {
+   "bar": 49,
+   "bars": 2,
+   "stage": "たまる",
+   "screen": "実画面：聞いてみる？",
+   "head": "本人につながる。",
+   "sub": "",
+   "img": "feature-chie-find"
+  },
+  {
+   "bar": 51,
+   "bars": 2,
+   "stage": "増える",
+   "screen": "かたまりが大きくなり、できることの札が増える",
+   "head": "できることが、増える。",
+   "sub": "",
+   "engine": "grow"
+  },
+  {
+   "bar": 53,
+   "bars": 2,
+   "stage": "増える",
+   "screen": "実画面：分身が育つ（雲の子）",
+   "head": "分身が育つ。",
+   "sub": "",
+   "img": "feature-buddy"
+  },
+  {
+   "bar": 55,
+   "bars": 2,
+   "stage": "増える",
+   "screen": "実画面：進化の候補から選ぶ",
+   "head": "進化は、自分で選ぶ。",
+   "sub": "",
+   "img": "feature-evolve"
+  },
+  {
+   "bar": 57,
+   "bars": 2,
+   "stage": "増える",
+   "screen": "実画面：リボン",
+   "head": "助けた分だけ、リボン。",
+   "sub": "",
+   "img": "feature-ribbon"
+  },
+  {
+   "bar": 59,
+   "bars": 2,
+   "stage": "増える",
+   "screen": "実画面：卵を開ける",
+   "head": "役に立つと、卵が届く。",
+   "sub": "",
+   "img": "feature-egg"
+  },
+  {
+   "bar": 61,
+   "bars": 2,
+   "stage": "増える",
+   "screen": "実画面：自習室で分身がハイタッチ",
+   "head": "一緒に頑張る。",
+   "sub": "",
+   "img": "feature-room"
+  },
+  {
+   "bar": 63,
+   "bars": 2,
+   "stage": "増える",
+   "screen": "実画面：校内の桜",
+   "head": "みんなで、桜を咲かせる。",
+   "sub": "テスト前の応援週間のようなイベントも",
+   "img": "feature-event"
+  },
+  {
+   "bar": 65,
+   "bars": 2,
+   "stage": "増える",
+   "screen": "実画面：夕方のまとめ（Managed Agents）",
+   "head": "夕方、一日をまとめる。",
+   "sub": "チェックした項目だけ届く",
+   "img": "feature-daily-checked"
+  },
+  {
+   "bar": 67,
+   "bars": 2,
+   "stage": "増える",
+   "screen": "実画面：モダン（大人向けの見た目）",
+   "head": "大人には、落ち着いた見た目も。",
+   "sub": "分身なしでも使える",
+   "img": "feature-modern"
+  },
+  {
+   "bar": 69,
+   "bars": 1,
+   "stage": "もしも",
+   "screen": "実画面の案内を短く",
+   "head": "もしものときは、先生につながる。",
+   "sub": "",
+   "engine": "text"
+  },
+  {
+   "bar": 70,
+   "bars": 2,
+   "stage": "広がる",
+   "screen": "「学校」の枠の中で、言葉が弾む",
+   "head": "まず校内で、発信を練習する。",
+   "sub": "大人も子どもも一緒に",
+   "engine": "cross0"
+  },
+  {
+   "bar": 72,
+   "bars": 1,
+   "stage": "広がる",
+   "screen": "かたまりが枠を越える",
+   "head": "そして、外へ。",
+   "sub": "",
+   "engine": "cross1"
+  },
+  {
+   "bar": 73,
+   "bars": 2,
+   "stage": "広がる",
+   "screen": "丸が画面に広がる",
+   "head": "地域へ、企業へ。",
+   "sub": "これから広げていく",
+   "engine": "cross2"
+  },
+  {
+   "bar": 75,
+   "bars": 2,
+   "stage": "Claude",
+   "screen": "コミットとテストの数（リポジトリから数える）",
+   "head": "Claude と作った。",
+   "sub": "",
+   "engine": "made"
+  },
+  {
+   "bar": 77,
+   "bars": 2,
+   "stage": "Claude",
+   "screen": "設計の記録、夜の作業の記録",
+   "head": "話して設計し、夜も作った。",
+   "sub": "",
+   "engine": "made"
+  },
+  {
+   "bar": 79,
+   "bars": 2,
+   "stage": "Claude",
+   "screen": "3つの役割",
+   "head": "聞き返す。言葉にする。探す。",
+   "sub": "アプリの中の Claude",
+   "engine": "made"
+  },
+  {
+   "bar": 81,
+   "bars": 2,
+   "stage": "締め",
+   "screen": "実画面：本人として送るボタンに寄る",
+   "head": "確かめて送るのは、いつも本人。",
+   "sub": "",
+   "take": 31.0
+  },
+  {
+   "bar": 83,
+   "bars": 4,
+   "stage": "締め",
+   "screen": "雲の子が声を出し、かたまりが飛ぶ。作品名",
+   "head": "さあ、声で越えよう。",
+   "sub": "こえかた",
+   "engine": "end"
+  }
+ ]
+}

@@ -7,7 +7,7 @@ ID="$1"; shift
 trap 'pkill -f puppeteer_dev_chrome_profile || true' EXIT
 mkdir -p "out/stills/$ID"
 for f in "$@"; do
-  npx remotion still out/bundle "$ID" "out/stills/$ID/$f.png" --frame="$f" --browser-executable="$CH" --log=error >/dev/null
+  npx remotion still out/bundle "$ID" "out/stills/$ID/$f.png" --frame="$f" --timeout=120000 --browser-executable="$CH" --log=error >/dev/null || npx remotion still out/bundle "$ID" "out/stills/$ID/$f.png" --frame="$f" --timeout=120000 --browser-executable="$CH" --log=error >/dev/null
 done
 python3 - "$ID" "$@" <<'PY'
 import sys

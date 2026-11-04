@@ -15,6 +15,7 @@ const failed = [];
 const browser = await chromium.launch({ channel: "chrome" });
 try {
   const context = await browser.newContext({ viewport: { width: 412, height: 860 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true, locale: "ja-JP" });
+  await context.addCookies([{ name: "koekata_theme", value: "pop", url: BASE }]); /* 動画はポップで撮る */
   const page = await context.newPage();
 
   async function switchTo(option) {
@@ -56,12 +57,12 @@ try {
     await card.waitFor();
     await shot("feature-inbox", card);
     await card.getByLabel("話したこと").fill("私は、最初の一文だけ声に出して読ませています。");
-    await card.getByRole("button", { name: "返信の言葉にする" }).click();
+    await card.getByRole("button", { name: "文章にする" }).click();
     await card.getByLabel("返信の文章").waitFor();
     await shot("feature-inbox-reply", card);
     await card.getByRole("button", { name: "本人として返信する" }).click();
-    await page.getByText("ゴール！").first().waitFor();
-    await shot("feature-inbox-goal", page.getByText("ゴール！"));
+    await page.getByText("解決！").first().waitFor();
+    await shot("feature-inbox-goal", page.getByText("解決！"));
   });
 
   await section("分身とありがとう", async () => {
@@ -126,6 +127,86 @@ try {
     await report.getByRole("button", { name: "一言を送る" }).click();
     await report.locator(".response-card").waitFor();
     await shot("feature-daily-received", report);
+  });
+  await section("校内の知恵", async () => {
+    await switchTo(AOKI);
+    await page.goto(`${BASE}/chie`);
+    await page.getByRole("link", { name: "出張の出し方" }).waitFor();
+    await page.waitForTimeout(700); /* 画面が出そろうのを待つ */
+    await shot("feature-chie");
+    await page.getByLabel("やりたいこと、困っていること").fill("出張の出し方を知りたい");
+    await page.getByRole("button", { name: "校内の知恵を探す" }).click();
+    const result = page.locator(".chie-results li").first();
+    await result.waitFor();
+    await shot("feature-chie-find", result);
+    await page.goto(`${BASE}/chie/knowledge-quick-quiz`);
+    await page.getByLabel("注釈を書く").waitFor();
+    await shot("feature-chie-detail", page.getByLabel("注釈を書く"));
+  });
+
+  await section("添付", async () => {
+    await switchTo(AOKI);
+    await page.locator(".attach-button input").setInputFiles(process.env.DEMO_CERTIFICATE);
+    await page.getByRole("region", { name: "付けたファイル" }).waitFor();
+    await page.getByRole("button", { name: "文字で書く" }).click();
+    await page.getByLabel("相棒に書く").fill("校内ロボットコンテストで準優勝しました！");
+    await page.getByRole("button", { name: "相棒に送る" }).click();
+    await page.getByRole("log").locator(".bubble.assistant:not(.waiting)").last().waitFor();
+    await page.getByRole("button", { name: "言葉にして送る" }).click();
+    const check = page.getByRole("group", { name: "添付の確認" });
+    await check.waitFor();
+    await page.waitForTimeout(300);
+    await shot("feature-attach", check);
+  });
+
+  await section("報酬", async () => {
+    await switchTo(OKAWARA);
+    await page.goto(`${BASE}/me`);
+    const ribbons = page.getByRole("region", { name: "リボン" });
+    await ribbons.getByText("はじめての一言").waitFor();
+    await shot("feature-ribbon", ribbons);
+    await switchTo("野田 翔（情報・ものづくり部顧問）");
+    await page.goto(`${BASE}/me`);
+    await page.getByRole("region", { name: "贈り物の卵" }).getByRole("button", { name: "開ける" }).first().click();
+    const stage = page.getByRole("dialog", { name: "贈り物の卵" });
+    await stage.getByRole("heading", { name: /が生まれた！/ }).waitFor();
+    await page.waitForTimeout(1200);
+    await page.screenshot({ path: `${OUT}feature-egg.png` });
+    await page.goto(`${BASE}/minna`);
+    const event = page.getByRole("region", { name: "期間限定のイベント" }).first();
+    await event.waitFor();
+    await shot("feature-event", event);
+    await switchTo("白石 文（養護・相談室）");
+    await page.goto(`${BASE}/me`); /* 今の段階を起点にする */
+    await page.getByRole("region", { name: "相棒", exact: true }).locator("img").waitFor();
+    await switchTo(AOKI);
+    for (let i = 0; i < 12; i++) await page.request.post(`${BASE}/api/thanks`, { data: { toPersonId: "shiraishi", message: `助かりました ${i}` } });
+    await switchTo("白石 文（養護・相談室）");
+    await page.goto(`${BASE}/me`);
+    const card = page.getByRole("region", { name: "進化", exact: true });
+    await card.getByRole("button", { name: "進化の候補を見る" }).click();
+    await card.locator(".evolve-choices button").first().waitFor();
+    await page.waitForTimeout(400);
+    await shot("feature-evolve", card);
+  });
+
+  await section("モダン", async () => {
+    const adult = await browser.newContext({ viewport: { width: 412, height: 860 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true, locale: "ja-JP" });
+    const m = await adult.newPage();
+    await m.goto(`${BASE}/`);
+    await m.getByRole("button", { name: "話しかける" }).waitFor();
+    await m.waitForTimeout(600);
+    await m.screenshot({ path: `${OUT}feature-modern.png` });
+    await adult.close();
+  });
+
+  await section("分身の絵", async () => {
+    await switchTo(SAEKI);
+    await page.goto(`${BASE}/me`);
+    const art = page.locator(".avatar-image").first();
+    await art.waitFor();
+    await art.evaluate(img => img.complete || new Promise(done => { img.onload = done; }));
+    await art.screenshot({ path: `${OUT}avatar.png`, omitBackground: true });
   });
 } finally {
   await browser.close();

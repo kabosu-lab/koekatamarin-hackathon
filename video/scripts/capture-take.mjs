@@ -19,6 +19,7 @@ const dir = mkdtempSync(join(tmpdir(), "koekata-take-"));
 const browser = await chromium.launch({ channel: "chrome" });
 try {
   const context = await browser.newContext({ viewport: { width: 412, height: 860 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true, locale: "ja-JP" });
+  await context.addCookies([{ name: "koekata_theme", value: "pop", url: BASE }]); /* 動画はポップで撮る */
   const p = await context.newPage();
   await p.addInitScript(() => {
     class FakeRecognition {

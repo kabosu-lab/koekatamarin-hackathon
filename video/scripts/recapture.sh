@@ -12,6 +12,8 @@ mkdir -p "$COPY/.private" && ln -s "$ROOT/.private/art" "$COPY/.private/art"
 cd "$COPY"
 export KOEKATA_CLAUDE=scripted KOEKATA_DB_PATH="$COPY/video.db"
 npx next build --webpack >/dev/null
+npx tsx scripts/make-demo-attachments.ts >/dev/null
+export DEMO_CERTIFICATE="$COPY/data/demo-attachments/demo-certificate.png"
 npx next start --hostname 127.0.0.1 --port "$PORT" >/dev/null 2>&1 &
 SERVER=$!
 trap 'kill "$SERVER" 2>/dev/null || true' EXIT

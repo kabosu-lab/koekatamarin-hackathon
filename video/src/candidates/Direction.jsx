@@ -10,7 +10,7 @@ const WIPE_FROM = [[960, 540], [1860, 470], [960, 540], [1300, 560], [960, 540],
 const INK = "#1d1b26", PAPER = "#f3ead7", RED = "#d9432b", BLACK = "#1c1b1f";
 
 const orange = "radial-gradient(circle at 34% 28%, #fff1c9 0%, #ffb000 26%, #ff7f45 58%, #ff5a3c 100%)";
-const THEMES = {
+export const THEMES = {
   P: {
     music: "direction-p.wav", head: GOTHIC, headWeight: 900, radius: 999,
     stage: [["#ff5a3c", "#fff"], ["#1f9dff", "#fff"], ["#7a5cff", "#fff"], ["#12c28a", "#08312a"], ["#ffb000", "#2a1c00"], ["#ff5a3c", "#fff"]],
@@ -33,6 +33,13 @@ const THEMES = {
     stage: [["#ff5a3c", "#fff"], ["#1f9dff", "#fff"], ["#7a5cff", "#fff"], ["#12c28a", "#08312a"], ["#ffb000", "#2a1c00"], ["#ff5a3c", "#fff"]],
     chip: () => ["#fff", INK], lump: "radial-gradient(circle at 34% 28%, #fff 0%, #fff3c4 45%, #ffd24a 100%)", box: ["#fff", INK], person: ["#fff", "#ffe08a", "#ffd0c7"], check: "#12c28a",
   },
+  /* U と同じ動きで、色をコーラル、白、濃紺の3色に絞る */
+  V: {
+    music: "direction-p.wav", head: GOTHIC, headWeight: 900, headSize: 124, tight: "-.025em", radius: 999, bloom: "#fff", cross: true, endLine: "さあ、声で越えよう。",
+    dots: ["#fff", "#ff5a3c", "#1d1b3a"],
+    stage: [["#ff5a3c", "#fff"], ["#1d1b3a", "#fff"], ["#ff5a3c", "#fff"], ["#fff", "#1d1b3a"], ["#fff", "#1d1b3a"], ["#ff5a3c", "#fff"]],
+    chip: (i, st) => (st >= 3 ? ["#1d1b3a", "#fff"] : ["#fff", "#1d1b3a"]), lumps: ["#fff", "#ff5a3c", "#fff", "#ff5a3c", "#ff5a3c"], box: ["#fff", "#1d1b3a"], person: ["#fff", "#ff5a3c", "#fff"], check: "#ff5a3c",
+  },
   /* P を軸に、おしゃれへ。S：色を絞った大きな文字。T：動くグラデーションとガラス */
   S: {
     music: "direction-p.wav", head: GOTHIC, headWeight: 900, headSize: 128, tight: "-.03em", radius: 999, flat: true, dots: ["#2b3cff", "#ff4b33", "#111218", "#fff"],
@@ -53,7 +60,7 @@ const SENT = "作文の書き出し、声に出して読ませてみたら、み
 const GATHER = 160, INTO = 192, HIT = 210, OUT = 240, SHOOT = 252;
 const LUMP = { x: 500, y: 540 };
 
-const bouncy = (f, at, fps, k = {}) => (f < at ? 0 : spring({ frame: f - at, fps, config: { damping: 10, stiffness: 210, mass: .7, ...k } }));
+export const bouncy = (f, at, fps, k = {}) => (f < at ? 0 : spring({ frame: f - at, fps, config: { damping: 10, stiffness: 210, mass: .7, ...k } }));
 const lumpBg = (T, st) => T.lumps?.[st] ?? T.lump ?? (T.stage[st][0] === RED ? PAPER : T.stage[st][0] === BLACK ? RED : BLACK);
 
 const bgOf = (T, i, f) => { if (!T.aurora) return T.stage[i][0]; const [a, b, c] = T.aurora[i], t = f / 90; return `radial-gradient(60% 70% at ${30 + Math.sin(t) * 18}% ${30 + Math.cos(t * 1.3) * 18}%, ${b} 0%, transparent 70%), radial-gradient(55% 65% at ${72 + Math.cos(t * .8) * 18}% ${70 + Math.sin(t * 1.1) * 16}%, ${c} 0%, transparent 72%), ${a}`; };
@@ -77,8 +84,8 @@ const Head = ({ f, T, st, at, big, small }) => {
   </div>;
 };
 
-const Chip = ({ T, st, i, children, style, size = 56 }) => { const [bg, fg] = T.chip(i, st); return <div style={{ position: "absolute", transform: "translate(-50%,-50%)", background: bg, color: fg, fontFamily: GOTHIC, fontWeight: 800, fontSize: size, lineHeight: 1, padding: `${size * .46}px ${size * .62}px`, borderRadius: T.radius, whiteSpace: "nowrap", boxShadow: T.flat || T.glass || T.radius <= 10 ? "none" : "0 14px 36px rgba(20,10,40,.18)", ...(T.glass ? { border: "1.5px solid rgba(255,255,255,.55)" } : {}), ...style }}>{children}</div>; };
-const Blob = ({ T, st, x, y, sx = 1, sy = 1, rot = 0, opacity = 1, d = 190 }) => <div style={{ position: "absolute", left: x - d / 2, top: y - d / 2, width: d, height: d, borderRadius: "50%", opacity, transform: `rotate(${rot}deg) scale(${sx},${sy})`, background: lumpBg(T, st), boxShadow: T.glass ? "0 0 70px 14px rgba(255,255,255,.55)" : T.lump && !T.flat ? "0 18px 50px rgba(40,20,0,.22)" : "none" }} />;
+export const Chip = ({ T, st, i, children, style, size = 56 }) => { const [bg, fg] = T.chip(i, st); return <div style={{ position: "absolute", transform: "translate(-50%,-50%)", background: bg, color: fg, fontFamily: GOTHIC, fontWeight: 800, fontSize: size, lineHeight: 1, padding: `${size * .46}px ${size * .62}px`, borderRadius: T.radius, whiteSpace: "nowrap", boxShadow: T.flat || T.glass || T.radius <= 10 ? "none" : "0 14px 36px rgba(20,10,40,.18)", ...(T.glass ? { border: "1.5px solid rgba(255,255,255,.55)" } : {}), ...style }}>{children}</div>; };
+export const Blob = ({ T, st, x, y, sx = 1, sy = 1, rot = 0, opacity = 1, d = 190 }) => <div style={{ position: "absolute", left: x - d / 2, top: y - d / 2, width: d, height: d, borderRadius: "50%", opacity, transform: `rotate(${rot}deg) scale(${sx},${sy})`, background: lumpBg(T, st), boxShadow: T.glass ? "0 0 70px 14px rgba(255,255,255,.55)" : T.lump && !T.flat ? "0 18px 50px rgba(40,20,0,.22)" : "none" }} />;
 
 /* 箱：言葉のかたまりが入ると文章に開き、つぶれて、もう一度かたまりになって飛び出す */
 const BOX = { x: 1010, y: 300, w: 760, h: 380 };
@@ -154,7 +161,7 @@ const Pile = ({ f, T, fps }) => <>{KNOW.map((t, i) => {
 })}</>;
 
 const SKILLS = ["作文", "面談", "英語", "実験", "部活", "進路", "3D", "声かけ"];
-const Grow = ({ f, T, fps }) => {
+export const Grow = ({ f, T, fps }) => {
   const size = lerp(f, 730, 880, .7, 1.25, smooth), turn = f / 170;
   return <>
     <Blob T={T} st={3} x={1250} y={590} d={230} sx={size * bouncy(f, 722, fps)} sy={size * bouncy(f, 722, fps)} />
@@ -166,12 +173,12 @@ const NODES = Array.from({ length: 70 }).map((_, i) => { const a = random(`a${i}
 /* 点と線をやめ、丸が画面いっぱいに広がる */
 const Dots = ({ f, T }) => { const k = lerp(f, 900, 1040, 0, 1500, t => 1 - (1 - t) ** 2); return <>{Array.from({ length: 16 * 9 }).map((_, i) => { const x = 60 + (i % 16) * 120, y = 60 + Math.floor(i / 16) * 120, d = Math.hypot(x - 960, y - 600), s = lerp(k, d, d + 240, 0, 1, smooth), c = T.dots[(i * 7 + Math.floor(i / 16) * 3) % T.dots.length]; return s > 0 && !(y < 300 && x < 1060) ? <div key={i} style={{ position: "absolute", left: x - 42, top: y - 42, width: 84, height: 84, borderRadius: "50%", background: c, opacity: T.glass ? .32 + (i % 5) * .1 : 1, transform: `scale(${s * (.55 + ((i * 13) % 7) / 14)})` }} /> : null; })}</>; };
 /* 学校の枠を、かたまりがポンと越えて、外に丸が広がる */
-const FRAME = { x: 700, y: 430, w: 520, h: 360 };
-const Cross = ({ f, T, fps }) => {
+export const FRAME = { x: 700, y: 430, w: 520, h: 360 };
+export const Cross = ({ f, T, fps }) => {
   const c = T.stage[4][1], s = bouncy(f, 904, fps, { damping: 13, stiffness: 170 }), jump = lerp(f, 936, 962, 0, 1, t => t * t), hit = bouncy(f, 950, fps, { damping: 6, stiffness: 320, mass: .6 }), bump = f >= 950 ? 1 + (1 - hit) * .06 : 1;
   const x = 960 + jump * 760, y = 610 - jump * 330 - Math.sin(jump * Math.PI) * 150, k = lerp(f, 950, 1040, 0, 1500, t => 1 - (1 - t) ** 2);
   return <>
-    {Array.from({ length: 16 * 9 }).map((_, i) => { const dx = 60 + (i % 16) * 120, dy = 60 + Math.floor(i / 16) * 120, d = Math.hypot(dx - 1720, dy - 280), g = lerp(k, d, d + 240, 0, 1, smooth), inside = dx > FRAME.x - 50 && dx < FRAME.x + FRAME.w + 50 && dy > FRAME.y - 50 && dy < FRAME.y + FRAME.h + 50; return g > 0 && !inside && !(dy < 300 && dx < 1240) ? <div key={i} style={{ position: "absolute", left: dx - 42, top: dy - 42, width: 84, height: 84, borderRadius: "50%", background: T.dots[(i * 7 + Math.floor(i / 16) * 3) % T.dots.length], transform: `scale(${g * (.55 + ((i * 13) % 7) / 14)})` }} /> : null; })}
+    {Array.from({ length: 16 * 9 }).map((_, i) => { const dx = 60 + (i % 16) * 120, dy = 60 + Math.floor(i / 16) * 120, d = Math.hypot(dx - 1720, dy - 280), g = lerp(k, d, d + 240, 0, 1, smooth), inside = dx > FRAME.x - 50 && dx < FRAME.x + FRAME.w + 50 && dy > FRAME.y - 50 && dy < FRAME.y + FRAME.h + 50; return g > 0 && !inside && !(dy < 360 && dx < 1500) ? <div key={i} style={{ position: "absolute", left: dx - 42, top: dy - 42, width: 84, height: 84, borderRadius: "50%", background: T.dots[(i * 7 + Math.floor(i / 16) * 3) % T.dots.length], transform: `scale(${g * (.55 + ((i * 13) % 7) / 14)})` }} /> : null; })}
     <div style={{ position: "absolute", left: FRAME.x, top: FRAME.y, width: FRAME.w, height: FRAME.h, border: `10px solid ${c}`, borderRadius: 40, boxSizing: "border-box", transform: `scale(${s * bump})`, display: "flex", alignItems: "flex-end", justifyContent: "center", paddingBottom: 26, fontFamily: GOTHIC, fontWeight: 900, fontSize: 56, color: c }}>学校</div>
     {f >= 904 && f < 1040 && <Blob T={T} st={4} x={x} y={y} d={130} sx={s * (1 + jump * .35)} sy={s * (1 - jump * .15)} />}
   </>;
@@ -216,5 +223,6 @@ export const DirectionP = () => <Direction kind="P" />;
 export const DirectionQ = () => <Direction kind="Q" />;
 export const DirectionR = () => <Direction kind="R" />;
 export const DirectionU = () => <Direction kind="U" />;
+export const DirectionV = () => <Direction kind="V" />;
 export const DirectionS = () => <Direction kind="S" />;
 export const DirectionT = () => <Direction kind="T" />;

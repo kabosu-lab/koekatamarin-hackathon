@@ -36,6 +36,7 @@ async function mark(page, shot, key, ...locators) {
 const browser = await chromium.launch({ channel: "chrome" });
 try {
   const phone = await browser.newContext({ viewport: { width: 412, height: 860 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true, locale: "ja-JP" });
+  await phone.addCookies([{ name: "koekata_theme", value: "pop", url: BASE }]); /* 動画はポップで撮る */
   const p = await phone.newPage();
   const shot = name => p.screenshot({ path: `${OUT}${name}.png` });
   await p.addInitScript(() => {
@@ -156,6 +157,7 @@ try {
   /* 04 校内チャネルに届き、同僚から返事が来る */
   setStoryTime("posts", SPOKEN, 21, 12);
   const desk = await browser.newContext({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 2, locale: "ja-JP" });
+  await desk.addCookies([{ name: "koekata_theme", value: "pop", url: BASE }]);
   const d = await desk.newPage();
   await d.goto(`${BASE}/teams?channel=notices`);
   await d.waitForLoadState("networkidle");
