@@ -221,7 +221,10 @@ describe("夕方のまとめの係", () => {
   it("材料は人に届いたやり取りだけで、相棒との話を渡さず、チェックは付かない", async () => {
     post();
     const summarize = vi.fn(async () => ({ items: ["作文を読んだ"], usage: null }));
-    const outcome = await handleDaily(scripted, db, "saeki", { action: "evening", conversation: talk }, { summarize });
+    // handleDaily は今の日時で今日のやり取りを探すので、投稿と同じ日に合わせる
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(NOW);
+    const outcome = await handleDaily(scripted, db, "saeki", { action: "evening", conversation: talk }, { summarize }).finally(() => vi.useRealTimers());
     expect(outcome.status).toBe(200);
     expect(outcome.body.madeBy).toBe("agent");
     const material = (summarize.mock.calls as unknown as string[][][])[0][0].join("\n");
