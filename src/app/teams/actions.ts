@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getDatabase } from "@/lib/db";
-import { createDummyTeams } from "@/lib/destination/dummy-teams";
+import { getDestination } from "@/lib/destination/current";
 import { getViewer } from "@/lib/current-person";
 
 function field(form: FormData, name: string): string {
@@ -15,7 +15,7 @@ async function viewerId(): Promise<string> {
 }
 
 function destination() {
-  return createDummyTeams(getDatabase());
+  return getDestination(getDatabase());
 }
 
 export async function createPost(form: FormData) {

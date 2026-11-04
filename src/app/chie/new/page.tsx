@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getViewer } from "@/lib/current-person";
 import { getDatabase } from "@/lib/db";
-import { createDummyTeams } from "@/lib/destination/dummy-teams";
+import { getDestination } from "@/lib/destination/current";
 import { loadMaterial } from "@/lib/knowledge";
 import { KnowledgeNew } from "./KnowledgeNew";
 
@@ -13,7 +13,7 @@ export default async function NewKnowledgePage({ searchParams }: { searchParams:
   const { post } = await searchParams;
   const { viewer } = await getViewer();
   const db = getDatabase();
-  const material = typeof post === "string" ? loadMaterial(db, createDummyTeams(db), viewer.id, post) : null;
+  const material = typeof post === "string" ? loadMaterial(db, getDestination(db), viewer.id, post) : null;
 
   return (
     <main className="home chie">

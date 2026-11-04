@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getViewer } from "@/lib/current-person";
 import { getDatabase } from "@/lib/db";
-import { createDummyTeams } from "@/lib/destination/dummy-teams";
+import { getDestination } from "@/lib/destination/current";
 import { LOOKBACK_PERIODS } from "@/lib/lookback";
 import { PersonSwitcher } from "../PersonSwitcher";
 import { LookbackPanel } from "./LookbackPanel";
@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 
 export default async function LookbackPage() {
   const { viewer, people } = await getViewer();
-  const channels = createDummyTeams(getDatabase())
+  const channels = getDestination(getDatabase())
     .listChannels(viewer.id)
     .map(({ id, name }) => ({ id, name }));
   const periods = LOOKBACK_PERIODS.filter((p) => !p.studentOnly || viewer.role === "student").map(({ value, label }) => ({

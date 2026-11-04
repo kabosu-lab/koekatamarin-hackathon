@@ -3,7 +3,7 @@ import Link from "next/link";
 import { getViewer } from "@/lib/current-person";
 import { getDatabase } from "@/lib/db";
 import { getAvatar } from "@/lib/avatar";
-import { createDummyTeams } from "@/lib/destination/dummy-teams";
+import { getDestination } from "@/lib/destination/current";
 import { listHiddenIds } from "@/lib/hidden-people";
 import { listPopularCards, listQuietPosts, listSeenNotes, listTodayCards, viewerPublicWords } from "@/lib/today";
 import { PersonSwitcher } from "../PersonSwitcher";
@@ -18,7 +18,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
   const popular = view === "popular";
 
   const db = getDatabase();
-  const teams = createDummyTeams(db);
+  const teams = getDestination(db);
   const now = new Date();
   const hidden = listHiddenIds(db, viewer.id);
   const cards = popular ? listPopularCards(teams, viewer.id, hidden) : listTodayCards(teams, viewer.id, now, hidden, viewerPublicWords(db, teams, viewer.id));

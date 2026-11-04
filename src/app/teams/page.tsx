@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { getDatabase } from "@/lib/db";
-import { createDummyTeams } from "@/lib/destination/dummy-teams";
+import { getDestination } from "@/lib/destination/current";
 import { MAX_BODY_LENGTH, type PostView } from "@/lib/destination/types";
 import { getAvatar } from "@/lib/avatar";
 import { getViewer } from "@/lib/current-person";
@@ -124,7 +124,7 @@ export default async function TeamsPage({
 
   const db = getDatabase();
   const images = Object.fromEntries(people.map((p) => [p.id, getAvatar(db, p.id).image]));
-  const teams = createDummyTeams(db);
+  const teams = getDestination(db);
   const channels = teams.listChannels(viewer.id);
   const { channel: requested } = await searchParams;
   // 人物を切り替えて見られなくなったチャネルは、最初のチャネルへ戻す

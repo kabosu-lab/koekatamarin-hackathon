@@ -1,7 +1,7 @@
 import type { DatabaseSync } from "node:sqlite";
 import { handleConverse, parseConverseInput } from "./claude/converse-request";
 import type { ClaudeClient } from "./claude/types";
-import { createDummyTeams } from "./destination/dummy-teams";
+import { getDestination } from "./destination/current";
 import { memoryForPrompt } from "./memory";
 import { assessSafety, assessWithoutClaude, isCounselingOpen, listShareCandidates, recordAlert, type ShareCandidate } from "./safety";
 
@@ -21,7 +21,7 @@ export async function handleTalk(
 ) {
   const parsed = parseConverseInput(input);
   const [outcome, assessment] = await Promise.all([
-    handleConverse(claude, input, parsed ? memoryForPrompt(db, createDummyTeams(db), viewerId) : ""),
+    handleConverse(claude, input, parsed ? memoryForPrompt(db, getDestination(db), viewerId) : ""),
     parsed
       ? assessSafety(claude, parsed.history, parsed.text).catch((error: unknown) => {
           // 話の中身をログに残さない

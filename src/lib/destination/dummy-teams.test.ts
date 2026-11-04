@@ -1,3 +1,5 @@
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { beforeEach, describe, expect, it } from "vitest";
 import { openDatabase } from "../db";
 import { seedDatabase } from "../seed";
@@ -88,5 +90,15 @@ describe("いいね", () => {
 
   it("自分の投稿にはいいねできない", () => {
     expect(() => teams.toggleLike(STUDENT, OPEN_POST)).toThrow("自分の投稿");
+  });
+});
+
+describe("投稿先の差し替え", () => {
+  it("画面は dummy-teams を直接呼ばず、getDestination を通す", () => {
+    const root = join(process.cwd(), "src/app");
+    const direct = (readdirSync(root, { recursive: true }) as string[])
+      .filter((file) => /\.tsx?$/.test(file))
+      .filter((file) => readFileSync(join(root, file), "utf8").includes("dummy-teams"));
+    expect(direct).toEqual([]);
   });
 });

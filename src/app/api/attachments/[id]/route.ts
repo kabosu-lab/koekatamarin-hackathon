@@ -1,7 +1,7 @@
 import { attachmentHeaders, deletePending, readAttachment } from "@/lib/attachment";
 import { getViewer } from "@/lib/current-person";
 import { getDatabase } from "@/lib/db";
-import { createDummyTeams } from "@/lib/destination/dummy-teams";
+import { getDestination } from "@/lib/destination/current";
 
 type Context = { params: Promise<{ id: string }> };
 
@@ -10,7 +10,7 @@ export async function GET(_request: Request, { params }: Context) {
   const { id } = await params;
   const { viewer } = await getViewer();
   const db = getDatabase();
-  const row = readAttachment(db, createDummyTeams(db), viewer.id, id);
+  const row = readAttachment(db, getDestination(db), viewer.id, id);
   if (!row) return new Response("見つかりません", { status: 404 });
   return new Response(Buffer.from(row.data), { headers: attachmentHeaders(row) });
 }

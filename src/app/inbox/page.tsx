@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getViewer } from "@/lib/current-person";
 import { getDatabase } from "@/lib/db";
-import { createDummyTeams } from "@/lib/destination/dummy-teams";
+import { getDestination } from "@/lib/destination/current";
 import { countContributions } from "@/lib/avatar";
 import { listInbox, listPassCandidates } from "@/lib/inbox";
 import { listKnowledgeTasks } from "@/lib/knowledge";
@@ -16,7 +16,7 @@ export const dynamic = "force-dynamic";
 export default async function InboxPage() {
   const { viewer, people } = await getViewer();
   const db = getDatabase();
-  const teams = createDummyTeams(db);
+  const teams = getDestination(db);
   const items = listInbox(db, viewer.id);
   const { goals, assists } = countContributions(db, viewer.id);
 

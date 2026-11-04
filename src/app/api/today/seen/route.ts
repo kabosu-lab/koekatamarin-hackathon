@@ -1,6 +1,6 @@
 import { getViewer } from "@/lib/current-person";
 import { getDatabase } from "@/lib/db";
-import { createDummyTeams } from "@/lib/destination/dummy-teams";
+import { getDestination } from "@/lib/destination/current";
 import { recordSeen } from "@/lib/today";
 
 export async function POST(request: Request) {
@@ -9,6 +9,6 @@ export async function POST(request: Request) {
 
   const { viewer } = await getViewer();
   const db = getDatabase();
-  const ok = recordSeen(db, createDummyTeams(db), viewer.id, input.postId, new Date());
+  const ok = recordSeen(db, getDestination(db), viewer.id, input.postId, new Date());
   return Response.json({ ok }, { status: ok ? 200 : 404 });
 }

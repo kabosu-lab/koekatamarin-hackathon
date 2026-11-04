@@ -13,7 +13,7 @@ import { setAppearance } from "../person-actions";
 import { SoundTest } from "./SoundTest";
 import { HiddenPeople } from "./HiddenPeople";
 import { listHiddenPeople } from "@/lib/hidden-people";
-import { createDummyTeams } from "@/lib/destination/dummy-teams";
+import { getDestination } from "@/lib/destination/current";
 import { listMemories } from "@/lib/memory";
 import { getPhotoAvatarState, refreshAvatarArt } from "@/lib/avatar-art";
 import { createClaude } from "@/lib/claude";
@@ -80,7 +80,7 @@ export default async function MePage() {
         <Link href="/lookback">ふりかえり</Link>
       </div>
 
-      <MemoryList key={`${viewer.id}-memory`} initial={listMemories(db, createDummyTeams(db), viewer.id)} />
+      <MemoryList key={`${viewer.id}-memory`} initial={listMemories(db, getDestination(db), viewer.id)} />
 
       <section className="card appearance" aria-label="見た目">
         <h2>見た目</h2>
