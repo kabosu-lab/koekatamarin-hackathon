@@ -9,6 +9,9 @@ import { countForNotice } from "@/lib/inbox";
 import { countKnowledgeForNotice } from "@/lib/knowledge";
 import { promiseCookieName } from "@/lib/promise-cookie";
 import { HomeAside } from "./HomeAside";
+import { RibbonMoment } from "./RibbonMoment";
+import { listNewRibbons, syncRibbons } from "@/lib/ribbons";
+import { showsRewards } from "@/lib/rewards-view";
 import { setAppearance } from "./person-actions";
 import { PersonSwitcher } from "./PersonSwitcher";
 import { Talk } from "./Talk";
@@ -30,9 +33,12 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
       : undefined;
   const store = await cookies();
   const promiseSeen = store.has(promiseCookieName(viewer.id));
-  const soundOn = readAppearance((name) => store.get(name)?.value).sound === "on";
+  const appearance = readAppearance((name) => store.get(name)?.value);
+  const soundOn = appearance.sound === "on";
+  syncRibbons(db, viewer.id, new Date());
   return (
     <main className="home stage-home">
+      {showsRewards(appearance) && <RibbonMoment key={viewer.id} ribbons={listNewRibbons(db, viewer.id)} />}
       <header className="hero">
         <h1>こえかた</h1>
         <p>話すだけで、できることが増える。</p>

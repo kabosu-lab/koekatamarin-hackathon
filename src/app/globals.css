@@ -2594,3 +2594,95 @@ html[data-avatar="hide"] .burst-speaker {
     animation: none;
   }
 }
+
+/* リボン：順位のない、集めるしるし */
+.ribbon-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr));
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ribbon-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.7rem;
+}
+
+.ribbon-list strong,
+.ribbon-list small,
+.ribbon-list label {
+  display: block;
+}
+
+.ribbon-list label {
+  margin-top: 0.2rem;
+  font-size: 0.85rem;
+}
+
+.ribbon-mark {
+  position: relative;
+  flex: none;
+  width: 2.6rem;
+  height: 2.6rem;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  background: #ff5a3c;
+  box-shadow: 0 2px 0 rgb(0 0 0 / 28%);
+}
+
+.ribbon-mark::before {
+  content: "";
+  position: absolute;
+  inset: 22%;
+  border-radius: 50%;
+  background: #ffd23c;
+}
+
+.ribbon-list li:nth-child(3n + 2) .ribbon-mark {
+  background: #2545f0;
+}
+
+.ribbon-list li:nth-child(3n) .ribbon-mark {
+  background: #18a96b;
+}
+
+.ribbon-moment {
+  position: fixed;
+  top: 1rem;
+  left: 50%;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  box-sizing: border-box;
+  width: min(92vw, 24rem);
+  padding: 0.7rem 0.9rem;
+  border: 3px solid #111;
+  border-radius: 1rem;
+  background: #fff;
+  color: #111;
+  pointer-events: none;
+  transform: translateX(-50%);
+  animation: ribbon-drop 0.45s cubic-bezier(0.34, 1.8, 0.64, 1);
+}
+
+.ribbon-moment strong,
+.ribbon-moment span:not(.ribbon-mark) {
+  display: block;
+}
+
+@keyframes ribbon-drop {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -1.5rem) scale(0.8);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ribbon-moment {
+    animation: none;
+  }
+}

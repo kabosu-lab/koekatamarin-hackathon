@@ -203,3 +203,27 @@ test("育つと進化の候補から本人が選び、隠している間も育�
   await expect(companion.locator("img")).toBeVisible();
   await page.context().close();
 });
+
+test("リボンが届いて飾られ、公開を選ぶとプロフィールに出る", async ({ browser }) => {
+  const page = await (await browser.newContext()).newPage();
+  await page.goto("/");
+  await switchPerson(page, "大河原 誠（英語・学年主任）");
+  await page.goto("/me");
+  const ribbons = page.getByRole("region", { name: "リボン" });
+  await expect(ribbons.getByText("はじめての一言")).toBeVisible();
+  const row = ribbons.getByRole("listitem").filter({ hasText: "はじめての一言" });
+  await expect(page.getByRole("region", { name: "リボン" }).locator("li").first()).toBeVisible();
+
+  const viewer = await (await browser.newContext()).newPage();
+  await viewer.goto("/people/ogawara");
+  await expect(viewer.getByText("はじめての一言")).toHaveCount(0);
+
+  await row.getByRole("checkbox", { name: "プロフィールに出す" }).click();
+  await expect(row.getByRole("checkbox")).toBeChecked();
+  await expect.poll(async () => {
+    await viewer.reload();
+    return viewer.getByText("はじめての一言").count();
+  }).toBe(1);
+  await viewer.context().close();
+  await page.context().close();
+});

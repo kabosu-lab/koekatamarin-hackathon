@@ -237,6 +237,14 @@ const MIGRATIONS: readonly string[] = [
      created_at TEXT NOT NULL,
      PRIMARY KEY (person_id, target_stage)
    ) STRICT;`,
+  `CREATE TABLE person_ribbons (
+     person_id TEXT NOT NULL REFERENCES people (id),
+     ribbon_id TEXT NOT NULL,
+     earned_at TEXT NOT NULL,
+     is_public INTEGER NOT NULL DEFAULT 0 CHECK (is_public IN (0, 1)),
+     seen_at TEXT,
+     PRIMARY KEY (person_id, ribbon_id)
+   ) STRICT;`,
 ];
 
 export const SCHEMA_VERSION

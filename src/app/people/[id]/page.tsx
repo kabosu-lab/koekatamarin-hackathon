@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { countContributions, getAvatar } from "@/lib/avatar";
 import { getDatabase } from "@/lib/db";
+import { listPublicRibbons } from "@/lib/ribbons";
 import { Avatar } from "../../Avatar";
 
 export const metadata: Metadata = { title: "プロフィール｜こえかた" };
@@ -17,6 +18,7 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
   if (!person) notFound();
   const avatar = getAvatar(db, id);
   const counts = countContributions(db, id);
+  const ribbons = listPublicRibbons(db, id);
 
   return (
     <main className="home">
@@ -26,6 +28,22 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
         <Avatar image={avatar.image} alt={`${person.name}さんの相棒`} />
         <p>{person.public_profile || "プロフィールはまだありません。"}</p>
       </section>
+      {ribbons.length > 0 && (
+        <section className="card ribbons" aria-label="リボン">
+          <h2>リボン</h2>
+          <ul className="ribbon-list">
+            {ribbons.map((ribbon) => (
+              <li key={ribbon.id}>
+                <span className="ribbon-mark" aria-hidden="true" />
+                <div>
+                  <strong>{ribbon.name}</strong>
+                  <small>{ribbon.description}</small>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
       <section className="card" aria-label="応援とコメント">
         <p className="counts">
           <span>応援 {counts.cheers}</span>

@@ -19,6 +19,10 @@ import { getPhotoAvatarState, roomToken } from "@/lib/avatar-art";
 import { pendingEvolution } from "@/lib/avatar-evolve";
 import { createDummyPhotos } from "@/lib/profile-photo/dummy";
 import { EvolutionCard } from "./EvolutionCard";
+import { RibbonMoment } from "../RibbonMoment";
+import { Ribbons } from "./Ribbons";
+import { listNewRibbons, listRibbons, syncRibbons } from "@/lib/ribbons";
+import { showsRewards } from "@/lib/rewards-view";
 import { ArtRefresher, AvatarFromPhoto, AvatarQuiz, MemoryList, ProfileEditor, ThanksForm } from "./MeActions";
 
 export const metadata: Metadata = { title: "じぶん｜こえかた" };
@@ -29,6 +33,9 @@ export default async function MePage() {
   const store = await cookies();
   const appearance = readAppearance((name) => store.get(name)?.value);
   const db = getDatabase();
+  // 隠している人にも裏で集まる
+  syncRibbons(db, viewer.id, new Date());
+  const rewards = showsRewards(appearance);
   const photos = createDummyPhotos();
   const photoState = await getPhotoAvatarState(db, photos, viewer.id);
   const evolution = pendingEvolution(db, viewer.id);
@@ -70,6 +77,9 @@ export default async function MePage() {
           styleQuestion={{ question: STYLE_QUESTION.question, options: STYLE_QUESTION.options }}
         />
       )}
+
+      {rewards && <Ribbons key={`${viewer.id}-ribbons`} initial={listRibbons(db, viewer.id)} />}
+      {rewards && <RibbonMoment key={`${viewer.id}-moment`} ribbons={listNewRibbons(db, viewer.id)} />}
 
       <section className="card" aria-label="プロフィール">
         <h2>プロフィール</h2>
