@@ -8,6 +8,7 @@ import { readAppearance } from "@/lib/appearance";
 import { countForNotice } from "@/lib/inbox";
 import { countKnowledgeForNotice } from "@/lib/knowledge";
 import { promiseCookieName } from "@/lib/promise-cookie";
+import { HomeAside } from "./HomeAside";
 import { setAppearance } from "./person-actions";
 import { PersonSwitcher } from "./PersonSwitcher";
 import { Talk } from "./Talk";
@@ -61,6 +62,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
         question={dailyQuestion(new Date())}
         initialAsk={askPerson ? { id: askPerson.id, name: askPerson.name } : null}
       />
+      <HomeAside db={db} viewerId={viewer.id} />
     </main>
   );
 }

@@ -2193,3 +2193,170 @@ body:has(.stage-home) {
     transform: rotate(3deg);
   }
 }
+
+/* ---- 広い画面：iPad は2列、PC は3列 ---- */
+.home-aside {
+  display: none;
+}
+
+.aside-list {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.aside-list p {
+  margin: 0;
+}
+
+.aside-list .who {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+@media (min-width: 768px) {
+  body {
+    display: grid;
+    grid-template-columns: 10rem minmax(0, 1fr);
+    align-items: stretch;
+  }
+
+  body > * {
+    grid-column: 2;
+    min-width: 0;
+  }
+
+  /* 下のタブは、広い画面では横のナビになる */
+  .bottom-nav {
+    grid-column: 1;
+    grid-row: 1;
+    position: sticky;
+    top: 0;
+    bottom: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    height: 100dvh;
+    padding: 1.25rem 0.75rem;
+    border-top: 0;
+    border-right: 3px solid var(--line-bold);
+  }
+
+  .bottom-nav a {
+    padding: 0.9rem 1rem;
+    border-radius: 1rem;
+    font-size: 1.15rem;
+    text-align: left;
+  }
+
+  .home {
+    max-width: 62rem;
+    padding-inline: 1.75rem;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 2rem;
+    align-content: start;
+    align-items: start;
+  }
+
+  /* 見出しと説明は幅いっぱい。1枚ずつ見る画面は広げない */
+  .home > :is(header, h1, p, nav, .switcher, .today-tabs, .season-links, .staff-link, .notice) {
+    grid-column: 1 / -1;
+  }
+
+  .home:has(.today-card, .talk.inbox-item, .compose-card, .chie-form) {
+    display: flex;
+    max-width: 38rem;
+    align-items: stretch;
+  }
+
+  .home .switcher {
+    max-width: 26rem;
+  }
+
+  .stage-home .hero p {
+    padding-right: 5.5rem;
+  }
+
+  .home .hub-links {
+    align-self: start;
+  }
+
+  .home.stage-home {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    max-width: none;
+    grid-auto-rows: min-content;
+  }
+
+  .stage-home > :not(.home-aside) {
+    grid-column: 1;
+  }
+
+  .stage-home > .home-aside {
+    grid-column: 2;
+    grid-row: 1 / span 9;
+    display: grid;
+    gap: 1rem;
+    align-content: start;
+  }
+
+  .aside-column {
+    display: grid;
+    gap: 1rem;
+    align-content: start;
+  }
+
+  .aside-column > section {
+    padding: 1rem 1.1rem;
+    border: 3px solid var(--line-bold);
+    border-radius: 1.5rem;
+    background: var(--surface);
+  }
+
+  .home-aside h2 {
+    margin: 0 0 0.6rem;
+    font-size: 1.3rem;
+    font-weight: 900;
+  }
+
+  .home-aside .sakura-scene {
+    margin-top: 0;
+    padding: 0;
+  }
+
+  .stage-home .talk .actions {
+    bottom: 0.75rem;
+  }
+
+  .speaker {
+    width: 13rem;
+    height: 13rem;
+  }
+
+  .hub-links a {
+    min-height: 8rem;
+    font-size: 1.3rem;
+  }
+}
+
+@media (min-width: 1200px) {
+  .home:not(.stage-home) {
+    max-width: 78rem;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .home:has(.today-card, .talk.inbox-item, .compose-card, .chie-form) {
+    max-width: 42rem;
+  }
+
+  .home.stage-home {
+    grid-template-columns: minmax(24rem, 1.1fr) minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .stage-home > .home-aside {
+    grid-column: 2 / -1;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
