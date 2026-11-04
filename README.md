@@ -31,4 +31,5 @@ npm run dev
 ## ライセンス
 
 - コード：MIT（`LICENSE`）
+- レトロの文字：[DotGothic16](https://fonts.google.com/specimen/DotGothic16)（Fontworks。SIL Open Font License 1.1）。Google Fonts からビルド時に取り込む
 - 画像・ロゴ：再利用不可（All rights reserved）
