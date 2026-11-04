@@ -7,19 +7,23 @@ import { createDummyTeams } from "./destination/dummy-teams";
 import type { PostDestination } from "./destination/types";
 import {
   confirmKnowledge,
+  deleteKnowledgeNote,
   draftKnowledge,
   findKnowledge,
   getKnowledge,
   handleKnowledgeCreate,
   handleKnowledgeEdit,
   handleKnowledgeFind,
+  handleKnowledgeNote,
   handleKnowledgeReview,
   isMajorEdit,
   listKnowledgeTasks,
   listSharedKnowledge,
   loadMaterial,
   removeFromKnowledge,
+  removeKnowledgeLike,
   resolveKnowledgeReview,
+  voteKnowledgeNote,
   withdrawKnowledge,
 } from "./knowledge";
 import { handleMemory } from "./memory";
@@ -141,26 +145,62 @@ describe("確認", () => {
 });
 
 describe("レビュー", () => {
-  it("貢献者は評価できず、直す指摘は言葉が必須で、同じ人は上書き", async () => {
+  it("貢献者は反応できず、「うまくいかなかった」は理由が必須で、同じ人は上書き", async () => {
     const seedId = "knowledge-quick-quiz";
-    expect((await handleKnowledgeReview(scripted, db, "ogawara", { itemId: seedId, verdict: "helped" }, NOW)).status).toBe(403);
-    expect((await handleKnowledgeReview(scripted, db, "saeki", { itemId: seedId, verdict: "fix", comment: " " }, NOW)).status).toBe(400);
-    expect((await handleKnowledgeReview(scripted, db, "saeki", { itemId: seedId, verdict: "helped" }, NOW)).status).toBe(200);
-    expect(getKnowledge(db, "saeki", seedId)?.helpedCount).toBe(1);
-    await handleKnowledgeReview(scripted, db, "saeki", { itemId: seedId, verdict: "fix", comment: "英語でも試したい" }, NOW);
+    expect((await handleKnowledgeReview(scripted, db, "ogawara", { itemId: seedId, verdict: "like" }, NOW)).status).toBe(403);
+    expect((await handleKnowledgeReview(scripted, db, "saeki", { itemId: seedId, verdict: "not_working", comment: " " }, NOW)).status).toBe(400);
+    expect((await handleKnowledgeReview(scripted, db, "saeki", { itemId: seedId, verdict: "like" }, NOW)).status).toBe(200);
+    expect(getKnowledge(db, "saeki", seedId)?.likeCount).toBe(1);
+    expect(getKnowledge(db, "saeki", seedId)?.likedByViewer).toBe(true);
+    await handleKnowledgeReview(scripted, db, "saeki", { itemId: seedId, verdict: "not_working", comment: "英語でも試したい" }, NOW);
     const detail = getKnowledge(db, "saeki", seedId);
-    expect([detail?.helpedCount, detail?.openFixCount, detail?.reviews.length]).toEqual([0, 1, 1]);
+    expect([detail?.likeCount, detail?.reviews.length]).toEqual([0, 1]);
+  });
+
+  it("いいねは取り消せて、「うまくいかなかった」は取り消しで消えない", async () => {
+    const seedId = "knowledge-quick-quiz";
+    await handleKnowledgeReview(scripted, db, "saeki", { itemId: seedId, verdict: "like" }, NOW);
+    expect(removeKnowledgeLike(db, "saeki", seedId)).toBe(true);
+    expect(getKnowledge(db, "saeki", seedId)?.likeCount).toBe(0);
+    await handleKnowledgeReview(scripted, db, "saeki", { itemId: seedId, verdict: "not_working", comment: "英語では難しかった" }, NOW);
+    expect(removeKnowledgeLike(db, "saeki", seedId)).toBe(false);
+    expect(getKnowledge(db, "aoki", seedId)?.reviews.map((r) => r.comment)).toEqual(["英語では難しかった"]);
+  });
+
+  it("「うまくいかなかった」の数は、一覧にも詳しい内容にも入らない", async () => {
+    const seedId = "knowledge-quick-quiz";
+    await handleKnowledgeReview(scripted, db, "saeki", { itemId: seedId, verdict: "not_working", comment: "英語では難しかった" }, NOW);
+    const summary = listSharedKnowledge(db, "aoki").find((item) => item.id === seedId);
+    const detail = getKnowledge(db, "aoki", seedId);
+    for (const shape of [summary, detail]) {
+      const keys = Object.keys(shape ?? {}).join(",");
+      expect(keys).not.toMatch(/fixCount|notWorking|openFix/i);
+    }
+    expect(summary).not.toHaveProperty("reviews");
+  });
+
+  it("いいねに言葉は残らない", async () => {
+    const seedId = "knowledge-quick-quiz";
+    await handleKnowledgeReview(scripted, db, "saeki", { itemId: seedId, verdict: "like", comment: "好きな言葉" }, NOW);
+    expect(getKnowledge(db, "aoki", seedId)?.reviews).toEqual([]);
+  });
+
+  it("強い言い方の「うまくいかなかった」は保存しない", async () => {
+    const blocking = recording({ verdict: "block", perception: "強い言葉です", alternatives: [] });
+    const outcome = await handleKnowledgeReview(blocking.client, db, "saeki", { itemId: "knowledge-quick-quiz", verdict: "not_working", comment: "ひどい" }, NOW);
+    expect(outcome.status).toBe(422);
+    expect(getKnowledge(db, "aoki", "knowledge-quick-quiz")?.reviews).toEqual([]);
   });
 
   it("確認中の知恵は評価できず、指摘を解決できるのは作った人だけ", async () => {
     const id = await create();
-    expect((await handleKnowledgeReview(scripted, db, "saeki", { itemId: id, verdict: "helped" }, NOW)).status).toBe(404);
+    expect((await handleKnowledgeReview(scripted, db, "saeki", { itemId: id, verdict: "like" }, NOW)).status).toBe(404);
     const seedId = "knowledge-quick-quiz";
-    await handleKnowledgeReview(scripted, db, "saeki", { itemId: seedId, verdict: "fix", comment: "英語でも試したい" }, NOW);
+    await handleKnowledgeReview(scripted, db, "saeki", { itemId: seedId, verdict: "not_working", comment: "英語でも試したい" }, NOW);
     const reviewId = getKnowledge(db, "saeki", seedId)!.reviews[0].id;
     expect(resolveKnowledgeReview(db, "saeki", seedId, reviewId, NOW)).toBe(false);
     expect(resolveKnowledgeReview(db, "kawamura", seedId, reviewId, NOW)).toBe(true);
-    expect(getKnowledge(db, "saeki", seedId)?.openFixCount).toBe(0);
+    expect(getKnowledge(db, "saeki", seedId)?.reviews[0].resolved).toBe(true);
   });
 });
 
@@ -211,6 +251,77 @@ describe("探す", () => {
     const { body } = await handleKnowledgeFind(scripted, db, teams, "fujimoto", { query: "文化祭の動画を作りたい" });
     expect((body.results as { key: string }[]).map((r) => r.key)).toContain("k-knowledge-festival-video");
   });
+});
+
+describe("注釈", () => {
+  const seedId = "knowledge-quick-quiz";
+  async function addNote(person = "kinoshita", body = "テストの前の週は、問題を3問に減らしています") {
+    const outcome = await handleKnowledgeNote(scripted, db, person, { itemId: seedId, body }, NOW);
+    expect(outcome.status).toBe(200);
+    return getKnowledge(db, person, seedId)!.notes.find((note) => note.body === body)!;
+  }
+  const noteFor = (viewer: string, id: string) => getKnowledge(db, viewer, seedId)!.notes.find((note) => note.id === id);
+
+  it("書いた人以外の2人で出て、取り消すと戻る。押した人数は返さない", async () => {
+    const note = await addNote();
+    expect(note.shown).toBe(false);
+    expect(Object.keys(note)).not.toContain("votes");
+    expect(voteKnowledgeNote(db, "saeki", seedId, note.id, true)).toBe(true);
+    expect(noteFor("aoki", note.id)?.shown).toBe(false);
+    expect(voteKnowledgeNote(db, "noda", seedId, note.id, true)).toBe(true);
+    expect(noteFor("aoki", note.id)?.shown).toBe(true);
+    expect(listSharedKnowledge(db, "aoki").find((item) => item.id === seedId)?.shownNotes.map((n) => n.id)).toContain(note.id);
+    expect(voteKnowledgeNote(db, "noda", seedId, note.id, false)).toBe(true);
+    expect(noteFor("aoki", note.id)?.shown).toBe(false);
+  });
+
+  it("同じ人が何度押しても1人で、自分の注釈には押せない", async () => {
+    const note = await addNote();
+    expect(voteKnowledgeNote(db, "kinoshita", seedId, note.id, true)).toBe(false);
+    voteKnowledgeNote(db, "saeki", seedId, note.id, true);
+    voteKnowledgeNote(db, "saeki", seedId, note.id, true);
+    expect(noteFor("aoki", note.id)?.shown).toBe(false);
+  });
+
+  it("書いた本人だけが消せる", async () => {
+    const note = await addNote();
+    expect(deleteKnowledgeNote(db, "aoki", seedId, note.id)).toBe(false);
+    expect(deleteKnowledgeNote(db, "kinoshita", seedId, note.id)).toBe(true);
+    expect(noteFor("aoki", note.id)).toBeUndefined();
+  });
+
+  it("確認中の知恵には付けられず、範囲外の人には見えない", async () => {
+    const id = await create();
+    expect((await handleKnowledgeNote(scripted, db, "aoki", { itemId: id, body: "補足" }, NOW)).status).toBe(404);
+    const note = await addNote();
+    voteKnowledgeNote(db, "saeki", seedId, note.id, true);
+    voteKnowledgeNote(db, "noda", seedId, note.id, true);
+    forgetForNote();
+    expect(getKnowledge(db, "aoki", seedId)).toBeNull();
+    expect(voteKnowledgeNote(db, "aoki", seedId, note.id, true)).toBe(false);
+    expect(listSharedKnowledge(db, "aoki").map((item) => item.id)).not.toContain(seedId);
+  });
+
+  it("強い言い方の注釈は保存せず、確かめられなければ保存しない", async () => {
+    const blocking = recording({ verdict: "block", perception: "強い言葉です", alternatives: [] });
+    expect((await handleKnowledgeNote(blocking.client, db, "kinoshita", { itemId: seedId, body: "ひどい" }, NOW)).status).toBe(422);
+    const broken: ClaudeClient = {
+      mode: "real",
+      async complete() {
+        throw new Error("つながらない");
+      },
+    };
+    expect((await handleKnowledgeNote(broken, db, "kinoshita", { itemId: seedId, body: "補足" }, NOW)).status).toBe(503);
+    expect(getKnowledge(db, "kinoshita", seedId)?.notes.map((note) => note.body)).not.toContain("補足");
+  });
+
+  it("最初の注釈は、2人が押した状態で知恵の下に出る", () => {
+    expect(getKnowledge(db, "aoki", seedId)?.shownNotes.map((note) => note.id)).toEqual(["note-quick-quiz"]);
+  });
+
+  function forgetForNote() {
+    handleMemory(db, "ogawara", { action: "forget", kind: "published", id: "reply-study-2" }, NOW);
+  }
 });
 
 describe("最初のデータ", () => {

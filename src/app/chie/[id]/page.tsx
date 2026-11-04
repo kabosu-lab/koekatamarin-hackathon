@@ -5,6 +5,7 @@ import { getViewer } from "@/lib/current-person";
 import { getDatabase } from "@/lib/db";
 import { getKnowledge } from "@/lib/knowledge";
 import { KnowledgeActions } from "./KnowledgeActions";
+import { KnowledgeNotes } from "./KnowledgeNotes";
 import { AttachmentPreview } from "../../AttachmentPreview";
 
 export const metadata: Metadata = { title: "校内の知恵｜こえかた" };
@@ -30,14 +31,13 @@ export default async function KnowledgePage({ params }: { params: Promise<{ id: 
         {item.attachment && <AttachmentPreview attachment={item.attachment} />}
 
         {item.researchedWithAi && <p className="ai-mark">AI と調べました</p>}
-        <p className="muted">
-          {item.helpedCount > 0 && `${item.helpedCount}人が役に立ったと言っています。`}
-          {item.openFixCount > 0 && `直したほうがいい指摘が${item.openFixCount}件。`}
-        </p>
+        {item.likeCount > 0 && <p className="muted">{item.likeCount}人がいいねしました。</p>}
         <p>
           <Link href={`/teams?channel=${item.channelId}#post-${item.sourcePostId}`}>元の投稿を見る</Link>
         </p>
       </section>
+
+      {item.canAddNote && <KnowledgeNotes key={`notes-${viewer.id}-${item.id}`} item={item} viewerId={viewer.id} />}
 
       <section className="card" aria-label="言葉を使われた人">
         <h2>言葉を使われた人</h2>

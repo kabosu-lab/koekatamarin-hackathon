@@ -11,13 +11,15 @@ const MAX_TOKENS = 3000;
 const MAX_RESULTS = 3;
 const MAX_TITLE_LENGTH = 60;
 const MAX_COMMENT_LENGTH = 500;
+/** 書いた人以外のこの人数が「役に立つ」とすると、注釈を知恵の下に出す */
+const NOTE_SHOWN_AT = 2;
 const MAX_QUERY_LENGTH = 2000;
 const MAX_MATERIAL_POSTS = 60;
 const MATERIAL_TEXT_LENGTH = 400;
 
 export type KnowledgeStatus = "confirming" | "shared" | "withdrawn";
 export type ContributorState = "waiting" | "ok" | "removed";
-export type ReviewVerdict = "helped" | "fix";
+export type ReviewVerdict = "like" | "not_working";
 type Outcome = { status: number; body: Record<string, unknown> };
 
 export type KnowledgePerson = { id: string; name: string; label: string };
@@ -30,13 +32,23 @@ export type KnowledgeReview = {
   comment: string;
   resolved: boolean;
 };
+/** 注釈。押した人数は返さず、知恵の下に出すかどうかだけを返す。 */
+export type KnowledgeNote = {
+  id: string;
+  authorId: string;
+  authorName: string;
+  body: string;
+  shown: boolean;
+  votedByViewer: boolean;
+};
+/** 「うまくいかなかった」の数はどこにも出さない。理由の文章だけを reviews で見せる。 */
 export type KnowledgeSummary = {
   id: string;
   title: string;
   body: string;
   people: KnowledgePerson[];
-  helpedCount: number;
-  openFixCount: number;
+  likeCount: number;
+  shownNotes: KnowledgeNote[];
 };
 export type KnowledgeDetail = KnowledgeSummary & {
   status: KnowledgeStatus;
@@ -50,6 +62,9 @@ export type KnowledgeDetail = KnowledgeSummary & {
   isAuthor: boolean;
   viewerState: ContributorState | null;
   canReview: boolean;
+  likedByViewer: boolean;
+  canAddNote: boolean;
+  notes: KnowledgeNote[];
   /** 「聞いてみる？」の相手。質問した本人は入れない */
   askableIds: string[];
   /** 投稿した本人が載せると選んだときだけある */
@@ -276,14 +291,35 @@ function loadContributors(db: DatabaseSync, itemId: string): KnowledgeContributo
   ).map(({ id, name, label, state }) => ({ id, name, label, state }));
 }
 
-function counts(db: DatabaseSync, itemId: string) {
-  const { helped } = db
-    .prepare("SELECT count(*) AS helped FROM knowledge_reviews WHERE item_id = ? AND verdict = 'helped'")
-    .get(itemId) as { helped: number };
-  const { fixes } = db
-    .prepare("SELECT count(*) AS fixes FROM knowledge_reviews WHERE item_id = ? AND verdict = 'fix' AND resolved_at IS NULL")
-    .get(itemId) as { fixes: number };
-  return { helpedCount: helped, openFixCount: fixes };
+function countLikes(db: DatabaseSync, itemId: string): number {
+  const { likes } = db
+    .prepare("SELECT count(*) AS likes FROM knowledge_reviews WHERE item_id = ? AND verdict = 'like'")
+    .get(itemId) as { likes: number };
+  return likes;
+}
+
+/** その人に見せてよい注釈。しばらく出さない人の注釈は出さない。押した人数は外に出さない。 */
+function loadNotes(db: DatabaseSync, viewerId: string, itemId: string): KnowledgeNote[] {
+  const hidden = listHiddenIds(db, viewerId);
+  const rows = db
+    .prepare(
+      `SELECT n.id, n.author_id, p.name, n.body,
+              (SELECT count(*) FROM knowledge_note_votes v WHERE v.note_id = n.id) AS votes,
+              EXISTS (SELECT 1 FROM knowledge_note_votes v WHERE v.note_id = n.id AND v.person_id = ?) AS voted
+       FROM knowledge_notes n JOIN people p ON p.id = n.author_id
+       WHERE n.item_id = ? ORDER BY n.created_at, n.rowid`,
+    )
+    .all(viewerId, itemId) as { id: string; author_id: string; name: string; body: string; votes: number; voted: number }[];
+  return rows
+    .filter((row) => !hidden.has(row.author_id))
+    .map((row) => ({
+      id: row.id,
+      authorId: row.author_id,
+      authorName: row.name,
+      body: row.body,
+      shown: row.votes >= NOTE_SHOWN_AT,
+      votedByViewer: row.voted === 1,
+    }));
 }
 
 const publicPeople = (contributors: KnowledgeContributor[]): KnowledgePerson[] =>
@@ -298,7 +334,14 @@ export function listSharedKnowledge(db: DatabaseSync, viewerId: string): Knowled
   return rows
     .map((row) => {
       const people = publicPeople(loadContributors(db, row.id));
-      return { id: row.id, title: row.title, body: row.body, people, ...counts(db, row.id) };
+      return {
+        id: row.id,
+        title: row.title,
+        body: row.body,
+        people,
+        likeCount: countLikes(db, row.id),
+        shownNotes: loadNotes(db, viewerId, row.id).filter((note) => note.shown),
+      };
     })
     .filter((item) => !item.people.some((person) => hidden.has(person.id)));
 }
@@ -333,12 +376,14 @@ export function getKnowledge(db: DatabaseSync, viewerId: string, itemId: string)
     | { id: string; media_type: string; file_name: string }
     | undefined;
   const posted: PostAttachment | null = attached ? { id: attached.id, mediaType: attached.media_type, fileName: attached.file_name } : null;
+  const notes = item.status === "shared" ? loadNotes(db, viewerId, itemId) : [];
   const reviews = (
     db
       .prepare(
         `SELECT r.id, r.reviewer_id, p.name, r.verdict, r.comment, r.resolved_at
          FROM knowledge_reviews r JOIN people p ON p.id = r.reviewer_id
-         WHERE r.item_id = ? ORDER BY r.created_at, r.rowid`,
+         WHERE r.item_id = ? AND (r.verdict = 'not_working' OR r.comment != '')
+         ORDER BY r.created_at, r.rowid`,
       )
       .all(itemId) as { id: string; reviewer_id: string; name: string; verdict: ReviewVerdict; comment: string; resolved_at: string | null }[]
   ).map((row) => ({
@@ -354,7 +399,8 @@ export function getKnowledge(db: DatabaseSync, viewerId: string, itemId: string)
     title: item.title,
     body: item.body,
     people: publicPeople(contributors),
-    ...counts(db, itemId),
+    likeCount: countLikes(db, itemId),
+    shownNotes: notes.filter((note) => note.shown),
     status: item.status,
     authorId: item.author_id,
     fixRequested: item.fix_requested === 1,
@@ -366,6 +412,10 @@ export function getKnowledge(db: DatabaseSync, viewerId: string, itemId: string)
     isAuthor,
     viewerState,
     canReview: item.status === "shared" && viewerState === null,
+    likedByViewer:
+      db.prepare("SELECT 1 FROM knowledge_reviews WHERE item_id = ? AND reviewer_id = ? AND verdict = 'like'").get(itemId, viewerId) !== undefined,
+    canAddNote: item.status === "shared",
+    notes,
     askableIds: askableIds(
       source,
       contributors.filter((c) => c.state === "ok").map((c) => c.id),
@@ -387,7 +437,7 @@ export function listKnowledgeTasks(db: DatabaseSync, viewerId: string): Knowledg
   const toFix = db
     .prepare(
       `SELECT DISTINCT i.id, i.title FROM knowledge_items i
-       LEFT JOIN knowledge_reviews r ON r.item_id = i.id AND r.verdict = 'fix' AND r.resolved_at IS NULL
+       LEFT JOIN knowledge_reviews r ON r.item_id = i.id AND r.verdict = 'not_working' AND r.resolved_at IS NULL
        WHERE i.author_id = ? AND i.status != 'withdrawn' AND (i.fix_requested = 1 OR r.id IS NOT NULL)
        ORDER BY i.created_at, i.rowid`,
     )
@@ -532,7 +582,7 @@ export async function handleKnowledgeEdit(
   return { status: 200, body: { ok: true, reconfirm } };
 }
 
-/** 人どうしのレビュー。言葉が使われた本人たちは評価できず、AI も評価を付けない。 */
+/** 人どうしの反応。いいねと「うまくいかなかった」。言葉が使われた本人たちは付けられず、AI も付けない。 */
 export async function handleKnowledgeReview(
   claude: ClaudeClient,
   db: DatabaseSync,
@@ -541,12 +591,13 @@ export async function handleKnowledgeReview(
   now: Date = new Date(),
 ): Promise<Outcome> {
   const { itemId, verdict, comment } = fields(input);
-  if (typeof itemId !== "string" || (verdict !== "helped" && verdict !== "fix")) {
+  if (typeof itemId !== "string" || (verdict !== "like" && verdict !== "not_working")) {
     return { status: 400, body: { error: "依頼が正しくありません" } };
   }
-  const words = typeof comment === "string" ? comment.trim() : "";
+  // いいねに言葉は付けない。理由が要るのは「うまくいかなかった」だけ
+  const words = verdict === "not_working" && typeof comment === "string" ? comment.trim() : "";
   if (words.length > MAX_COMMENT_LENGTH) return { status: 400, body: { error: "言葉が長すぎます" } };
-  if (verdict === "fix" && !words) return { status: 400, body: { error: "どこを直すとよいか、一言書いてください" } };
+  if (verdict === "not_working" && !words) return { status: 400, body: { error: "うまくいかなかった理由を書いてください" } };
 
   const item = loadItem(db, itemId);
   if (!item || item.status !== "shared") return { status: 404, body: { error: "知恵が見つかりません" } };
@@ -568,8 +619,65 @@ export function resolveKnowledgeReview(db: DatabaseSync, viewerId: string, itemI
   const item = loadItem(db, itemId);
   if (!item || item.author_id !== viewerId) return false;
   const { changes } = db
-    .prepare("UPDATE knowledge_reviews SET resolved_at = ? WHERE id = ? AND item_id = ? AND verdict = 'fix' AND resolved_at IS NULL")
+    .prepare("UPDATE knowledge_reviews SET resolved_at = ? WHERE id = ? AND item_id = ? AND verdict = 'not_working' AND resolved_at IS NULL")
     .run(now.toISOString(), reviewId, itemId);
+  return changes > 0;
+}
+
+/** いいねを取り消す。「うまくいかなかった」は消さない。 */
+export function removeKnowledgeLike(db: DatabaseSync, viewerId: string, itemId: string): boolean {
+  const { changes } = db
+    .prepare("DELETE FROM knowledge_reviews WHERE item_id = ? AND reviewer_id = ? AND verdict = 'like'")
+    .run(itemId, viewerId);
+  return changes > 0;
+}
+
+/** 注釈は誰でも書ける。AI は書かない。広がっている知恵にだけ付けられる。 */
+export async function handleKnowledgeNote(
+  claude: ClaudeClient,
+  db: DatabaseSync,
+  viewerId: string,
+  input: unknown,
+  now: Date = new Date(),
+): Promise<Outcome> {
+  const { itemId, body } = fields(input);
+  const words = typeof body === "string" ? body.trim() : "";
+  if (typeof itemId !== "string" || !words || words.length > MAX_COMMENT_LENGTH) {
+    return { status: 400, body: { error: "注釈が空か、長すぎます" } };
+  }
+  const item = loadItem(db, itemId);
+  if (!item || item.status !== "shared") return { status: 404, body: { error: "知恵が見つかりません" } };
+  const stopped = await checkWords(claude, words);
+  if (stopped) return stopped;
+  db.prepare("INSERT INTO knowledge_notes (id, item_id, author_id, body, created_at) VALUES (?, ?, ?, ?, ?)").run(
+    randomUUID(),
+    itemId,
+    viewerId,
+    words,
+    now.toISOString(),
+  );
+  return { status: 200, body: { ok: true } };
+}
+
+/** 注釈に「役に立つ」を付けるか外す。自分の注釈には付けられない。 */
+export function voteKnowledgeNote(db: DatabaseSync, viewerId: string, itemId: string, noteId: string, helpful: boolean): boolean {
+  const item = loadItem(db, itemId);
+  if (!item || item.status !== "shared") return false;
+  const note = db.prepare("SELECT author_id FROM knowledge_notes WHERE id = ? AND item_id = ?").get(noteId, itemId) as
+    | { author_id: string }
+    | undefined;
+  if (!note || note.author_id === viewerId) return false;
+  if (helpful) {
+    db.prepare("INSERT OR IGNORE INTO knowledge_note_votes (note_id, person_id) VALUES (?, ?)").run(noteId, viewerId);
+  } else {
+    db.prepare("DELETE FROM knowledge_note_votes WHERE note_id = ? AND person_id = ?").run(noteId, viewerId);
+  }
+  return true;
+}
+
+/** 書いた本人は、自分の注釈をいつでも消せる。 */
+export function deleteKnowledgeNote(db: DatabaseSync, viewerId: string, itemId: string, noteId: string): boolean {
+  const { changes } = db.prepare("DELETE FROM knowledge_notes WHERE id = ? AND item_id = ? AND author_id = ?").run(noteId, itemId, viewerId);
   return changes > 0;
 }
 
@@ -580,9 +688,10 @@ export async function handleKnowledgeAction(
   input: unknown,
   now: Date = new Date(),
 ): Promise<Outcome> {
-  const { action, itemId, reviewId, show } = fields(input);
+  const { action, itemId, reviewId, show, noteId, helpful } = fields(input);
   if (action === "edit") return handleKnowledgeEdit(claude, db, viewerId, input, now);
   if (action === "review") return handleKnowledgeReview(claude, db, viewerId, input, now);
+  if (action === "note") return handleKnowledgeNote(claude, db, viewerId, input, now);
   if (typeof itemId !== "string") return { status: 400, body: { error: "依頼が正しくありません" } };
   const done =
     action === "confirm"
@@ -595,7 +704,13 @@ export async function handleKnowledgeAction(
             ? resolveKnowledgeReview(db, viewerId, itemId, reviewId, now)
             : action === "attachment" && typeof show === "boolean"
               ? chooseKnowledgeAttachment(db, itemId, viewerId, show, now)
-              : null;
+              : action === "unlike"
+                ? removeKnowledgeLike(db, viewerId, itemId)
+                : action === "vote_note" && typeof noteId === "string" && typeof helpful === "boolean"
+                  ? voteKnowledgeNote(db, viewerId, itemId, noteId, helpful)
+                  : action === "delete_note" && typeof noteId === "string"
+                    ? deleteKnowledgeNote(db, viewerId, itemId, noteId)
+                    : null;
   if (done === null) return { status: 400, body: { error: "依頼が正しくありません" } };
   return done ? { status: 200, body: { ok: true } } : { status: 404, body: { error: "できませんでした" } };
 }

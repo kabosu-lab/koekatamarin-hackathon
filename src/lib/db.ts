@@ -199,6 +199,34 @@ const MIGRATIONS: readonly string[] = [
      poses TEXT,
      updated_at TEXT NOT NULL
    ) STRICT;`,
+  `CREATE TABLE knowledge_reviews_new (
+     id TEXT PRIMARY KEY,
+     item_id TEXT NOT NULL REFERENCES knowledge_items (id) ON DELETE CASCADE,
+     reviewer_id TEXT NOT NULL REFERENCES people (id),
+     verdict TEXT NOT NULL CHECK (verdict IN ('like', 'not_working')),
+     comment TEXT NOT NULL,
+     resolved_at TEXT,
+     created_at TEXT NOT NULL,
+     UNIQUE (item_id, reviewer_id)
+   ) STRICT;
+   INSERT INTO knowledge_reviews_new (id, item_id, reviewer_id, verdict, comment, resolved_at, created_at)
+     SELECT id, item_id, reviewer_id, CASE verdict WHEN 'helped' THEN 'like' ELSE 'not_working' END, comment, resolved_at, created_at
+     FROM knowledge_reviews;
+   DROP TABLE knowledge_reviews;
+   ALTER TABLE knowledge_reviews_new RENAME TO knowledge_reviews;
+   CREATE TABLE knowledge_notes (
+     id TEXT PRIMARY KEY,
+     item_id TEXT NOT NULL REFERENCES knowledge_items (id) ON DELETE CASCADE,
+     author_id TEXT NOT NULL REFERENCES people (id),
+     body TEXT NOT NULL,
+     created_at TEXT NOT NULL
+   ) STRICT;
+   CREATE INDEX knowledge_notes_by_item ON knowledge_notes (item_id, created_at);
+   CREATE TABLE knowledge_note_votes (
+     note_id TEXT NOT NULL REFERENCES knowledge_notes (id) ON DELETE CASCADE,
+     person_id TEXT NOT NULL REFERENCES people (id),
+     PRIMARY KEY (note_id, person_id)
+   ) STRICT;`,
 ];
 
 export const SCHEMA_VERSION

@@ -18,11 +18,14 @@ function ReviewItem({
   const [thanked, setThanked] = useState(false);
   return (
     <li>
-      <strong>{review.reviewerName}さん</strong>：{review.verdict === "helped" ? "試して役に立った" : "直したほうがいい"}
-      {review.resolved && "（解決しました）"}
-      {review.comment && <p className="chie-body">{review.comment}</p>}
+      <p className="muted">
+        {review.verdict === "like" ? "試してみた声" : "この知恵を試して、うまくいかなかったこと"}
+        {review.resolved && "（解決しました）"}
+      </p>
+      <p className="chie-body">{review.comment}</p>
+      <p className="muted">{review.reviewerName}さんより</p>
       <p className="chie-links">
-        {canResolve && review.verdict === "fix" && !review.resolved && (
+        {canResolve && review.verdict === "not_working" && !review.resolved && (
           <button type="button" className="secondary" onClick={() => void run({ action: "resolve", reviewId: review.id })}>
             直したので解決にする
           </button>
@@ -138,18 +141,23 @@ export function KnowledgeActions({ item, viewerId }: { item: KnowledgeDetail; vi
       {item.canReview && (
         <section className="card chie-form" aria-label="レビューする">
           <h2>試してみましたか？</h2>
-          <button type="button" disabled={busy} onClick={() => void run({ action: "review", verdict: "helped", comment }).then((ok) => ok && setComment(""))}>
-            試して役に立った
+          <button
+            type="button"
+            aria-pressed={item.likedByViewer}
+            disabled={busy}
+            onClick={() => void run(item.likedByViewer ? { action: "unlike" } : { action: "review", verdict: "like" })}
+          >
+            {item.likedByViewer ? "いいねを取り消す" : "いいね"}
           </button>
-          <label htmlFor="chie-comment">一言（直したほうがいいときは必須）</label>
+          <label htmlFor="chie-comment">うまくいかなかった理由（名前と一緒に、この知恵への意見として届きます）</label>
           <textarea id="chie-comment" rows={2} maxLength={500} value={comment} onChange={(event) => setComment(event.target.value)} />
           <button
             type="button"
             className="secondary"
             disabled={busy || !comment.trim()}
-            onClick={() => void run({ action: "review", verdict: "fix", comment }).then((ok) => ok && setComment(""))}
+            onClick={() => void run({ action: "review", verdict: "not_working", comment }).then((ok) => ok && setComment(""))}
           >
-            直したほうがいい
+            うまくいかなかった
           </button>
         </section>
       )}
@@ -162,8 +170,8 @@ export function KnowledgeActions({ item, viewerId }: { item: KnowledgeDetail; vi
       {done && <p role="status">{done}</p>}
 
       {item.reviews.length > 0 && (
-        <section className="card" aria-label="みんなのレビュー">
-          <h2>みんなのレビュー</h2>
+        <section className="card" aria-label="この知恵への声">
+          <h2>この知恵への声</h2>
           <ul className="chie-list">
             {item.reviews.map((review) => (
               <ReviewItem

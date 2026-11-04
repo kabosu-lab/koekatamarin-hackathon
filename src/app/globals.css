@@ -1837,3 +1837,16 @@ h2 {
   border-color: var(--line, #8a8fa3);
   color: var(--ink);
 }
+
+/* 注釈：本文と分けて、誰かが足した言葉だと分かるようにする */
+.chie-note {
+  margin: 0.4rem 0;
+  padding: 0.5rem 0.7rem;
+  border-left: 0.2rem solid var(--accent);
+  border-radius: 0.3rem;
+  background: color-mix(in srgb, var(--accent) 7%, transparent);
+}
+
+.chie-form details > summary {
+  cursor: pointer;
+}

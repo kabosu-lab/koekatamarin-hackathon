@@ -48,10 +48,14 @@ test("残す、確認する、広がる、レビューする、直す、探す",
   await become(page, FUJIMOTO);
   await page.goto("/chie");
   await page.getByRole("link", { name: "過去問の進め方を残す" }).click();
-  await expect(page.getByRole("button", { name: "直したほうがいい" })).toBeDisabled();
-  await page.getByLabel("一言").fill("分野の順番も書くと分かりやすそう");
-  await page.getByRole("button", { name: "直したほうがいい" }).click();
-  await expect(page.getByText("直したほうがいい指摘が1件")).toBeVisible();
+  await expect(page.getByRole("button", { name: "うまくいかなかった" })).toBeDisabled();
+  await page.getByLabel("うまくいかなかった理由").fill("分野の順番が分からず、迷いました");
+  await page.getByRole("button", { name: "うまくいかなかった" }).click();
+  const voices = page.getByRole("region", { name: "この知恵への声" });
+  await expect(voices).toContainText("分野の順番が分からず、迷いました");
+  await expect(voices).toContainText("うまくいかなかったこと");
+  // 数はどこにも出さない
+  await expect(page.locator("main")).not.toContainText(/うまくいかなかった[^。]*[0-9１-９]+件/);
   await noOverflow(page);
 
   // 直す：作った人が直して、指摘を解決にする
@@ -61,7 +65,6 @@ test("残す、確認する、広がる、レビューする、直す、探す",
   await page.getByRole("button", { name: "直して保存する" }).click();
   await page.getByRole("button", { name: "直したので解決にする" }).click();
   await expect(page.getByText("解決しました")).toBeVisible();
-  await expect(page.getByText("直したほうがいい指摘が1件")).toHaveCount(0);
 
   // 探す：本文は実物で、誰の言葉かと元の投稿が付く
   await become(page, FUJIMOTO);
@@ -77,6 +80,55 @@ test("残す、確認する、広がる、レビューする、直す、探す",
   // 聞いてみる？：既存のお願いの流れにつながる
   await result.getByRole("link", { name: /聞いてみる/ }).first().click();
   await expect(page.locator(".sent")).toContainText("聞いてみましょう");
+});
+
+test("いいねを付けて取り消せる", async ({ page }) => {
+  await become(page, AOKI);
+  await page.goto("/chie");
+  await page.getByRole("link", { name: "出張の出し方" }).click();
+  await page.getByRole("button", { name: "いいね", exact: true }).click();
+  await expect(page.getByText("1人がいいねしました")).toBeVisible();
+  await page.getByRole("button", { name: "いいねを取り消す" }).click();
+  await expect(page.getByText("人がいいねしました")).toHaveCount(0);
+  await noOverflow(page);
+});
+
+test("注釈は確かめ中を経て、2人が役に立つと押すと知恵の下に出て、取り消すと戻る", async ({ page }) => {
+  const words = `注釈の言葉 ${test.info().testId}`;
+  await become(page, "木下 蓮（3年・ものづくり部）");
+  await page.goto("/chie/knowledge-quick-quiz");
+  await page.getByLabel("注釈を書く").fill(words);
+  await page.getByRole("button", { name: "注釈を出す" }).click();
+  const notes = page.getByRole("region", { name: "注釈" });
+  await expect(notes.locator(".chie-note", { hasText: words })).toContainText("まだ確かめ中");
+  await expect(notes.locator(".chie-note", { hasText: words }).getByRole("button", { name: "役に立つ" })).toHaveCount(0);
+  await noOverflow(page);
+
+  // 確かめ中は「注釈を見る」を開いた人にだけ見え、一覧には出ない
+  for (const person of [AOKI, NODA]) {
+    await become(page, person);
+    await page.goto("/chie");
+    await expect(page.getByText(words)).toHaveCount(0);
+    await page.goto("/chie/knowledge-quick-quiz");
+    await expect(page.getByText(words)).toBeHidden();
+    await page.getByText("注釈を見る").click();
+    await page.locator(".chie-note", { hasText: words }).getByRole("button", { name: "役に立つ" }).click();
+    await expect(page.locator(".chie-note", { hasText: words }).getByRole("button", { name: "役に立つを取り消す" })).toBeVisible();
+    if (person === AOKI) await page.reload();
+  }
+  await page.goto("/chie");
+  await expect(page.getByText(words)).toBeVisible();
+
+  await page.goto("/chie/knowledge-quick-quiz");
+  await page.locator(".chie-note", { hasText: words }).getByRole("button", { name: "役に立つを取り消す" }).click();
+  await expect(page.locator(".chie-note", { hasText: words })).toContainText("");
+  await page.goto("/chie");
+  await expect(page.getByText(words)).toHaveCount(0);
+});
+
+test("最初の注釈が知恵の下に出ている", async ({ page }) => {
+  await page.goto("/chie/knowledge-quick-quiz");
+  await expect(page.getByRole("region", { name: "注釈" })).toContainText("前の回の解き方");
 });
 
 test("名前と言葉を外すと、作った人が直すまで広がらない", async ({ page }) => {

@@ -38,10 +38,12 @@ export default async function ChiePage() {
                 </Link>
                 <p className="chie-body">{item.body}</p>
                 <p className="muted">{item.people.map((person) => `${person.name}さん`).join("、")}の言葉</p>
-                <p className="muted">
-                  {item.helpedCount > 0 && `${item.helpedCount}人が役に立ったと言っています。`}
-                  {item.openFixCount > 0 && `直したほうがいい指摘が${item.openFixCount}件。`}
-                </p>
+                {item.likeCount > 0 && <p className="muted">{item.likeCount}人がいいねしました。</p>}
+                {item.shownNotes.map((note) => (
+                  <p key={note.id} className="chie-note">
+                    {note.body}（{note.authorName}さんの注釈）
+                  </p>
+                ))}
               </li>
             ))}
           </ul>

@@ -1,5 +1,5 @@
 import type { DatabaseSync } from "node:sqlite";
-import { channels, homeroomTeachers, pastReports, people, posts, seedAvatars, seedKnowledge } from "./seed-data";
+import { channels, homeroomTeachers, pastReports, people, posts, seedAvatars, seedKnowledge, seedKnowledgeNotes } from "./seed-data";
 
 /** 文字列のまま時刻順に並ぶよう、すべて UTC の形で保存する。 */
 function toStored(time: string): string {
@@ -59,11 +59,27 @@ function syncKnowledge(db: DatabaseSync): void {
 }
 
 /** ダミーのデータを入れる。すでに人物がいるときは入れ直さない（デモの続きを消さない）。 */
+const NOTES_SEEDED = "seed_knowledge_notes";
+
+/** 最初の注釈を、前からある DB にも1度だけ入れる。 */
+function syncKnowledgeNotes(db: DatabaseSync): void {
+  if (db.prepare("SELECT 1 FROM app_meta WHERE key = ?").get(NOTES_SEEDED)) return;
+  const insertNote = db.prepare("INSERT OR IGNORE INTO knowledge_notes (id, item_id, author_id, body, created_at) VALUES (?, ?, ?, ?, ?)");
+  const insertVote = db.prepare("INSERT OR IGNORE INTO knowledge_note_votes (note_id, person_id) VALUES (?, ?)");
+  for (const note of seedKnowledgeNotes) {
+    if (!db.prepare("SELECT 1 FROM knowledge_items WHERE id = ?").get(note.itemId)) continue;
+    insertNote.run(note.id, note.itemId, note.authorId, note.body, "2026-10-25T00:00:00.000Z");
+    for (const voterId of note.voterIds) insertVote.run(note.id, voterId);
+  }
+  db.prepare("INSERT INTO app_meta (key, value) VALUES (?, '1')").run(NOTES_SEEDED);
+}
+
 export function seedDatabase(db: DatabaseSync): void {
   const { count } = db.prepare("SELECT count(*) AS count FROM people").get() as { count: number };
   if (count > 0) {
     syncPeople(db);
     syncKnowledge(db);
+    syncKnowledgeNotes(db);
     return;
   }
 
@@ -107,6 +123,7 @@ export function seedDatabase(db: DatabaseSync): void {
       report.items.forEach((text, position) => insertItem.run(`${id}-${position}`, id, position, text));
     });
     syncKnowledge(db);
+    syncKnowledgeNotes(db);
     db.exec("COMMIT");
   } catch (error) {
     db.exec("ROLLBACK");

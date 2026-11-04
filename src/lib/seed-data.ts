@@ -397,7 +397,7 @@ export const seedKnowledge = [
     authorId: "kawamura",
     title: "生徒の手が止まったときの声のかけ方",
     body: "鉛筆より先に肩を見る。肩が落ちたら、答えではなく「どこまで書けた？」と聞くと、また動き出す（大河原先生）。",
-    reviews: [{ reviewerId: "noda", verdict: "helped", comment: "肩を見るようにしたら、声をかける時が分かってきました。" }],
+    reviews: [{ reviewerId: "noda", verdict: "like", comment: "肩を見るようにしたら、声をかける時が分かってきました。" }],
   },
   {
     id: "knowledge-festival-video",
@@ -405,7 +405,7 @@ export const seedKnowledge = [
     authorId: "kawamura",
     title: "文化祭の動画を早く作る",
     body: "撮る前に、30秒の場面を紙に6枚書くと撮り直しが減る（野田先生。去年は半分の時間で終わった）。音楽は最後に決めると映像に合わせやすい（木下さん）。",
-    reviews: [{ reviewerId: "saeki", verdict: "helped", comment: "クラスで試して、撮り直しが減りました。" }],
+    reviews: [{ reviewerId: "saeki", verdict: "like", comment: "クラスで試して、撮り直しが減りました。" }],
   },
   {
     id: "knowledge-quick-quiz",
@@ -422,5 +422,16 @@ export const seedKnowledge = [
     title: "出張の出し方",
     body: "1週間前までに申請書を出し、戻ったら3日以内に報告書を出す。旅費の領収書は、もらったらすぐ写真に撮っておくと楽（野田先生）。",
     reviews: [],
+  },
+] as const;
+
+/** 最初から出ている注釈。書いた人以外の2人が「役に立つ」と押してある。 */
+export const seedKnowledgeNotes = [
+  {
+    id: "note-quick-quiz",
+    itemId: "knowledge-quick-quiz",
+    authorId: "saeki",
+    body: "同じ形にしておくと、生徒が前の回の解き方を思い出しやすいのもいいところでした😊",
+    voterIds: ["noda", "aoki"],
   },
 ] as const;

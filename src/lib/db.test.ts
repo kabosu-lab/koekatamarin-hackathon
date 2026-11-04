@@ -4,6 +4,10 @@ import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { afterEach, describe, expect, it } from "vitest";
 import { openDatabase, readSchemaVersion, SCHEMA_VERSION } from "./db";
+import { seedDatabase } from "./seed";
+
+/** 反応の移行より前の版。反応の移行はいちばん最後ではなくなっても、この数は変えない */
+const SCHEMA_VERSION_BEFORE_REACTIONS = SCHEMA_VERSION - 1;
 
 const dirs: string[] = [];
 
@@ -52,5 +56,37 @@ describe("openDatabase", () => {
     raw.close();
 
     expect(() => openDatabase(path)).toThrow("開けません");
+  });
+});
+
+describe("知恵の反応の移行", () => {
+  it("いいねと「うまくいかなかった」へ、前の行を失わずに移す", () => {
+    const path = tempPath();
+    const seeded = openDatabase(path);
+    seedDatabase(seeded);
+    seeded.close();
+    const raw = new DatabaseSync(path);
+    raw.exec(`
+      PRAGMA foreign_keys = OFF;
+      DROP TABLE knowledge_note_votes;
+      DROP TABLE knowledge_notes;
+      DROP TABLE knowledge_reviews;
+      CREATE TABLE knowledge_reviews (
+        id TEXT PRIMARY KEY, item_id TEXT NOT NULL, reviewer_id TEXT NOT NULL,
+        verdict TEXT NOT NULL CHECK (verdict IN ('helped', 'fix')),
+        comment TEXT NOT NULL, resolved_at TEXT, created_at TEXT NOT NULL,
+        UNIQUE (item_id, reviewer_id)
+      ) STRICT;
+      INSERT INTO knowledge_reviews VALUES ('a', 'knowledge-quick-quiz', 'saeki', 'helped', '', NULL, 't');
+      INSERT INTO knowledge_reviews VALUES ('b', 'knowledge-quick-quiz', 'aoki', 'fix', '理由', 'r', 't');
+      PRAGMA user_version = ${SCHEMA_VERSION_BEFORE_REACTIONS};
+    `);
+    raw.close();
+    const db = openDatabase(path);
+    expect(db.prepare("SELECT id, verdict, comment, resolved_at FROM knowledge_reviews ORDER BY id").all()).toEqual([
+      { id: "a", verdict: "like", comment: "", resolved_at: null },
+      { id: "b", verdict: "not_working", comment: "理由", resolved_at: "r" },
+    ]);
+    db.close();
   });
 });
