@@ -126,3 +126,11 @@ test("話す画面では、話したあとに押したときだけ探す", async
   await expect(page.getByRole("region", { name: "言葉にして送る" })).toContainText("大河原 誠");
   await noOverflow(page);
 });
+
+test("知恵は公式の規程ではないと示し、経験と手順の例が並ぶ", async ({ page }) => {
+  await page.goto("/chie");
+  await expect(page.getByText("公式の規程ではありません").first()).toBeVisible();
+  await expect(page.getByRole("link", { name: "出張の出し方" })).toBeVisible();
+  await page.getByRole("link", { name: "生徒の手が止まったときの声のかけ方" }).click();
+  await expect(page.getByText("公式の規程ではありません").first()).toBeVisible();
+});

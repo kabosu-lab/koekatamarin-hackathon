@@ -22,6 +22,7 @@ import {
   resolveKnowledgeReview,
   withdrawKnowledge,
 } from "./knowledge";
+import { handleMemory } from "./memory";
 import { seedDatabase } from "./seed";
 
 const NOW = new Date("2026-11-04T01:00:00Z");
@@ -214,9 +215,56 @@ describe("探す", () => {
 
 describe("最初のデータ", () => {
   it("前からある DB にも1度だけ入り、取り下げたものを戻さない", () => {
-    expect(listSharedKnowledge(db, "fujimoto").length).toBe(2);
+    expect(listSharedKnowledge(db, "fujimoto").length).toBe(4);
     withdrawKnowledge(db, "knowledge-quick-quiz", "kawamura", NOW);
     seedDatabase(db);
-    expect(listSharedKnowledge(db, "fujimoto").map((i) => i.id)).toEqual(["knowledge-festival-video"]);
+    expect(listSharedKnowledge(db, "fujimoto").map((i) => i.id)).not.toContain("knowledge-quick-quiz");
+  });
+});
+
+describe("「忘れて」と知恵", () => {
+  const forget = (personId: string, id: string) => handleMemory(db, personId, { action: "forget", kind: "published", id }, NOW);
+
+  it("返した人が「忘れて」と言うと、広がらなくなり、名前も外れ、作った人に直しを頼む", () => {
+    forget("kinoshita", "reply-making-2b");
+    expect(listSharedKnowledge(db, "aoki").map((item) => item.id)).not.toContain("knowledge-festival-video");
+    const item = getKnowledge(db, "kawamura", "knowledge-festival-video");
+    expect(item?.fixRequested).toBe(true);
+    expect(item?.contributors.find((c) => c.id === "kinoshita")?.state).toBe("removed");
+    expect(listKnowledgeTasks(db, "kawamura")).toContainEqual({ id: "knowledge-festival-video", title: item?.title, reason: "fix" });
+  });
+
+  it("作った人が自分の投稿を「忘れて」と言っても、直すまで広がらない", () => {
+    forget("kawamura", "post-making-2");
+    expect(listSharedKnowledge(db, "aoki").map((item) => item.id)).not.toContain("knowledge-festival-video");
+    expect(getKnowledge(db, "kawamura", "knowledge-festival-video")?.fixRequested).toBe(true);
+  });
+
+  it("他の人の言葉を「忘れて」と言っても、知恵は動かない", () => {
+    forget("aoki", "reply-making-2b");
+    expect(listSharedKnowledge(db, "saeki").map((item) => item.id)).toContain("knowledge-festival-video");
+  });
+});
+
+describe("「聞いてみる？」の相手", () => {
+  it("知恵では、質問した本人を外し、答えた人にする", () => {
+    const item = getKnowledge(db, "aoki", "knowledge-festival-video");
+    expect(item?.people.map((person) => person.id)).toContain("kawamura");
+    expect(item?.askableIds).not.toContain("kawamura");
+    expect(item?.askableIds).toEqual(expect.arrayContaining(["noda", "kinoshita"]));
+  });
+
+  it("投稿の検索でも、困りごとの本人は外し、頑張りの本人は残す", async () => {
+    const outcome = await handleKnowledgeFind(
+      recording({ results: [{ id: "p-post-study-2", reason: "近い" }, { id: "p-post-clubs-1", reason: "近い" }] }).client,
+      db,
+      teams,
+      "aoki",
+      { query: "小テスト" },
+    );
+    const results = (outcome.body as { results: { key: string; askable: { id: string }[] }[] }).results;
+    const ids = (key: string) => results.find((result) => result.key === key)?.askable.map((person) => person.id);
+    if (ids("p-post-study-2")) expect(ids("p-post-study-2")).not.toContain("kawamura");
+    expect(ids("p-post-clubs-1")).toEqual(["nakamura"]);
   });
 });

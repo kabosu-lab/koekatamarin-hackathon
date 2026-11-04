@@ -198,7 +198,7 @@ export const posts: SeedPost[] = [
     channelId: "making",
     authorId: "kinoshita",
     kind: "trouble",
-    body: "しおり立ての底を広くしたら、今度は反ってしまいました。佐伯先生、図書室で使うならどのくらいの大きさがいいですか？ 反りの直し方も知りたいです。",
+    body: "しおり立ての底を広くしたら、今度は反ってしまいました。佐伯先生、図書室で使うならどのくらいの大きさがいいですか？ 反りの直し方も知りたいです🙏",
     createdAt: "2026-11-02T16:40:00+09:00",
     replies: [],
     likedBy: ["noda"],
@@ -240,13 +240,13 @@ export const posts: SeedPost[] = [
     channelId: "study",
     authorId: "aoki",
     kind: "effort",
-    body: "今日は過去問を20問解きました。ネットワークの問題だけ、まだ半分しか合いません。",
+    body: "今日は過去問を20問解きました✏️ ネットワークの問題だけ、まだ半分しか合いません💦",
     createdAt: "2026-10-27T19:40:00+09:00",
     replies: [
       {
         id: "reply-study-1",
         authorId: "noda",
-        body: "半分合うなら順調です。ぼくが受けたときも、ネットワークは最後まで苦手でした。",
+        body: "半分合うなら順調です👍 ぼくが受けたときも、ネットワークは最後まで苦手でした😅",
         createdAt: "2026-10-28T07:50:00+09:00",
       },
     ],
@@ -257,13 +257,13 @@ export const posts: SeedPost[] = [
     channelId: "making",
     authorId: "kinoshita",
     kind: "report",
-    body: "図書室のしおり立てを 3D プリンターで試作しました。少し倒れやすいので、底を広くします。",
+    body: "図書室のしおり立てを 3D プリンターで試作しました📚✨ 少し倒れやすいので、底を広くします🔧",
     createdAt: "2026-10-28T16:20:00+09:00",
     replies: [
       {
         id: "reply-making-1",
         authorId: "saeki",
-        body: "図書室の前で見ました。国語の教室にも一つほしいです。",
+        body: "図書室の前で見ました👀 国語の教室にも一つほしいです！",
         createdAt: "2026-10-29T12:15:00+09:00",
       },
     ],
@@ -274,19 +274,19 @@ export const posts: SeedPost[] = [
     channelId: "making",
     authorId: "kawamura",
     kind: "trouble",
-    body: "文化祭のクラス紹介動画、毎年つくるのに時間がかかります。早く作るコツはありますか？",
+    body: "文化祭のクラス紹介動画🎬 毎年つくるのに時間がかかります。早く作るコツはありますか？",
     createdAt: "2026-10-20T16:10:00+09:00",
     replies: [
       {
         id: "reply-making-2a",
         authorId: "noda",
-        body: "撮る前に、30秒の場面を紙に6枚書くと撮り直しが減りました。去年は半分の時間で終わりました。",
+        body: "撮る前に、30秒の場面を紙に6枚書くと撮り直しが減りました。去年は半分の時間で終わりました🎉",
         createdAt: "2026-10-20T17:05:00+09:00",
       },
       {
         id: "reply-making-2b",
         authorId: "kinoshita",
-        body: "音楽は最後に決めると、映像に合わせやすかったです。",
+        body: "音楽は最後に決めると、映像に合わせやすかったです🎵",
         createdAt: "2026-10-21T08:10:00+09:00",
       },
     ],
@@ -297,13 +297,13 @@ export const posts: SeedPost[] = [
     channelId: "study",
     authorId: "kawamura",
     kind: "trouble",
-    body: "授業の小テストを毎回作るのに時間がかかっています。みなさんはどうしていますか？",
+    body: "授業の小テストを毎回作るのに時間がかかっています💦 みなさんはどうしていますか？",
     createdAt: "2026-10-22T15:30:00+09:00",
     replies: [
       {
         id: "reply-study-2",
         authorId: "ogawara",
-        body: "同じ形の問題を5問に決めて、数字と語句だけ毎回替えています。作るのは10分くらいです。",
+        body: "同じ形の問題を5問に決めて、数字と語句だけ毎回替えています。作るのは10分くらいです⏱️",
         createdAt: "2026-10-22T16:40:00+09:00",
       },
     ],
@@ -314,7 +314,7 @@ export const posts: SeedPost[] = [
     channelId: "clubs",
     authorId: "nakamura",
     kind: "effort",
-    body: "朝練を今週は全部行けました。高い音がやっと出るようになってきました。",
+    body: "朝練を今週は全部行けました🎺 高い音がやっと出るようになってきました✨",
     createdAt: "2026-10-30T08:00:00+09:00",
     replies: [],
     likedBy: [],
@@ -347,16 +347,58 @@ export const posts: SeedPost[] = [
       {
         id: "reply-staff-2",
         authorId: "noda",
-        body: "紙で大丈夫なときは紙でよいと思います。次の空き時間に一緒に一度やってみましょうか。",
+        body: "紙で大丈夫なときは紙でよいと思います。次の空き時間に一緒に一度やってみましょうか😊",
         createdAt: "2026-10-30T17:10:00+09:00",
       },
     ],
     likedBy: ["kawamura"],
   },
+  {
+    id: "post-making-3",
+    channelId: "making",
+    authorId: "kawamura",
+    kind: "trouble",
+    body: "授業で生徒の手が止まったとき、声をかけるタイミングがつかめません。みなさんはどこを見ていますか？👀",
+    createdAt: "2026-10-23T16:00:00+09:00",
+    replies: [
+      {
+        id: "reply-making-3",
+        authorId: "ogawara",
+        body: "うまく言えないんですが、鉛筆より先に肩を見ます。肩が落ちたら、答えではなく「どこまで書けた？」と聞くと、また動き出します😊",
+        createdAt: "2026-10-23T17:10:00+09:00",
+      },
+    ],
+    likedBy: ["saeki", "noda"],
+  },
+  {
+    id: "post-study-3",
+    channelId: "study",
+    authorId: "kawamura",
+    kind: "trouble",
+    body: "初めて出張に行きます。書類の出し方を、どなたか教えてもらえませんか？🙏",
+    createdAt: "2026-10-24T15:20:00+09:00",
+    replies: [
+      {
+        id: "reply-study-3",
+        authorId: "noda",
+        body: "1週間前までに申請書を出して、戻ったら3日以内に報告書でした。旅費の領収書は、もらったらすぐ写真に撮っておくと楽です📷",
+        createdAt: "2026-10-24T16:05:00+09:00",
+      },
+    ],
+    likedBy: ["saeki"],
+  },
 ];
 
 /** 最初から広がっている校内の知恵。言葉が使われた人は、投稿と返信から決まる。 */
 export const seedKnowledge = [
+  {
+    id: "knowledge-stuck-moment",
+    postId: "post-making-3",
+    authorId: "kawamura",
+    title: "生徒の手が止まったときの声のかけ方",
+    body: "鉛筆より先に肩を見る。肩が落ちたら、答えではなく「どこまで書けた？」と聞くと、また動き出す（大河原先生）。",
+    reviews: [{ reviewerId: "noda", verdict: "helped", comment: "肩を見るようにしたら、声をかける時が分かってきました。" }],
+  },
   {
     id: "knowledge-festival-video",
     postId: "post-making-2",
@@ -371,6 +413,14 @@ export const seedKnowledge = [
     authorId: "kawamura",
     title: "小テストを10分で作る",
     body: "同じ形の問題を5問に決めて、数字と語句だけ毎回替える（大河原先生。作るのは10分くらい）。",
+    reviews: [],
+  },
+  {
+    id: "knowledge-business-trip",
+    postId: "post-study-3",
+    authorId: "kawamura",
+    title: "出張の出し方",
+    body: "1週間前までに申請書を出し、戻ったら3日以内に報告書を出す。旅費の領収書は、もらったらすぐ写真に撮っておくと楽（野田先生）。",
     reviews: [],
   },
 ] as const;

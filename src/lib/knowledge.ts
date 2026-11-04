@@ -50,6 +50,8 @@ export type KnowledgeDetail = KnowledgeSummary & {
   isAuthor: boolean;
   viewerState: ContributorState | null;
   canReview: boolean;
+  /** 「聞いてみる？」の相手。質問した本人は入れない */
+  askableIds: string[];
 };
 export type KnowledgeTask = { id: string; title: string; reason: "confirm" | "fix" };
 export type KnowledgeResult = {
@@ -61,6 +63,8 @@ export type KnowledgeResult = {
   /** Claude が書いた、近いと思った理由。本文は DB の実物だけを使う */
   reason: string;
   people: KnowledgePerson[];
+  /** 「聞いてみる？」の相手。質問した本人は入れない */
+  askable: KnowledgePerson[];
   channelId: string;
   postId: string;
   researchedWithAi: boolean;
@@ -295,6 +299,16 @@ export function listSharedKnowledge(db: DatabaseSync, viewerId: string): Knowled
 }
 
 /** 知恵の詳しい内容。確認中は関わる本人たちだけ、取り下げたものは作った人だけが読める。 */
+/**
+ * 「聞いてみる？」の相手。答えた人に聞く。質問した本人に聞いても答えは出てこない。
+ * 誰も答えていなくても、頑張りや報告なら、書いた本人がその経験を持っている。
+ */
+function askableIds(post: { author_id: string; kind: string }, peopleIds: string[]): string[] {
+  const answerers = peopleIds.filter((id) => id !== post.author_id);
+  if (answerers.length > 0) return answerers;
+  return post.kind === "trouble" || post.kind === "worry" || !peopleIds.includes(post.author_id) ? [] : [post.author_id];
+}
+
 export function getKnowledge(db: DatabaseSync, viewerId: string, itemId: string): KnowledgeDetail | null {
   const item = loadItem(db, itemId);
   if (!item) return null;
@@ -304,9 +318,11 @@ export function getKnowledge(db: DatabaseSync, viewerId: string, itemId: string)
   if (item.status === "withdrawn" && !isAuthor) return null;
   if (item.status === "confirming" && viewerState === null) return null;
 
-  const source = db.prepare("SELECT channel_id, researched_with_ai FROM posts WHERE id = ?").get(item.source_post_id) as {
+  const source = db.prepare("SELECT channel_id, researched_with_ai, author_id, kind FROM posts WHERE id = ?").get(item.source_post_id) as {
     channel_id: string;
     researched_with_ai: number;
+    author_id: string;
+    kind: string;
   };
   const reviews = (
     db
@@ -341,6 +357,10 @@ export function getKnowledge(db: DatabaseSync, viewerId: string, itemId: string)
     isAuthor,
     viewerState,
     canReview: item.status === "shared" && viewerState === null,
+    askableIds: askableIds(
+      source,
+      contributors.filter((c) => c.state === "ok").map((c) => c.id),
+    ),
   };
 }
 
@@ -399,6 +419,30 @@ export function removeFromKnowledge(db: DatabaseSync, itemId: string, personId: 
     itemId,
   );
   return true;
+}
+
+/**
+ * 本人が公開した言葉を「忘れて」と言ったら、その言葉を使う知恵を確認に戻す。
+ * 作った人が本文を直すまで広げない。作った本人以外は名前も外す。
+ */
+export function returnForgottenWords(db: DatabaseSync, personId: string, sourceId: string, now: Date): void {
+  const items = db
+    .prepare(
+      `SELECT i.id, i.author_id FROM knowledge_items i JOIN posts p ON p.id = i.source_post_id
+       WHERE i.status != 'withdrawn'
+         AND ((p.id = ? AND p.author_id = ?)
+           OR EXISTS (SELECT 1 FROM replies r WHERE r.id = ? AND r.post_id = p.id AND r.author_id = ?))`,
+    )
+    .all(sourceId, personId, sourceId, personId) as { id: string; author_id: string }[];
+  for (const item of items) {
+    if (item.author_id !== personId) {
+      db.prepare("UPDATE knowledge_contributors SET state = 'removed' WHERE item_id = ? AND person_id = ?").run(item.id, personId);
+    }
+    db.prepare("UPDATE knowledge_items SET status = 'confirming', fix_requested = 1, updated_at = ? WHERE id = ?").run(
+      now.toISOString(),
+      item.id,
+    );
+  }
 }
 
 export function withdrawKnowledge(db: DatabaseSync, itemId: string, personId: string, now: Date): boolean {
@@ -610,6 +654,7 @@ export async function handleKnowledgeFind(
       title: item.title,
       body: item.body,
       people: item.people,
+      askable: item.people.filter((person) => item.askableIds.includes(person.id)),
       channelId: item.channelId,
       postId: item.sourcePostId,
       researchedWithAi: item.researchedWithAi,
@@ -622,13 +667,16 @@ export async function handleKnowledgeFind(
     const replies = usableReplies(post, forgotten);
     const people = new Map([[post.authorId, asPerson(post.authorId, post.authorName, post.authorLabel)]]);
     for (const reply of replies) people.set(reply.authorId, asPerson(reply.authorId, reply.authorName, reply.authorLabel));
+    const everyone = [...people.values()];
+    const askable = askableIds({ author_id: post.authorId, kind: post.kind }, everyone.map((person) => person.id));
     results.set(`p-${post.id}`, {
       key: `p-${post.id}`,
       kind: "post",
       knowledgeId: null,
       title: `${post.authorName}さんの投稿`,
       body: [post.body, ...replies.map((reply) => `${reply.authorName}：${reply.body}`)].join("\n"),
-      people: [...people.values()],
+      people: everyone,
+      askable: everyone.filter((person) => askable.includes(person.id)),
       channelId,
       postId: post.id,
       researchedWithAi: post.researchedWithAi,

@@ -25,6 +25,7 @@ export default async function KnowledgePage({ params }: { params: Promise<{ id: 
 
       <section className="card" aria-label="知恵の本文">
         <p className="chie-body">{item.body}</p>
+        <p className="muted">やった人の経験です。公式の規程ではありません。</p>
         {item.researchedWithAi && <p className="ai-mark">AI と調べました</p>}
         <p className="muted">
           {item.helpedCount > 0 && `${item.helpedCount}人が役に立ったと言っています。`}
@@ -42,7 +43,7 @@ export default async function KnowledgePage({ params }: { params: Promise<{ id: 
             <li key={person.id}>
               <Link href={`/people/${person.id}`}>{person.name}さん</Link>（{person.label}）
               {item.status === "confirming" && `・${STATE[person.state]}`}
-              {item.status === "shared" && person.id !== viewer.id && (
+              {item.status === "shared" && person.id !== viewer.id && item.askableIds.includes(person.id) && (
                 <>
                   {" "}
                   <Link href={`/?ask=${person.id}`}>聞いてみる？</Link>

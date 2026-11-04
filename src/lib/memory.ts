@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
 import { MAX_BODY_LENGTH, type PostDestination } from "./destination/types";
+import { returnForgottenWords } from "./knowledge";
 
 const PUBLISHED_FOR_TALK = 10;
 const SPOKEN_FOR_TALK = 20;
@@ -88,6 +89,7 @@ export function handleMemory(db: DatabaseSync, personId: string, input: unknown,
     }
     if (kind === "published") {
       db.prepare("INSERT OR IGNORE INTO forgotten_words (person_id, source_id) VALUES (?, ?)").run(personId, id);
+      returnForgottenWords(db, personId, id, now);
       return { status: 200, body: { ok: true } };
     }
   }
