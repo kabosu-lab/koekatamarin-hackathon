@@ -73,12 +73,18 @@ function scriptedProfile(prompt: string) {
   return word ? { ready: true, text: `校内で話していること：${word.slice(0, 40)}` } : { ready: false, text: "" };
 }
 
-function scriptedCheer(jsonSchema: Record<string, unknown> | undefined) {
+function scriptedCheer(jsonSchema: Record<string, unknown> | undefined, material = "") {
   const properties = (jsonSchema?.properties ?? {}) as {
     hints?: { items?: { properties?: { postId?: { enum?: string[] } } } };
   };
   const ids = properties.hints?.items?.properties?.postId?.enum ?? [];
-  return { hints: ids.map((postId) => ({ postId, hint: "続けて頑張っているみたい！一言どうですか？" })) };
+  const kindOf = (postId: string) => material.match(new RegExp(`<投稿 id="${postId}"[^>]*kind="(\\w+)"`))?.[1];
+  return {
+    hints: ids.map((postId) => ({
+      postId,
+      hint: ["trouble", "worry"].includes(kindOf(postId) ?? "") ? "同じことで迷った経験があれば、一言どうですか？" : "続けて頑張っているみたい！一言どうですか？",
+    })),
+  };
 }
 
 function scriptedReply(prompt: string) {
@@ -170,7 +176,7 @@ export function createScriptedClaude(): ClaudeClient {
       if (task === "lookback") return { text: JSON.stringify(scriptedLookback(messages[0].content)), refused: false };
       if (task === "daily") return { text: JSON.stringify(scriptedDaily(messages[0].content)), refused: false };
       if (task === "profile") return { text: JSON.stringify(scriptedProfile(messages[0].content)), refused: false };
-      if (task === "cheer") return { text: JSON.stringify(scriptedCheer(jsonSchema)), refused: false };
+      if (task === "cheer") return { text: JSON.stringify(scriptedCheer(jsonSchema, messages[0].content as string)), refused: false };
       if (task === "reply") return { text: JSON.stringify(scriptedReply(messages[0].content)), refused: false };
       if (task === "connect") return { text: JSON.stringify(scriptedConnect(messages[0].content, jsonSchema)), refused: false };
       if (task === "knowledge_draft") return { text: JSON.stringify(scriptedKnowledgeDraft(messages[0].content)), refused: false };

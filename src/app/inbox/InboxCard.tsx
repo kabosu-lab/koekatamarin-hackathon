@@ -1,13 +1,9 @@
 "use client";
 
-import { playReachedSound } from "@/app/sound";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
-import type { Review } from "@/lib/claude/compose";
-import type { InboxItem, PassCandidate, ReplyDraft } from "@/lib/inbox";
-import { isSpeechSupported, startListening } from "../speech";
-
-const MAX_LENGTH = 2000;
+import { useState } from "react";
+import type { InboxItem, PassCandidate } from "@/lib/inbox";
+import { VoiceReply } from "../VoiceReply";
 
 async function postJson(url: string, body: unknown) {
   const response = await fetch(url, {
@@ -20,98 +16,10 @@ async function postJson(url: string, body: unknown) {
 }
 
 export function InboxCard({ item, candidates }: { item: InboxItem; candidates: PassCandidate[] }) {
-  const [spoken, setSpoken] = useState("");
-  const [listening, setListening] = useState(false);
-  const [question, setQuestion] = useState("");
-  const [text, setText] = useState<string | null>(null);
-  const [review, setReview] = useState<Review | null>(null);
-  const [reviewedText, setReviewedText] = useState("");
   const [passTo, setPassTo] = useState("");
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
   const [done, setDone] = useState<"replied" | "passed" | null>(null);
-  const stopRef = useRef<(() => void) | null>(null);
-
-  useEffect(() => () => stopRef.current?.(), []);
-
-  function listen() {
-    setNotice("");
-    if (!isSpeechSupported()) {
-      setNotice("このブラウザでは声が使えません。文字で書いてください。");
-      return;
-    }
-    const before = spoken;
-    setListening(true);
-    stopRef.current = startListening({
-      onInterim: (heard) => setSpoken(before ? `${before}\n${heard}` : heard),
-      onFinal: (heard) => setSpoken(before ? `${before}\n${heard}` : heard),
-      onError: setNotice,
-      onEnd: () => {
-        setListening(false);
-        stopRef.current = null;
-      },
-    });
-  }
-
-  async function makeReply() {
-    setBusy(true);
-    setNotice("");
-    try {
-      const { ok, data } = await postJson("/api/inbox/draft", { postId: item.postId, spoken });
-      if (!ok) throw new Error("draft failed");
-      const draft = data.draft as ReplyDraft;
-      if (draft.kind === "ask_back") {
-        setQuestion(draft.question);
-        return;
-      }
-      setQuestion("");
-      setText(draft.text);
-      setReview(data.review as Review);
-      setReviewedText(draft.text);
-    } catch {
-      setNotice("言葉にできませんでした。話した言葉は残してあります。もう一度押してください。");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function check(target: string) {
-    setBusy(true);
-    setNotice("");
-    try {
-      const { ok, data } = await postJson("/api/review", { text: target });
-      if (!ok) throw new Error("review failed");
-      setReview(data.review as Review);
-      setReviewedText(target);
-    } catch {
-      setNotice("確かめられませんでした。もう一度押してください。");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function send() {
-    setBusy(true);
-    setNotice("");
-    try {
-      const { ok, status, data } = await postJson("/api/inbox/reply", { postId: item.postId, text });
-      if (ok) {
-        setDone("replied");
-        playReachedSound();
-        return;
-      }
-      if (status === 422 && data.review) {
-        setReview(data.review as Review);
-        setReviewedText(text ?? "");
-        return;
-      }
-      setNotice("まだ送っていません。もう一度押してください。");
-    } catch {
-      setNotice("まだ送っていません。もう一度押してください。");
-    } finally {
-      setBusy(false);
-    }
-  }
 
   async function pass() {
     setBusy(true);
@@ -136,8 +44,6 @@ export function InboxCard({ item, candidates }: { item: InboxItem; candidates: P
     );
   }
 
-  const checked = text !== null && text.trim() === reviewedText.trim();
-  const blocked = checked && review?.verdict === "block";
 
   return (
     <section className="talk inbox-item" aria-label={`${item.authorName}さんからのお願い`}>
@@ -147,81 +53,14 @@ export function InboxCard({ item, candidates }: { item: InboxItem; candidates: P
       </p>
       <p>{item.body}</p>
 
-      {text === null ? (
-        <>
-          <label>
-            <span className="visually-hidden">話したこと</span>
-            <textarea
-              aria-label="話したこと"
-              rows={3}
-              maxLength={MAX_LENGTH}
-              placeholder="話すか、書いてください"
-              value={spoken}
-              onChange={(event) => setSpoken(event.target.value)}
-            />
-          </label>
-          {question && (
-            <p className="question" role="status">
-              {question}
-            </p>
-          )}
-          <div className="row">
-            {listening ? (
-              <button type="button" onClick={() => stopRef.current?.()}>
-                話し終わった
-              </button>
-            ) : (
-              <button type="button" disabled={busy} onClick={listen}>
-                話して返す
-              </button>
-            )}
-            <button type="button" disabled={busy || listening || spoken.trim() === ""} onClick={() => void makeReply()}>
-              返信の言葉にする
-            </button>
-          </div>
-        </>
-      ) : (
-        <div className="compose-card">
-          <textarea
-            aria-label="返信の文章"
-            rows={3}
-            maxLength={MAX_LENGTH}
-            value={text}
-            onChange={(event) => setText(event.target.value)}
-          />
-          {checked && review ? (
-            <div className={`perception ${review.verdict}`} role="status">
-              <p>{review.perception}</p>
-              {review.alternatives.map((alternative) => (
-                <button
-                  type="button"
-                  className="alternative"
-                  key={alternative}
-                  disabled={busy}
-                  onClick={() => {
-                    setText(alternative);
-                    void check(alternative);
-                  }}
-                >
-                  この言い方にする：{alternative}
-                </button>
-              ))}
-            </div>
-          ) : (
-            <button type="button" disabled={busy || text.trim() === ""} onClick={() => void check(text)}>
-              受け取られ方を確かめる
-            </button>
-          )}
-          <div className="row">
-            <button type="button" disabled={busy} onClick={() => setText(null)}>
-              話し直す
-            </button>
-            <button type="button" disabled={busy || !checked || blocked} onClick={() => void send()}>
-              本人として返信する
-            </button>
-          </div>
-        </div>
-      )}
+      <VoiceReply
+        postId={item.postId}
+        draftUrl="/api/inbox/draft"
+        replyUrl="/api/inbox/reply"
+        disabled={busy}
+        onBusyChange={setBusy}
+        onSent={() => setDone("replied")}
+      />
 
       {notice && (
         <p className="notice" role="alert">

@@ -1,12 +1,13 @@
 import { createHash } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
-import { ComposeError } from "./claude/compose";
+import { ComposeError, reviewPost } from "./claude/compose";
 import type { ClaudeClient } from "./claude/types";
 import { buildPublicEntries } from "./connect";
 import { DestinationError, type PostDestination, type PostView } from "./destination/types";
-import { isNoticeHours } from "./inbox";
+import { draftReply, isNoticeHours } from "./inbox";
 
 const MAX_TOKENS = 2000;
+const MAX_REPLY_LENGTH = 2000;
 const MAX_CARDS = 30;
 const EARLIER_WORDS = 5;
 const SEEN_DAYS = 7;
@@ -79,10 +80,13 @@ const COMMON_WORDS = new Set([
   "今日", "今週", "今月", "今年", "去年", "来週", "毎回", "毎年", "最近", "時間", "先生", "生徒", "学校", "校内", "教室", "授業", "全部", "最初", "最後", "自分", "投稿", "得意", "苦手",
 ]);
 
+/** 敬称の付いた語（人の名前）は、話題ではないので除く。 */
+const WITH_HONORIFIC = /[\p{Script=Han}\p{Script=Katakana}ー]+(?:先生|さん|くん|君|ちゃん|様|氏|校長|教頭)/gu;
+
 /** 本文から、話題になりそうな語を取り出す。漢字2文字以上、カタカナ3文字以上、英数字2文字以上。 */
-export function keywordsOf(text: string): string[] {
-  const found = text.match(/[\p{Script=Han}]{2,}|[\p{Script=Katakana}ー]{3,}|[A-Za-z0-9]{2,}/gu) ?? [];
-  return [...new Set(found)].filter((word) => !COMMON_WORDS.has(word));
+export function keywordsOf(text: string, excluded: ReadonlySet<string> = new Set()): string[] {
+  const found = text.replace(WITH_HONORIFIC, " ").match(/[\p{Script=Han}]{2,}|[\p{Script=Katakana}ー]{3,}|[A-Za-z0-9]{2,}/gu) ?? [];
+  return [...new Set(found)].filter((word) => !COMMON_WORDS.has(word) && !excluded.has(word));
 }
 
 /** その人のその日のカード。同じ日は同じ順で出て、日が変わると変わる。関連する投稿があれば、ランダムの投稿と交互に出す。 */
@@ -99,7 +103,9 @@ export function listTodayCards(
     .filter((post) => !hidden.has(post.authorId))
     .sort((a, b) => order(a.id).localeCompare(order(b.id)));
 
-  const keywords = keywordsOf(myWords.join("\n"));
+  // 校内の人の名前は、関連の語にしない
+  const names = new Set(destination.listOtherPeople(viewerId).flatMap((person) => [person.name, ...person.name.split(/\s+/)]));
+  const keywords = keywordsOf(myWords.join("\n"), names);
   const related = new Map<string, string>();
   for (const post of shuffled) {
     const shared = keywords.find((word) => post.body.includes(word));
@@ -217,6 +223,7 @@ const cheerSystemPrompt = `あなたは「こえかた」の相棒です。朝�
 - 書いてよいのは <投稿> と、その人の <前の言葉> から確かに言えることだけ。数字、経験、気持ちを作らない
 - 前と比べられないときは、投稿の中の頑張りに触れるだけにする
 - 短く1文で、見ている人に向けて、明るく。AI の定型文にしない
+- kind に合う言葉にする。effort（頑張り）と report（報告）は応援の言葉、trouble（困りごと）と worry（悩み）は「頑張っている」と決めつけず、力になれそうか、経験を分けられそうかを促す言葉にする（例：「同じことで迷った経験があれば、一言どうですか？」）
 - 人を比べない。順位や点数の話をしない
 - きっかけが見つからなければ hint を空にする
 
@@ -240,7 +247,7 @@ export async function makeCheerHints(
         .slice(-EARLIER_WORDS)
         .map((p) => `  <前の言葉>${p.body}</前の言葉>`)
         .join("\n");
-      return `<投稿 id="${post.id}" 名前="${post.authorName}">\n${post.body}\n${earlier}\n</投稿>`;
+      return `<投稿 id="${post.id}" 名前="${post.authorName}" kind="${post.kind}">\n${post.body}\n${earlier}\n</投稿>`;
     })
     .join("\n\n");
 
@@ -299,5 +306,68 @@ export async function handleHints(
       console.error("きっかけの作成に失敗", error instanceof Error ? error.name : "unknown");
     }
     return { status: 200, body: { hints: [] } };
+  }
+}
+
+type ReplyOutcome = { status: number; body: Record<string, unknown> };
+
+function replyFields(input: unknown): { postId?: unknown; spoken?: unknown; text?: unknown } {
+  return typeof input === "object" && input !== null ? input : {};
+}
+
+/** カードから返信できる投稿。今日の3人に出せる投稿と同じで、範囲を絞った投稿やお知らせは入れない。 */
+function replyablePost(destination: PostDestination, viewerId: string, postId: unknown) {
+  return typeof postId === "string" ? candidates(destination, viewerId).find((post) => post.id === postId) : undefined;
+}
+
+/** カードで話したことを返信の下書きにする。経験を足さず、中身がなければ聞き返す。 */
+export async function handleTodayReplyDraft(
+  claude: ClaudeClient,
+  destination: PostDestination,
+  viewerId: string,
+  input: unknown,
+): Promise<ReplyOutcome> {
+  const { postId, spoken } = replyFields(input);
+  if (typeof spoken !== "string" || spoken.trim() === "" || spoken.length > MAX_REPLY_LENGTH) {
+    return { status: 400, body: { error: "話した言葉が空か、長すぎます" } };
+  }
+  const post = replyablePost(destination, viewerId, postId);
+  if (!post) return { status: 404, body: { error: "投稿が見つかりません" } };
+  try {
+    const draft = await draftReply(claude, post.body, spoken);
+    const review = draft.kind === "reply" ? await reviewPost(claude, draft.text) : null;
+    return { status: 200, body: { draft, review } };
+  } catch (error) {
+    console.error("返信の下書きに失敗", error instanceof Error ? error.name : "unknown");
+    return { status: 503, body: { error: "相棒につながりませんでした" } };
+  }
+}
+
+/** 本人が確かめた返信を送る。送る直前にもう一度確かめ、確かめられなければ送らない。 */
+export async function handleTodayReply(
+  claude: ClaudeClient,
+  destination: PostDestination,
+  viewerId: string,
+  input: unknown,
+): Promise<ReplyOutcome> {
+  const { postId, text } = replyFields(input);
+  if (typeof text !== "string" || text.trim() === "" || text.length > MAX_REPLY_LENGTH) {
+    return { status: 400, body: { error: "本文が空か、長すぎます" } };
+  }
+  const post = replyablePost(destination, viewerId, postId);
+  if (!post) return { status: 404, body: { error: "投稿が見つかりません" } };
+  let review;
+  try {
+    review = await reviewPost(claude, text);
+  } catch (error) {
+    console.error("返信の確認に失敗", error instanceof Error ? error.name : "unknown");
+    return { status: 503, body: { error: "確認ができなかったので、まだ送っていません" } };
+  }
+  if (review.verdict === "block") return { status: 422, body: { error: "この内容は送れません", review } };
+  try {
+    return { status: 200, body: { replyId: destination.createReply(viewerId, post.id, text) } };
+  } catch (error) {
+    if (error instanceof DestinationError) return { status: 400, body: { error: error.message } };
+    throw error;
   }
 }

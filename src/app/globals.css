@@ -3129,3 +3129,26 @@ html[data-avatar="hide"] .burst-speaker {
   font-weight: 400;
   text-decoration: underline;
 }
+
+/* カードから話して返信する */
+.card-reply {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin: 0.6rem 0;
+  padding: 0;
+  min-height: 0;
+}
+
+.card-reply textarea {
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.card-reply-open {
+  margin: 0.6rem 0;
+}
+
+.quiet-note .card-reply-open {
+  display: block;
+}

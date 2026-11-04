@@ -60,3 +60,51 @@ test("スマホ幅で横にはみ出さない", async ({ page }) => {
   );
   expect(overflow).toBe(0);
 });
+
+async function fakeSpeech(page: import("@playwright/test").Page, spoken: string) {
+  await page.addInitScript((text) => {
+    class FakeRecognition {
+      onresult: ((event: unknown) => void) | null = null;
+      onend: (() => void) | null = null;
+      onerror: ((event: unknown) => void) | null = null;
+      start() {}
+      stop() {
+        this.onresult?.({ resultIndex: 0, results: [Object.assign([{ transcript: text }], { isFinal: true })] });
+        this.onend?.();
+      }
+    }
+    Object.assign(window, { webkitSpeechRecognition: FakeRecognition, SpeechRecognition: FakeRecognition });
+  }, spoken);
+}
+
+for (const theme of ["pop", "modern"] as const) {
+  test(`${theme}：カードから声で話すと返信の下書きができ、本人が確かめて送れる`, async ({ browser }) => {
+    const context = await browser.newContext({ viewport: { width: 412, height: 860 } });
+    await context.addCookies([{ name: "koekata_theme", value: theme, url: "http://127.0.0.1:3100" }]);
+    const page = await context.newPage();
+    const words = `声のカード返信 ${theme} ${test.info().testId}`;
+    await fakeSpeech(page, words);
+    await page.goto("/today");
+    await page.getByRole("button", { name: "話して返信する" }).click();
+    await page.getByRole("button", { name: "声で話す" }).click();
+    await page.getByRole("button", { name: "話し終わった" }).click();
+    await expect(page.getByLabel("話したこと")).toHaveValue(words);
+    await page.getByRole("button", { name: "返信の言葉にする" }).click();
+    await expect(page.getByLabel("返信の文章")).toHaveValue(words);
+    await page.getByRole("button", { name: "本人として返信する" }).click();
+    await expect(page.getByText("返信を届けました。")).toBeVisible();
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    expect(overflow).toBe(0);
+    await page.goto("/teams");
+    await context.close();
+  });
+}
+
+test("文字で書いても返信でき、中身がなければ聞き返す", async ({ page }) => {
+  await page.goto("/today");
+  await page.getByRole("button", { name: "話して返信する" }).click();
+  await page.getByLabel("話したこと").fill("わからん");
+  await page.getByRole("button", { name: "返信の言葉にする" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "あなたのときはどうでしたか" })).toBeVisible();
+  await expect(page.getByLabel("返信の文章")).toHaveCount(0);
+});

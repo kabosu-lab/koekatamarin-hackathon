@@ -185,3 +185,18 @@ test("ポップの最初の画面は、黄色の面に分身がいる", async ({
   expect(await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--stage").trim())).toBe("#ffd23f");
   await expect(page.locator(".speaker")).toBeVisible();
 });
+
+test("ポップの最初の画面は、リボンの知らせと話す画面が一緒に出ても崩れない", async ({ browser }) => {
+  const context = await browser.newContext();
+  await context.addCookies([{ name: "koekata_theme", value: "pop", url: "http://127.0.0.1:3100" }]);
+  const page = await context.newPage();
+  const problems: string[] = [];
+  page.on("pageerror", (error) => problems.push(error.message));
+  page.on("console", (message) => {
+    if (message.type() === "error" && /same key/.test(message.text())) problems.push(message.text());
+  });
+  await page.goto("/");
+  await expect(page.getByRole("button", { name: "話しかける" })).toBeVisible();
+  expect(problems).toEqual([]);
+  await context.close();
+});

@@ -43,7 +43,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
   const eggs = rewards ? listGiftEggs(db, viewer.id).length : 0;
   return (
     <main className="home stage-home">
-      {rewards && <RibbonMoment key={viewer.id} ribbons={listNewRibbons(db, viewer.id)} />}
+      {rewards && <RibbonMoment key={`ribbon-${viewer.id}`} ribbons={listNewRibbons(db, viewer.id)} />}
       <header className="hero">
         <h1>こえかた</h1>
         <p>話すだけで、できることが増える。</p>

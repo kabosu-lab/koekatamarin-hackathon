@@ -8,6 +8,7 @@ import { getDestination } from "@/lib/destination/current";
 import { listHiddenIds } from "@/lib/hidden-people";
 import { listPopularCards, listQuietPosts, listSeenNotes, listTodayCards, viewerPublicWords } from "@/lib/today";
 import { PersonSwitcher } from "../PersonSwitcher";
+import { CardReply } from "./CardReply";
 import { TodayCards } from "./TodayCards";
 
 export const metadata: Metadata = { title: "今日の3人｜こえかた" };
@@ -41,10 +42,11 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
       ))}
 
       {quiet.map((post) => (
-        <p className="quiet-note" key={post.postId}>
+        <div className="quiet-note" key={post.postId}>
           {post.authorName}さんの投稿に、まだ反応がありません。一言どうですか？「{post.body}」{" "}
           <Link href={`/teams?channel=${post.channelId}`}>校内チャネルで見る</Link>
-        </p>
+          <CardReply postId={post.postId} label="一言話して返す" />
+        </div>
       ))}
 
       <nav className="today-tabs" aria-label="カードの選び方">

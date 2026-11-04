@@ -9,6 +9,8 @@ import { seedDatabase } from "./seed";
 import {
   cheer,
   handleHints,
+  handleTodayReply,
+  handleTodayReplyDraft,
   keywordsOf,
   listPopularCards,
   listSeenNotes,
@@ -219,5 +221,79 @@ describe("関連する投稿", () => {
   it("語の取り出しは、どこにでも出る語を外す", () => {
     expect(keywordsOf("今日は文化祭のロボットをAI2で作る")).toEqual(expect.arrayContaining(["文化祭", "ロボット", "AI2"]));
     expect(keywordsOf("今日は先生と話した")).toEqual([]);
+  });
+});
+
+describe("関連の語", () => {
+  it("人の名前や敬称の付いた語を、関連の語にしない", () => {
+    expect(keywordsOf("佐伯先生と文化祭の相談をした。木下さんにも聞いた")).toEqual(["文化祭", "相談"]);
+    expect(keywordsOf("佐伯と文化祭", new Set(["佐伯"]))).toEqual(["文化祭"]);
+  });
+
+  it("校内の人の名前だけが同じ投稿を、関連にしない", () => {
+    const cards = listTodayCards(teams, "kawamura", NOW, new Set(), ["佐伯先生に聞いた", "佐伯 みどりさん"]);
+    expect(cards.every((card) => !card.relatedReason?.includes("佐伯"))).toBe(true);
+  });
+});
+
+describe("応援のきっかけ", () => {
+  it("相談には「頑張っている」と決めつけず、投稿の種類を Claude に渡す", async () => {
+    const scripted = createScriptedClaude();
+    const hints = await makeCheerHints(scripted, teams, "aoki", ["post-making-2", "post-clubs-1"]);
+    const hint = (id: string) => hints.find((h) => h.postId === id)?.hint ?? "";
+    expect(hint("post-making-2")).not.toContain("頑張");
+    expect(hint("post-making-2")).toContain("経験");
+    expect(hint("post-clubs-1")).toContain("頑張");
+  });
+});
+
+describe("カードからの返信", () => {
+  const scripted = createScriptedClaude();
+  const replies = (postId: string) => teams.listPosts("noda", teams.listChannels("noda").find((c) => teams.listPosts("noda", c.id).some((p) => p.id === postId))?.id ?? "").find((p) => p.id === postId)?.replies ?? [];
+
+  it("話したことが下書きになり、受け取られ方も返す", async () => {
+    const { status, body } = await handleTodayReplyDraft(scripted, teams, "noda", { postId: "post-clubs-1", spoken: "朝練すごいね" });
+    expect(status).toBe(200);
+    expect(body.draft).toMatchObject({ kind: "reply", text: "朝練すごいね" });
+    expect(body.review).toBeTruthy();
+  });
+
+  it("中身がなければ聞き返し、下書きにしない", async () => {
+    const { body } = await handleTodayReplyDraft(scripted, teams, "noda", { postId: "post-clubs-1", spoken: "わからん" });
+    expect(body.draft).toMatchObject({ kind: "ask_back" });
+    expect(body.review).toBeNull();
+  });
+
+  it("本人が送ると届く", async () => {
+    const before = replies("post-clubs-1").length;
+    const { status } = await handleTodayReply(scripted, teams, "noda", { postId: "post-clubs-1", text: "朝練すごいね" });
+    expect(status).toBe(200);
+    expect(replies("post-clubs-1")).toHaveLength(before + 1);
+  });
+
+  it("読めない投稿、お知らせ、自分の投稿には返せない", async () => {
+    for (const [viewer, postId] of [["aoki", STAFF], ["aoki", NOTICE], ["aoki", STUDY]]) {
+      expect((await handleTodayReply(scripted, teams, viewer, { postId, text: "こんにちは" })).status).toBe(404);
+      expect((await handleTodayReplyDraft(scripted, teams, viewer, { postId, spoken: "こんにちは" })).status).toBe(404);
+    }
+  });
+
+  it("確かめられないときと個人攻撃は送らない", async () => {
+    const before = replies("post-clubs-1").length;
+    const failing: ClaudeClient = {
+      mode: "real",
+      async complete() {
+        throw new Error("だめ");
+      },
+    };
+    expect((await handleTodayReply(failing, teams, "noda", { postId: "post-clubs-1", text: "やったね" })).status).toBe(503);
+    const blocking: ClaudeClient = {
+      mode: "real",
+      async complete() {
+        return { text: JSON.stringify({ verdict: "block", perception: "x", alternatives: [] }), refused: false };
+      },
+    };
+    expect((await handleTodayReply(blocking, teams, "noda", { postId: "post-clubs-1", text: "ひどい言葉" })).status).toBe(422);
+    expect(replies("post-clubs-1")).toHaveLength(before);
   });
 });
