@@ -186,6 +186,7 @@ const MIGRATIONS: readonly string[] = [
    ) STRICT;
    CREATE INDEX attachments_pending ON attachments (owner_id, post_id);
    ALTER TABLE knowledge_items ADD COLUMN show_attachment INTEGER NOT NULL DEFAULT 0 CHECK (show_attachment IN (0, 1));`,
+  `ALTER TABLE daily_reports ADD COLUMN made_by TEXT NOT NULL DEFAULT 'manual' CHECK (made_by IN ('manual', 'agent'));`,
 ];
 
 export const SCHEMA_VERSION

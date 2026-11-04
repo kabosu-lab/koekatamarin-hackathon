@@ -127,3 +127,22 @@ test("チェックと文章は同じ行に並ぶ", async ({ page }) => {
   expect(box && text && box.x + box.width <= text.x).toBe(true);
   expect(box && text && box.y < text.y + text.height).toBe(true);
 });
+
+test("夕方のまとめを係に頼むと、どう作ったかが分かり、チェックは付いていない", async ({ page }) => {
+  const words = `朝練の話 ${test.info().testId}`;
+  await page.goto("/");
+  await switchPerson(page, "木下 蓮（3年・ものづくり部）");
+  await say(page, words);
+  await page.getByRole("button", { name: "言葉にして送る" }).click();
+  await page.getByRole("button", { name: "本人として送る" }).click();
+  await expect(page.locator(".sent")).toBeVisible();
+
+  await page.goto("/daily");
+  await page.getByRole("button", { name: "夕方のまとめを係に頼む" }).click();
+  await expect(page.getByText("クラウドの係は使っていません")).toBeVisible();
+  const boxes = page.getByRole("checkbox");
+  await expect(boxes.first()).toBeVisible();
+  await expect(page.getByRole("checkbox", { checked: true })).toHaveCount(0);
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  expect(overflow).toBe(0);
+});

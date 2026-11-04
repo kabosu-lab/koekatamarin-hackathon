@@ -25,6 +25,8 @@
     "try:cheer": "tsx --env-file-if-exists=.env scripts/try-cheer.ts",
     "try:profile": "tsx --env-file-if-exists=.env scripts/try-profile.ts",
     "try:daily": "tsx --env-file-if-exists=.env scripts/try-daily.ts",
+    "setup:evening": "tsx --env-file-if-exists=.env scripts/setup-evening-agent.ts",
+    "try:evening": "tsx --env-file-if-exists=.env scripts/try-evening.ts",
     "try:lookback": "tsx --env-file-if-exists=.env scripts/try-lookback.ts",
     "try:attachment": "tsx --env-file-if-exists=.env scripts/try-attachment.ts",
     "demo:attachments": "tsx scripts/make-demo-attachments.ts"

@@ -2,7 +2,7 @@ import type { DatabaseSync } from "node:sqlite";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createScriptedClaude } from "./claude/scripted";
 import type { ChatMessage, ClaudeClient, ClaudeRequest } from "./claude/types";
-import { getReport, handleCheck, handleMake, handleRespond, japanDate, listReceived, recipientsOf } from "./daily";
+import { getReport, handleCheck, handleDaily, handleEvening, handleMake, handleRespond, japanDate, listReceived, recipientsOf } from "./daily";
 import { openDatabase } from "./db";
 import { createDummyTeams } from "./destination/dummy-teams";
 import { seedDatabase } from "./seed";
@@ -209,5 +209,65 @@ describe("一言を返す", () => {
     expect((await handleRespond(failing, db, "fujimoto", { reportId: report.id, text: "x" }, NOW)).status).toBe(503);
     expect(getReport(db, "saeki", DATE)?.responses).toEqual([]);
     log.mockRestore();
+  });
+});
+
+describe("夕方のまとめの係", () => {
+  const post = (person = "saeki") =>
+    db
+      .prepare("INSERT INTO posts (id, channel_id, author_id, kind, body, created_at) VALUES (?, 'study', ?, 'effort', ?, ?)")
+      .run(`evening-${person}`, person, "今日は作文を読んだ", NOW.toISOString());
+
+  it("材料は人に届いたやり取りだけで、相棒との話を渡さず、チェックは付かない", async () => {
+    post();
+    const summarize = vi.fn(async () => ({ items: ["作文を読んだ"], usage: null }));
+    const outcome = await handleDaily(scripted, db, "saeki", { action: "evening", conversation: talk }, { summarize });
+    expect(outcome.status).toBe(200);
+    expect(outcome.body.madeBy).toBe("agent");
+    const material = (summarize.mock.calls as unknown as string[][][])[0][0].join("\n");
+    expect(material).toContain("今日は作文を読んだ");
+    expect(material).not.toContain("保護者の電話");
+    const report = getReport(db, "saeki", DATE);
+    expect(report?.madeBy).toBe("agent");
+    expect(report?.items.every((item) => !item.checked)).toBe(true);
+  });
+
+  it("係がなければ、手動のまとめに戻り、そう返す", async () => {
+    post();
+    const outcome = await handleEvening(scripted, null, db, "saeki", NOW);
+    expect(outcome.body.madeBy).toBe("manual");
+    expect(getReport(db, "saeki", DATE)?.madeBy).toBe("manual");
+  });
+
+  it("時間切れや不正な形で失敗すると、手動のまとめに戻る", async () => {
+    post();
+    const spy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const outcome = await handleEvening(
+      scripted,
+      { summarize: async () => { throw new Error("時間切れ"); } },
+      db,
+      "saeki",
+      NOW,
+    );
+    spy.mockRestore();
+    expect(outcome.status).toBe(200);
+    expect(outcome.body.madeBy).toBe("manual");
+  });
+
+  it("やり取りがなければ、係を起こさない", async () => {
+    const summarize = vi.fn(async () => ({ items: [], usage: null }));
+    const outcome = await handleEvening(scripted, { summarize }, db, "saeki", NOW);
+    expect(summarize).not.toHaveBeenCalled();
+    expect(outcome.body.madeBy).toBeNull();
+  });
+
+  it("届いている項目があれば、係でも作り直さない", async () => {
+    post();
+    const first = await make();
+    handleCheck(db, "saeki", { itemId: first.items[0].id, checked: true });
+    const summarize = vi.fn(async () => ({ items: ["x"], usage: null }));
+    const outcome = await handleEvening(scripted, { summarize }, db, "saeki", NOW);
+    expect(outcome.status).toBe(409);
+    expect(summarize).not.toHaveBeenCalled();
   });
 });

@@ -24,6 +24,8 @@ export function DailyPanel({ initialReport, recipients, viewerName, noun }: Prop
   const [report, setReport] = useState(initialReport);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
+  const [agentBusy, setAgentBusy] = useState(false);
+  const [madeNote, setMadeNote] = useState("");
   // 届くかどうかに関わるので、1項目ずつ順に確定させる。応答が逆転して画面と記録がずれないように
   const [updating, setUpdating] = useState<string | null>(null);
 
@@ -44,6 +46,29 @@ export function DailyPanel({ initialReport, recipients, viewerName, noun }: Prop
       setNotice("作れませんでした。もう一度押してください。");
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function askAgent() {
+    setAgentBusy(true);
+    setNotice("");
+    setMadeNote("");
+    try {
+      const { ok, data } = await postDaily({ action: "evening" });
+      if (!ok) {
+        setNotice(typeof data.error === "string" ? data.error : "作れませんでした。もう一度押してください。");
+        return;
+      }
+      const next = data.report as DailyReport | null;
+      if (!data.madeBy) setNotice("今日のやり取りがまだないみたい。投稿や返信をしたあとで作れます。");
+      else if (next) {
+        setReport(next);
+        if (data.madeBy === "manual") setMadeNote("クラウドの係は使っていません（未設定、台本、またはつながらなかったため）。アプリの中で作りました。");
+      }
+    } catch {
+      setNotice("作れませんでした。もう一度押してください。");
+    } finally {
+      setAgentBusy(false);
     }
   }
 
@@ -90,9 +115,17 @@ export function DailyPanel({ initialReport, recipients, viewerName, noun }: Prop
         ) : (
           <p className="muted">今日のやり取りから、相棒が項目ごとにまとめます。</p>
         )}
-        <button type="button" className={report ? "secondary" : undefined} disabled={busy} onClick={() => void make()}>
+        {report?.madeBy === "agent" && (
+          <p className="muted">クラウドの係（Managed Agents）がまとめました。材料は今日の投稿や返信などで、相棒との話は渡していません。</p>
+        )}
+        {madeNote && <p className="muted">{madeNote}</p>}
+        <button type="button" className={report ? "secondary" : undefined} disabled={busy || agentBusy} onClick={() => void make()}>
           {busy ? "まとめています…" : report ? "作り直す" : `今日の${noun}を作る`}
         </button>
+        <button type="button" className="secondary" disabled={busy || agentBusy} onClick={() => void askAgent()}>
+          {agentBusy ? "係がまとめています…（1分ほど）" : "夕方のまとめを係に頼む"}
+        </button>
+        <p className="muted">係はクラウドで動きます。渡すのは人に届いたやり取りだけで、終わったら記録を消します。</p>
         {notice && (
           <p className="notice" role="alert">
             {notice}
