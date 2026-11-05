@@ -7,7 +7,7 @@ import { openDatabase } from "../db";
 import { listReplyNotices } from "../reply-notices";
 import { seedDatabase } from "../seed";
 import { createDummyTeams } from "./dummy-teams";
-import { awaitTeamsDelivery, nameWithoutRole, plainText, reachedTeams, resetTeamsBridge, sendPostToTeams, sendReplyToTeams, syncFromTeams, syncFromTeamsIfStale, teamsMode, teamsSyncMs, withTeamsBridge } from "./teams-bridge";
+import { awaitTeamsDelivery, nameWithoutRole, plainText, sendReactionToTeams, reachedTeams, resetTeamsBridge, sendPostToTeams, sendReplyToTeams, syncFromTeams, syncFromTeamsIfStale, teamsMode, teamsSyncMs, withTeamsBridge } from "./teams-bridge";
 
 const CONFIG = { tenant: "example.test", clientId: "dummy", team: "T", channel: "C" };
 const FAR = Date.now() + 3_600_000;
@@ -346,6 +346,45 @@ describe("チャネルの対応表", () => {
     const channelOf = (body: string) => (db.prepare("SELECT channel_id FROM posts WHERE body = ?").get(body) as { channel_id: string } | undefined)?.channel_id;
     expect(channelOf("部活で新記録")).toBe("clubs");
     expect(channelOf("職員室への連絡")).toBe("staffroom");
+  });
+});
+
+describe("いいねとリアクション", () => {
+  it("アプリのいいねを、Teams に届いた投稿へ本人の名前のリアクションで付け、外したら外す", async () => {
+    signIn("noda");
+    const { calls, fetcher } = fakeGraph();
+    db.prepare("INSERT INTO posts (id, channel_id, author_id, kind, body, created_at) VALUES ('p1', 'study', 'saeki', 'report', '本文', '2026-11-06T00:00:00Z')").run();
+    signIn("saeki");
+    await sendPostToTeams(db, "saeki", "p1", "study", "本文", {}, fetcher);
+    await sendReactionToTeams(db, "noda", "p1", true, fetcher);
+    await sendReactionToTeams(db, "noda", "p1", false, fetcher);
+    const reactions = posts(calls).slice(-2);
+    expect(reactions[0].url).toMatch(/\/setReaction$/);
+    expect(reactions[1].url).toMatch(/\/unsetReaction$/);
+    expect(reactions[0].token).toBe("Bearer token-noda");
+    expect(reactions[0].body).toEqual({ reactionType: "👍" });
+  });
+
+  it("Teams に届いていない投稿には送らない", async () => {
+    signIn("noda");
+    const { calls, fetcher } = fakeGraph();
+    await sendReactionToTeams(db, "noda", "local-only", true, fetcher);
+    expect(calls).toHaveLength(0);
+  });
+
+  it("Teams で付いたリアクションを、アプリのいいねとして取り込む。本人のいいねは数えない", async () => {
+    signIn();
+    const withReactions = {
+      ...message("m-like", "佐伯 みどり", "<p>リアクションの付いた投稿</p>"),
+      reactions: [
+        { reactionType: "like", user: { user: { id: "u-野田 翔", displayName: "野田 翔" } } },
+        { reactionType: "heart", user: { user: { id: "u-佐伯 みどり", displayName: "佐伯 みどり" } } },
+      ],
+    };
+    await syncFromTeams(db, fakeGraph([withReactions]).fetcher);
+    const post = db.prepare("SELECT id FROM posts WHERE body = ?").get("リアクションの付いた投稿") as { id: string };
+    const likers = (db.prepare("SELECT person_id FROM post_likes WHERE post_id = ?").all(post.id) as { person_id: string }[]).map((row) => row.person_id);
+    expect(likers).toEqual(["noda"]);
   });
 });
 

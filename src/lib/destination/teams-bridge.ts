@@ -66,6 +66,7 @@ type GraphMessage = {
   from: { user?: { id?: string; displayName?: string } | null } | null;
   body: { content: string; contentType?: string };
   replies?: GraphMessage[];
+  reactions?: { reactionType?: string; user?: { user?: { id?: string; displayName?: string | null } | null } | null }[];
 };
 
 /** Teams の HTML を文字だけにする。画面には HTML を出さない。 */
@@ -218,6 +219,39 @@ export async function sendReplyToTeams(db: DatabaseSync, viewerId: string, reply
   }
 }
 
+/** アプリのいいねを、Teams の元の投稿にも本人の名前のリアクションで付ける（外したら外す）。 */
+export async function sendReactionToTeams(db: DatabaseSync, viewerId: string, postId: string, liked: boolean, fetcher: Fetch = fetch): Promise<void> {
+  if (teamsMode() !== "graph") return;
+  const message = teamsIdOf(db, postId);
+  if (!message) return;
+  try {
+    const config = readGraphConfig();
+    const token = await getAccessToken(fetcher, Date.now(), trialTeamsSender() ?? viewerId);
+    const channelId = (db.prepare("SELECT channel_id FROM posts WHERE id = ?").get(postId) as { channel_id: string } | undefined)?.channel_id;
+    const target = config && channelId ? teamsTargetFor(db, config, channelId) : null;
+    if (!target || !token) return;
+    const path = await channelPath(fetcher, token, target);
+    const response = await fetcher(`${GRAPH}${path}/${message}/${liked ? "setReaction" : "unsetReaction"}`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ reactionType: "👍" }), // Teams は絵文字そのもので受け取る（"like" は通らない）
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    });
+    if (!response.ok) throw new Error(`Graph ${response.status}`);
+  } catch (error) {
+    logFailure("いいね", error);
+  }
+}
+
+/** Teams で付いたリアクションを、アプリのいいねとして取り込む。本人の投稿への本人のいいねは数えない */
+function importReactions(db: DatabaseSync, message: GraphMessage, postId: string, linked: Record<string, string>): void {
+  const author = (db.prepare("SELECT author_id FROM posts WHERE id = ?").get(postId) as { author_id: string } | undefined)?.author_id;
+  for (const reaction of message.reactions ?? []) {
+    const personId = matchPerson(db, { from: { user: reaction.user?.user ?? null } } as GraphMessage, linked);
+    if (personId && personId !== author) db.prepare("INSERT OR IGNORE INTO post_likes (post_id, person_id) VALUES (?, ?)").run(postId, personId);
+  }
+}
+
 /** Workflow の「Webhook を受けたらチャネルに投稿」へカードを送る（予備）。 */
 async function sendWebhookCard(author: string, body: string, fetcher: Fetch): Promise<void> {
   const url = process.env.KOEKATA_TEAMS_WEBHOOK_URL;
@@ -293,6 +327,7 @@ async function syncChannel(db: DatabaseSync, fetcher: Fetch, token: string, targ
     if (message.deletedDateTime) continue;
     const postId = importPost(db, message, linked, channelId);
     if (!postId) continue;
+    importReactions(db, message, postId, linked);
     for (const reply of [...(message.replies ?? [])].sort((a, b) => a.createdDateTime.localeCompare(b.createdDateTime))) {
       if (!reply.deletedDateTime) importReply(db, reply, postId, linked);
     }
@@ -362,6 +397,11 @@ export function withTeamsBridge(inner: PostDestination, db: DatabaseSync): PostD
       const id = inner.createReply(viewerId, postId, body);
       void sendReplyToTeams(db, viewerId, id, postId, body.trim());
       return id;
+    },
+    toggleLike(viewerId, postId) {
+      inner.toggleLike(viewerId, postId);
+      const liked = db.prepare("SELECT 1 FROM post_likes WHERE post_id = ? AND person_id = ?").get(postId, viewerId) !== undefined;
+      void sendReactionToTeams(db, viewerId, postId, liked);
     },
   };
 }
