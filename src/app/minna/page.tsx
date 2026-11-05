@@ -10,6 +10,7 @@ import { activeEvents } from "@/lib/events";
 import { listGiftEggs } from "@/lib/gift-eggs";
 import { countForNotice } from "@/lib/inbox";
 import { countKnowledgeForNotice } from "@/lib/knowledge";
+import { isKohoOfficer } from "@/lib/koho";
 import { showsRewards } from "@/lib/rewards-view";
 import { listAlertsFor } from "@/lib/safety";
 import { getSakura, leavesThisWeek } from "@/lib/sakura";
@@ -74,6 +75,12 @@ export default async function MinnaPage() {
             <Link href="/soudan">
               <Icon name="shield" />
               相談室への知らせを見る
+            </Link>
+          )}
+          {isKohoOfficer(viewer.id) && (
+            <Link href="/koho">
+              <Icon name="star" />
+              広報の候補
             </Link>
           )}
         </nav>

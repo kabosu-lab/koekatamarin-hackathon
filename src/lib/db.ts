@@ -358,6 +358,12 @@ const MIGRATIONS: readonly string[] = [
      person_id TEXT NOT NULL REFERENCES people (id),
      PRIMARY KEY (post_id, person_id)
    ) STRICT;`,
+  // 広報の候補を本人に確認した記録。断ったことは担当に見せない
+  `CREATE TABLE koho_requests (
+     post_id TEXT PRIMARY KEY REFERENCES posts (id) ON DELETE CASCADE,
+     status TEXT NOT NULL CHECK (status IN ('waiting', 'agreed', 'declined')),
+     requested_at TEXT NOT NULL
+   ) STRICT;`,
 ];
 
 export const SCHEMA_VERSION

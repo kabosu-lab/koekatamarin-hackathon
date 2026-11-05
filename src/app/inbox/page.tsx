@@ -6,7 +6,9 @@ import { getDestination } from "@/lib/destination/current";
 import { countContributions } from "@/lib/avatar";
 import { listInbox, listPassCandidates } from "@/lib/inbox";
 import { listKnowledgeTasks } from "@/lib/knowledge";
+import { listKohoRequests } from "@/lib/koho";
 import { listRecentReplies } from "@/lib/reply-notices";
+import { agreeKoho, declineKoho } from "../koho/actions";
 import { KnowledgeTasks } from "../chie/KnowledgeTasks";
 import { InboxCard } from "./InboxCard";
 
@@ -32,6 +34,30 @@ export default async function InboxPage() {
       <p className="inbox-counts">
         解決 {goals}・つないだ {assists}
       </p>
+
+      {listKohoRequests(db, viewer.id).map((request) => (
+        <section className="card" aria-label="広報への紹介の確認" key={request.postId}>
+          <h2>広報で紹介してもよいですか</h2>
+          <p>{request.body}</p>
+          <p className="muted">校外へ出すのは、学校が確かめたあと、学校の広報用アカウントからだけです。断っても、誰にも伝わりません。</p>
+          <form>
+            <input type="hidden" name="postId" value={request.postId} />
+            {request.isStudent && (
+              <label>
+                <input type="checkbox" name="guardian" /> 保護者の同意があります
+              </label>
+            )}
+            <div className="row">
+              <button type="submit" formAction={declineKoho} className="secondary">
+                紹介しない
+              </button>
+              <button type="submit" formAction={agreeKoho}>
+                紹介してよい
+              </button>
+            </div>
+          </form>
+        </section>
+      ))}
 
       {replies.length > 0 && (
         <section className="card inbox-replies" id="replies" aria-label="届いた返事">

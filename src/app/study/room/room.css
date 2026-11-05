@@ -384,7 +384,6 @@ html body .room-card {
 }
 
 /* 昼は校庭の桜の下なので、床ではなく芝生にする */
-.room-scene[data-place="garden"] .room-floor {
+.room-scene[data-place="garden"]::after {
   background: linear-gradient(180deg, #a8d58a, #8fc477);
-  background-image: linear-gradient(180deg, #a8d58a, #8fc477);
 }
