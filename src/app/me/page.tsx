@@ -38,7 +38,7 @@ export const dynamic = "force-dynamic";
 export default async function MePage() {
   const { viewer, people } = await getViewer();
   const store = await cookies();
-  const appearance = readAppearance((name) => store.get(name)?.value, viewer.role);
+  const appearance = readAppearance((name) => store.get(name)?.value);
   const db = getDatabase();
   // 隠している人にも裏で集まる
   syncRibbons(db, viewer.id, new Date());
@@ -159,7 +159,7 @@ export default async function MePage() {
       <h2 className="group-title" id="settings"><Icon name="settings" />設定</h2>
       <section className="card appearance" aria-label="見た目">
         <h2>見た目</h2>
-        {APPEARANCE_OPTIONS.filter((group) => group.name !== "avatar" || appearance.theme !== "modern").map((group) => (
+        {APPEARANCE_OPTIONS.filter((group) => group.name !== "theme").filter((group) => group.name !== "avatar" || appearance.theme !== "modern").map((group) => (
           <form action={setAppearance} key={group.name}>
             <input type="hidden" name="name" value={group.name} />
             <p className="muted">{group.label}</p>

@@ -1,17 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { switchPerson } from "./helpers";
 
-test("画面は「話す」「みんな」「じぶん」の3つで、行き来できる", async ({ page }) => {
-  await page.goto("/");
-  const nav = page.getByRole("navigation", { name: "画面の切り替え" });
-  await expect(nav.getByRole("link")).toHaveText(["話す", "みんな", "じぶん"]);
-
-  await nav.getByRole("link", { name: "みんな" }).click();
-  await expect(page.getByRole("heading", { name: "みんな" })).toBeVisible();
-  await nav.getByRole("link", { name: "じぶん" }).click();
-  await expect(page.getByRole("heading", { name: "じぶん" })).toBeVisible();
-});
-
 test("下の階層の画面でも、今どこにいるかが分かる", async ({ page }) => {
   const current = page.getByRole("navigation", { name: "画面の切り替え" }).locator('[aria-current="page"]');
   await page.goto("/today");

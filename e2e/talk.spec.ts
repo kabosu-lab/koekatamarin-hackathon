@@ -1,4 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
+import { holdMic } from "./helpers";
 
 /** 本物の音声認識の代わりに、決めた言葉を聞き取ったことにする。 */
 async function fakeSpeech(page: Page, spoken: string) {
@@ -45,8 +46,9 @@ test("息つぎでブラウザが認識を終えても、押すまで聞き続�
     Object.assign(window, { webkitSpeechRecognition: BreathingRecognition, SpeechRecognition: BreathingRecognition });
   });
   await page.goto("/");
-  await page.getByRole("button", { name: "話しかける" }).click();
-  const stop = page.getByRole("button", { name: "話し終わった" });
+  await page.locator(".device-mic").hover();
+  await page.mouse.down();
+  const stop = page.getByRole("button", { name: "離すと送る" });
   await expect(stop).toBeVisible();
 
   const breath = (text: string) =>
@@ -64,27 +66,23 @@ test("息つぎでブラウザが認識を終えても、押すまで聞き続�
   await expect(stop).toBeVisible();
   expect(await page.evaluate(() => (window as unknown as { continuousFlag: boolean }).continuousFlag)).toBe(true);
 
-  await stop.click();
+  await page.mouse.up();
   await expect(page.getByRole("log").locator(".bubble.user").last()).toHaveText(/文化祭の動画できました/);
-});
-
-test("最初の画面の主役は「話しかける」と「文字で書く」", async ({ page }) => {
-  await page.goto("/");
-  // 下の案内に隠れず、最初から画面に入っている
-  await expect(page.getByRole("button", { name: "話しかける" })).toBeInViewport({ ratio: 1 });
-  await expect(page.getByRole("button", { name: "文字で書く" })).toBeInViewport({ ratio: 1 });
 });
 
 test("声で話すと、聞いている様子を見せ、話した言葉を残して相棒が返す", async ({ page }) => {
   await fakeSpeech(page, "私は嫌やわ");
   await page.goto("/");
 
-  await page.getByRole("button", { name: "話しかける" }).click();
+  await page.locator(".device-mic").hover();
+  await page.mouse.down();
   await expect(page.getByText("聞いています…")).toBeVisible();
   expect(await page.evaluate(() => (window as unknown as { fakeLang: string }).fakeLang)).toBe("ja-JP");
 
-  await page.getByRole("button", { name: "話し終わった" }).click();
+  await page.waitForTimeout(400);
+  await page.mouse.up();
 
+  // 送るボタンを押さなくても相棒へ送られる
   const log = page.getByRole("log");
   await expect(log.locator(".bubble.user")).toHaveText(/私は嫌やわ/);
   await expect(log.locator(".bubble.assistant")).toContainText("無理に使わんでええ");
@@ -93,24 +91,22 @@ test("声で話すと、聞いている様子を見せ、話した言葉を残�
 
 test("文字で書いて、会話を続けられる", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "文字で書く" }).click();
 
   const input = page.getByLabel("相棒に書く");
   await input.fill("こんにちは");
-  await page.getByRole("button", { name: "相棒に送る" }).click();
+  await page.getByRole("button", { name: "相棒へ送る" }).click();
   await expect(page.getByRole("log").locator(".bubble.assistant")).toContainText("今日はどんな一日");
   await expect(input).toHaveValue("");
 
   await input.fill("あんた何ができるん");
-  await page.getByRole("button", { name: "相棒に送る" }).click();
+  await page.getByRole("button", { name: "相棒へ送る" }).click();
   await expect(page.getByRole("log").locator(".bubble.assistant")).toHaveCount(2);
 });
 
 test("台本で動いているときは、そのことを隠さない", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "文字で書く" }).click();
   await page.getByLabel("相棒に書く").fill("こんにちは");
-  await page.getByRole("button", { name: "相棒に送る" }).click();
+  await page.getByRole("button", { name: "相棒へ送る" }).click();
   await expect(page.getByText("いまは台本で動いています")).toBeVisible();
 });
 
@@ -121,7 +117,7 @@ test("声が使えないブラウザでは、文字で書く欄へ案内する",
   });
   await page.goto("/");
 
-  await page.getByRole("button", { name: "話しかける" }).click();
+  await holdMic(page);
 
   await expect(page.locator(".notice")).toContainText("文字で書いてください");
   await expect(page.getByLabel("相棒に書く")).toBeVisible();
@@ -130,11 +126,64 @@ test("声が使えないブラウザでは、文字で書く欄へ案内する",
 test("つながらないときは、話した言葉を失わない", async ({ page }) => {
   await page.route("**/api/converse", (route) => route.fulfill({ status: 503, json: { error: "x" } }));
   await page.goto("/");
-  await page.getByRole("button", { name: "文字で書く" }).click();
   await page.getByLabel("相棒に書く").fill("大事な話");
-  await page.getByRole("button", { name: "相棒に送る" }).click();
+  await page.getByRole("button", { name: "相棒へ送る" }).click();
 
   await expect(page.locator(".notice")).toContainText("もう一度送って");
   await expect(page.getByLabel("相棒に書く")).toHaveValue("大事な話");
   await expect(page.getByRole("log").locator(".bubble.user")).toHaveCount(0);
+});
+
+test("短く触っただけでは聞いた言葉を送らず、押し続けて話すと案内する", async ({ page }) => {
+  await fakeSpeech(page, "途中の言葉");
+  await page.goto("/");
+  await page.getByRole("button", { name: "押し続けて話す" }).click();
+  await expect(page.locator(".notice")).toContainText("押し続けて話す");
+  await expect(page.getByRole("log").locator(".bubble.user")).toHaveCount(0);
+  await expect(page.getByLabel("相棒に書く")).toHaveValue("");
+});
+
+test("言葉が何もなければ、押し続けても送らない", async ({ page }) => {
+  await fakeSpeech(page, "");
+  let sent = 0;
+  await page.route("**/api/converse", (route) => {
+    sent += 1;
+    return route.continue();
+  });
+  await page.goto("/");
+  await holdMic(page);
+  await expect(page.getByLabel("相棒に書く")).toBeVisible();
+  expect(sent).toBe(0);
+});
+
+test("書きかけの文字があれば、声とつなげて送る", async ({ page }) => {
+  await fakeSpeech(page, "声の続き");
+  await page.goto("/");
+  await page.getByLabel("相棒に書く").fill("書いた言葉");
+  await holdMic(page);
+  await expect(page.getByRole("log").locator(".bubble.user").last()).toHaveText(/書いた言葉\s*声の続き/);
+  await expect(page.getByLabel("相棒に書く")).toHaveValue("");
+});
+
+test("キーボードでは押すたびに始める、止めるを切り替える", async ({ page }) => {
+  await fakeSpeech(page, "キーボードの声");
+  await page.goto("/");
+  await page.locator(".device-mic").focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByText("聞いています…")).toBeVisible();
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("log").locator(".bubble.user").last()).toHaveText(/キーボードの声/);
+});
+
+test("文字は Enter で送り、変換を決める Enter では送らない。右のボタンは状況で変わる", async ({ page }) => {
+  await page.goto("/");
+  const input = page.getByLabel("相棒に書く");
+  await expect(page.getByRole("button", { name: "とどける" })).toBeDisabled();
+  await input.fill("変換中");
+  await expect(page.getByRole("button", { name: "相棒へ送る" })).toBeEnabled();
+  await input.dispatchEvent("keydown", { key: "Enter", isComposing: true, bubbles: true });
+  await expect(input).toHaveValue("変換中");
+  await input.press("Enter");
+  await expect(page.getByRole("log").locator(".bubble.user").last()).toHaveText(/変換中/);
+  await expect(page.getByRole("button", { name: "とどける" })).toBeEnabled();
 });

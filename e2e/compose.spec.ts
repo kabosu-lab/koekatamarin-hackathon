@@ -3,12 +3,11 @@ import { switchPerson } from "./helpers";
 
 async function say(page: Page, text: string) {
   if (!(await page.getByLabel("相棒に書く").isVisible())) {
-    await page.getByRole("button", { name: "文字で書く" }).click();
   }
   await page.getByLabel("相棒に書く").fill(text);
-  await page.getByRole("button", { name: "相棒に送る" }).click();
+  await page.getByRole("button", { name: "相棒へ送る" }).click();
   await expect(page.getByRole("log").locator(".bubble.assistant").last()).toBeVisible();
-  await expect(page.getByRole("button", { name: "言葉にして送る" })).toBeEnabled();
+  await expect(page.getByRole("button", { name: "とどける" })).toBeEnabled();
 }
 
 test("話したことが下書きになり、Teams の見え方を確かめて、本人が送ると届く", async ({ page }) => {
@@ -16,7 +15,7 @@ test("話したことが下書きになり、Teams の見え方を確かめて�
   await page.goto("/");
   await say(page, words);
 
-  await page.getByRole("button", { name: "言葉にして送る" }).click();
+  await page.getByRole("button", { name: "とどける" }).click();
   await expect(page.getByLabel("投稿の文章")).toHaveValue(words);
   const preview = page.locator(".preview");
   await expect(preview).toContainText("Teams にはこう見えます");
@@ -37,7 +36,7 @@ test("送るまでは Teams に届かず、取り消すと会話に戻る", asyn
   await page.goto("/");
   await say(page, words);
 
-  await page.getByRole("button", { name: "言葉にして送る" }).click();
+  await page.getByRole("button", { name: "とどける" }).click();
   await page.getByRole("button", { name: "取り消す" }).click();
 
   await expect(page.getByRole("log").locator(".bubble.user")).toContainText(words);
@@ -48,7 +47,7 @@ test("送るまでは Teams に届かず、取り消すと会話に戻る", asyn
 test("きつい言葉は「こう受け取られるかも」と伝え、言い換えを選べる", async ({ page }) => {
   await page.goto("/");
   await say(page, "隣のクラスの先生は使えない");
-  await page.getByRole("button", { name: "言葉にして送る" }).click();
+  await page.getByRole("button", { name: "とどける" }).click();
 
   await expect(page.locator(".perception")).toContainText("受け取られるかも");
   // 消さずに、本人の文章を残す
@@ -63,7 +62,7 @@ test("きつい言葉は「こう受け取られるかも」と伝え、言い�
 test("文章を書き直したら、確かめ直すまで送れない", async ({ page }) => {
   await page.goto("/");
   await say(page, "今日は頑張った");
-  await page.getByRole("button", { name: "言葉にして送る" }).click();
+  await page.getByRole("button", { name: "とどける" }).click();
 
   await page.getByLabel("投稿の文章").fill("今日はとても頑張った");
   await expect(page.getByRole("button", { name: "本人として送る" })).toBeDisabled();
@@ -75,7 +74,7 @@ test("文章を書き直したら、確かめ直すまで送れない", async ({
 test("明らかな個人攻撃は送れず、画面を通さなくても止まる", async ({ page, request }) => {
   await page.goto("/");
   await say(page, "田中は死ね");
-  await page.getByRole("button", { name: "言葉にして送る" }).click();
+  await page.getByRole("button", { name: "とどける" }).click();
 
   await expect(page.locator(".perception.block")).toBeVisible();
   await expect(page.getByRole("button", { name: "本人として送る" })).toBeDisabled();
@@ -92,7 +91,7 @@ test("AI と調べたことには印が付き、Teams でも見える", async ({
   const words = `AI と調べたら単語帳が効くそうです ${test.info().testId}`;
   await page.goto("/");
   await say(page, words);
-  await page.getByRole("button", { name: "言葉にして送る" }).click();
+  await page.getByRole("button", { name: "とどける" }).click();
   await expect(page.locator(".preview")).toContainText("AI と調べました");
 
   await page.getByRole("button", { name: "本人として送る" }).click();
@@ -104,14 +103,14 @@ test("生徒の送り先に職員室は出ない", async ({ page }) => {
   await page.goto("/");
   await switchPerson(page, "青木 ひより（2年）");
   await say(page, "過去問を解いた");
-  await page.getByRole("button", { name: "言葉にして送る" }).click();
+  await page.getByRole("button", { name: "とどける" }).click();
   await expect(page.getByLabel("送り先のチャネル").locator("option", { hasText: "職員室" })).toHaveCount(0);
 });
 
 test("まだ中身がない会話は、下書きにせず聞き返す", async ({ page }) => {
   await page.goto("/");
   await say(page, "こんにちは");
-  await page.getByRole("button", { name: "言葉にして送る" }).click();
+  await page.getByRole("button", { name: "とどける" }).click();
   await expect(page.locator(".notice")).toContainText("もう少し聞かせて");
 });
 
@@ -126,7 +125,7 @@ test("下書きを作れないときも、話した言葉は残る", async ({ pa
   await page.route("**/api/draft", (route) => route.fulfill({ status: 503, json: { error: "x" } }));
   await page.goto("/");
   await say(page, "大事な話");
-  await page.getByRole("button", { name: "言葉にして送る" }).click();
+  await page.getByRole("button", { name: "とどける" }).click();
   await expect(page.locator(".notice")).toContainText("もう一度押して");
   await expect(page.getByRole("log").locator(".bubble.user")).toContainText("大事な話");
 });

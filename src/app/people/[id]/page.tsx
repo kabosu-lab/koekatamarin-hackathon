@@ -27,7 +27,7 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
   const avatar = getAvatar(db, id);
   const counts = countContributions(db, id);
   const store = await cookies();
-  const rewards = showsRewards(readAppearance((name) => store.get(name)?.value, (await getViewer()).viewer.role));
+  const rewards = showsRewards(readAppearance((name) => store.get(name)?.value));
   const ribbons = rewards ? listPublicRibbons(db, id) : [];
 
   return (

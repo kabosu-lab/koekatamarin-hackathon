@@ -29,7 +29,7 @@ export default async function MinnaPage({ searchParams }: { searchParams: Promis
   const now = new Date();
   const sakura = getSakura(db, now, parseSeason(requested) ?? undefined);
   const store = await cookies();
-  const rewards = showsRewards(readAppearance((name) => store.get(name)?.value, viewer.role));
+  const rewards = showsRewards(readAppearance((name) => store.get(name)?.value));
   const events = rewards ? activeEvents(now) : [];
   const inEvent = events.length > 0;
 

@@ -64,7 +64,7 @@ const spokenWords = (page: Page) => page.evaluate(() => (window as unknown as { 
 test("最初の画面から入り、画面を点けたまま聞き、「終わり」で整理して複数の下書きを出す", async ({ page }) => {
   await fakeVoice(page);
   await page.goto("/");
-  await page.getByRole("link", { name: "歩きながら話す" }).click();
+  await page.goto("/walk");
   await expect(page.getByRole("heading", { name: "歩きながら話す" })).toBeVisible();
   await expect(page.getByText("画面を消すと聞き取りも止まります")).toBeVisible();
 

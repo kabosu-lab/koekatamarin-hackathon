@@ -13,7 +13,7 @@ async function noOverflow(page: Page) {
 
 async function say(page: Page, words: string) {
   await page.getByLabel("相棒に書く").fill(words);
-  await page.getByRole("button", { name: "相棒に送る" }).click();
+  await page.getByRole("button", { name: "相棒へ送る" }).click();
 }
 
 test("生徒はレトロから始まり、液晶の相棒、入力欄、真ん中のマイク、左右の丸ボタンが1画面にある", async ({ page }) => {
@@ -22,7 +22,7 @@ test("生徒はレトロから始まり、液晶の相棒、入力欄、真ん�
   await expect(page.locator("html")).toHaveAttribute("data-theme", "retro");
   await expect(page.getByRole("img", { name: "青木 ひよりさんの相棒" })).toBeVisible();
   await expect(page.getByLabel("相棒に書く")).toBeVisible();
-  const mic = await page.getByRole("button", { name: "話しかける" }).boundingBox();
+  const mic = await page.getByRole("button", { name: "押し続けて話す" }).boundingBox();
   const send = await page.getByRole("button", { name: "とどける" }).boundingBox();
   const photo = await page.locator("label.device-side").boundingBox();
   expect(mic && mic.y + mic.height <= page.viewportSize()!.height).toBe(true);
@@ -31,14 +31,6 @@ test("生徒はレトロから始まり、液晶の相棒、入力欄、真ん�
   expect(photo!.x + photo!.width <= mic!.x).toBe(true);
   expect(mic!.x + mic!.width <= send!.x).toBe(true);
   await noOverflow(page);
-});
-
-test("先生と大人はモダンのままで、ドット絵は出ない", async ({ page }) => {
-  await asPerson(page, "saeki");
-  await page.goto("/");
-  await expect(page.locator("html")).toHaveAttribute("data-theme", "modern");
-  await expect(page.locator(".pixel-companion")).toHaveCount(0);
-  await expect(page.locator(".retro-home")).toHaveCount(0);
 });
 
 test("書いて相棒と話し、とどけるで下書きを確かめる。Teams の見え方の中で直接直せる", async ({ page }) => {
@@ -130,7 +122,7 @@ test("横画面では左に液晶と入力欄、右にマイクで、はみ出�
   await page.goto("/");
   const lcd = (await page.locator(".lcd").boundingBox())!;
   const input = (await page.locator(".device-input").boundingBox())!;
-  const mic = (await page.getByRole("button", { name: "話しかける" }).boundingBox())!;
+  const mic = (await page.getByRole("button", { name: "押し続けて話す" }).boundingBox())!;
   expect(lcd.x + lcd.width <= mic.x).toBe(true);
   expect(input.y >= lcd.y + lcd.height - 1).toBe(true);
   await noOverflow(page);
@@ -145,29 +137,4 @@ test("ようすはログから開き、姿と数を1画面で見せ、気分の�
   for (const term of ["すがた", "ありがとう", "つないだ", "覚えたこと"]) await expect(list.getByText(term)).toBeVisible();
   await expect(page.locator("main")).not.toContainText("気分");
   await noOverflow(page);
-});
-
-test("設定から見た目を変えられて、データは同じまま", async ({ page }) => {
-  await asPerson(page, "aoki");
-  await page.goto("/yousu");
-  const before = await page.locator(".yousu dl").innerText();
-  await page.goto("/me");
-  await page.getByRole("region", { name: "見た目" }).getByRole("button", { name: "モダン" }).click();
-  await expect(page.locator("html")).toHaveAttribute("data-theme", "modern");
-  await page.goto("/");
-  await expect(page.locator(".retro-home")).toHaveCount(0);
-  await page.goto("/yousu");
-  expect(await page.locator(".yousu dl").innerText()).toBe(before);
-  await page.goto("/me");
-  await page.getByRole("region", { name: "見た目" }).getByRole("button", { name: "ポップ" }).click();
-  await expect(page.locator("html")).toHaveAttribute("data-theme", "pop");
-  await page.goto("/");
-  await expect(page.getByRole("button", { name: "話しかける" })).toBeVisible();
-});
-
-test("見た目を選ばない人でも、選んだ人の設定は人物をまたいで生きる", async ({ page }) => {
-  await page.context().addCookies([{ name: "koekata_theme", value: "retro", domain: "127.0.0.1", path: "/" }]);
-  await asPerson(page, "saeki");
-  await page.goto("/");
-  await expect(page.locator(".retro-home")).toBeVisible();
 });

@@ -32,7 +32,7 @@ test("レトロの生徒の最初の画面に先生の返事が届き、マイ�
   await expect(notice).toContainText("佐伯 みどりさんから返事が届きました");
   await expect(notice).toContainText(answer);
   await expect(notice).toBeInViewport();
-  await expect(page.getByRole("button", { name: "話しかける" })).toBeInViewport({ ratio: 1 });
+  await expect(page.getByRole("button", { name: "押し続けて話す" })).toBeInViewport({ ratio: 1 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0);
 
   await notice.getByRole("button", { name: "閉じる" }).click();

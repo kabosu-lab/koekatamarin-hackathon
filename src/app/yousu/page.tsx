@@ -20,7 +20,7 @@ export default async function YousuPage() {
   const { viewer } = await getViewer();
   const db = getDatabase();
   const store = await cookies();
-  const rewards = showsRewards(readAppearance((name) => store.get(name)?.value, viewer.role));
+  const rewards = showsRewards(readAppearance((name) => store.get(name)?.value));
   const avatar = getAvatar(db, viewer.id);
   const counts = countContributions(db, viewer.id);
   const stage = pixelStageFor(avatar.family, avatar.stage);

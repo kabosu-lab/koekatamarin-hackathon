@@ -67,12 +67,12 @@ describe("きせかえ", () => {
 });
 
 describe("設定の読み取り", () => {
-  it("初めはモダン、ふつうの大きさ、音なし", () => {
-    expect(readAppearance(() => undefined)).toEqual({ theme: "modern", size: "normal", sound: "on", avatar: "show" });
+  it("見た目は1つで、ふつうの大きさ、音あり", () => {
+    expect(readAppearance(() => undefined)).toEqual({ theme: "retro", size: "normal", sound: "on", avatar: "show" });
   });
 
   it("おかしな値は使わない", () => {
-    expect(readAppearance(() => '"><script>')).toEqual({ theme: "modern", size: "normal", sound: "on", avatar: "show" });
+    expect(readAppearance(() => '"><script>')).toEqual({ theme: "retro", size: "normal", sound: "on", avatar: "show" });
     expect(isAppearanceValue("theme", "game")).toBe(true);
     expect(isAppearanceValue("theme", "pop")).toBe(true);
     expect(isAppearanceValue("theme", "evil")).toBe(false);
@@ -89,16 +89,13 @@ describe("報酬を出すか", () => {
   });
 });
 
-describe("種類による最初の見た目", () => {
-  it("生徒はレトロ、先生と大人はモダンから始まる", () => {
-    expect(readAppearance(() => undefined, "student").theme).toBe("retro");
-    expect(readAppearance(() => undefined, "teacher").theme).toBe("modern");
-    expect(readAppearance(() => undefined, "admin").theme).toBe("modern");
+describe("見た目は1つ", () => {
+  it("誰でも同じ見た目で、古い選択が残っていても変わらない", () => {
+    expect(readAppearance(() => undefined).theme).toBe("retro");
+    expect(readAppearance((cookie) => (cookie === "koekata_theme" ? "pop" : undefined)).theme).toBe("retro");
   });
 
-  it("本人が選んだ見た目を優先する", () => {
-    const chosen = (value: string) => (cookie: string) => (cookie === "koekata_theme" ? value : undefined);
-    expect(readAppearance(chosen("pop"), "student").theme).toBe("pop");
-    expect(readAppearance(chosen("retro"), "teacher").theme).toBe("retro");
+  it("文字の大きさと音は本人の選択を使う", () => {
+    expect(readAppearance((cookie) => (cookie === "koekata_size" ? "large" : undefined)).size).toBe("large");
   });
 });

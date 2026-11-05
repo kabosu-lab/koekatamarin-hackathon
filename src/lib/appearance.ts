@@ -49,19 +49,18 @@ export const APPEARANCE_COOKIES: Record<AppearanceName, string> = {
   avatar: "koekata_avatar",
 };
 
-const DEFAULTS: Appearance = { theme: "modern", size: "normal", sound: "on", avatar: "show" };
+const DEFAULTS: Appearance = { theme: "retro", size: "normal", sound: "on", avatar: "show" };
 
 export function isAppearanceValue(name: string, value: string): name is AppearanceName {
   const group = APPEARANCE_OPTIONS.find((g) => g.name === name);
   return group !== undefined && group.options.some((option) => option.value === value);
 }
 
-/** 本人がまだ選んでいなければ、生徒はレトロ、先生と大人はモダンから始まる。 */
-export function readAppearance(read: (cookie: string) => string | undefined, role?: string): Appearance {
-  const defaults: Appearance = role === "student" ? { ...DEFAULTS, theme: "retro" } : DEFAULTS;
+/** 見た目は全員同じ1つにした。選べるのは文字の大きさ、音、相棒の表示だけ。内部の名前は retro のまま。 */
+export function readAppearance(read: (cookie: string) => string | undefined): Appearance {
   const get = (name: AppearanceName) => {
     const value = read(APPEARANCE_COOKIES[name]);
-    return value !== undefined && isAppearanceValue(name, value) ? value : defaults[name];
+    return value !== undefined && isAppearanceValue(name, value) ? value : DEFAULTS[name];
   };
-  return { theme: get("theme"), size: get("size"), sound: get("sound"), avatar: get("avatar") };
+  return { theme: DEFAULTS.theme, size: get("size"), sound: get("sound"), avatar: get("avatar") };
 }

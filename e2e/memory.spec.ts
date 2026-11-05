@@ -6,11 +6,11 @@ test("「これを覚えて」と頼んだことだけが一覧に出て、い�
   const notKept = `残さないこと ${test.info().testId}`;
   await page.goto("/");
   await switchPerson(page, "大河原 誠（英語・学年主任）");
-  await page.getByRole("button", { name: "文字で書く" }).click();
-  for (const text of [kept, notKept]) {
+  // 「これを覚えて」は最後に話したことにだけ出る
+  for (const text of [notKept, kept]) {
     const count = await page.getByRole("log").locator(".bubble.assistant").count();
     await page.getByLabel("相棒に書く").fill(text);
-    await page.getByRole("button", { name: "相棒に送る" }).click();
+    await page.getByRole("button", { name: "相棒へ送る" }).click();
     await expect(page.getByRole("log").locator(".bubble.assistant")).toHaveCount(count + 1);
   }
 

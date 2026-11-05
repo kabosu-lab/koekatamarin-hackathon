@@ -161,9 +161,8 @@ test("話す画面では、話したあとに押したときだけ探す", async
   });
   await become(page, FUJIMOTO);
   await expect(page.getByRole("button", { name: "校内の知恵を探す" })).toHaveCount(0);
-  await page.getByRole("button", { name: "文字で書く" }).click();
   await page.getByLabel("相棒に書く").fill("小テストを作りたい");
-  await page.getByRole("button", { name: "相棒に送る" }).click();
+  await page.getByRole("button", { name: "相棒へ送る" }).click();
   await expect(page.getByRole("button", { name: "校内の知恵を探す" })).toBeEnabled();
   expect(calls).toBe(0);
 
@@ -174,7 +173,7 @@ test("話す画面では、話したあとに押したときだけ探す", async
 
   await card.getByRole("button", { name: /大河原 誠さんに聞いてみる/ }).click();
   await expect(page.locator(".sent")).toContainText("大河原 誠さんに聞いてみましょう");
-  await page.getByRole("button", { name: "言葉にして送る" }).click();
+  await page.getByRole("button", { name: "とどける" }).click();
   await expect(page.getByRole("region", { name: "言葉にして送る" })).toContainText("大河原 誠");
   await noOverflow(page);
 });

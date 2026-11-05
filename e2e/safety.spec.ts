@@ -4,9 +4,8 @@ import { switchPerson } from "./helpers";
 const SECRET = "親に殴られている 秘密の言葉";
 
 async function say(page: Page, text: string) {
-  await page.getByRole("button", { name: "文字で書く" }).click();
   await page.getByLabel("相棒に書く").fill(text);
-  await page.getByRole("button", { name: "相棒に送る" }).click();
+  await page.getByRole("button", { name: "相棒へ送る" }).click();
   await expect(page.getByRole("log").locator(".bubble.assistant").last()).toBeVisible();
 }
 
@@ -128,22 +127,21 @@ test("返事が作れなくても、相談室に伝えたことは本人に見�
     }),
   );
   await page.goto("/");
-  await page.getByRole("button", { name: "文字で書く" }).click();
   await page.getByLabel("相棒に書く").fill("大事な話");
-  await page.getByRole("button", { name: "相棒に送る" }).click();
+  await page.getByRole("button", { name: "相棒へ送る" }).click();
 
   await expect(page.getByRole("region", { name: "相談室に伝えました" })).toBeVisible();
   await expect(page.getByLabel("相棒に書く")).toHaveValue("大事な話");
 });
 
-test("最初の約束は、初めはカードで全文を見せ、わかったあとも入口の近くに短く残る", async ({ page }) => {
+test("最初の約束は、初めはカードで全文を見せ、わかったあとは話す画面に出さない", async ({ page }) => {
   await page.goto("/");
   const promise = page.locator(".promise");
   await expect(promise).toContainText("話した言葉ではなく要点だけを相談室の先生に伝えます");
   await page.getByRole("button", { name: "わかった" }).click();
-  await expect(promise).toContainText("要点だけ相談室の先生へ");
+  await expect(promise).toHaveCount(0);
   await page.reload();
-  await expect(promise).toContainText("要点だけ相談室の先生へ");
+  await expect(promise).toHaveCount(0);
   await expect(page.getByRole("button", { name: "わかった" })).toHaveCount(0);
 
   await switchPerson(page, "青木 ひより（2年）");

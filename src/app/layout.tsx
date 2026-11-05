@@ -31,7 +31,7 @@ export const viewport: Viewport = {
 export default async function RootLayout({ children }: { children: ReactNode }) {
   const store = await cookies();
   const { viewer, people } = await getViewer();
-  const appearance = readAppearance((name) => store.get(name)?.value, viewer.role);
+  const appearance = readAppearance((name) => store.get(name)?.value);
   const { theme, size, sound } = appearance;
   const trial = isTrialMode();
   return (

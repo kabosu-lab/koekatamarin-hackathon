@@ -15,11 +15,10 @@ async function shot(page: Page, name: string) {
 
 async function say(page: Page, text: string) {
   if (!(await page.getByLabel("相棒に書く").isVisible())) {
-    await page.getByRole("button", { name: "文字で書く" }).click();
   }
   const count = await page.getByRole("log").locator(".bubble.assistant").count();
   await page.getByLabel("相棒に書く").fill(text);
-  await page.getByRole("button", { name: "相棒に送る" }).click();
+  await page.getByRole("button", { name: "相棒へ送る" }).click();
   await expect(page.getByRole("log").locator(".bubble.assistant")).toHaveCount(count + 1);
 }
 

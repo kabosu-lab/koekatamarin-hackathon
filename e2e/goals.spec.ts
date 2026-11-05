@@ -10,9 +10,8 @@ test("話の中で提案され、押すと残り、できたら投稿になり�
   await page.goto("/");
   await switchPerson(page, AOKI);
 
-  await page.getByRole("button", { name: "文字で書く" }).click();
   await page.getByLabel("相棒に書く").fill(goal);
-  await page.getByRole("button", { name: "相棒に送る" }).click();
+  await page.getByRole("button", { name: "相棒へ送る" }).click();
   const card = page.getByRole("region", { name: "頑張りたいことの提案" });
   await expect(card).toBeVisible();
   await card.getByRole("button", { name: "しておく" }).click();
@@ -32,7 +31,7 @@ test("話の中で提案され、押すと残り、できたら投稿になり�
   await panel.getByRole("link", { name: "みんなに言っておく" }).click();
 
   await expect(page.locator(".sent")).toContainText("やったね");
-  await page.getByRole("button", { name: "言葉にして送る" }).click();
+  await page.getByRole("button", { name: "とどける" }).click();
   await page.getByRole("button", { name: "本人として送る" }).click();
   await expect(page.locator(".sent").first()).toBeVisible();
   await expect(page.getByText("に届きました")).toBeVisible();

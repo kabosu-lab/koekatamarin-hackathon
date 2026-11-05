@@ -46,9 +46,6 @@ export function ClickWheel({ onRotate, children }: { onRotate(degrees: number): 
       }}
     >
       {children}
-      <span className="click-wheel-hint" aria-hidden="true">
-        まわす
-      </span>
     </div>
   );
 }

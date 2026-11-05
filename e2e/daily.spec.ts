@@ -2,9 +2,8 @@ import { expect, type Page, test } from "@playwright/test";
 import { switchPerson } from "./helpers";
 
 async function say(page: Page, text: string) {
-  await page.getByRole("button", { name: "文字で書く" }).click();
   await page.getByLabel("相棒に書く").fill(text);
-  await page.getByRole("button", { name: "相棒に送る" }).click();
+  await page.getByRole("button", { name: "相棒へ送る" }).click();
   await expect(page.getByRole("log").locator(".bubble.assistant").last()).toBeVisible();
 }
 
@@ -14,7 +13,7 @@ test("話したことが日報の項目になり、チェックした項目だ�
   await switchPerson(page, "川村 陽菜（理科・1年副担任）");
   await say(page, shared);
 
-  await page.getByRole("navigation", { name: "画面の切り替え" }).getByRole("link", { name: "じぶん" }).click();
+  await page.getByRole("link", { name: "履歴と設定" }).click();
   await page.getByRole("link", { name: "今日の日報" }).click();
   await page.getByRole("button", { name: "今日の日報を作る" }).click();
 
@@ -133,7 +132,7 @@ test("夕方のまとめを係に頼むと、どう作ったかが分かり、�
   await page.goto("/");
   await switchPerson(page, "木下 蓮（3年・ものづくり部）");
   await say(page, words);
-  await page.getByRole("button", { name: "言葉にして送る" }).click();
+  await page.getByRole("button", { name: "とどける" }).click();
   await page.getByRole("button", { name: "本人として送る" }).click();
   await expect(page.locator(".sent")).toBeVisible();
 

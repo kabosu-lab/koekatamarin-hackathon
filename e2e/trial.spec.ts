@@ -56,9 +56,8 @@ test("試用の表示はどの画面にも出て、相談室に届くとは書�
 
 test("命や安全に関わる話では、先生や相談室に届いていないことと窓口を伝える", async ({ page }) => {
   await enter(page);
-  await page.getByRole("button", { name: "文字で書く" }).click();
   await page.getByLabel("相棒に書く").fill("親に殴られている");
-  await page.getByRole("button", { name: "相棒に送る" }).click();
+  await page.getByRole("button", { name: "相棒へ送る" }).click();
 
   const card = page.getByRole("region", { name: "大事なお知らせ" });
   await expect(card).toContainText("先生や相談室には届いていません");
@@ -72,6 +71,7 @@ test("命や安全に関わる話では、先生や相談室に届いていな�
 
 test("外の URL から開いても、サーバーの処理と API を拒まない", async ({ page, request }) => {
   await enter(page);
+  await page.goto("/me");
   const actionRequest = page.waitForRequest((r) => r.method() === "POST" && Boolean(r.headers()["next-action"]));
   await page.getByLabel("使う人").selectOption({ label: "木下 蓮（3年・ものづくり部）" });
   await page.getByRole("button", { name: "切り替え" }).click();
@@ -124,11 +124,10 @@ test("cookie を書き換えても、先生や相談室の人物として画面�
 
   // API から送っても、書き換えた先生ではなく生徒の投稿になる
   const words = `書き換えの確かめ ${test.info().testId}`;
-  await page.getByRole("button", { name: "文字で書く" }).click();
   await page.getByLabel("相棒に書く").fill(words);
-  await page.getByRole("button", { name: "相棒に送る" }).click();
+  await page.getByRole("button", { name: "相棒へ送る" }).click();
   await expect(page.getByRole("log").locator(".bubble.assistant").last()).toBeVisible();
-  await page.getByRole("button", { name: "言葉にして送る" }).click();
+  await page.getByRole("button", { name: "とどける" }).click();
   await expect(page.getByLabel("投稿の文章")).toHaveValue(words);
   await page.getByRole("button", { name: "本人として送る" }).click();
   await page.getByRole("link", { name: "校内チャネルで見る" }).click();
@@ -139,11 +138,15 @@ test("cookie を書き換えても、先生や相談室の人物として画面�
 
 test("サーバーの処理を直接呼んでも、先生には切り替えられない", async ({ page, context }) => {
   await enter(page);
+  await page.goto("/me");
   const actionRequest = page.waitForRequest((r) => r.method() === "POST" && Boolean(r.headers()["next-action"]));
   await page.getByLabel("使う人").selectOption({ label: "木下 蓮（3年・ものづくり部）" });
   await page.getByRole("button", { name: "切り替え" }).click();
   const original = await actionRequest;
-  await expect(page.locator('.talk[data-viewer="木下 蓮"]')).toBeVisible();
+  await expect(async () => {
+    await page.goto("/");
+    await expect(page.locator('.talk[data-viewer="木下 蓮"]')).toBeVisible({ timeout: 2000 });
+  }).toPass();
 
   const headers = await original.allHeaders();
   const body = (original.postDataBuffer() ?? Buffer.alloc(0)).toString("latin1");

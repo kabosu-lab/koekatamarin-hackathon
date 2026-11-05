@@ -7,13 +7,12 @@ const PNG = Buffer.from(
 
 async function attachAndDraft(page: Page, words: string) {
   await page.goto("/");
-  await page.locator(".attach-button input").setInputFiles({ name: "賞状.png", mimeType: "image/png", buffer: PNG });
+  await page.locator("label.device-side input").setInputFiles({ name: "賞状.png", mimeType: "image/png", buffer: PNG });
   await expect(page.getByRole("region", { name: "付けたファイル" })).toBeVisible();
-  await page.getByRole("button", { name: "文字で書く" }).click();
   await page.getByLabel("相棒に書く").fill(words);
-  await page.getByRole("button", { name: "相棒に送る" }).click();
+  await page.getByRole("button", { name: "相棒へ送る" }).click();
   await expect(page.getByRole("log").locator(".bubble.assistant").last()).toBeVisible();
-  await page.getByRole("button", { name: "言葉にして送る" }).click();
+  await page.getByRole("button", { name: "とどける" }).click();
   await expect(page.getByRole("group", { name: "添付の確認" })).toBeVisible();
 }
 
@@ -44,13 +43,13 @@ test("別のファイルにすると、話す画面に戻り、前のファイ�
   await attachAndDraft(page, `付け直す ${test.info().testId}`);
   await page.getByRole("button", { name: "別のファイルにする" }).click();
   await expect(page.locator(".notice")).toContainText("もう一度付けてください");
-  await expect(page.locator(".attach-button")).toBeVisible();
+  await expect(page.locator("label.device-side")).toBeVisible();
   await expect(page.getByRole("region", { name: "付けたファイル" })).toHaveCount(0);
 });
 
 test("写真や PDF でないものは、拡張子を偽っても付けられない", async ({ page }) => {
   await page.goto("/");
-  await page.locator(".attach-button input").setInputFiles({
+  await page.locator("label.device-side input").setInputFiles({
     name: "賞状.png",
     mimeType: "image/png",
     buffer: Buffer.from("<svg xmlns='http://www.w3.org/2000/svg'/>"),
@@ -61,7 +60,7 @@ test("写真や PDF でないものは、拡張子を偽っても付けられな
 
 test("配信の入口は、種類の推測を止め、読めない人には見せない", async ({ page, browser }) => {
   await page.goto("/");
-  await page.locator(".attach-button input").setInputFiles({ name: "賞状.png", mimeType: "image/png", buffer: PNG });
+  await page.locator("label.device-side input").setInputFiles({ name: "賞状.png", mimeType: "image/png", buffer: PNG });
   const src = await page.getByRole("region", { name: "付けたファイル" }).getByRole("img").getAttribute("src");
   const response = await page.request.get(src ?? "");
   expect(response.status()).toBe(200);

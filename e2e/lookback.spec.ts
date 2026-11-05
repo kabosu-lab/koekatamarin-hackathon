@@ -4,7 +4,7 @@ import { switchPerson } from "./helpers";
 test("ふりかえりはまず本人にだけ見え、選べば共有できる", async ({ page }) => {
   await page.goto("/");
   await switchPerson(page, "青木 ひより（2年）");
-  await page.getByRole("navigation", { name: "画面の切り替え" }).getByRole("link", { name: "じぶん" }).click();
+  await page.getByRole("link", { name: "履歴と設定" }).click();
   await page.getByRole("link", { name: "ふりかえり" }).click();
 
   await expect(page.getByRole("button", { name: "卒業まで" })).toBeVisible();

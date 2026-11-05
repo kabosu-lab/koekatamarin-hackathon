@@ -1,8 +1,7 @@
-import { openHomeSettings } from "./helpers";
 import { expect, type Page, test } from "@playwright/test";
 import { build } from "esbuild";
 
-const box = (page: Page) => page.getByRole("button", { name: "話しかける" }).boundingBox();
+const box = (page: Page) => page.getByRole("button", { name: "押し続けて話す" }).boundingBox();
 
 async function choose(page: Page, label: string) {
   await page.goto("/me");
@@ -12,28 +11,6 @@ async function choose(page: Page, label: string) {
     "true",
   );
 }
-
-test("きせかえを変えると色は変わり、配置は変わらず、開き直しても残る", async ({ page }) => {
-  // 出るときの動きの途中で位置を測らない
-  await page.emulateMedia({ reducedMotion: "reduce" });
-  await page.goto("/");
-  const before = await box(page);
-  const color = () => page.evaluate(() => getComputedStyle(document.body).backgroundColor);
-  const original = await color();
-
-  await choose(page, "ゲーム");
-  await page.goto("/");
-  expect(await color()).not.toBe(original);
-  expect(await page.locator("html").getAttribute("data-theme")).toBe("game");
-  expect(await box(page)).toEqual(before);
-
-  await page.reload();
-  expect(await page.locator("html").getAttribute("data-theme")).toBe("game");
-
-  await choose(page, "くっきり");
-  await page.goto("/");
-  expect(await box(page)).toEqual(before);
-});
 
 test("文字を大きくしても、どの画面も横にはみ出さない", async ({ page }) => {
   await choose(page, "とても大きい");
@@ -45,22 +22,6 @@ test("文字を大きくしても、どの画面も横にはみ出さない", as
     );
     expect(overflow, path).toBe(0);
   }
-});
-
-test("音は初めから入っていて、最初の画面ですぐ消せて、設定が残る", async ({ page }) => {
-  await page.goto("/");
-  expect(await page.locator("html").getAttribute("data-sound")).toBe("on");
-  await openHomeSettings(page);
-  await page.getByRole("button", { name: "音 オン" }).click();
-  await expect(page.getByRole("button", { name: "音 オフ" })).toBeVisible();
-  expect(await page.locator("html").getAttribute("data-sound")).toBe("off");
-  await page.reload();
-  await openHomeSettings(page);
-  await expect(page.getByRole("button", { name: "音 オフ" })).toBeVisible();
-  await page.goto("/me");
-  await expect(page.getByRole("button", { name: "音を試す" })).toHaveCount(0);
-  await choose(page, "音あり");
-  expect(await page.locator("html").getAttribute("data-sound")).toBe("on");
 });
 
 /** 作られた音の部品を数える。 */
@@ -81,17 +42,17 @@ async function countAudio(page: Page) {
 
 test("開いただけでは鳴らさない", async ({ page }) => {
   const made = await countAudio(page);
+  // トロフィーが届いた瞬間の音は別なので、報酬を隠して見る
+  await page.context().addCookies([{ name: "koekata_avatar", value: "hide", domain: "127.0.0.1", path: "/" }]);
   await page.goto("/");
-  await expect(page.locator(".home-settings")).toBeVisible();
+  await expect(page.locator(".device-mic")).toBeVisible();
   expect(await made()).toBe(0);
 });
 
 test("音を消すと、送っても音を作らない", async ({ page }) => {
   const made = await countAudio(page);
+  await page.context().addCookies([{ name: "koekata_sound", value: "off", domain: "127.0.0.1", path: "/" }]);
   await page.goto("/");
-  await openHomeSettings(page);
-  await page.getByRole("button", { name: "音 オン" }).click();
-  await expect(page.getByRole("button", { name: "音 オフ" })).toBeVisible();
   await send(page, `静かな言葉 ${test.info().testId}`);
   await expect(page.locator(".sent")).toBeVisible();
   expect(await made()).toBe(0);
@@ -106,11 +67,10 @@ test("音が入っていれば、送ったときに音を作る", async ({ page 
 
 async function send(page: Page, words: string) {
   await page.goto("/");
-  await page.getByRole("button", { name: "文字で書く" }).click();
   await page.getByLabel("相棒に書く").fill(words);
-  await page.getByRole("button", { name: "相棒に送る" }).click();
+  await page.getByRole("button", { name: "相棒へ送る" }).click();
   await expect(page.getByRole("log").locator(".bubble.assistant").last()).toBeVisible();
-  await page.getByRole("button", { name: "言葉にして送る" }).click();
+  await page.getByRole("button", { name: "とどける" }).click();
   await page.getByRole("button", { name: "本人として送る" }).click();
 }
 
@@ -181,26 +141,4 @@ test("送るときの音は、実物のブラウザで例外なく作れて、�
   });
   expect(result.finite).toBe(true);
   expect(result.peak).toBeGreaterThan(0.05);
-});
-
-test("ポップの最初の画面は、黄色の面に分身がいる", async ({ page }) => {
-  await page.goto("/");
-  expect(await page.locator("html").getAttribute("data-theme")).toBe("pop");
-  expect(await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--stage").trim())).toBe("#ffd23f");
-  await expect(page.locator(".speaker")).toBeVisible();
-});
-
-test("ポップの最初の画面は、リボンの知らせと話す画面が一緒に出ても崩れない", async ({ browser }) => {
-  const context = await browser.newContext();
-  await context.addCookies([{ name: "koekata_theme", value: "pop", url: "http://127.0.0.1:3100" }]);
-  const page = await context.newPage();
-  const problems: string[] = [];
-  page.on("pageerror", (error) => problems.push(error.message));
-  page.on("console", (message) => {
-    if (message.type() === "error" && /same key/.test(message.text())) problems.push(message.text());
-  });
-  await page.goto("/");
-  await expect(page.getByRole("button", { name: "話しかける" })).toBeVisible();
-  expect(problems).toEqual([]);
-  await context.close();
 });
