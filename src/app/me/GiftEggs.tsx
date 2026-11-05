@@ -36,8 +36,8 @@ function Hatch({ hatched, onDone }: { hatched: HatchedView; onDone(useNow: boole
 
   return createPortal(
     <div className={`hatch-stage ${phase}`} role="dialog" aria-label="贈り物の卵" style={{ background: hatched.color }}>
-      {phase !== "born" && <img className="hatch-egg sticker" src="/api/art/egg.png" alt="卵" width={200} height={200} />}
-      {phase === "born" && <img className="hatch-born sticker" src={`/api/art/${hatched.image}`} alt={`生まれた相棒、${hatched.name}`} width={240} height={240} />}
+      {phase !== "born" && <img className="hatch-egg sticker" src="/api/companion/dolphin-1" alt="卵" width={200} height={200} />}
+      {phase === "born" && <img className="hatch-born sticker" src={hatched.image} alt={`生まれた相棒、${hatched.name}`} width={240} height={240} />}
       <div className="hatch-words" role="status">
         {phase === "egg" && <h2>贈り物の卵が開きます</h2>}
         {phase === "crack" && <h2>あっ、動いた！</h2>}
@@ -102,7 +102,7 @@ export function GiftEggs({ eggs, companions }: { eggs: GiftEggView[]; companions
           <div className="gift-egg-row">
             {eggs.map((egg) => (
               <button key={egg.id} type="button" className="gift-egg" disabled={busy} onClick={() => void open(egg.id)}>
-                <img className="sticker" src="/api/art/egg.png" alt="" width={72} height={72} />
+                <img className="sticker" src="/api/companion/dolphin-1" alt="" width={72} height={72} />
                 開ける
               </button>
             ))}

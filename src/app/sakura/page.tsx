@@ -10,6 +10,8 @@ import { activeEvents } from "@/lib/events";
 import { showsRewards } from "@/lib/rewards-view";
 import { getSakura, isBloomingSeason, parseSeason, type Season, timeOfDay } from "@/lib/sakura";
 import { Avatar } from "../Avatar";
+import { RoomBackdrop } from "../study/room/RoomBackdrop";
+import "../study/room/room.css";
 
 export const metadata: Metadata = { title: "校内の桜｜こえかた" };
 export const dynamic = "force-dynamic";
@@ -42,8 +44,8 @@ export default async function SakuraPage({ searchParams }: { searchParams: Promi
         className="sakura-scene"
         data-time={timeOfDay(now)}
         aria-label="校内の桜"
-        style={{ backgroundImage: `url(/api/art/school-${sakura.season}.jpg)` }}
       >
+        <RoomBackdrop place="garden" label="校庭の桜の木" season={sakura.season} />
         {(isBloomingSeason(sakura.season) || inEvent) &&
           Array.from({ length: inEvent ? 18 : 10 }, (_, i) => (
             <span

@@ -13,7 +13,6 @@ import { GlobalSwitcher } from "./GlobalSwitcher";
 import { SwipeNav } from "./SwipeNav";
 import { EmbedMark } from "./WidePanels";
 import { TrialProvider } from "./TrialContext";
-import { dotFont } from "./fonts";
 import "./globals.css";
 import "./modern.css";
 import "./usability.css";
@@ -37,7 +36,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   const { theme, size, sound } = appearance;
   const trial = isTrialMode();
   return (
-    <html lang="ja" className={dotFont.variable} data-theme={theme} data-size={size} data-sound={sound} data-avatar={showsRewards(appearance) ? "show" : "hide"}>
+    <html lang="ja" data-theme={theme} data-size={size} data-sound={sound} data-avatar={showsRewards(appearance) ? "show" : "hide"}>
       <body>
         {trial && (
           <div className="trial-banner">

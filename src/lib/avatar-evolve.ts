@@ -1,7 +1,8 @@
 import { createHash } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
 import { countContributions, getAvatar, PENDING_FAMILY, stageFor, type AvatarView } from "./avatar";
-import { artNameFor, CATALOG, catalogEntry, catalogForPrompt } from "./avatar-catalog";
+import { CATALOG, catalogEntry, catalogForPrompt } from "./avatar-catalog";
+import { companionImage } from "./companion-art";
 import type { ClaudeClient } from "./claude/types";
 
 const MAX_TOKENS = 800;
@@ -107,7 +108,7 @@ function present(stored: Stored[], stage: number): EvolutionCandidate[] {
       family,
       name: catalogEntry(family)?.name ?? family,
       reason,
-      image: artNameFor(family, stage) as string,
+      image: companionImage(family, stage),
     };
   });
 }

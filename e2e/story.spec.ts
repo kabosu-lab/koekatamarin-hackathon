@@ -47,10 +47,11 @@ test("見どころ：話す、問い返しで気づく、本人が確かめて�
   await post.getByRole("button", { name: "返信", exact: true }).click();
   await expect(post.locator(".reply")).toContainText("明日やってみます");
 
-  await page.goto("/");
-  const toast = page.getByRole("status", { name: "届いた返事" });
-  await expect(toast).toContainText("野田 翔さんから返事が届きました");
-  await expect(toast).toContainText("明日やってみます");
+  // 窓の上の知らせは reply-notice.spec.ts で確かめる。ここでは、消えずに残る受信箱で届いたことを見る
+  await page.goto("/inbox");
+  const replies = page.getByRole("region", { name: "届いた返事" });
+  await expect(replies).toContainText("野田 翔さん");
+  await expect(replies).toContainText(`明日やってみます ${id}`);
 });
 
 test("動きを減らす設定では、とどけるを動かさず色だけで伝える", async ({ browser }) => {

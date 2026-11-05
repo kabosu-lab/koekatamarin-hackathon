@@ -1,7 +1,8 @@
 import { randomUUID } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
 import { PENDING_FAMILY } from "./avatar";
-import { artNameFor, CATALOG, catalogEntry, type CatalogEntry } from "./avatar-catalog";
+import { CATALOG, catalogEntry, type CatalogEntry } from "./avatar-catalog";
+import { companionImage } from "./companion-art";
 import type { ClaudeClient } from "./claude/types";
 import type { PostDestination } from "./destination/types";
 import { listPublishedWords } from "./memory";
@@ -123,7 +124,7 @@ export function listCompanions(db: DatabaseSync, personId: string, now: Date = n
   return rows.flatMap((row) => {
     const entry = catalogEntry(row.family);
     if (!entry) return [];
-    return [{ family: row.family, name: entry.name, image: artNameFor(row.family, row.shown_stage) as string, isCurrent: row.family === current }];
+    return [{ family: row.family, name: entry.name, image: companionImage(row.family, row.shown_stage ?? 2), isCurrent: row.family === current }];
   });
 }
 
@@ -216,7 +217,7 @@ export async function openGiftEgg(
   db.prepare("INSERT OR IGNORE INTO avatar_companions (person_id, family, shown_stage, obtained_at) VALUES (?, ?, 1, ?)").run(personId, family, now.toISOString());
   db.prepare("INSERT OR IGNORE INTO avatars (person_id, family, shown_stage) VALUES (?, ?, 1)").run(personId, family);
   const entry = catalogEntry(family) as CatalogEntry;
-  return { family, name: entry.name, reason, image: artNameFor(family, 1) as string, color: entry.color };
+  return { family, name: entry.name, reason, image: companionImage(family, 2), color: entry.color };
 }
 
 /** 手持ちから今の相棒を選ぶ。それまでの相棒の段階は残り、戻せばそのまま。 */
