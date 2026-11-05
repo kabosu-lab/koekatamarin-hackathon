@@ -132,6 +132,7 @@ export default async function MePage() {
         <Link href="/daily"><Icon name="note" />{viewer.role === "student" ? "今日の日記" : "今日の日報"}</Link>
         {viewer.role !== "student" && <Link href="/daily/received"><Icon name="inbox" />届いた日報と日記</Link>}
         <Link href="/lookback"><Icon name="clock" />ふりかえり</Link>
+        <Link href="/portfolio"><Icon name="note" />ポートフォリオ</Link>
         <Link href="/inbox"><Icon name="inbox" />受信箱</Link>
       </div>
       <GoalsPanel key={`${viewer.id}-goals`} initial={listGoals(db, viewer.id)} initialNudge={getNudge(db, viewer.id)} />

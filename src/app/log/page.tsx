@@ -26,6 +26,9 @@ export default async function LogPage() {
             <Link href="/lookback">ふりかえり</Link>
           </li>
           <li>
+            <Link href="/portfolio">ポートフォリオ</Link>
+          </li>
+          <li>
             <Link href="/chie">校内の知恵</Link>
           </li>
           <li>

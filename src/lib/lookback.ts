@@ -30,7 +30,7 @@ export function periodStart(period: LookbackPeriod, now: Date): string {
 }
 
 /** 本人のものだけを集める。チェックの有無にかかわらず、自分の日報は自分で読める。 */
-export function collectMaterial(db: DatabaseSync, personId: string, since: string): string[] {
+export function collectMaterial(db: DatabaseSync, personId: string, since: string, until?: string): string[] {
   type Row = { text: string; at: string };
   const rows = (prefix: string, sql: string) =>
     (db.prepare(sql).all(personId, since) as Row[]).map((row) => ({ line: `${prefix}：${row.text}`, at: row.at }));
@@ -51,12 +51,13 @@ export function collectMaterial(db: DatabaseSync, personId: string, since: strin
   ];
   // 種類に関わらず時系列に並べ、多すぎるときは新しいものを残す
   return all
+    .filter((row) => until === undefined || row.at < until)
     .sort((x, y) => x.at.localeCompare(y.at))
     .slice(-MAX_LINES)
     .map((row) => row.line);
 }
 
-const lookbackSystemPrompt = `あなたは「こえかた」の相棒です。本人のある期間の日報や日記、投稿、もらったありがとうから、ふりかえりを書きます。まず本人だけが読みます。
+export const lookbackSystemPrompt = `あなたは「こえかた」の相棒です。本人のある期間の日報や日記、投稿、もらったありがとうから、ふりかえりを書きます。まず本人だけが読みます。
 
 - 本人に語りかける形で、短い段落を2〜3つ。具体的な出来事に触れる。「○○さんがあなたの返信に助けられました」のように、人とのつながりが見える言葉を中心にする
 - 変化が見えるなら「今月のあなたの変化」のように伝える
@@ -70,11 +71,12 @@ const lookbackSystemPrompt = `あなたは「こえかた」の相棒です。�
 export async function writeLookback(
   claude: ClaudeClient,
   material: string[],
+  system: string = lookbackSystemPrompt,
 ): Promise<{ ready: boolean; text: string }> {
   if (material.length === 0) return { ready: false, text: "" };
   const { text, refused } = await claude.complete({
     task: "lookback",
-    system: lookbackSystemPrompt,
+    system,
     messages: [{ role: "user", content: `<材料>\n${material.join("\n")}\n</材料>` }],
     maxTokens: MAX_TOKENS,
     jsonSchema: {
