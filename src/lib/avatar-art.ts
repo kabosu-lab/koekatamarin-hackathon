@@ -1,4 +1,5 @@
-import { companionSvg } from "./companion-art";
+import { LUMP_SHAPE_NAMES } from "./lump-shapes";
+import { companionSvg, type LumpLook } from "./companion-art";
 import { randomUUID } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
 import { loadArt } from "./art";
@@ -24,6 +25,7 @@ const pickSystemPrompt = `あなたは、校内アプリ「こえかた」で、
 書くこと:
 - reason：なぜ合うと思ったかを短く、やさしく1文（40文字くらいまで）。「この人は〜な性格」のように人を決めつけない
 - talent：相棒の得意なことを8文字くらいまで（「ほっと一息」「風読み名人」など）
+- traits.shape：声のかたまりの形。雰囲気に合うものを一覧から選ぶ（bubble 吹き出し、drop 水玉、mochi お餅、fluff 綿毛、cloud 雲、jelly ゼリー、pebble 小石）。人の顔や性格を当てるためではない
 - traits.colors：画像から受け取った色を3色、#RRGGBB で。traits.motif と traits.mood：雰囲気の短い言葉（「夕暮れ」など）
 - 画像が読めないときは usable を false に
 
@@ -42,8 +44,9 @@ const pickSchema = {
     traits: {
       type: "object",
       additionalProperties: false,
-      required: ["colors", "motif", "mood"],
+      required: ["colors", "motif", "mood", "shape"],
       properties: {
+        shape: { type: "string", enum: LUMP_SHAPE_NAMES },
         colors: { type: "array", items: { type: "string" } },
         motif: { type: "string" },
         mood: { type: "string" },
@@ -227,8 +230,16 @@ export async function renderArt(
     | undefined;
   const stage = avatar ? Math.max(shownStage(db, row.person_id, avatar.family, avatar.shown_stage), 1) : 1;
   // 相棒はコードで描く。ポーズの動きは画面の CSS で見せる
-  const drawn = avatar && companionSvg(avatar.family, stage);
+  const drawn = avatar && companionSvg(avatar.family, stage, row.traits ? { color: traits.colors[0], shape: traits.shape } : {});
   if (drawn) return svg(drawn);
   const code = drawWithCode(traits, stage);
   return svg(toSvg(code.body, code.poses[pose]));
+}
+
+/** 窓に出す声のかたまりの色と形。アイコンから作っていなければ、系統の色と吹き出し。 */
+export function lumpLookOf(db: DatabaseSync, personId: string): LumpLook {
+  const row = db.prepare("SELECT traits FROM avatar_art WHERE person_id = ?").get(personId) as { traits: string | null } | undefined;
+  if (!row?.traits) return {};
+  const traits = parseTraits(JSON.parse(row.traits));
+  return traits ? { color: traits.colors[0], shape: traits.shape } : {};
 }

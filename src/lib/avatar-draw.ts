@@ -1,7 +1,8 @@
+import { type LumpShapeName, parseLumpShape } from "./lump-shapes";
 import { createHash } from "node:crypto";
 
 /** 写真から読み取るもの。色と持ち物の雰囲気だけで、人のことは入れない。 */
-export type AvatarTraits = { colors: [string, string, string]; motif: string; mood: string };
+export type AvatarTraits = { colors: [string, string, string]; motif: string; mood: string; shape?: LumpShapeName };
 
 export const POSES = ["normal", "highfive", "cheer", "stretch", "study"] as const;
 export type Pose = (typeof POSES)[number];
@@ -28,10 +29,10 @@ export function traitsFromSeed(seed: string): AvatarTraits {
 const HEX = /^#[0-9a-fA-F]{6}$/;
 
 export function parseTraits(value: unknown): AvatarTraits | null {
-  const { colors, motif, mood } = (typeof value === "object" && value !== null ? value : {}) as Record<string, unknown>;
+  const { colors, motif, mood, shape } = (typeof value === "object" && value !== null ? value : {}) as Record<string, unknown>;
   if (!Array.isArray(colors) || colors.length !== 3 || !colors.every((c) => typeof c === "string" && HEX.test(c))) return null;
   const short = (text: unknown) => (typeof text === "string" ? text.trim().slice(0, 20) : "");
-  return { colors: colors as [string, string, string], motif: short(motif), mood: short(mood) };
+  return { colors: colors as [string, string, string], motif: short(motif), mood: short(mood), shape: parseLumpShape(shape) };
 }
 
 const arm = (d: string, color: string) => `<path d="${d}" fill="none" stroke="${color}" stroke-width="14" stroke-linecap="round"/>`;

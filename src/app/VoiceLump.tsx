@@ -1,29 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { lumpMarkup } from "@/lib/companion-art";
+import { LUMP_SHAPES, type LumpShape, type LumpShapeName } from "@/lib/lump-shapes";
 import type { DolphinState } from "./Dolphin";
 
-/**
- * 声のかたまり。最初の相棒で、育つと動物になる。絵のファイルを使わず、距離関数で描く。
- * 形は LUMP_SHAPES の数字で増やす。先のとがった形にせず、大きな目と口も付けない。
- */
-export type LumpShape = {
-  /** 幅、高さ、奥行きの半径 */
-  size: [number, number, number];
-  /** 表面のうねりの大きさと細かさ */
-  wobble: number;
-  lobes: number;
-  /** 吹き出しのしっぽの長さ。0 ならなく、底を少し平らにする */
-  tail: number;
-};
-
-export const LUMP_SHAPES = {
-  bubble: { size: [1.02, 0.7, 0.84], wobble: 0.02, lobes: 2, tail: 1 },
-  mochi: { size: [0.98, 0.74, 0.92], wobble: 0.025, lobes: 2, tail: 0 },
-} satisfies Record<string, LumpShape>;
-
-export type LumpShapeName = keyof typeof LUMP_SHAPES;
-
+/** 声のかたまり。最初の相棒で、育つと動物になる。絵のファイルを使わず、距離関数で描く。 */
 const MIN_FRAME_MS = 32;
 
 const VERTEX = `#version 300 es
@@ -186,15 +168,8 @@ function start(canvas: HTMLCanvasElement, shape: LumpShape, color: string, state
 }
 
 /** WebGL が使えない端末で出す静止画。 */
-function LumpStill({ color }: { color: string }) {
-  return (
-    <svg viewBox="0 0 200 200" className="dolphin-still" aria-hidden="true">
-      <path d="M100 30c50 0 84 26 84 62s-34 62-84 62c-6 0-12 0-18-1-6 10-20 20-32 21-5 0-7-4-4-8 5-7 8-14 8-22-24-10-38-29-38-52 0-36 34-62 84-62z" fill={color} />
-      <ellipse cx="66" cy="58" rx="20" ry="10" fill="#fff" opacity="0.4" transform="rotate(-20 66 58)" />
-      <circle cx="74" cy="92" r="5" fill="#212133" />
-      <circle cx="126" cy="92" r="5" fill="#212133" />
-    </svg>
-  );
+function LumpStill({ color, shape }: { color: string; shape: LumpShapeName }) {
+  return <svg viewBox="0 0 200 200" className="dolphin-still" aria-hidden="true" dangerouslySetInnerHTML={{ __html: lumpMarkup(color, shape) }} />;
 }
 
 /** 窓の中の相棒。3D が描けない端末や自動テストでは静止画に戻す。 */
@@ -242,7 +217,7 @@ export function VoiceLump({
 
   return (
     <div className="dolphin" role="img" aria-label={alt} data-state={state}>
-      {still ? <LumpStill color={color} /> : <canvas ref={canvasRef} aria-hidden="true" />}
+      {still ? <LumpStill color={color} shape={shape} /> : <canvas ref={canvasRef} aria-hidden="true" />}
     </div>
   );
 }

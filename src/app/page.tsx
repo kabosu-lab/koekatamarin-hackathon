@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { getViewer } from "@/lib/current-person";
 import { getDatabase } from "@/lib/db";
 import { getAvatar } from "@/lib/avatar";
+import { lumpLookOf } from "@/lib/avatar-art";
 import { companionColor } from "@/lib/companion-art";
 import { syncFromTeamsIfStale, teamsSyncMs } from "@/lib/destination/teams-bridge";
 import { dailyQuestion } from "@/lib/daily-question";
@@ -39,6 +40,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
   const appearance = readAppearance((name) => store.get(name)?.value);
   const rewards = showsRewards(appearance);
   const avatar = getAvatar(db, viewer.id);
+  const look = lumpLookOf(db, viewer.id);
   syncRibbons(db, viewer.id, new Date());
   syncGiftEggs(db, viewer.id, new Date());
   syncGiftEggs(db, viewer.id, new Date());
@@ -60,7 +62,8 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
         viewerId={viewer.id}
         promiseSeen={promiseSeen}
         companionAlt={rewards ? `${viewer.name}さんの相棒` : undefined}
-        companionColor={companionColor(avatar.family)}
+        companionColor={look.color ?? companionColor(avatar.family)}
+        companionShape={look.shape}
         companionImage={avatar.stage >= 2 ? avatar.image : undefined}
         question={talk === "send" ? SEND_PROMPT : question}
         initialGoal={doneGoal?.status === "done" ? { id: doneGoal.id, text: doneGoal.text } : null}

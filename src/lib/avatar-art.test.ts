@@ -5,7 +5,7 @@ import type { DatabaseSync } from "node:sqlite";
 import { beforeEach, describe, expect, it } from "vitest";
 import { getAvatar } from "./avatar";
 import { loadArt, isArtName } from "./art";
-import { getPhotoAvatarState, handleAvatarFromPhoto, renderArt, roomToken } from "./avatar-art";
+import { getPhotoAvatarState, handleAvatarFromPhoto, lumpLookOf, pickWithClaude, renderArt, roomToken } from "./avatar-art";
 import { artNameFor, CATALOG, catalogEntry } from "./avatar-catalog";
 import { POSES } from "./avatar-draw";
 import { createClaude } from "./claude";
@@ -218,6 +218,20 @@ describe("配信する絵", () => {
     for (const entry of CATALOG) expect(entry.stages).toBe(entry.group === "human" ? 5 : 3);
     expect(artNameFor("cloud", 9)).toBe("cloud-3.png");
     expect(artNameFor("nothing", 1)).toBeNull();
+  });
+});
+
+describe("アイコンから選ぶ声のかたまり", () => {
+  it("写真を読んで選んだ色と形を窓で使い、作っていなければ既定のまま", async () => {
+    expect(lumpLookOf(db, "saeki")).toEqual({});
+    const client: ClaudeClient = {
+      mode: "real",
+      complete: async () => ({ text: JSON.stringify({ ...pickAnswer(), traits: { ...TRAITS, shape: "fluff" } }), refused: false }),
+    };
+    const pick = await pickWithClaude(client, { attachment: { mediaType: "image/png", data: "" } as never, seed: "s" });
+    expect(pick?.traits.shape).toBe("fluff");
+    db.prepare("INSERT OR REPLACE INTO avatar_art (person_id, token, room_token, status, stage, updated_at, traits) VALUES ('saeki', 't', 'r', 'ready', 0, 'n', ?)").run(JSON.stringify(pick?.traits));
+    expect(lumpLookOf(db, "saeki")).toEqual({ color: "#123456", shape: "fluff" });
   });
 });
 

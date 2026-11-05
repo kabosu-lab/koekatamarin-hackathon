@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { CATALOG } from "./avatar-catalog";
-import { COMPANION_FAMILIES, companionColor, companionImage, companionSvg } from "./companion-art";
+import { parseTraits } from "./avatar-draw";
+import { COMPANION_FAMILIES, companionColor, companionImage, companionSvg, lumpMarkup } from "./companion-art";
+import { LUMP_SHAPE_NAMES, parseLumpShape } from "./lump-shapes";
 
 describe("相棒の絵", () => {
   it("一覧のどの系統にも絵があり、動物は14種ある", () => {
@@ -26,5 +28,25 @@ describe("相棒の絵", () => {
     }
     expect(companionImage("bee", 2)).toBe("/api/companion/bee-2");
     expect(companionColor(null)).toMatch(/^#/);
+  });
+
+  it("声のかたまりの形はどれも描け、形ごとに違い、外の絵に頼らない", () => {
+    expect(LUMP_SHAPE_NAMES).toEqual(["bubble", "drop", "mochi", "fluff", "cloud", "jelly", "pebble"]);
+    const drawn = LUMP_SHAPE_NAMES.map((shape) => lumpMarkup("#123456", shape));
+    expect(new Set(drawn).size).toBe(LUMP_SHAPE_NAMES.length);
+    for (const markup of drawn) {
+      expect(markup).toContain("#123456");
+      expect(markup).not.toMatch(/href|url\(|<image|<script/);
+    }
+  });
+
+  it("アイコンの色と形を使い、一覧にない形は捨てる", () => {
+    expect(companionSvg("bee", 1, { color: "#123456", shape: "cloud" })).toContain("#123456");
+    expect(companionSvg("bee", 2, { color: "#123456", shape: "cloud" })).not.toContain("#123456");
+    expect(parseLumpShape("fluff")).toBe("fluff");
+    expect(parseLumpShape("<script>")).toBeUndefined();
+    const colors = ["#123456", "#abcdef", "#000000"];
+    expect(parseTraits({ colors, motif: "", mood: "", shape: "pebble" })?.shape).toBe("pebble");
+    expect(parseTraits({ colors, motif: "", mood: "", shape: "evil" })?.shape).toBeUndefined();
   });
 });

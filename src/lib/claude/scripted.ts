@@ -182,7 +182,7 @@ function scriptedReview(post: string) {
  */
 /** 台本の絵。写真は読まず、コードで描いた絵を返す。 */
 function scriptedAvatarPick() {
-  const traits = { colors: ["#2545f0", "#ff6b4a", "#14213d"], motif: "台本", mood: "台本" };
+  const traits = { colors: ["#2545f0", "#ff6b4a", "#14213d"], motif: "台本", mood: "台本", shape: "cloud" };
   return { usable: true, family: "cloud", reason: "台本の例：ふんわりした雰囲気に合いそう。", talent: "ふんわり聞き上手", traits };
 }
 

@@ -25,6 +25,7 @@ import { ClickWheel } from "./ClickWheel";
 import { ReplyToast } from "./ReplyToast";
 import { VoiceLump } from "./VoiceLump";
 import type { ReplyNotice } from "@/lib/reply-notices";
+import type { LumpShapeName } from "@/lib/lump-shapes";
 import type { TeamsDelivery } from "@/lib/destination/teams-bridge";
 
 const MAX_TEXT_LENGTH = 2000;
@@ -72,6 +73,7 @@ export function Talk({
   noticePollMs = 30_000,
   companionAlt,
   companionColor,
+  companionShape,
   companionImage,
 }: {
   viewer: { name: string; label: string };
@@ -91,6 +93,7 @@ export function Talk({
   companionAlt?: string;
   /** 声のかたまりの色 */
   companionColor?: string;
+  companionShape?: LumpShapeName;
   /** 育って動物になったら、その絵 */
   companionImage?: string;
 }) {
@@ -678,7 +681,7 @@ export function Talk({
                   <img className="dolphin-still" src={companionImage} alt={companionAlt} />
                 </div>
               ) : (
-                <VoiceLump alt={companionAlt} color={companionColor} state={listening ? "listening" : sending ? "thinking" : "idle"} replyCount={replyCount} />
+                <VoiceLump alt={companionAlt} color={companionColor} shape={companionShape} state={listening ? "listening" : sending ? "thinking" : "idle"} replyCount={replyCount} />
               )}
             </div>
           )}

@@ -1,3 +1,5 @@
+import type { LumpShapeName } from "./lump-shapes";
+
 /**
  * 相棒の絵。Claude がコードで描いた SVG で、画像の生成も外の絵も使わない。
  * 体は共通の部品にして、耳、ひれ、羽などを足す。既存のキャラクターに似せない。
@@ -15,6 +17,8 @@ type Species = {
 };
 
 const INK = "#20232e";
+
+export type LumpLook = { color?: string; shape?: LumpShapeName };
 
 const SPECIES: Record<string, Species> = {
   // 青、水色
@@ -113,9 +117,23 @@ export const COMPANION_FAMILIES = Object.keys(SPECIES);
 
 const SVG_OPEN = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">`;
 
-/** 声のかたまり。丸い吹き出しの形で、大きな目と口を付けない。 */
-function lump(color: string): string {
-  return `${SVG_OPEN}<path d="M100 34c50 0 84 26 84 60s-34 60-84 60c-6 0-12 0-18-1-6 10-20 20-32 21-5 0-7-4-4-8 5-7 8-14 8-22-24-10-38-29-38-50 0-34 34-60 84-60z" fill="${color}"/><ellipse cx="66" cy="60" rx="20" ry="10" fill="#fff" opacity="0.4" transform="rotate(-20 66 60)"/><circle cx="76" cy="94" r="5" fill="${INK}"/><circle cx="124" cy="94" r="5" fill="${INK}"/></svg>`;
+const LUMP_BODY: Record<LumpShapeName, (color: string) => string> = {
+  bubble: (c) => `<path d="M100 34c50 0 84 26 84 60s-34 60-84 60c-6 0-12 0-18-1-6 10-20 20-32 21-5 0-7-4-4-8 5-7 8-14 8-22-24-10-38-29-38-50 0-34 34-60 84-60z" fill="${c}"/>`,
+  drop: (c) => `<circle cx="100" cy="102" r="72" fill="${c}"/>`,
+  mochi: (c) => `<path d="M100 44c50 0 80 34 80 72 0 32-30 42-80 42s-80-10-80-42c0-38 30-72 80-72z" fill="${c}"/>`,
+  fluff: (c) => [[100, 100, 54], [58, 92, 30], [142, 92, 30], [68, 136, 30], [132, 136, 30], [100, 56, 30], [100, 148, 28], [46, 118, 24], [154, 118, 24]].map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}" fill="${c}"/>`).join(""),
+  cloud: (c) => [[100, 104, 52], [52, 118, 36], [148, 118, 36], [72, 84, 32], [128, 84, 34]].map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}" fill="${c}"/>`).join(""),
+  jelly: (c) => `<path d="M100 26c42 0 62 34 62 76v46c0 12-14 14-20 6-6 8-20 8-26 0-6 8-26 8-32 0-6 8-20 8-24-6v-46c0-42 18-76 40-76z" fill="${c}"/>`,
+  pebble: (c) => `<path d="M34 118c-8-38 28-62 72-60 40 2 66 24 62 60-4 28-34 38-70 38-32 0-58-12-64-38z" fill="${c}"/>`,
+};
+
+/** 声のかたまりの中身。形はどれも、丸みがあって、点の目だけ。 */
+export function lumpMarkup(color: string, shape: LumpShapeName = "bubble"): string {
+  return `${LUMP_BODY[shape](color)}<ellipse cx="68" cy="66" rx="18" ry="9" fill="#fff" opacity="0.4" transform="rotate(-20 68 66)"/><circle cx="78" cy="98" r="5" fill="${INK}"/><circle cx="122" cy="98" r="5" fill="${INK}"/>`;
+}
+
+function lump(color: string, shape: LumpShapeName): string {
+  return `${SVG_OPEN}${lumpMarkup(color, shape)}</svg>`;
 }
 
 function animal(species: Species, stage: number): string {
@@ -131,10 +149,10 @@ function animal(species: Species, stage: number): string {
 }
 
 /** 系統と段階から絵を作る。知らない系統は null。段階1までは声のかたまり。 */
-export function companionSvg(family: string, stage: number): string | null {
+export function companionSvg(family: string, stage: number, look: LumpLook = {}): string | null {
   if (!Object.hasOwn(SPECIES, family)) return null;
   const species = SPECIES[family];
-  return stage <= 1 ? lump(species.main) : animal(species, stage);
+  return stage <= 1 ? lump(look.color ?? species.main, look.shape ?? "bubble") : animal(species, stage);
 }
 
 export function companionImage(family: string, stage: number): string {
