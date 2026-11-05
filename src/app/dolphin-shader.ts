@@ -1,4 +1,4 @@
-/** 相棒のイルカ。絵のファイルを使わず、距離関数で形を描く（Claude がコードで書いたもの）。 */
+/** パートナーのイルカ。絵のファイルを使わず、距離関数で形を描く（Claude がコードで書いたもの）。 */
 export const DOLPHIN_VERTEX = `#version 300 es
 void main(){vec2 p=vec2(float(gl_VertexID&1),float((gl_VertexID>>1)&1))*4.-1.;gl_Position=vec4(p,0.,1.);}`;
 

@@ -451,9 +451,9 @@ export const TROPHY_RULES: Record<string, Rule> = {
     return row ? { story: "初めて投稿した日", at: text(row.at) } : null;
   },
 
-  "good-listener": fromLog("asked-back-post", "相棒に聞き返されて、投稿まで進んだ日"),
+  "good-listener": fromLog("asked-back-post", "パートナーに聞き返されて、投稿まで進んだ日"),
   "walk-talk": fromLog("walk-post", "歩きながら話して、初めて投稿した日"),
-  "ai-vs-human": fromLog("asked-human", "相棒に言われて、本当に人に聞いた日"),
+  "ai-vs-human": fromLog("asked-human", "パートナーに言われて、本当に人に聞いた日"),
 
   boomerang: fromLog("found-own-post", "昔の自分の知恵に、助けられた日"),
 

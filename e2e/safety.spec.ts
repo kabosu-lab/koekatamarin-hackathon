@@ -4,8 +4,8 @@ import { switchPerson } from "./helpers";
 const SECRET = "親に殴られている 秘密の言葉";
 
 async function say(page: Page, text: string) {
-  await page.getByLabel("相棒に書く").fill(text);
-  await page.getByRole("button", { name: "相棒へ送る" }).click();
+  await page.getByLabel("パートナーに書く").fill(text);
+  await page.getByRole("button", { name: "パートナーへ送る" }).click();
   await expect(page.getByRole("log").locator(".bubble.assistant").last()).toBeVisible();
 }
 
@@ -131,11 +131,11 @@ test("返事が作れなくても、相談室に伝えたことは本人に見�
     }),
   );
   await page.goto("/");
-  await page.getByLabel("相棒に書く").fill("大事な話");
-  await page.getByRole("button", { name: "相棒へ送る" }).click();
+  await page.getByLabel("パートナーに書く").fill("大事な話");
+  await page.getByRole("button", { name: "パートナーへ送る" }).click();
 
   await expect(page.getByRole("region", { name: "相談室に伝えました" })).toBeVisible();
-  await expect(page.getByLabel("相棒に書く")).toHaveValue("大事な話");
+  await expect(page.getByLabel("パートナーに書く")).toHaveValue("大事な話");
 });
 
 test("最初の約束は、初めはカードで全文を見せ、わかったあとは話す画面に出さない", async ({ page }) => {

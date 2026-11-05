@@ -34,7 +34,7 @@ export type PostView = {
   body: string;
   createdAt: string;
   scope: PostScope;
-  /** 教職員にだけ伝える、相棒からの確認のお願い。判断するのは人。 */
+  /** 教職員にだけ伝える、パートナーからの確認のお願い。判断するのは人。 */
   needsLook: boolean;
   /** 教職員のチャネルで共有済み */
   sharedToStaff: boolean;

@@ -23,7 +23,7 @@ export const APPEARANCE_OPTIONS = [
   },
   {
     name: "avatar",
-    label: "相棒（隠しても、裏で育ちます）",
+    label: "パートナー（隠しても、裏で育ちます）",
     options: [
       { value: "show", label: "表示する" },
       { value: "hide", label: "隠す" },
@@ -56,7 +56,7 @@ export function isAppearanceValue(name: string, value: string): name is Appearan
   return group !== undefined && group.options.some((option) => option.value === value);
 }
 
-/** 見た目は全員同じ1つにした。選べるのは文字の大きさ、音、相棒の表示だけ。内部の名前は retro のまま。 */
+/** 見た目は全員同じ1つにした。選べるのは文字の大きさ、音、パートナーの表示だけ。内部の名前は retro のまま。 */
 export function readAppearance(read: (cookie: string) => string | undefined): Appearance {
   const get = (name: AppearanceName) => {
     const value = read(APPEARANCE_COOKIES[name]);

@@ -3,7 +3,7 @@ import { PIXEL_FORMS, PIXEL_SIZE, pixelSprite, pixelStageFor, spriteRects, type 
 
 const blank: Sprite = Array.from({ length: PIXEL_SIZE }, () => ".".repeat(PIXEL_SIZE));
 
-describe("レトロの相棒", () => {
+describe("レトロのパートナー", () => {
   const all: [string, Sprite][] = [
     ["たまご", PIXEL_FORMS.egg],
     ["こども", PIXEL_FORMS.child],

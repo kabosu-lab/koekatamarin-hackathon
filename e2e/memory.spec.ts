@@ -9,8 +9,8 @@ test("「これを覚えて」と頼んだことだけが一覧に出て、い�
   // 「これを覚えて」は最後に話したことにだけ出る
   for (const text of [notKept, kept]) {
     const count = await page.getByRole("log").locator(".bubble.assistant").count();
-    await page.getByLabel("相棒に書く").fill(text);
-    await page.getByRole("button", { name: "相棒へ送る" }).click();
+    await page.getByLabel("パートナーに書く").fill(text);
+    await page.getByRole("button", { name: "パートナーへ送る" }).click();
     await expect(page.getByRole("log").locator(".bubble.assistant")).toHaveCount(count + 1);
   }
 
@@ -18,7 +18,7 @@ test("「これを覚えて」と頼んだことだけが一覧に出て、い�
   await expect(page.getByRole("button", { name: "覚えました" })).toBeDisabled();
 
   await page.goto("/me");
-  const list = page.getByRole("region", { name: "相棒が覚えていること" });
+  const list = page.getByRole("region", { name: "パートナーが覚えていること" });
   await expect(list).toContainText(kept);
   await expect(list).toContainText("公開した言葉");
   await expect(list).not.toContainText(notKept);

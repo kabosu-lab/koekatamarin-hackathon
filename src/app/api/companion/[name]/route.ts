@@ -1,6 +1,6 @@
 import { companionSvg } from "@/lib/companion-art";
 
-/** コードで描いた相棒の絵。名前は「系統-段階」で、知らないものは 404。 */
+/** コードで描いたパートナーの絵。名前は「系統-段階」で、知らないものは 404。 */
 export async function GET(_request: Request, { params }: { params: Promise<{ name: string }> }) {
   const { name } = await params;
   const match = /^([a-z]+)-(\d{1,2})$/.exec(name);

@@ -1,4 +1,4 @@
-// 本物の Claude で、ダミーの写真から相棒を選び、進化の候補を出す。料金がかかるので、テストからは呼ばない。
+// 本物の Claude で、ダミーの写真からパートナーを選び、進化の候補を出す。料金がかかるので、テストからは呼ばない。
 //   npm run try:avatar
 import { chooseAvatar } from "../src/lib/avatar";
 import { pickWithClaude } from "../src/lib/avatar-art";

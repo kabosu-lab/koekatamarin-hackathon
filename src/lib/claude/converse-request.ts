@@ -26,7 +26,7 @@ export function parseConverseInput(input: unknown): { history: ChatMessage[]; te
   return { history, text: text.trim() };
 }
 
-/** 画面からの依頼を確かめて、相棒の返事を返す。話の中身はログに残さない。 */
+/** 画面からの依頼を確かめて、パートナーの返事を返す。話の中身はログに残さない。 */
 export async function handleConverse(
   claude: ClaudeClient,
   input: unknown,
@@ -39,7 +39,7 @@ export async function handleConverse(
     const { reply, ready } = await converse(claude, parsed.history, parsed.text, memory);
     return { status: 200, body: { reply, mode: claude.mode, ready } };
   } catch (error) {
-    console.error("相棒の呼び出しに失敗", error instanceof Error ? error.name : "unknown");
-    return { status: 503, body: { error: "相棒につながりませんでした" } };
+    console.error("パートナーの呼び出しに失敗", error instanceof Error ? error.name : "unknown");
+    return { status: 503, body: { error: "パートナーにつながりませんでした" } };
   }
 }

@@ -5,7 +5,7 @@ import { useEffect } from "react";
 
 const REFRESH_MS = 30 * 1000;
 
-/** 開いておくだけで人数と相棒が新しくなる。 */
+/** 開いておくだけで人数とパートナーが新しくなる。 */
 export function Refresher() {
   const router = useRouter();
   useEffect(() => {

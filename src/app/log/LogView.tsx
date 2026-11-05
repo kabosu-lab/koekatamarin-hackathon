@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import type { ChatMessage } from "@/lib/claude/types";
 import { loadTalk } from "../talk-storage";
 
-/** 今のタブの中の、相棒との話。サーバーには残していないので、タブを閉じると消える。 */
+/** 今のタブの中の、パートナーとの話。サーバーには残していないので、タブを閉じると消える。 */
 export function LogView({ viewerName }: { viewerName: string }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
 
@@ -15,7 +15,7 @@ export function LogView({ viewerName }: { viewerName: string }) {
     <ol className="retro-log-list">
       {messages.map((message, index) => (
         <li key={index} data-role={message.role}>
-          <strong>{message.role === "user" ? "あなた" : "相棒"}</strong>
+          <strong>{message.role === "user" ? "あなた" : "パートナー"}</strong>
           <p>{message.content}</p>
         </li>
       ))}

@@ -37,7 +37,7 @@ function Hatch({ hatched, onDone }: { hatched: HatchedView; onDone(useNow: boole
   return createPortal(
     <div className={`hatch-stage ${phase}`} role="dialog" aria-label="贈り物の卵" style={{ background: hatched.color }}>
       {phase !== "born" && <img className="hatch-egg sticker" src="/api/companion/dolphin-1" alt="卵" width={200} height={200} />}
-      {phase === "born" && <img className="hatch-born sticker" src={hatched.image} alt={`生まれた相棒、${hatched.name}`} width={240} height={240} />}
+      {phase === "born" && <img className="hatch-born sticker" src={hatched.image} alt={`生まれたパートナー、${hatched.name}`} width={240} height={240} />}
       <div className="hatch-words" role="status">
         {phase === "egg" && <h2>贈り物の卵が開きます</h2>}
         {phase === "crack" && <h2>あっ、動いた！</h2>}
@@ -46,7 +46,7 @@ function Hatch({ hatched, onDone }: { hatched: HatchedView; onDone(useNow: boole
             <h2>{hatched.name}が生まれた！</h2>
             {hatched.reason && <p className="hatch-reason">{hatched.reason}</p>}
             <button type="button" onClick={() => onDone(true)}>
-              今の相棒にする
+              今のパートナーにする
             </button>
             <button type="button" className="secondary" onClick={() => onDone(false)}>
               あとで選ぶ
@@ -59,7 +59,7 @@ function Hatch({ hatched, onDone }: { hatched: HatchedView; onDone(useNow: boole
   );
 }
 
-/** 贈り物の卵と、手持ちの相棒。人の役に立つと届く。育ちはどの相棒でも失わない。 */
+/** 贈り物の卵と、手持ちのパートナー。人の役に立つと届く。育ちはどのパートナーでも失わない。 */
 export function GiftEggs({ eggs, companions }: { eggs: GiftEggView[]; companions: CompanionView[] }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -113,14 +113,14 @@ export function GiftEggs({ eggs, companions }: { eggs: GiftEggView[]; companions
       )}
       {companions.length > 1 && (
         <>
-          <h3>手持ちの相棒</h3>
+          <h3>手持ちのパートナー</h3>
           <ul className="companion-list">
             {companions.map((companion) => (
               <li key={companion.family}>
                 <button type="button" disabled={busy || companion.isCurrent} aria-pressed={companion.isCurrent} onClick={() => void select(companion.family)}>
                   <Avatar image={companion.image} alt="" size={72} />
                   {companion.name}
-                  {companion.isCurrent && <small>今の相棒</small>}
+                  {companion.isCurrent && <small>今のパートナー</small>}
                 </button>
               </li>
             ))}

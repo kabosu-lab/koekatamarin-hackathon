@@ -383,7 +383,7 @@ html .home-settings > summary {
   list-style: none;
 }
 
-/* 広い画面でも、話す・書くは横に並べて、分身は控えめに */
+/* 広い画面でも、話す・書くは横に並べて、パートナーは控えめに */
 @media (min-width: 768px) {
   html .stage-home .talk .actions {
     grid-template-columns: repeat(2, minmax(0, 1fr));

@@ -217,7 +217,7 @@ describe("関連する投稿", () => {
     expect(cards.every((c) => c.relatedReason === undefined)).toBe(true);
   });
 
-  it("相棒に覚えてもらった言葉は材料に入らない", () => {
+  it("パートナーに覚えてもらった言葉は材料に入らない", () => {
     handleMemory(db, "aoki", { action: "remember", text: "秘密の話題テスト" }, NOW);
     expect(myWords().join("\n")).not.toContain("秘密の話題テスト");
   });

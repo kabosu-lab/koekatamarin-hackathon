@@ -29,14 +29,14 @@ test("ポートフォリオは本人だけに見え、選んで確かめたと�
 
   // ふりかえりは本人が押すまで残らない
   const reflection = page.getByRole("region", { name: "この学期のふりかえり" });
-  await reflection.getByRole("button", { name: "相棒にふりかえりを書いてもらう" }).click();
+  await reflection.getByRole("button", { name: "パートナーにふりかえりを書いてもらう" }).click();
   const proposal = reflection.getByRole("textbox");
   await expect(proposal).toHaveValue(/やり取りがありました/);
   await proposal.fill("青木のこの学期のふりかえり");
   await page.reload();
   await expect(page.getByText("青木のこの学期のふりかえり")).toHaveCount(0);
 
-  await reflection.getByRole("button", { name: "相棒にふりかえりを書いてもらう" }).click();
+  await reflection.getByRole("button", { name: "パートナーにふりかえりを書いてもらう" }).click();
   await reflection.getByRole("textbox").fill("青木のこの学期のふりかえり");
   await reflection.getByRole("button", { name: "ポートフォリオに残す" }).click();
   await expect(reflection.getByText("青木のこの学期のふりかえり")).toBeVisible();

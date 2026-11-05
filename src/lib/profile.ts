@@ -10,7 +10,7 @@ const MAX_REQUEST = 200;
 
 export type ProfileDraft = { text: string; revised: boolean };
 
-const profileSystemPrompt = `あなたは「こえかた」の相棒です。本人が校内で公開した言葉から、本人のプロフィールの下書きを作ります。校内の人が「この人に聞いてみよう」と思う手がかりになります。
+const profileSystemPrompt = `あなたは「こえかた」のパートナーです。本人が校内で公開した言葉から、本人のプロフィールの下書きを作ります。校内の人が「この人に聞いてみよう」と思う手がかりになります。
 
 - 書いてよいのは <言葉> と <今のプロフィール> から確かに言えることだけ。経験、資格、得意なことを作らない
 - 得意なこと、考え方、頑張りを、短い2文までで書く。本人の言葉として読める形で、AI の定型文にしない
@@ -124,7 +124,7 @@ export async function handleProfile(
     }
   } catch (error) {
     console.error("プロフィールの処理に失敗", error instanceof Error ? error.name : "unknown");
-    return { status: 503, body: { error: "相棒につながりませんでした" } };
+    return { status: 503, body: { error: "パートナーにつながりませんでした" } };
   }
 
   return { status: 400, body: { error: "依頼が正しくありません" } };

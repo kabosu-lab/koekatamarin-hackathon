@@ -16,14 +16,14 @@ test("見どころ：話す、問い返しで気づく、本人が確かめて�
   // 他のテストと同じ人物だと、知らせの既読が混ざる
   const page = await open(browser, "shiraishi");
   await page.goto("/");
-  const input = page.getByLabel("相棒に書く");
+  const input = page.getByLabel("パートナーに書く");
   const assistant = page.getByRole("log").locator(".bubble.assistant:not(.waiting)");
   const deliver = page.getByRole("button", { name: /とどける/ });
 
   await input.fill("今日の授業、急に静かになった瞬間があって");
   await input.press("Enter");
   await expect(assistant.last()).toContainText("その少し前、何してたん");
-  // 文字数ではなく、相棒が要素がそろったと判断したときだけ光る
+  // 文字数ではなく、パートナーが要素がそろったと判断したときだけ光る
   await expect(deliver).not.toHaveAttribute("data-ready", "true");
 
   await input.fill(`声を小さくしたんだ ${id}`);
@@ -60,7 +60,7 @@ test("動きを減らす設定では、とどけるを動かさず色だけで�
   const page = await open(browser, "ogawara");
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/");
-  const input = page.getByLabel("相棒に書く");
+  const input = page.getByLabel("パートナーに書く");
   // 台本では、何があったか（静かになった）とどうしたか（声を小さく）がそろうと光る
   await input.fill("今日の授業、急に静かになった瞬間があって");
   await input.press("Enter");
@@ -75,7 +75,7 @@ test("動きを減らす設定では、とどけるを動かさず色だけで�
 test("少し話しただけなら、とどけるを目立たせない", async ({ browser }) => {
   const page = await open(browser, "fujimoto");
   await page.goto("/");
-  const input = page.getByLabel("相棒に書く");
+  const input = page.getByLabel("パートナーに書く");
   await input.fill("こんにちは");
   await input.press("Enter");
   await expect(page.getByRole("log").locator(".bubble.assistant:not(.waiting)")).toHaveCount(1);
@@ -97,7 +97,7 @@ for (const [teams, expected] of [
       await route.fulfill({ response, json: { ...(await response.json()), teams } });
     });
     await page.goto("/");
-    const input = page.getByLabel("相棒に書く");
+    const input = page.getByLabel("パートナーに書く");
     await input.fill(`結果の確かめ ${test.info().testId}`);
     await input.press("Enter");
     await page.getByRole("button", { name: /とどける/ }).click();

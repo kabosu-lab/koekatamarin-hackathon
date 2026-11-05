@@ -68,7 +68,7 @@ export function noteUndone(db: DatabaseSync, personId: string, now: Date): void 
   logShortLived(db, personId, "undone", "", now);
 }
 
-/** 投稿にするにはまだ足りず、相棒が聞き返した。Claude の返事は読まず、下書きの結果だけを見る。 */
+/** 投稿にするにはまだ足りず、パートナーが聞き返した。Claude の返事は読まず、下書きの結果だけを見る。 */
 export function noteDraftNotReady(db: DatabaseSync, personId: string, now: Date): void {
   logShortLived(db, personId, "draft-not-ready", "", now);
 }
@@ -77,7 +77,7 @@ export function noteWalkFinished(db: DatabaseSync, personId: string, now: Date):
   logShortLived(db, personId, "walk-finished", "", now);
 }
 
-/** 相棒が「聞いてみる？」と案内した相手。 */
+/** パートナーが「聞いてみる？」と案内した相手。 */
 export function noteAskSuggested(db: DatabaseSync, personId: string, askedIds: readonly string[], now: Date): void {
   for (const askedId of new Set(askedIds)) {
     if (askedId && !recently(db, personId, "ask-suggested", now, askedId)) logShortLived(db, personId, "ask-suggested", askedId, now);

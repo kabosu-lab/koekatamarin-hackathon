@@ -66,7 +66,7 @@ async function swipeToLock(page: Page) {
 
 const log = (page: Page) => page.getByRole("log");
 
-test("押したまま上へ動かすと固定になり、離しても聞き続け、止めると相棒へ送る", async ({ page }) => {
+test("押したまま上へ動かすと固定になり、離しても聞き続け、止めるとパートナーへ送る", async ({ page }) => {
   await fakeVoice(page);
   await page.goto("/");
   await swipeToLock(page);
@@ -105,7 +105,7 @@ test("「終わり」と言うと止まり、「終わり」を除いて送る",
   await expect(page.getByText("固定中")).toHaveCount(0);
 });
 
-test("固定中に「どう思う？」と言うと相棒が答え、聞いた分は二重に送らない", async ({ page }) => {
+test("固定中に「どう思う？」と言うとパートナーが答え、聞いた分は二重に送らない", async ({ page }) => {
   await fakeVoice(page);
   await page.goto("/");
   await swipeToLock(page);

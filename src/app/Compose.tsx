@@ -204,9 +204,9 @@ export function Compose({
               </ul>
             </>
           ) : (
-            <p>相棒が気づいた点はありませんでした。</p>
+            <p>パートナーが気づいた点はありませんでした。</p>
           )}
-          <p className="attachment-caveat">相棒は見逃すことがあります。最後に確かめるのはあなたです。</p>
+          <p className="attachment-caveat">パートナーは見逃すことがあります。最後に確かめるのはあなたです。</p>
           <div className="row">
             {attachment.notices.length > 0 && (
               <button type="button" className="secondary" disabled={busy} onClick={onReplaceAttachment}>

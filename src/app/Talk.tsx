@@ -89,7 +89,7 @@ export function Talk({
   /** 開いたときに届いている返事 */
   notices?: ReplyNotice[];
   noticePollMs?: number;
-  /** 窓に出す相棒の名前。報酬を隠している人にはない */
+  /** 窓に出すパートナーの名前。報酬を隠している人にはない */
   companionAlt?: string;
   /** 声のかたまりの色 */
   companionColor?: string;
@@ -128,7 +128,7 @@ export function Talk({
   const connectDone = useRef(false);
   // 送ったあとに話した分だけで、次を目立たせるか決める
   const [deliveredAt, setDeliveredAt] = useState(0);
-  /** 相棒が「投稿にできる要素がそろった」と判断した時点の会話の長さ */
+  /** パートナーが「投稿にできる要素がそろった」と判断した時点の会話の長さ */
   const [readyAt, setReadyAt] = useState<number | null>(null);
   const [sentTo, setSentTo] = useState<{ channel: ChannelView; postId: string; isPublic: boolean; teams?: TeamsDelivery } | null>(null);
   const stopRef = useRef<(() => void) | null>(null);
@@ -223,7 +223,7 @@ export function Talk({
       ];
       setMessages(updated);
       setScripted(mode === "scripted");
-      // 相棒が「投稿にできる要素がそろった」と判断したら、とどけるを光らせる。命や安全の案内のときは光らせない
+      // パートナーが「投稿にできる要素がそろった」と判断したら、とどけるを光らせる。命や安全の案内のときは光らせない
       if (ready === true && !notice) setReadyAt(updated.length);
       // 命や安全の案内が出ているときは、人の紹介をしない
       if (notice) connectDone.current = true;
@@ -394,7 +394,7 @@ export function Talk({
         setHeard(text);
         lockedTalk.heard(text);
       },
-      // 話し終えたら、押さなくても相棒へ送る。Teams へ届けるのは本人が確かめて押す
+      // 話し終えたら、押さなくてもパートナーへ送る。Teams へ届けるのは本人が確かめて押す
       onFinal: (text) => {
         const rest = lockedTalk.finish(text).trim();
         if (discardHeard.current || !rest) return;
@@ -519,10 +519,10 @@ export function Talk({
 
   const canCompose = messages.some((message) => message.role === "user");
   const hasTyped = draft.trim() !== "";
-  // 前に届けたあとで、相棒がそろったと判断したときだけ光る
+  // 前に届けたあとで、パートナーがそろったと判断したときだけ光る
   const readyToDeliver = !hasTyped && !listening && !sending && !preparing && readyAt !== null && readyAt > deliveredAt && readyAt <= messages.length;
   const lastUserIndex = messages.map((message) => message.role).lastIndexOf("user");
-  // いちばん新しい相棒の言葉は、相棒から出る吹き出しにする
+  // いちばん新しいパートナーの言葉は、パートナーから出る吹き出しにする
   const lastAssistantIndex = messages.map((message) => message.role).lastIndexOf("assistant");
   const replyCount = messages.filter((message) => message.role === "assistant").length;
 
@@ -531,7 +531,7 @@ export function Talk({
         {messages.map((message, index) => (
           <Fragment key={index}>
             <p className={`bubble ${message.role}${index === lastAssistantIndex && !sending ? " latest" : ""}`}>
-              <span className="visually-hidden">{message.role === "user" ? "あなた：" : "相棒："}</span>
+              <span className="visually-hidden">{message.role === "user" ? "あなた：" : "パートナー："}</span>
               {message.content}
             </p>
             {device && index === lastAssistantIndex && !sending && <span className="speech-tail" aria-hidden="true" />}
@@ -677,7 +677,7 @@ export function Talk({
     return (
       <div className="talk device" data-viewer={viewer.name} data-state={listening ? "listening" : sending ? "thinking" : "idle"} data-talking={messages.length > 0}>
         {burst && <SendBurst words={burst} avatarImage={avatarImage} onDone={() => setBurst(null)} />}
-        <section className="lcd" aria-label="相棒の画面">
+        <section className="lcd" aria-label="パートナーの画面">
           <ReplyToast initial={notices} paused={listening} pollMs={noticePollMs} />
           {lockedTalk.locked && (
             <div className="lock-banner">
@@ -700,7 +700,7 @@ export function Talk({
               )}
             </div>
           )}
-          <div className="log" role="log" aria-label="相棒との会話" ref={logRef} data-noswipe-landscape>
+          <div className="log" role="log" aria-label="パートナーとの会話" ref={logRef} data-noswipe-landscape>
             {!acknowledged && (
               <section className="promise promise-card" aria-label="最初にお伝えすること">
                 <p>{trial ? TRIAL_PROMISE_FULL : PROMISE_FULL}</p>
@@ -757,7 +757,7 @@ export function Talk({
             </p>
           ) : (
             <textarea
-              aria-label="相棒に書く"
+              aria-label="パートナーに書く"
               rows={2}
               maxLength={MAX_TEXT_LENGTH}
               value={draft}
@@ -850,7 +850,7 @@ export function Talk({
             <span className="device-side-face">
               <Icon name="send" />
             </span>
-            {hasTyped ? "相棒へ送る" : preparing ? "作っています" : "とどける"}
+            {hasTyped ? "パートナーへ送る" : preparing ? "作っています" : "とどける"}
             {readyToDeliver && <small className="ready-note">言葉になりそう</small>}
           </button>
         </div>
@@ -877,10 +877,10 @@ export function Talk({
           data-state={listening ? "listening" : sending ? "thinking" : "idle"}
           data-size={messages.length > 0 && !listening ? "small" : "large"}
         >
-          <Avatar image={avatarImage} alt={`${viewer.name}さんの相棒`} size={176} />
+          <Avatar image={avatarImage} alt={`${viewer.name}さんのパートナー`} size={176} />
         </div>
       )}
-      <div className="log" role="log" aria-label="相棒との会話">
+      <div className="log" role="log" aria-label="パートナーとの会話">
         {!acknowledged && (
           <section className="promise promise-card" aria-label="最初にお伝えすること">
             <p>{trial ? TRIAL_PROMISE_FULL : PROMISE_FULL}</p>
@@ -996,14 +996,14 @@ export function Talk({
       {writing && !listening && (
         <form className="write" onSubmit={submit}>
           <textarea
-            aria-label="相棒に書く"
+            aria-label="パートナーに書く"
             rows={2}
             maxLength={MAX_TEXT_LENGTH}
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
           />
           <button type="submit" disabled={sending || draft.trim() === ""}>
-            相棒に送る
+            パートナーに送る
           </button>
         </form>
       )}

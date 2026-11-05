@@ -11,7 +11,7 @@ const POSTS = 3;
 const KNOWLEDGE = 3;
 const GATHERING = 8;
 
-/** 広い画面だけに出す（CSS）。校内のチャネルと知恵、分身と桜。どれも校内に公開されたものだけ。 */
+/** 広い画面だけに出す（CSS）。校内のチャネルと知恵、パートナーと桜。どれも校内に公開されたものだけ。 */
 export function HomeAside({ db, viewerId, rewards }: { db: DatabaseSync; viewerId: string; rewards: boolean }) {
   const now = new Date();
   const posts = listPopularCards(getDestination(db), viewerId).slice(0, POSTS);
@@ -51,7 +51,7 @@ export function HomeAside({ db, viewerId, rewards }: { db: DatabaseSync; viewerI
       </div>
       {rewards ? (
       <div className="aside-column">
-        <section aria-label="分身と桜">
+        <section aria-label="パートナーと桜">
           <h2>桜のまわり</h2>
           <div
             className="sakura-scene"
@@ -64,7 +64,7 @@ export function HomeAside({ db, viewerId, rewards }: { db: DatabaseSync; viewerI
           <div className="gathering">
             {people.map((person) => (
               <Link key={person.id} href={`/people/${person.id}`}>
-                <Avatar image={getAvatar(db, person.id).image} alt={`${person.name}さんの相棒`} size={56} lazy />
+                <Avatar image={getAvatar(db, person.id).image} alt={`${person.name}さんのパートナー`} size={56} lazy />
                 {person.name}
               </Link>
             ))}

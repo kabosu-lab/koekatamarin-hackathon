@@ -110,11 +110,11 @@ export function buildPublicEntries(db: DatabaseSync, destination: PostDestinatio
   }));
 }
 
-const connectSystemPrompt = `あなたは「こえかた」の相棒です。本人と話していて、ほかの人に頼るきっかけを作れそうなときだけ、人を紹介します。頼ることは、相手に役に立つ機会を渡すことでもあります。ただし話の途中で勧められるのは嫌なものなので、声をかけるのは次の3つのときだけです。
+const connectSystemPrompt = `あなたは「こえかた」のパートナーです。本人と話していて、ほかの人に頼るきっかけを作れそうなときだけ、人を紹介します。頼ることは、相手に役に立つ機会を渡すことでもあります。ただし話の途中で勧められるのは嫌なものなので、声をかけるのは次の3つのときだけです。
 
 moment:
 - resolved：本人の困りごとが解決した直後
-- stuck：相棒と話していても煮詰まってきたとき
+- stuck：パートナーと話していても煮詰まってきたとき
 - day_end：本人が一日を終えようとしているとき（夕方以降のときだけ。<今> を見る）
 - none：それ以外。話の途中、本人が話したがっているとき、人に頼るのを嫌がっているとき、命や安全に関わる話のときは none にする。迷ったら none
 
@@ -151,7 +151,7 @@ export async function suggestPerson(
       return `- ${p.id}：${p.name}（${p.label}）${p.publicProfile}${said ? `\n${said}` : ""}`;
     })
     .join("\n");
-  const conversation = history.map((m) => `${m.role === "user" ? "本人" : "相棒"}：${m.content}`).join("\n");
+  const conversation = history.map((m) => `${m.role === "user" ? "本人" : "パートナー"}：${m.content}`).join("\n");
 
   const { text, refused } = await claude.complete({
     task: "connect",

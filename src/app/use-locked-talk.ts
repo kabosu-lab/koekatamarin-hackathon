@@ -148,7 +148,7 @@ export function useLockedTalk({
     [ask, onSafety, session, speak],
   );
 
-  /** 聞き取りが終わったときに呼ぶ。相棒へ送る言葉を返す（すでに聞いた分と「終わり」を除く）。 */
+  /** 聞き取りが終わったときに呼ぶ。パートナーへ送る言葉を返す（すでに聞いた分と「終わり」を除く）。 */
   const finish = useCallback((text: string): string => {
     const wasLocked = lockedRef.current;
     const rest = wasLocked ? withoutEndWord(text.slice(usedRef.current)) : text;

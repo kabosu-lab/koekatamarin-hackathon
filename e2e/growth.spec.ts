@@ -12,7 +12,7 @@ test("下の階層の画面でも、今どこにいるかが分かる", async ({
 });
 
 test("最初の問いかけに答えると卵の系統が決まり、絵が読み込まれる", async ({ browser }) => {
-  // 他のテストと混ざらないよう、まだ分身のない佐伯先生の新しい文脈で進める
+  // 他のテストと混ざらないよう、まだパートナーのない佐伯先生の新しい文脈で進める
   const page = await (await browser.newContext()).newPage();
   await page.goto("/me");
   const quiz = page.getByRole("region", { name: "最初の問いかけ" });
@@ -21,7 +21,7 @@ test("最初の問いかけに答えると卵の系統が決まり、絵が読�
     await quiz.getByRole("button", { name: "じっくり話を聞く" }).click();
     await expect(quiz).toHaveCount(0);
   }
-  const image = page.getByRole("region", { name: "相棒" }).locator("img");
+  const image = page.getByRole("region", { name: "パートナー" }).locator("img");
   await expect.poll(() => image.evaluate((el: HTMLImageElement) => el.complete && el.naturalWidth > 0)).toBe(true);
   await page.context().close();
 });
@@ -70,16 +70,16 @@ test("プロフィールの下書きを確かめ、1回だけ直して載せ、�
   await expect(page.getByTestId("profile-text")).toHaveText("まだ載せていません。");
 });
 
-test("校内の桜と、周りの相棒が見える。季節を変えて見られる", async ({ page }) => {
+test("校内の桜と、周りのパートナーが見える。季節を変えて見られる", async ({ page }) => {
   await page.goto("/sakura");
   await expect(page.getByRole("region", { name: "校内の桜" })).toContainText("今年の葉");
-  await expect(page.getByRole("region", { name: "桜のまわりの相棒たち" }).getByRole("link")).toHaveCount(9);
+  await expect(page.getByRole("region", { name: "桜のまわりのパートナーたち" }).getByRole("link")).toHaveCount(9);
 
   await page.getByRole("link", { name: "春を見る" }).click();
   await expect(page.getByRole("region", { name: "校内の桜" })).toContainText("今年の桜が");
   await expect(page.locator(".petal").first()).toBeAttached();
 
-  await page.getByRole("region", { name: "桜のまわりの相棒たち" }).getByRole("link", { name: /野田 翔/ }).click();
+  await page.getByRole("region", { name: "桜のまわりのパートナーたち" }).getByRole("link", { name: /野田 翔/ }).click();
   await expect(page.getByRole("heading", { name: "野田 翔" })).toBeVisible();
   await expect(page.getByRole("region", { name: "応援とコメント" })).toContainText("応援");
 });
@@ -100,16 +100,16 @@ test("スマホ幅で横にはみ出さない", async ({ page }) => {
   }
 });
 
-test("Teams の写真（ダミー）から分身を作れて、写真のない人には出ない", async ({ browser }) => {
+test("Teams の写真（ダミー）からパートナーを作れて、写真のない人には出ない", async ({ browser }) => {
   const page = await (await browser.newContext()).newPage();
   await page.goto("/");
   await switchPerson(page, "川村 陽菜（理科・1年副担任）");
   await page.goto("/me");
-  const section = page.getByRole("region", { name: "写真から分身を作る" });
+  const section = page.getByRole("region", { name: "写真からパートナーを作る" });
   await expect(section).toContainText("保存しません");
   await section.getByRole("button", { name: "写真から作る" }).click();
   // 写真 → 読み取り → 卵 → 誕生 → 得意なこと
-  const hatch = page.getByRole("dialog", { name: "相棒の誕生" });
+  const hatch = page.getByRole("dialog", { name: "パートナーの誕生" });
   await expect(hatch.getByText("写真の色と雰囲気を読んでいます")).toBeVisible();
   await expect(hatch.getByRole("heading", { name: /生まれた！$/ }).last()).toBeVisible({ timeout: 20_000 });
   await expect(hatch).toContainText("クジラが生まれた！", { timeout: 20_000 });
@@ -117,8 +117,8 @@ test("Teams の写真（ダミー）から分身を作れて、写真のない�
   expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0);
   await hatch.getByRole("button", { name: "よろしくね" }).click();
   await expect(section).toHaveCount(0);
-  await expect(page.getByRole("region", { name: "相棒", exact: true })).toContainText("得意：");
-  const image = page.getByRole("region", { name: "相棒" }).locator("img");
+  await expect(page.getByRole("region", { name: "パートナー", exact: true })).toContainText("得意：");
+  const image = page.getByRole("region", { name: "パートナー" }).locator("img");
   await expect(image).toHaveAttribute("src", /\/api\/avatar\/art\//);
   await expect.poll(() => image.evaluate((el: HTMLImageElement) => el.complete && el.naturalWidth > 0)).toBe(true);
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
@@ -127,11 +127,11 @@ test("Teams の写真（ダミー）から分身を作れて、写真のない�
   await page.goto("/");
   await switchPerson(page, "野田 翔（情報・ものづくり部顧問）");
   await page.goto("/me");
-  await expect(page.getByRole("region", { name: "写真から分身を作る" })).toHaveCount(0);
+  await expect(page.getByRole("region", { name: "写真からパートナーを作る" })).toHaveCount(0);
   await page.context().close();
 });
 
-test("分身の絵の配信は、ほかの場所のものを動かさない", async ({ page, request }) => {
+test("パートナーの絵の配信は、ほかの場所のものを動かさない", async ({ page, request }) => {
   await page.goto("/study/room");
   const src = await page.locator(".study-buddy .pose.study").first().getAttribute("src");
   const response = await request.get(src as string);
@@ -149,7 +149,7 @@ test("育つと進化の候補から本人が選び、隠している間も育�
   await switchPerson(page, "白石 文（養護・相談室）");
   // 今の段階を起点にする
   await page.goto("/me");
-  const companion = page.getByRole("region", { name: "相棒", exact: true });
+  const companion = page.getByRole("region", { name: "パートナー", exact: true });
   const before = await companion.locator("img").getAttribute("src");
 
   // 周りの人からのありがとうで育つ
@@ -184,9 +184,9 @@ test("育つと進化の候補から本人が選び、隠している間も育�
   // 選ぶと姿が変わる。たくさん育っていれば、次の段階でまた選べる
   await expect.poll(() => companion.locator("img").getAttribute("src"), { timeout: 15_000 }).not.toBe(before);
 
-  // 隠しても画面は壊れず、戻すと分身が出る
+  // 隠しても画面は壊れず、戻すとパートナーが出る
   await page.getByRole("button", { name: "隠す" }).click();
-  await expect(page.getByText("相棒は隠しています")).toBeVisible();
+  await expect(page.getByText("パートナーは隠しています")).toBeVisible();
   await expect(companion.locator("img")).toBeHidden();
   await page.getByRole("button", { name: "表示する" }).click();
   await expect(companion.locator("img")).toBeVisible();
@@ -233,7 +233,7 @@ test("取っていない隠しトロフィーは、名前も条件も画面に�
   await page.context().close();
 });
 
-test("贈り物の卵を開け、生まれた相棒を選べる", async ({ browser }) => {
+test("贈り物の卵を開け、生まれたパートナーを選べる", async ({ browser }) => {
   const page = await (await browser.newContext()).newPage();
   await page.goto("/");
   await switchPerson(page, "野田 翔（情報・ものづくり部顧問）");
@@ -245,9 +245,9 @@ test("贈り物の卵を開け、生まれた相棒を選べる", async ({ brows
   const stage = page.getByRole("dialog", { name: "贈り物の卵" });
   await expect(stage.getByRole("heading", { name: /が生まれた！/ })).toBeVisible();
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0);
-  await stage.getByRole("button", { name: "今の相棒にする" }).click();
+  await stage.getByRole("button", { name: "今のパートナーにする" }).click();
   await expect(stage).toHaveCount(0);
-  await expect(section.getByRole("button", { name: /今の相棒/ })).toBeDisabled();
+  await expect(section.getByRole("button", { name: /今のパートナー/ })).toBeDisabled();
   await page.context().close();
 });
 
@@ -318,13 +318,13 @@ for (const width of [768, 1280]) {
   });
 }
 
-test("分身を隠すと報酬も出ないが、見せると裏で集まっている", async ({ browser }) => {
+test("パートナーを隠すと報酬も出ないが、見せると裏で集まっている", async ({ browser }) => {
   const page = await (await browser.newContext()).newPage();
   await page.goto("/");
   await switchPerson(page, "白石 文（養護・相談室）");
   await page.goto("/me");
   await page.getByRole("button", { name: "隠す", exact: true }).click();
-  await expect(page.getByText("相棒は隠しています")).toBeVisible();
+  await expect(page.getByText("パートナーは隠しています")).toBeVisible();
   await expect(page.getByRole("region", { name: "トロフィー" })).toHaveCount(0);
   await expect(page.getByRole("region", { name: "贈り物の卵" })).toHaveCount(0);
   await page.getByRole("button", { name: "表示する", exact: true }).click();
@@ -332,14 +332,14 @@ test("分身を隠すと報酬も出ないが、見せると裏で集まって�
   await page.context().close();
 });
 
-test("期間中はイベントが桜の画面に出て、分身を隠すと出ない", async ({ browser }) => {
+test("期間中はイベントが桜の画面に出て、パートナーを隠すと出ない", async ({ browser }) => {
   const page = await (await browser.newContext()).newPage();
   await page.goto("/minna");
   await expect(page.getByRole("region", { name: "期間限定のイベント" }).first()).toBeVisible();
   await expect(page.getByText("テスト前の応援週間", { exact: true })).toBeVisible();
   await page.goto("/me");
   await page.getByRole("button", { name: "隠す", exact: true }).click();
-  await expect(page.getByText("相棒は隠しています")).toBeVisible();
+  await expect(page.getByText("パートナーは隠しています")).toBeVisible();
   await page.goto("/minna");
   await expect(page.getByRole("region", { name: "期間限定のイベント" })).toHaveCount(0);
   await page.context().close();

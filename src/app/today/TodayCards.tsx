@@ -134,7 +134,7 @@ export function TodayCards({ cards: allCards }: { cards: (TodayCard & { authorIm
           {index + 1} 枚目（全 {Math.min(limit, cards.length)} 枚）・{card.channelName}
         </p>
         <p className="who">
-          <Avatar image={card.authorImage} alt={`${card.authorName}さんの相棒`} size={40} />
+          <Avatar image={card.authorImage} alt={`${card.authorName}さんのパートナー`} size={40} />
           <strong>{card.authorName}</strong> <PersonTitle title={card.authorTitle} />（{card.authorLabel}）
         </p>
         {card.relatedReason && <p className="count related-line">おすすめ：{card.relatedReason}</p>}

@@ -30,7 +30,7 @@ export default async function YousuPage() {
     <main className="yousu">
       <BackLink href="/">もどる</BackLink>
       <h1>ようす</h1>
-      {rewards && <Avatar image={avatar.image} alt={`${viewer.name}さんの相棒`} size={200} />}
+      {rewards && <Avatar image={avatar.image} alt={`${viewer.name}さんのパートナー`} size={200} />}
       <dl>
         <div>
           <dt>すがた</dt>
@@ -51,7 +51,7 @@ export default async function YousuPage() {
       </dl>
       {avatar.family === null && (
         <p>
-          <Link href="/me">履歴と設定の画面で、相棒を選べます。</Link>
+          <Link href="/me">履歴と設定の画面で、パートナーを選べます。</Link>
         </p>
       )}
     </main>

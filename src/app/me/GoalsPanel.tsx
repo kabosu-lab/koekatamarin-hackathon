@@ -33,7 +33,7 @@ export function GoalsPanel({ initial, initialNudge }: { initial: Goal[]; initial
   return (
     <section className="card goals" aria-label="頑張りたいこと">
       <h2>頑張りたいこと</h2>
-      <p className="muted">あなただけのものです。相棒が話の中で背中を押します。できなくても減りません。</p>
+      <p className="muted">あなただけのものです。パートナーが話の中で背中を押します。できなくても減りません。</p>
 
       <form
         className="goal-add"
@@ -115,7 +115,7 @@ export function GoalsPanel({ initial, initialNudge }: { initial: Goal[]; initial
         ))}
       </ul>
 
-      <p className="muted">相棒の促し方</p>
+      <p className="muted">パートナーの促し方</p>
       <div className="row">
         {(
           [

@@ -62,7 +62,7 @@ describe("タイマー", () => {
 });
 
 describe("自習室に見えるもの", () => {
-  it("人数と相棒の絵だけで、名前を含まない", () => {
+  it("人数とパートナーの絵だけで、名前を含まない", () => {
     startStudy(db, "aoki", NOW);
     startStudy(db, "noda", NOW);
     const presence = getPresence(db, NOW);

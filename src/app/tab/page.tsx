@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 
 /**
  * Teams のチャネルのタブに置く画面。校内の桜と自習室だけを見せる。
- * 人数と相棒だけで、名前も投稿の本文も出さず、操作もない。誰が見ても同じ。
+ * 人数とパートナーだけで、名前も投稿の本文も出さず、操作もない。誰が見ても同じ。
  */
 export default async function TabPage() {
   const db = getDatabase();

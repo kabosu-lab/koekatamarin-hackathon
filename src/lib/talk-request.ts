@@ -9,7 +9,7 @@ import { assessSafety, assessWithoutClaude, createSafetyNotice, type SafetyNotic
 
 export type { SafetyNoticeBody };
 
-/** 相棒の返事と、命や安全の確認を同時に進める。確認に失敗しても会話は止めず、はっきりした言葉は見逃さない。 */
+/** パートナーの返事と、命や安全の確認を同時に進める。確認に失敗しても会話は止めず、はっきりした言葉は見逃さない。 */
 export async function handleTalk(
   claude: ClaudeClient,
   db: DatabaseSync,

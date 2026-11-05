@@ -224,7 +224,7 @@ export const portfolioSystemPrompt = `${lookbackSystemPrompt}
 - 成績、順位、点数、回数で測らない。人と比べない
 - 本人の性格や気持ちを推し量って書かない`;
 
-/** 本人が見て、残すかを決めるための文章を作る。ここでは保存しない。相棒との話は材料に入れない。 */
+/** 本人が見て、残すかを決めるための文章を作る。ここでは保存しない。パートナーとの話は材料に入れない。 */
 async function reflect(claude: ClaudeClient, db: DatabaseSync, personId: string, term: Term, options: PortfolioOptions): Promise<Outcome> {
   const { added } = getPortfolio(db, personId, term, options);
   const chosen = added.flatMap((entry) =>
@@ -235,7 +235,7 @@ async function reflect(claude: ClaudeClient, db: DatabaseSync, personId: string,
     return { status: 200, body: result };
   } catch (error) {
     console.error("ポートフォリオのふりかえりの作成に失敗", error instanceof Error ? error.name : "unknown");
-    return { status: 503, body: { error: "相棒につながりませんでした" } };
+    return { status: 503, body: { error: "パートナーにつながりませんでした" } };
   }
 }
 

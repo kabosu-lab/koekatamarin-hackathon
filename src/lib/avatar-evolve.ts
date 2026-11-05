@@ -14,7 +14,7 @@ export type EvolutionCandidate = { family: string; name: string; reason: string;
 
 type Stored = { family: string; reason: string };
 
-const evolveSystemPrompt = `あなたは、校内アプリ「こえかた」で、持ち主の相棒が進化するときの候補を出す係です。下の一覧から2〜3個の系統を選び、なぜ合いそうかを短く伝えます。選ぶのは持ち主です。
+const evolveSystemPrompt = `あなたは、校内アプリ「こえかた」で、持ち主のパートナーが進化するときの候補を出す係です。下の一覧から2〜3個の系統を選び、なぜ合いそうかを短く伝えます。選ぶのは持ち主です。
 
 - 今の系統を1つ含め、今までと違う方向も1つ以上入れる
 - reason は30文字くらいまで。持ち主の性格を決めつけず、人と比べない。点数や順位を書かない
@@ -175,7 +175,7 @@ export function chooseEvolution(db: DatabaseSync, personId: string, family: unkn
   return getAvatar(db, personId);
 }
 
-/** 分身を隠している間も育つ。切り替えるときは、育った姿をそのまま見せる。 */
+/** パートナーを隠している間も育つ。切り替えるときは、育った姿をそのまま見せる。 */
 export function catchUpAvatar(db: DatabaseSync, personId: string): void {
   const row = loadRow(db, personId);
   if (!row || row.family === PENDING_FAMILY) return;

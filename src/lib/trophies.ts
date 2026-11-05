@@ -86,10 +86,10 @@ export const TROPHIES: readonly TrophyDefinition[] = [
   { id: "walking-search", name: "歩く検索エンジン", description: "3つの違う分野で答えた", category: "humor", emblem: "question", quip: "ただし人間です", selfOnly: true },
   { id: "pass-wizard", name: "パスの魔術師", description: "パスした相談が、3回解決した", category: "humor", emblem: "arrow", quip: "自分では何も答えていない", selfOnly: true },
   { id: "unsung-hero", name: "名もなき英雄", description: "注釈が3回「役に立つ」と言われた", category: "humor", emblem: "pen", quip: "名前は載っています", selfOnly: true },
-  { id: "first-post", name: "相棒のほうが緊張した", description: "初めて投稿した", category: "humor", emblem: "speech", quip: "送ったのは、あなたです" },
-  { id: "good-listener", name: "聞き上手の相棒", description: "問い返しのあとに話して、投稿まで進んだ", category: "humor", emblem: "question", quip: "相棒、ちょっと得意げ" },
+  { id: "first-post", name: "パートナーのほうが緊張した", description: "初めて投稿した", category: "humor", emblem: "speech", quip: "送ったのは、あなたです" },
+  { id: "good-listener", name: "聞き上手のパートナー", description: "問い返しのあとに話して、投稿まで進んだ", category: "humor", emblem: "question", quip: "パートナー、ちょっと得意げ" },
   { id: "walk-talk", name: "歩く独り言", description: "「歩きながら話す」から、初めて投稿した", category: "humor", emblem: "flag", quip: "周りの人には電話のふりで" },
-  { id: "ai-vs-human", name: "AI より人", description: "相棒に「聞いてみる？」と言われて、本当に人に聞いた", category: "humor", emblem: "people", quip: "相棒、少しさみしそう" },
+  { id: "ai-vs-human", name: "AI より人", description: "パートナーに「聞いてみる？」と言われて、本当に人に聞いた", category: "humor", emblem: "people", quip: "パートナー、少しさみしそう" },
 
   { id: "boomerang", name: "ブーメラン", description: "自分が昔投稿した知恵に、未来の自分が助けられた", category: "hidden", emblem: "arrow", hidden: true },
   { id: "mentor", name: "師弟", description: "自分が助けた人が、別の人を助けた", category: "hidden", emblem: "people", hidden: true },

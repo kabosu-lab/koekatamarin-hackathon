@@ -79,7 +79,7 @@ describe("話しただけのこと", () => {
     expect(JSON.stringify(profile.requests)).not.toContain(SECRET);
   });
 
-  it("相棒の安全の確認にも入れない", async () => {
+  it("パートナーの安全の確認にも入れない", async () => {
     handleMemory(db, "noda", { action: "remember", text: SECRET }, NOW);
     const { claude, requests } = recording();
     await handleTalk(claude, db, "noda", { history: [], text: "こんにちは" }, NOW);

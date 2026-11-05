@@ -36,8 +36,8 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
       <h1>{person.name}</h1>
       <PersonTitle title={wornTitle(db, id)} />
       <p>{person.label}</p>
-      <section className="card partner" aria-label="相棒">
-        {rewards && <Avatar image={avatar.image} alt={`${person.name}さんの相棒`} />}
+      <section className="card partner" aria-label="パートナー">
+        {rewards && <Avatar image={avatar.image} alt={`${person.name}さんのパートナー`} />}
         <p>{person.public_profile || "プロフィールはまだありません。"}</p>
       </section>
       {ribbons.length > 0 && (

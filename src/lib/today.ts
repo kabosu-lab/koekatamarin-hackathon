@@ -256,7 +256,7 @@ export function cheer(destination: PostDestination, viewerId: string, postId: st
   return true;
 }
 
-const cheerSystemPrompt = `あなたは「こえかた」の相棒です。朝のカードで校内の人の投稿を見ている人に、応援したくなるきっかけを一言ずつ添えます。例：「先週より3問多く解いてる！」
+const cheerSystemPrompt = `あなたは「こえかた」のパートナーです。朝のカードで校内の人の投稿を見ている人に、応援したくなるきっかけを一言ずつ添えます。例：「先週より3問多く解いてる！」
 
 - 書いてよいのは <投稿> と、その人の <前の言葉> から確かに言えることだけ。数字、経験、気持ちを作らない
 - 前と比べられないときは、投稿の中の頑張りに触れるだけにする
@@ -377,7 +377,7 @@ export async function handleTodayReplyDraft(
     return { status: 200, body: { draft, review } };
   } catch (error) {
     console.error("返信の下書きに失敗", error instanceof Error ? error.name : "unknown");
-    return { status: 503, body: { error: "相棒につながりませんでした" } };
+    return { status: 503, body: { error: "パートナーにつながりませんでした" } };
   }
 }
 

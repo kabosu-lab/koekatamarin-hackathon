@@ -15,7 +15,7 @@ const MAX_TALENT = 16;
 /** 読んでいる途中で止まった印を、やり直せるようにする時間 */
 const PENDING_LIMIT_MS = 5 * 60 * 1000;
 
-const pickSystemPrompt = `あなたは、校内アプリ「こえかた」で、持ち主がプロフィールに登録した画像から、その人の相棒を選ぶ係です。絵は描きません。下の一覧から、画像と雰囲気の近いものを1つ選びます。
+const pickSystemPrompt = `あなたは、校内アプリ「こえかた」で、持ち主がプロフィールに登録した画像から、その人のパートナーを選ぶ係です。絵は描きません。下の一覧から、画像と雰囲気の近いものを1つ選びます。
 
 守ること:
 - 画像は本人の写真とは限りません（好きな物、友だち、子どもの頃など）。人が写っていても、顔立ちや体つきは使わず、誰かも推測しません。人の特徴や名前を書きません。服や背景の色、持ち物の雰囲気だけを使います
@@ -24,7 +24,7 @@ const pickSystemPrompt = `あなたは、校内アプリ「こえかた」で、
 
 書くこと:
 - reason：なぜ合うと思ったかを短く、やさしく1文（40文字くらいまで）。「この人は〜な性格」のように人を決めつけない
-- talent：相棒の得意なことを8文字くらいまで（「ほっと一息」「風読み名人」など）
+- talent：パートナーの得意なことを8文字くらいまで（「ほっと一息」「風読み名人」など）
 - traits.shape：声のかたまりの形。雰囲気に合うものを一覧から選ぶ（bubble 吹き出し、drop 水玉、mochi お餅、fluff 綿毛、cloud 雲、jelly ゼリー、pebble 小石）。人の顔や性格を当てるためではない
 - traits.colors：画像から受け取った色を3色、#RRGGBB で。traits.motif と traits.mood：雰囲気の短い言葉（「夕暮れ」など）
 - 画像が読めないときは usable を false に
@@ -78,7 +78,7 @@ export async function pickWithClaude(
   const { text, refused } = await claude.complete({
     task: "avatar_pick",
     system: pickSystemPrompt,
-    messages: [{ role: "user", content: `添付の画像に合う相棒を選んでください。${source.note ?? ""}` }],
+    messages: [{ role: "user", content: `添付の画像に合うパートナーを選んでください。${source.note ?? ""}` }],
     attachment: source.attachment,
     maxTokens: MAX_TOKENS,
     jsonSchema: pickSchema,
@@ -110,7 +110,7 @@ function ensureRow(db: DatabaseSync, personId: string, now: Date): ArtRow {
   return loadRow(db, personId) as ArtRow;
 }
 
-/** 自習室で使う印。名前の横に出る絵とは別の印にして、自習室で誰の分身か分からないようにする。 */
+/** 自習室で使う印。名前の横に出る絵とは別の印にして、自習室で誰のパートナーか分からないようにする。 */
 export function roomToken(db: DatabaseSync, personId: string, now: Date = new Date()): string {
   return ensureRow(db, personId, now).room_token;
 }
@@ -159,7 +159,7 @@ export async function handleAvatarFromPhoto(
 ): Promise<Outcome> {
   const { personId } = (typeof input === "object" && input !== null ? input : {}) as Record<string, unknown>;
   if (personId !== undefined && personId !== viewerId) {
-    return { status: 403, body: { error: "分身を作れるのは本人だけです" }, done: settled };
+    return { status: 403, body: { error: "パートナーを作れるのは本人だけです" }, done: settled };
   }
   const photo = await photos.getPhoto(viewerId);
   if (!photo) return { status: 404, body: { error: "写真が登録されていません。問いかけから作れます。" }, done: settled };
@@ -174,7 +174,7 @@ export async function handleAvatarFromPhoto(
 
   const done = pickWithClaude(claude, { attachment, seed: row.token })
     .catch((error: unknown) => {
-      console.error("分身を選べませんでした", error instanceof Error ? error.name : "unknown");
+      console.error("パートナーを選べませんでした", error instanceof Error ? error.name : "unknown");
       return null;
     })
     .then((pick) => {
@@ -229,7 +229,7 @@ export async function renderArt(
     | { family: string; shown_stage: number | null }
     | undefined;
   const stage = avatar ? Math.max(shownStage(db, row.person_id, avatar.family, avatar.shown_stage), 1) : 1;
-  // 相棒はコードで描く。ポーズの動きは画面の CSS で見せる
+  // パートナーはコードで描く。ポーズの動きは画面の CSS で見せる
   const drawn = avatar && companionSvg(avatar.family, stage, row.traits ? { color: traits.colors[0], shape: traits.shape } : {});
   if (drawn) return svg(drawn);
   const code = drawWithCode(traits, stage);

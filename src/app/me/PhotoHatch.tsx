@@ -55,7 +55,7 @@ export function PhotoHatch({ eggImage, onFailed }: { eggImage: string; onFailed(
 
   // 親の動きに影響されないよう、画面全体に直接出す
   return createPortal(
-    <div className={`hatch-stage ${phase}`} role="dialog" aria-label="相棒の誕生" style={state ? { background: state.color } : undefined}>
+    <div className={`hatch-stage ${phase}`} role="dialog" aria-label="パートナーの誕生" style={state ? { background: state.color } : undefined}>
       {phase === "reading" && (
         <div className="hatch-photo">
           <img src="/api/avatar/photo?image=1" alt="登録している写真" width={180} height={180} />
@@ -63,7 +63,7 @@ export function PhotoHatch({ eggImage, onFailed }: { eggImage: string; onFailed(
         </div>
       )}
       {(phase === "egg" || phase === "crack") && <img className="hatch-egg sticker" src={eggImage} alt="卵" width={200} height={200} />}
-      {phase === "born" && state && <img className="hatch-born sticker" src={state.image} alt={`生まれた相棒、${state.name}`} width={240} height={240} />}
+      {phase === "born" && state && <img className="hatch-born sticker" src={state.image} alt={`生まれたパートナー、${state.name}`} width={240} height={240} />}
 
       <div className="hatch-words" role="status">
         {phase === "reading" && <h2>写真の色と雰囲気を読んでいます</h2>}

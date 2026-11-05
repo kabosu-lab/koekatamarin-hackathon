@@ -33,7 +33,7 @@ export function DailyPanel({ initialReport, recipients, viewerName, noun }: Prop
     setBusy(true);
     setNotice("");
     try {
-      // 相棒との話は、本人がこのボタンを押したときだけ材料として渡す
+      // パートナーとの話は、本人がこのボタンを押したときだけ材料として渡す
       const { ok, data } = await postDaily({ action: "make", conversation: loadTalk(viewerName).slice(-40) });
       if (!ok) {
         setNotice(typeof data.error === "string" ? data.error : "作れませんでした。もう一度押してください。");
@@ -113,10 +113,10 @@ export function DailyPanel({ initialReport, recipients, viewerName, noun }: Prop
             ))}
           </>
         ) : (
-          <p className="muted">今日のやり取りから、相棒が項目ごとにまとめます。</p>
+          <p className="muted">今日のやり取りから、パートナーが項目ごとにまとめます。</p>
         )}
         {report?.madeBy === "agent" && (
-          <p className="muted">クラウドの係（Managed Agents）がまとめました。材料は今日の投稿や返信などで、相棒との話は渡していません。</p>
+          <p className="muted">クラウドの係（Managed Agents）がまとめました。材料は今日の投稿や返信などで、パートナーとの話は渡していません。</p>
         )}
         {madeNote && <p className="muted">{madeNote}</p>}
         <button type="button" className={report ? "secondary" : undefined} disabled={busy || agentBusy} onClick={() => void make()}>

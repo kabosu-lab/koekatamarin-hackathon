@@ -21,7 +21,7 @@ async function main() {
   for (const nudge of ["gentle", "blunt"] as Nudge[]) {
     for (const { goals, line } of scenes) {
       const { reply } = await converse(claude, [], line, goalPromptText(goals, nudge));
-      console.log(`\n[${nudge}] 頑張りたいこと：${goals.join("、")}\n話す：${line}\n相棒：${reply}`);
+      console.log(`\n[${nudge}] 頑張りたいこと：${goals.join("、")}\n話す：${line}\nパートナー：${reply}`);
     }
   }
 }

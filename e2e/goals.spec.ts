@@ -10,8 +10,8 @@ test("話の中で提案され、押すと残り、できたら投稿になり�
   await page.goto("/");
   await switchPerson(page, AOKI);
 
-  await page.getByLabel("相棒に書く").fill(goal);
-  await page.getByRole("button", { name: "相棒へ送る" }).click();
+  await page.getByLabel("パートナーに書く").fill(goal);
+  await page.getByRole("button", { name: "パートナーへ送る" }).click();
   const card = page.getByRole("region", { name: "頑張りたいことの提案" });
   await expect(card).toBeVisible();
   await card.getByRole("button", { name: "しておく" }).click();

@@ -187,7 +187,7 @@ export function PortfolioPanel({ initial, channels, recipients, viewerName, noun
         {reflectionDraft !== null ? (
           <>
             <label>
-              相棒が書いた案です。直して残せます
+              パートナーが書いた案です。直して残せます
               <textarea value={reflectionDraft} rows={8} onChange={(event) => setReflectionDraft(event.target.value)} />
             </label>
             <button type="button" disabled={busy || reflectionDraft.trim() === ""} onClick={() => void saveReflection()}>
@@ -200,7 +200,7 @@ export function PortfolioPanel({ initial, channels, recipients, viewerName, noun
         ) : (
           <>
             <button type="button" className={portfolio.reflection ? "secondary" : undefined} disabled={busy} onClick={() => void writeReflection()}>
-              {portfolio.reflection ? "書き直してもらう" : "相棒にふりかえりを書いてもらう"}
+              {portfolio.reflection ? "書き直してもらう" : "パートナーにふりかえりを書いてもらう"}
             </button>
             {portfolio.reflection && (
               <button
@@ -215,7 +215,7 @@ export function PortfolioPanel({ initial, channels, recipients, viewerName, noun
           </>
         )}
         <p className="muted">
-          成績や評価ではありません。材料は{noun}、投稿、もらったありがとう、足したもので、相棒との話そのものは渡しません。押して残すまで保存しません。
+          成績や評価ではありません。材料は{noun}、投稿、もらったありがとう、足したもので、パートナーとの話そのものは渡しません。押して残すまで保存しません。
         </p>
       </section>
 

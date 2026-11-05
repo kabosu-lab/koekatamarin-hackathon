@@ -3,7 +3,7 @@ import { allArtNames } from "./avatar-catalog";
 
 /**
  * 絵は公開リポジトリに入れず、手元の .private/art/ から読む（運営に確認が取れるまで）。
- * KOEKATA_AVATAR_ART=code で、分身の絵だけをコードの絵に切り替えられる。
+ * KOEKATA_AVATAR_ART=code で、パートナーの絵だけをコードの絵に切り替えられる。
  * ない環境では、コードで描いた簡単な代わりを返すので、誰の手元でも画面は壊れない。
  */
 export const ART_DIR = ".private/art";
@@ -63,7 +63,7 @@ export async function loadArt(
   env: Record<string, string | undefined> = process.env,
 ): Promise<ArtResponse | null> {
   if (!isArtName(name)) return null;
-  // 分身の絵は、運営の回答しだいで使えなくなる。背景はこの切り替えの対象にしない
+  // パートナーの絵は、運営の回答しだいで使えなくなる。背景はこの切り替えの対象にしない
   if (env.KOEKATA_AVATAR_ART === "code" && !name.startsWith("school-")) {
     return { body: placeholderSvg(name), contentType: "image/svg+xml", placeholder: true };
   }

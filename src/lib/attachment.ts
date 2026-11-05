@@ -134,7 +134,7 @@ export function attachmentHeaders(row: Pick<StoredRow, "media_type" | "file_name
   };
 }
 
-const attachmentDraftPrompt = `あなたは「こえかた」の相棒です。本人が付けた写真か PDF と、本人のひとことから、校内のチャネルに本人の名前で出す投稿の下書きを作ります。頑張りや成果を、本人の言葉として明るく届けます。
+const attachmentDraftPrompt = `あなたは「こえかた」のパートナーです。本人が付けた写真か PDF と、本人のひとことから、校内のチャネルに本人の名前で出す投稿の下書きを作ります。頑張りや成果を、本人の言葉として明るく届けます。
 
 下書きの決まり:
 - 材料は、添付から読み取れることと本人の話だけ。本人が話していない経験、気持ち、数字、感想を足さない。これが一番大事です
@@ -187,7 +187,7 @@ export async function draftFromAttachment(
   history: ChatMessage[],
   channels: DraftChannel[],
 ): Promise<{ draft: Draft; notices: AttachmentNotice[] }> {
-  const transcript = history.map((m) => `${m.role === "user" ? "本人" : "相棒"}：${m.content}`).join("\n");
+  const transcript = history.map((m) => `${m.role === "user" ? "本人" : "パートナー"}：${m.content}`).join("\n");
   const channelList = channels.map((c) => `- ${c.id}：${c.name}（${c.description}）`).join("\n");
   const { text, refused } = await claude.complete({
     task: "attachment_draft",

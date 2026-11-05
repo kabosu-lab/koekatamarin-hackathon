@@ -15,7 +15,7 @@ test("告知を話すと足りないことだけ聞かれ、本人が確かめ�
   const id = test.info().testId;
   const page = await open(browser, "noda");
   await page.goto("/");
-  const input = page.getByLabel("相棒に書く");
+  const input = page.getByLabel("パートナーに書く");
   const assistant = page.getByRole("log").locator(".bubble.assistant:not(.waiting)");
 
   await input.fill(`放課後に勉強会を開きたい ${id}`);

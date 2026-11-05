@@ -68,12 +68,12 @@ export default async function MePage() {
       left={{ href: "#settings", label: "設定", icon: "settings" }}
       right={{ href: "#records", label: "記録", icon: "note" }}
       screen={
-        // 上の窓は、自分と相棒。スマホで読みやすいよう、中身は窓の下に広げる
+        // 上の窓は、自分とパートナー。スマホで読みやすいよう、中身は窓の下に広げる
         <div className="me-screen">
           {rewards && avatar.family && (
-            // 相棒はコードで描いた絵（声のかたまりか、育った動物）
+            // パートナーはコードで描いた絵（声のかたまりか、育った動物）
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={companionImage(avatar.family, avatar.stage)} alt={`${viewer.name}さんの相棒`} width={84} height={84} />
+            <img src={companionImage(avatar.family, avatar.stage)} alt={`${viewer.name}さんのパートナー`} width={84} height={84} />
           )}
           <div>
             <strong>{viewer.name}</strong>
@@ -93,8 +93,8 @@ export default async function MePage() {
       {/* 頑張りたいことは、いちばん上。足すのも「できた」も1回押すだけ */}
       <GoalsPanel key={`${viewer.id}-goals`} initial={listGoals(db, viewer.id)} initialNudge={getNudge(db, viewer.id)} />
 
-      <section className="card retro-log" aria-label="相棒との話">
-        <h2>相棒との話</h2>
+      <section className="card retro-log" aria-label="パートナーとの話">
+        <h2>パートナーとの話</h2>
         <p className="muted">この話はあなただけのものです。タブを閉じると消えます。</p>
         <LogView viewerName={viewer.name} />
         <nav aria-label="履歴から行ける画面">
@@ -118,8 +118,8 @@ export default async function MePage() {
 
       <h2 className="group-title" id="mine"><Icon name="me" />わたし</h2>
       {rewards && (
-      <section className="card partner" aria-label="相棒">
-        <Avatar image={avatar.image} alt={`${viewer.name}さんの相棒（${avatar.label}）`} />
+      <section className="card partner" aria-label="パートナー">
+        <Avatar image={avatar.image} alt={`${viewer.name}さんのパートナー（${avatar.label}）`} />
         <div>
           <p>
             <strong>{viewer.name}</strong>
@@ -133,14 +133,14 @@ export default async function MePage() {
 
       {appearance.theme === "modern" && (
         <form className="pop-note" action={setAppearance}>
-          <span>相棒が裏で育っています。ポップに切り替えると会えます。</span>
+          <span>パートナーが裏で育っています。ポップに切り替えると会えます。</span>
           <input type="hidden" name="name" value="theme" />
           <button type="submit" name="value" value="pop">
             ポップに切り替える
           </button>
         </form>
       )}
-      {appearance.theme !== "modern" && appearance.avatar === "hide" && <p className="muted">相棒は隠しています。裏で育っています。</p>}
+      {appearance.theme !== "modern" && appearance.avatar === "hide" && <p className="muted">パートナーは隠しています。裏で育っています。</p>}
       {evolution !== null && rewards && <EvolutionCard key={evolution} />}
       {rewards && photoState.status === "pending" && <ArtRefresher />}
       {rewards && photoState.canUsePhoto && <AvatarFromPhoto label={photos.label} failed={photoState.status === "failed"} eggImage={`/api/avatar/art/${roomToken(db, viewer.id)}/egg`} />}

@@ -213,7 +213,7 @@ function DolphinStill() {
   );
 }
 
-/** 窓の中の相棒。3D が描けない端末や自動テストでは静止画に戻す。 */
+/** 窓の中のパートナー。3D が描けない端末や自動テストでは静止画に戻す。 */
 export function Dolphin({ alt, state, replyCount }: { alt: string; state: DolphinState; replyCount: number }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const stateRef = useRef(state);

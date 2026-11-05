@@ -119,7 +119,7 @@ describe("卵を開ける", () => {
     })();
   });
 
-  it("開けても今の相棒は変わらず、同じ卵は2度開かない", async () => {
+  it("開けても今のパートナーは変わらず、同じ卵は2度開かない", async () => {
     const before = getAvatar(db, "noda").family;
     const id = giveEgg("noda");
     expect(await openGiftEgg(scripted, db, teams(), "noda", id, NOW)).not.toBeNull();
@@ -132,13 +132,13 @@ describe("卵を開ける", () => {
     expect(await openGiftEgg(scripted, db, teams(), "aoki", giveEgg("noda"), NOW)).toBeNull();
   });
 
-  it("相棒がまだいない人には、生まれた子がそのまま相棒になる", async () => {
+  it("パートナーがまだいない人には、生まれた子がそのままパートナーになる", async () => {
     db.prepare("DELETE FROM avatars WHERE person_id = 'noda'").run();
     const hatched = await openGiftEgg(scripted, db, teams(), "noda", giveEgg("noda"), NOW);
     expect(getAvatar(db, "noda").family).toBe(hatched?.family);
   });
 
-  it("相棒を選び直しても、育ちを失わない", async () => {
+  it("パートナーを選び直しても、育ちを失わない", async () => {
     db.prepare("UPDATE avatars SET family = 'craft', shown_stage = 4 WHERE person_id = 'noda'").run();
     const hatched = await openGiftEgg(scripted, db, teams(), "noda", giveEgg("noda"), NOW);
     expect(selectCompanion(db, "noda", hatched?.family, NOW)).toBe(true);
@@ -147,7 +147,7 @@ describe("卵を開ける", () => {
     expect(db.prepare("SELECT family, shown_stage FROM avatars WHERE person_id = 'noda'").get()).toEqual({ family: "craft", shown_stage: 4 });
   });
 
-  it("持っていない相棒は選べない", () => {
+  it("持っていないパートナーは選べない", () => {
     expect(selectCompanion(db, "noda", "cloud", NOW)).toBe(false);
     expect(selectCompanion(db, "noda", "nothing", NOW)).toBe(false);
   });

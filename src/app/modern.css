@@ -3,7 +3,7 @@
  * 余白、文字の階層、細い線で見せる。絵、丸い飾り、影、色面は使わない。
  */
 
-/* 分身と飾りは一切出さない（ふつうは画面が出さないが、ここでも止める） */
+/* パートナーと飾りは一切出さない（ふつうは画面が出さないが、ここでも止める） */
 html[data-theme="modern"] .avatar-image,
 html[data-theme="modern"] .sticker,
 html[data-theme="modern"] .speaker,

@@ -14,11 +14,11 @@ async function shot(page: Page, name: string) {
 }
 
 async function say(page: Page, text: string) {
-  if (!(await page.getByLabel("相棒に書く").isVisible())) {
+  if (!(await page.getByLabel("パートナーに書く").isVisible())) {
   }
   const count = await page.getByRole("log").locator(".bubble.assistant").count();
-  await page.getByLabel("相棒に書く").fill(text);
-  await page.getByRole("button", { name: "相棒へ送る" }).click();
+  await page.getByLabel("パートナーに書く").fill(text);
+  await page.getByRole("button", { name: "パートナーへ送る" }).click();
   await expect(page.getByRole("log").locator(".bubble.assistant")).toHaveCount(count + 1);
 }
 
@@ -85,7 +85,7 @@ test("先生の一日：話しかける、返す、パス、サンクス、日�
   await form.getByRole("button", { name: "サンクスカードを送る" }).click();
   await expect(form).toContainText("ありがとうが届きました");
 
-  // アシストが付き、ありがとうが届き、相棒が育つ
+  // アシストが付き、ありがとうが届き、パートナーが育つ
   await page.goto("/");
   await switchPerson(page, TEACHER);
   await page.goto("/me");
@@ -98,7 +98,7 @@ test("先生の一日：話しかける、返す、パス、サンクス、日�
   await expect(page.getByRole("region", { name: "これまで" })).toContainText(/解決 [1-9]/);
   await expect(page.getByRole("region", { name: "これまで" })).toContainText(/つないだ [1-9]/);
   await expect(page.getByRole("region", { name: "もらったありがとう" })).toContainText("つないでくれて");
-  await shot(page, "06-相棒とありがとう");
+  await shot(page, "06-パートナーとありがとう");
 
   // 夕方：日報が届き、チェックを付けて管理職へ
   await page.getByRole("link", { name: "今日の日報" }).click();

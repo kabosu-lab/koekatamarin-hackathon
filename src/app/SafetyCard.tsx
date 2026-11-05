@@ -35,7 +35,7 @@ function TrialSafetyCard() {
       </p>
       <h3>今すぐ話せるところ</h3>
       <HotlineList />
-      <p className="caveat">相棒は AI なので、見逃すことも、間違えることもあります。</p>
+      <p className="caveat">パートナーは AI なので、見逃すことも、間違えることもあります。</p>
     </section>
   );
 }
@@ -148,7 +148,7 @@ function RealSafetyCard({ notice }: { notice: SafetyNotice }) {
         </>
       )}
 
-      <p className="caveat">相棒は AI なので、見逃すことも、間違えることもあります。つらいときは、近くの大人にも直接話してください。</p>
+      <p className="caveat">パートナーは AI なので、見逃すことも、間違えることもあります。つらいときは、近くの大人にも直接話してください。</p>
     </section>
   );
 }

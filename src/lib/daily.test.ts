@@ -64,7 +64,7 @@ describe("まとめ", () => {
     expect(prompt).not.toContain("ネットワークは最後まで苦手");
   });
 
-  it("相棒の言葉は材料にせず、本人の話だけを使う", async () => {
+  it("パートナーの言葉は材料にせず、本人の話だけを使う", async () => {
     const requests: ClaudeRequest[] = [];
     const recording: ClaudeClient = {
       mode: "real",
@@ -218,7 +218,7 @@ describe("夕方のまとめの係", () => {
       .prepare("INSERT INTO posts (id, channel_id, author_id, kind, body, created_at) VALUES (?, 'study', ?, 'effort', ?, ?)")
       .run(`evening-${person}`, person, "今日は作文を読んだ", NOW.toISOString());
 
-  it("材料は人に届いたやり取りだけで、相棒との話を渡さず、チェックは付かない", async () => {
+  it("材料は人に届いたやり取りだけで、パートナーとの話を渡さず、チェックは付かない", async () => {
     post();
     const summarize = vi.fn(async () => ({ items: ["作文を読んだ"], usage: null }));
     // handleDaily は今の日時で今日のやり取りを探すので、投稿と同じ日に合わせる

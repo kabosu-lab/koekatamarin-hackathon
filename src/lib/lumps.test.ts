@@ -74,7 +74,7 @@ describe("かたまりの動き", () => {
     expect(Object.keys(first.frames[0]).sort()).toEqual(["offset", "opacity", "transform"]);
   });
 
-  it("分身の動きの時刻は戻らない", () => {
+  it("パートナーの動きの時刻は戻らない", () => {
     for (const count of [0, 1, 2, 5]) {
       const offsets = speakerFrames(sendTiming(count)).map((frame) => frame.offset);
       expect(offsets).toEqual([...offsets].sort((a, b) => a - b));

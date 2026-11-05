@@ -25,7 +25,7 @@ export function roomMoment(now: Date, requested?: string | string[]): RoomMoment
   return { time: timeOfDay(now), late: isLateNight(now) };
 }
 
-/** 相棒は2人ずつ、同じ机に座る。端数の相棒の机には、空いた席が1つ残る。 */
+/** パートナーは2人ずつ、同じ机に座る。端数のパートナーの机には、空いた席が1つ残る。 */
 export function roomTables(tokens: string[]): string[][] {
   const tables: string[][] = [];
   for (let index = 0; index < tokens.length; index += 2) tables.push(tokens.slice(index, index + 2));

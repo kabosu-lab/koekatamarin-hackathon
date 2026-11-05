@@ -1,4 +1,4 @@
-// 本物の Claude で、贈り物の卵から生まれる相棒を選ぶ。料金がかかるので、テストからは呼ばない。
+// 本物の Claude で、贈り物の卵から生まれるパートナーを選ぶ。料金がかかるので、テストからは呼ばない。
 //   npm run try:gift-egg
 import { CATALOG } from "../src/lib/avatar-catalog";
 import { createClaude } from "../src/lib/claude/index";

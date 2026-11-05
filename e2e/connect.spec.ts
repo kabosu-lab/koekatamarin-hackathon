@@ -2,11 +2,11 @@ import { expect, type Page, test } from "@playwright/test";
 import { switchPerson } from "./helpers";
 
 async function say(page: Page, text: string) {
-  if (!(await page.getByLabel("相棒に書く").isVisible())) {
+  if (!(await page.getByLabel("パートナーに書く").isVisible())) {
   }
   const count = await page.getByRole("log").locator(".bubble.assistant").count();
-  await page.getByLabel("相棒に書く").fill(text);
-  await page.getByRole("button", { name: "相棒へ送る" }).click();
+  await page.getByLabel("パートナーに書く").fill(text);
+  await page.getByRole("button", { name: "パートナーへ送る" }).click();
   await expect(page.getByRole("log").locator(".bubble.assistant")).toHaveCount(count + 1);
 }
 

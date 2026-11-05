@@ -28,7 +28,7 @@ const SUMMARIES: Record<Exclude<SafetyCategory, "none"> | "unknown", string> = {
   harm_to_others: "誰かを傷つけるかもしれない心配があります。早めに本人に声をかけてください。",
   violence_or_abuse: "暴力や虐待、いじめなどで、安全が脅かされている心配があります。早めに本人に声をかけてください。",
   worried_about_someone: "周りの人の命や安全を心配しています。本人に声をかけ、状況を確かめてください。",
-  unknown: "相棒では内容を確かめられない相談がありました。本人に声をかけてください。",
+  unknown: "パートナーでは内容を確かめられない相談がありました。本人に声をかけてください。",
 };
 
 export type SafetyAssessment = { concern: false } | { concern: true; summary: string };
@@ -57,7 +57,7 @@ export type ShareCandidate = {
   label: string;
 };
 
-const safetySystemPrompt = `あなたは「こえかた」の見守りの係です。学校の先生や生徒が相棒と話した内容から、命や安全に関わる心配があるかを判断します。心配があるときだけ、学校の相談室の先生に要点が届きます。本人は相棒との話を自分だけのものと思って話しているので、この例外は本当に必要なときだけにしてください。
+const safetySystemPrompt = `あなたは「こえかた」の見守りの係です。学校の先生や生徒がパートナーと話した内容から、命や安全に関わる心配があるかを判断します。心配があるときだけ、学校の相談室の先生に要点が届きます。本人はパートナーとの話を自分だけのものと思って話しているので、この例外は本当に必要なときだけにしてください。
 
 心配ありとするのは次のとき:
 - 自殺や自傷をほのめかす、死にたい、消えたいと言っている
@@ -96,7 +96,7 @@ export async function assessSafety(
   text: string,
 ): Promise<SafetyAssessment> {
   const recent = [...history.slice(-RECENT_MESSAGES), { role: "user", content: text }]
-    .map((m) => `${m.role === "user" ? "本人" : "相棒"}：${m.content}`)
+    .map((m) => `${m.role === "user" ? "本人" : "パートナー"}：${m.content}`)
     .join("\n");
 
   const response = await claude.complete({

@@ -3,13 +3,13 @@ import type { StudyPresence } from "@/lib/study";
 
 const POSES = ["study", "highfive", "cheer", "stretch"] as const;
 
-/** 勉強し、ときどき隣とハイタッチして、応援し、伸びをする分身。隣がいない分身（solo）は一人で伸びをする。 */
+/** 勉強し、ときどき隣とハイタッチして、応援し、伸びをするパートナー。隣がいないパートナー（solo）は一人で伸びをする。 */
 export function StudyBuddy({ token, side, order }: { token: string; side: "left" | "right" | "solo"; order: number }) {
   return (
     <div
       className={`study-buddy ${side}`}
       role="img"
-      aria-label="勉強中の相棒"
+      aria-label="勉強中のパートナー"
       style={{ "--wait": `${-order * 5}s` } as CSSProperties}
     >
       {POSES.map((pose) => (
@@ -19,7 +19,7 @@ export function StudyBuddy({ token, side, order }: { token: string; side: "left"
   );
 }
 
-/** 自習室に見えるのは、人数と相棒だけ。名前も声も映像も、言葉もない。人は見るだけ。 */
+/** 自習室に見えるのは、人数とパートナーだけ。名前も声も映像も、言葉もない。人は見るだけ。 */
 export function PresenceView({ presence }: { presence: StudyPresence }) {
   return (
     <>

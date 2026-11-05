@@ -104,7 +104,7 @@ function currentAvatar(db: DatabaseSync, personId: string): { family: string; sh
     | undefined;
 }
 
-/** 今の相棒も手持ちに入れる。切り替えても、育った段階を失わない。 */
+/** 今のパートナーも手持ちに入れる。切り替えても、育った段階を失わない。 */
 function rememberCurrent(db: DatabaseSync, personId: string, now: Date): void {
   const current = currentAvatar(db, personId);
   if (!current || current.family === PENDING_FAMILY || !catalogEntry(current.family)) return;
@@ -143,7 +143,7 @@ function shuffled<T>(items: readonly T[], random: () => number): T[] {
   return list;
 }
 
-const eggSystemPrompt = `あなたは、校内アプリ「こえかた」で、贈り物の卵から生まれる相棒を選ぶ係です。持ち主が校内で公開した言葉を読み、<候補> の中から合いそうな絵を1つ選びます。
+const eggSystemPrompt = `あなたは、校内アプリ「こえかた」で、贈り物の卵から生まれるパートナーを選ぶ係です。持ち主が校内で公開した言葉を読み、<候補> の中から合いそうな絵を1つ選びます。
 
 - family は <候補> の id だけを使う
 - reason は30文字くらいまで。持ち主を決めつけず、人と比べない。点数や順位を書かない。公開の言葉にない経験や事実を足さない
@@ -164,7 +164,7 @@ export async function chooseFromEgg(
   random: () => number = Math.random,
 ): Promise<{ family: string; reason: string }> {
   const choices = shuffled(candidates, random).slice(0, CHOICES_FOR_CLAUDE);
-  const fallback = { family: choices[0].id, reason: `「${choices[0].mood.split("、").slice(0, 2).join("、")}」な雰囲気の相棒です` };
+  const fallback = { family: choices[0].id, reason: `「${choices[0].mood.split("、").slice(0, 2).join("、")}」な雰囲気のパートナーです` };
   if (claude.mode !== "real" || words.length === 0) return fallback;
   try {
     const list = choices.map((entry) => `- ${entry.id}（${entry.name}）：${entry.mood}`).join("\n");
@@ -181,12 +181,12 @@ export async function chooseFromEgg(
     if (!picked || typeof answer.reason !== "string") return fallback;
     return { family: picked.id, reason: answer.reason.slice(0, MAX_REASON) };
   } catch (error) {
-    console.error("卵の相棒を選べませんでした", error instanceof Error ? error.name : "unknown");
+    console.error("卵のパートナーを選べませんでした", error instanceof Error ? error.name : "unknown");
     return fallback;
   }
 }
 
-/** 卵を開ける。新しい相棒は手持ちに入り、今の相棒は本人が選ぶまで変わらない（相棒がまだいなければ、そのまま相棒になる）。 */
+/** 卵を開ける。新しいパートナーは手持ちに入り、今のパートナーは本人が選ぶまで変わらない（パートナーがまだいなければ、そのままパートナーになる）。 */
 export async function openGiftEgg(
   claude: ClaudeClient,
   db: DatabaseSync,
@@ -220,7 +220,7 @@ export async function openGiftEgg(
   return { family, name: entry.name, reason, image: companionImage(family, 2), color: entry.color };
 }
 
-/** 手持ちから今の相棒を選ぶ。それまでの相棒の段階は残り、戻せばそのまま。 */
+/** 手持ちから今のパートナーを選ぶ。それまでのパートナーの段階は残り、戻せばそのまま。 */
 export function selectCompanion(db: DatabaseSync, personId: string, family: unknown, now: Date = new Date()): boolean {
   if (typeof family !== "string") return false;
   rememberCurrent(db, personId, now);
@@ -232,7 +232,7 @@ export function selectCompanion(db: DatabaseSync, personId: string, family: unkn
     `INSERT INTO avatars (person_id, family, shown_stage) VALUES (?, ?, ?)
      ON CONFLICT (person_id) DO UPDATE SET family = excluded.family, shown_stage = excluded.shown_stage`,
   ).run(personId, family, row.shown_stage);
-  // 進化の候補は相棒ごとに違うので、選び直せるようにする
+  // 進化の候補はパートナーごとに違うので、選び直せるようにする
   db.prepare("DELETE FROM avatar_evolutions WHERE person_id = ? AND target_stage > ?").run(personId, row.shown_stage);
   return true;
 }

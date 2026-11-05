@@ -2,7 +2,7 @@ import { PIXEL_SIZE, pixelSprite, spriteRects, type PixelStage } from "@/lib/pix
 
 const TONES: Record<string, string> = { "#": "var(--pixel-dark)", "+": "var(--pixel-mid)", o: "var(--pixel-light)" };
 
-/** コードだけで描く相棒のドット絵。 */
+/** コードだけで描くパートナーのドット絵。 */
 export function PixelCompanion({ stage, branch, alt, size }: { stage: PixelStage; branch: string | null; alt: string; size: number }) {
   return (
     <svg

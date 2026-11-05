@@ -52,7 +52,7 @@ export function EvolutionCard() {
 
   return (
     <section className="card evolve-card" aria-label="進化">
-      <h2>相棒が進化できそう！</h2>
+      <h2>パートナーが進化できそう！</h2>
       <p>人とのやり取りで育ちました。どんな姿にするかは、あなたが選びます。</p>
       {!candidates && (
         <button type="button" disabled={busy} onClick={() => void look()}>

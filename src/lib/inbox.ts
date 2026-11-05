@@ -138,7 +138,7 @@ export function passPost(
   return true;
 }
 
-const replySystemPrompt = `あなたは「こえかた」の相棒です。本人に届いたお願いへの返信を、本人が話したことから文章にします。話すだけで30秒で返せるようにするのが目的です。
+const replySystemPrompt = `あなたは「こえかた」のパートナーです。本人に届いたお願いへの返信を、本人が話したことから文章にします。話すだけで30秒で返せるようにするのが目的です。
 
 一番大事な決まり: 本人が話していない経験、気持ち、事実、助言を足さないこと。AI は経験を作りません。返信は本人の名前で人に届きます。話した内容を整えるだけにしてください。
 
@@ -204,7 +204,7 @@ export async function handleReplyDraft(
     return { status: 200, body: { draft, review } };
   } catch (error) {
     console.error("返信の下書きに失敗", error instanceof Error ? error.name : "unknown");
-    return { status: 503, body: { error: "相棒につながりませんでした" } };
+    return { status: 503, body: { error: "パートナーにつながりませんでした" } };
   }
 }
 

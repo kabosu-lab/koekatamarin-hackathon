@@ -353,7 +353,7 @@ html[data-embed] .lcd {
   flex: none;
 }
 
-/* LINE のように、自分は右、相棒は左 */
+/* LINE のように、自分は右、パートナーは左 */
 .talk.device .bubble {
   max-width: 82%;
   margin: 0;
@@ -972,7 +972,7 @@ html[data-theme="retro"] :is(.home, .soudan) {
   mask-image: linear-gradient(to bottom, transparent 0, #000 14px);
 }
 
-/* 0-0y：相棒の言葉は、相棒の絵より上に、相棒から出る吹き出しで出す。相棒は窓の下の真ん中 */
+/* 0-0y：パートナーの言葉は、パートナーの絵より上に、パートナーから出る吹き出しで出す。パートナーは窓の下の真ん中 */
 .talk.device[data-talking="true"] .log {
   order: 1;
 }
@@ -1024,7 +1024,7 @@ html[data-theme="retro"] :is(.home, .soudan) {
   border-top: 12px solid var(--ink);
 }
 
-/* 吹き出しのしっぽのすぐ下に相棒が来るよう、知恵を探す入口は会話の上へ回す */
+/* 吹き出しのしっぽのすぐ下にパートナーが来るよう、知恵を探す入口は会話の上へ回す */
 .talk.device .log > .find-knowledge {
   order: -1;
   align-self: flex-end;
@@ -1036,7 +1036,7 @@ html[data-theme="retro"] :is(.home, .soudan) {
   white-space: nowrap;
 }
 
-/* 0-0t (6)：履歴と設定の上の窓は、自分と相棒 */
+/* 0-0t (6)：履歴と設定の上の窓は、自分とパートナー */
 .me-screen {
   display: flex;
   align-items: center;

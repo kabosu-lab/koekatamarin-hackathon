@@ -62,7 +62,7 @@ beforeEach(() => {
   seedDatabase(db);
 });
 
-describe("写真から分身を選ぶ", () => {
+describe("写真からパートナーを選ぶ", () => {
   it("写真を DB にもファイルにも残さない", async () => {
     const dir = mkdtempSync(join(tmpdir(), "koekata-photo-"));
     const fileDb = openDatabase(join(dir, "test.db"));
@@ -97,7 +97,7 @@ describe("写真から分身を選ぶ", () => {
     for (const entry of CATALOG) expect(requests[0].system).toContain(entry.id);
   });
 
-  it("本人以外の分身は作れず、Claude も写真も読まない", async () => {
+  it("本人以外のパートナーは作れず、Claude も写真も読まない", async () => {
     const { client, requests } = recording(pickAnswer());
     const outcome = await handleAvatarFromPhoto(client, db, photos, "saeki", { personId: "aoki" }, NOW);
     expect(outcome.status).toBe(403);
@@ -193,7 +193,7 @@ describe("配信する絵", () => {
     return getAvatar(db, "saeki").image.split("/")[4];
   }
 
-  it("相棒は手元の絵があってもコードで描き、どのポーズでも同じ動物を出す", async () => {
+  it("パートナーは手元の絵があってもコードで描き、どのポーズでも同じ動物を出す", async () => {
     const token = await picked("bird");
     const dir = artDir(["bird-1.png", "bird-2.png", "bird-3.png"]);
     const art = await renderArt(db, token, "normal", {}, dir);

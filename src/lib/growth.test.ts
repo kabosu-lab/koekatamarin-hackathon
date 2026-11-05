@@ -69,7 +69,7 @@ describe("絵", () => {
   });
 });
 
-describe("分身", () => {
+describe("パートナー", () => {
   it("問いかけの答えで系統が決まる", () => {
     expect(familyFor("creature", "listen")).toBe("bird");
     expect(familyFor("human", "make")).toBe("craft");
@@ -115,7 +115,7 @@ describe("分身", () => {
 });
 
 describe("サンクスカード", () => {
-  it("受け取る人にだけ届き、分身が育つ材料になる", async () => {
+  it("受け取る人にだけ届き、パートナーが育つ材料になる", async () => {
     const outcome = await handleSendThanks(scripted, db, "aoki", { toPersonId: "noda", message: "助かりました" }, NOW);
     expect(outcome.status).toBe(200);
     expect(listThanks(db, "noda")[0]).toMatchObject({ fromName: "青木 ひより", message: "助かりました" });

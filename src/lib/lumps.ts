@@ -108,7 +108,7 @@ export function trailFrames(timing: SendTiming, width: number, height: number, o
   };
 }
 
-/** 本人の分身の動き：話すたびに弾み、息を吸い、吐き出して、届くと跳ねる。 */
+/** 本人のパートナーの動き：話すたびに弾み、息を吸い、吐き出して、届くと跳ねる。 */
 export function speakerFrames(timing: SendTiming): { offset: number; transform: string }[] {
   const total = timing.end;
   const at = (time: number) => round(Math.min(1, Math.max(0, time / total)));

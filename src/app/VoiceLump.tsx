@@ -5,7 +5,7 @@ import { lumpMarkup } from "@/lib/companion-art";
 import { LUMP_SHAPES, type LumpShape, type LumpShapeName } from "@/lib/lump-shapes";
 import type { DolphinState } from "./Dolphin";
 
-/** 声のかたまり。最初の相棒で、育つと動物になる。絵のファイルを使わず、距離関数で描く。 */
+/** 声のかたまり。最初のパートナーで、育つと動物になる。絵のファイルを使わず、距離関数で描く。 */
 const MIN_FRAME_MS = 32;
 
 const VERTEX = `#version 300 es
@@ -172,7 +172,7 @@ function LumpStill({ color, shape }: { color: string; shape: LumpShapeName }) {
   return <svg viewBox="0 0 200 200" className="dolphin-still" aria-hidden="true" dangerouslySetInnerHTML={{ __html: lumpMarkup(color, shape) }} />;
 }
 
-/** 窓の中の相棒。3D が描けない端末や自動テストでは静止画に戻す。 */
+/** 窓の中のパートナー。3D が描けない端末や自動テストでは静止画に戻す。 */
 export function VoiceLump({
   alt,
   state,

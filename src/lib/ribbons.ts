@@ -62,7 +62,7 @@ function eventStory(ribbonId: string): string {
 
 /**
  * 条件を満たしたトロフィーを記録する。一度もらったら、元の行動が取り消されても減らない。
- * モダンの人や分身を隠している人にも、裏で集まる。物語は最初の一度だけ決める。
+ * モダンの人やパートナーを隠している人にも、裏で集まる。物語は最初の一度だけ決める。
  */
 export function syncRibbons(db: DatabaseSync, personId: string, now: Date, events: readonly SchoolEvent[] = EVENTS): void {
   const rows = db.prepare("SELECT ribbon_id, story, earned_at FROM person_ribbons WHERE person_id = ?").all(personId) as {

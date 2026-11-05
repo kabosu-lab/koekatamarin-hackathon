@@ -39,7 +39,7 @@ export type DraftOutcome =
 export type ReviewOutcome = { status: 200; body: { review: Review } } | Failure;
 export type PublishOutcome = { status: 200; body: { postId: string; channelId: string } } | Failure;
 
-const UNAVAILABLE: Failure = { status: 503, body: { error: "相棒につながりませんでした" } };
+const UNAVAILABLE: Failure = { status: 503, body: { error: "パートナーにつながりませんでした" } };
 const KINDS: readonly PostKind[] = ["trouble", "worry", "effort", "report"];
 
 function fields(input: unknown): Record<string, unknown> {
@@ -55,7 +55,7 @@ function logFailure(error: unknown) {
   console.error("言葉にする処理に失敗", error instanceof Error ? error.name : "unknown");
 }
 
-/** トロフィーのための操作の記録。下書きができなかった（相棒が聞き返した）ことと、言い換えの案だけを残す。 */
+/** トロフィーのための操作の記録。下書きができなかった（パートナーが聞き返した）ことと、言い換えの案だけを残す。 */
 function noteDraftOutcome(db: DatabaseSync | undefined, viewerId: string, review: Review | null): void {
   if (!db) return;
   const now = new Date();

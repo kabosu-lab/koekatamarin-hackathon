@@ -51,7 +51,7 @@ export function KnowledgeNew({ postId }: { postId: string }) {
     <section className="card" aria-label="知恵の下書き">
       {!draft ? (
         <button type="button" disabled={busy} onClick={() => void makeDraft()}>
-          {busy ? "下書きを作っています…" : "相棒に下書きを作ってもらう"}
+          {busy ? "下書きを作っています…" : "パートナーに下書きを作ってもらう"}
         </button>
       ) : (
         <div className="chie-form">

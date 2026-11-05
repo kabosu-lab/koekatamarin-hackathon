@@ -164,7 +164,7 @@ describe("裏で育つ", () => {
     expect(pendingEvolution(db, PERSON)).toBeNull();
   });
 
-  it("分身がない人では何も起きない", () => {
+  it("パートナーがない人では何も起きない", () => {
     db.prepare("DELETE FROM avatars WHERE person_id = ?").run(PERSON);
     expect(() => catchUpAvatar(db, PERSON)).not.toThrow();
     expect(getAvatar(db, PERSON).family).toBeNull();

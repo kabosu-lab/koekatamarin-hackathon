@@ -2,8 +2,8 @@ import { expect, type Page, test } from "@playwright/test";
 import { switchPerson } from "./helpers";
 
 async function draft(page: Page, words: string) {
-  await page.getByLabel("相棒に書く").fill(words);
-  await page.getByRole("button", { name: "相棒へ送る" }).click();
+  await page.getByLabel("パートナーに書く").fill(words);
+  await page.getByRole("button", { name: "パートナーへ送る" }).click();
   await expect(page.getByRole("log").locator(".bubble.assistant").last()).toBeVisible();
   await page.getByRole("button", { name: "とどける" }).click();
   await expect(page.getByLabel("投稿の文章")).toHaveValue(words);

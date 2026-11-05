@@ -70,7 +70,7 @@ describe("createAnthropicClaude", () => {
 });
 
 describe("converse", () => {
-  it("履歴の後ろに今の発言を足し、相棒の指示で呼ぶ", async () => {
+  it("履歴の後ろに今の発言を足し、パートナーの指示で呼ぶ", async () => {
     const complete = vi.fn().mockResolvedValue({ text: "はい", refused: false });
     const history = [
       { role: "user", content: "こんにちは" },
@@ -111,7 +111,7 @@ describe("最初の一言", () => {
     expect(reply).toContain("無理に使わんでええ");
   });
 
-  it("相棒の指示に、人のふりをしない・売り込まない決まりがある", () => {
+  it("パートナーの指示に、人のふりをしない・売り込まない決まりがある", () => {
     expect(companionSystemPrompt).toContain("人のふりをせず");
     expect(companionSystemPrompt).toContain("売り込まない");
     expect(companionSystemPrompt).toContain("連絡した・伝えたと言わない");
@@ -124,7 +124,7 @@ describe("最初の一言", () => {
     expect(trialCompanionSystemPrompt).toContain("110 番や 119 番");
   });
 
-  it("相棒の指示に、相手のトーンに合わせる決まりがある", () => {
+  it("パートナーの指示に、相手のトーンに合わせる決まりがある", () => {
     expect(companionSystemPrompt).toContain("同じトーンで返す");
     expect(companionSystemPrompt).toContain("敬語に戻さず");
     expect(companionSystemPrompt).toContain("相手が使っていない方言は使わない");
@@ -139,7 +139,7 @@ ${READY_MARK}`)).toEqual({ reply: "いいね、それ届けてみよう。", rea
     expect(splitReady(READY_MARK).reply).toBe("");
   });
 
-  it("相棒の指示に印の決まりがあり、試用の指示にも残る", () => {
+  it("パートナーの指示に印の決まりがあり、試用の指示にも残る", () => {
     expect(companionSystemPrompt).toContain(READY_MARK);
     expect(trialCompanionSystemPrompt).toContain(READY_MARK);
   });

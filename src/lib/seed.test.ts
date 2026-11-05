@@ -65,7 +65,7 @@ describe("seedDatabase", () => {
     db.close();
   });
 
-  it("前からある DB にも、あとから足した担任と分身が入り、本人の分身は変えない", () => {
+  it("前からある DB にも、あとから足した担任とパートナーが入り、本人のパートナーは変えない", () => {
     const db = seeded();
     db.exec("UPDATE people SET homeroom_teacher_id = NULL; DELETE FROM avatars WHERE person_id = 'noda'");
     db.exec("UPDATE avatars SET family = 'bird' WHERE person_id = 'aoki'");

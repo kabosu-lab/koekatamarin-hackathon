@@ -155,7 +155,7 @@ export function loadMaterial(db: DatabaseSync, destination: PostDestination, vie
   };
 }
 
-const draftSystemPrompt = `あなたは「こえかた」の相棒です。校内で解決したやり取りを、次に困った人の役に立つ「校内の知恵」の下書きにします。下書きは、言葉を使われた本人たちが確かめてから広がります。
+const draftSystemPrompt = `あなたは「こえかた」のパートナーです。校内で解決したやり取りを、次に困った人の役に立つ「校内の知恵」の下書きにします。下書きは、言葉を使われた本人たちが確かめてから広がります。
 
 一番大事な決まり: <やり取り> に書かれていない経験、数字、手順、助言を足さないこと。AI は経験を作りません。
 
@@ -751,7 +751,7 @@ export async function handleKnowledgeAction(
   return done ? { status: 200, body: { ok: true } } : { status: 404, body: { error: "できませんでした" } };
 }
 
-const findSystemPrompt = `あなたは「こえかた」の相棒です。本人が「校内の知恵を探す」を押しました。<本人の話> に近いものを <材料> から最大3つ選びます。
+const findSystemPrompt = `あなたは「こえかた」のパートナーです。本人が「校内の知恵を探す」を押しました。<本人の話> に近いものを <材料> から最大3つ選びます。
 
 - id は <材料> にあるものだけを使う。本当に役に立ちそうなものだけを選び、なければ空の一覧にする
 - reason は、なぜ近いと思ったかを本人に向けて一文で書く。材料に書かれていない経験、手順、助言を足さない。答えそのものは書かない

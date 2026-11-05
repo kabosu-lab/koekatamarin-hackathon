@@ -1,13 +1,13 @@
 import { expect, test } from "@playwright/test";
 import { switchPerson } from "./helpers";
 
-test("自習室は人数と相棒だけで、Teams のタブの画面には操作がない", async ({ page }) => {
+test("自習室は人数とパートナーだけで、Teams のタブの画面には操作がない", async ({ page }) => {
   await page.goto("/teams");
   await page.getByRole("link", { name: "自習室（タブ）" }).click();
   await expect(page.getByRole("heading", { name: "自習室" })).toBeVisible();
   const room = page.getByRole("region", { name: "自習室" });
   await expect(room).toContainText("人が勉強しています");
-  await expect(room.getByRole("img", { name: "勉強中の相棒" }).first()).toBeVisible();
+  await expect(room.getByRole("img", { name: "勉強中のパートナー" }).first()).toBeVisible();
   await expect(room.getByRole("button")).toHaveCount(0);
   await expect(room.getByText(/青木|中村/)).toHaveCount(0);
 });
@@ -64,7 +64,7 @@ test("スマホ幅で横にはみ出さない", async ({ page }) => {
   }
 });
 
-test("自習室の分身は言葉を話さず、人は見るだけで、絵が読み込まれる", async ({ page }) => {
+test("自習室のパートナーは言葉を話さず、人は見るだけで、絵が読み込まれる", async ({ page }) => {
   await page.goto("/study/room");
   const room = page.getByRole("region", { name: "自習室" });
   await expect(room).toHaveText(/^いま \d+ 人が勉強しています$/);
@@ -73,7 +73,7 @@ test("自習室の分身は言葉を話さず、人は見るだけで、絵が�
   await expect.poll(() => study.evaluate((el: HTMLImageElement) => el.complete && el.naturalWidth > 0)).toBe(true);
 });
 
-test("動きを減らす設定では、分身は勉強の姿のままで動かない", async ({ page }) => {
+test("動きを減らす設定では、パートナーは勉強の姿のままで動かない", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/study/room");
   const buddy = page.locator(".study-buddy").first();

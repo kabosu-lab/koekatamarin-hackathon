@@ -23,7 +23,7 @@ const SEASON_LABEL: [Season, string][] = [
   ["fuyu", "冬"],
 ];
 
-/** 校内の桜の詳しい画面。季節と、まわりの相棒を見る。 */
+/** 校内の桜の詳しい画面。季節と、まわりのパートナーを見る。 */
 export default async function SakuraPage({ searchParams }: { searchParams: Promise<{ season?: string | string[] }> }) {
   const { people } = await getViewer();
   const { season: requested } = await searchParams;
@@ -59,14 +59,14 @@ export default async function SakuraPage({ searchParams }: { searchParams: Promi
           {sakura.message}（今年の葉 {sakura.leaves} 枚）
         </p>
       </section>
-      <p className="muted">投稿、返信、ありがとう、いいね、一緒の勉強で葉が増えます。相棒と話すだけでは増えません。</p>
+      <p className="muted">投稿、返信、ありがとう、いいね、一緒の勉強で葉が増えます。パートナーと話すだけでは増えません。</p>
       {rewards && (
-        <section className="card" aria-label="桜のまわりの相棒たち">
-          <h2>桜のまわりの相棒たち</h2>
+        <section className="card" aria-label="桜のまわりのパートナーたち">
+          <h2>桜のまわりのパートナーたち</h2>
           <div className="gathering">
             {people.map((person) => (
               <Link key={person.id} href={`/people/${person.id}`}>
-                <Avatar image={getAvatar(db, person.id).image} alt={`${person.name}さんの相棒`} size={56} />
+                <Avatar image={getAvatar(db, person.id).image} alt={`${person.name}さんのパートナー`} size={56} />
                 {person.name}
               </Link>
             ))}

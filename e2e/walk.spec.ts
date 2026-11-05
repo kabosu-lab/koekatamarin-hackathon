@@ -87,7 +87,7 @@ test("最初の画面から入り、画面を点けたまま聞き、「終わ�
   await expect(page.getByText("届けました。")).toBeVisible();
 });
 
-test("「どう思う？」と言ったときだけ相棒が声で答え、読み上げの間はマイクを止める", async ({ page }) => {
+test("「どう思う？」と言ったときだけパートナーが声で答え、読み上げの間はマイクを止める", async ({ page }) => {
   await fakeVoice(page);
   await page.goto("/walk");
   await page.getByRole("button", { name: "話し始める" }).click();

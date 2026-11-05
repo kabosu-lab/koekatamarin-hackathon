@@ -162,8 +162,8 @@ export function MemoryList({ initial }: { initial: MemoryItem[] }) {
   }
 
   return (
-    <section className="card" aria-label="相棒が覚えていること">
-      <h2>相棒が覚えていること</h2>
+    <section className="card" aria-label="パートナーが覚えていること">
+      <h2>パートナーが覚えていること</h2>
       <p className="muted">
         公開した言葉は、話すときと人を紹介するときに使います。「覚えて」と頼んだことは、あなたとの話にだけ使います。
       </p>
@@ -297,11 +297,11 @@ export function AvatarFromPhoto({ label, failed, eggImage }: { label: string; fa
   }
 
   return (
-    <section className="card" aria-label="写真から分身を作る">
+    <section className="card" aria-label="写真からパートナーを作る">
       <h2>{label}から、声のかたまりを作る</h2>
       {failed && <p className="notice">前回はうまく読めなかったので、シンプルな絵にしています。もう一度試せます。</p>}
       <p className="muted">
-        写真の色や持ち物の雰囲気から、合う相棒を選びます。本人に似せることはしません。写真は Claude に1度だけ見せて、保存しません。
+        写真の色や持ち物の雰囲気から、合うパートナーを選びます。本人に似せることはしません。写真は Claude に1度だけ見せて、保存しません。
       </p>
       <button type="button" disabled={busy} onClick={() => void start()}>
         写真から作る
@@ -336,5 +336,5 @@ export function ArtRefresher() {
     }, 3000);
     return () => clearInterval(timer);
   }, [router]);
-  return <p className="muted" role="status">相棒を選んでいます。ほかのことをしていて大丈夫です。</p>;
+  return <p className="muted" role="status">パートナーを選んでいます。ほかのことをしていて大丈夫です。</p>;
 }

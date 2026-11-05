@@ -9,8 +9,8 @@ async function attachAndDraft(page: Page, words: string) {
   await page.goto("/");
   await page.locator("label.device-side input").setInputFiles({ name: "賞状.png", mimeType: "image/png", buffer: PNG });
   await expect(page.getByRole("region", { name: "付けたファイル" })).toBeVisible();
-  await page.getByLabel("相棒に書く").fill(words);
-  await page.getByRole("button", { name: "相棒へ送る" }).click();
+  await page.getByLabel("パートナーに書く").fill(words);
+  await page.getByRole("button", { name: "パートナーへ送る" }).click();
   await expect(page.getByRole("log").locator(".bubble.assistant").last()).toBeVisible();
   await page.getByRole("button", { name: "とどける" }).click();
   await expect(page.getByRole("group", { name: "添付の確認" })).toBeVisible();
@@ -22,7 +22,7 @@ test("付ける、話す、下書き、気づき、本人が確かめて送る�
 
   const check = page.getByRole("group", { name: "添付の確認" });
   await expect(check.getByRole("heading", { name: "隠しますか？" })).toBeVisible();
-  await expect(check).toContainText("相棒は見逃すことがあります。最後に確かめるのはあなたです");
+  await expect(check).toContainText("パートナーは見逃すことがあります。最後に確かめるのはあなたです");
   await expect(check.getByRole("img")).toBeVisible();
 
   // 気づきがあるうちは、本人が選ぶまで送れない

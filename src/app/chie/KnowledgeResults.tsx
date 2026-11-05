@@ -20,7 +20,7 @@ export function KnowledgeResults({
           </strong>
           <p className="chie-body">{result.body}</p>
           {result.researchedWithAi && <p className="ai-mark">AI と調べました</p>}
-          <p className="muted">相棒より：{result.reason}</p>
+          <p className="muted">パートナーより：{result.reason}</p>
           <p className="muted">{result.people.map((person) => `${person.name}さん`).join("、")}の言葉</p>
           <p className="chie-links">
             <Link href={`/teams?channel=${result.channelId}#post-${result.postId}`}>元の投稿を見る</Link>

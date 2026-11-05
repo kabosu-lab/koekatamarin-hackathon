@@ -365,7 +365,7 @@ export function WalkMode({ viewer, viewerId }: { viewer: { name: string; label: 
             話し始める
           </button>
           <ul className="walk-help">
-            <li>「どう思う？」「調べて」「壁打ちして」と言うと、相棒が声で答えます</li>
+            <li>「どう思う？」「調べて」「壁打ちして」と言うと、パートナーが声で答えます</li>
             <li>区切って「終わり」と言うと止まって、整理します</li>
             <li>画面を消すと聞き取りも止まります。画面を点けたまま使ってください</li>
             <li>周りの音や風で、聞き取りが乱れることがあります</li>
@@ -381,7 +381,7 @@ export function WalkMode({ viewer, viewerId }: { viewer: { name: string; label: 
           {screenNote && <p className="notice">{screenNote}</p>}
           <p className="walk-caution">画面を消すと止まります</p>
           <p className="walk-words">{spoken.slice(-200) || "どうぞ、話してください"}</p>
-          {lastReply && <p className="walk-reply">相棒：{lastReply}</p>}
+          {lastReply && <p className="walk-reply">パートナー：{lastReply}</p>}
           <label className="walk-toggle">
             <input type="checkbox" checked={aizuchiOn} onChange={(event) => setAizuchiOn(event.target.checked)} />
             合いの手を入れる

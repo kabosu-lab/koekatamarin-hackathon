@@ -2,7 +2,7 @@ import { expect, type Page, test } from "@playwright/test";
 
 // 合言葉つきの試用モード。playwright.config.ts の「試用」から、別のサーバーに向けて動く
 const CODE = "test-code";
-const NOTICE = "試用版です。相談室には届きません。投稿は練習用の Teams に届くことがあります。投稿や相棒に覚えさせたことは、試している人に見えることがあります。実名や個人情報は入れないでください。本当に困ったことは先生へ。";
+const NOTICE = "試用版です。相談室には届きません。投稿は練習用の Teams に届くことがあります。投稿やパートナーに覚えさせたことは、試している人に見えることがあります。実名や個人情報は入れないでください。本当に困ったことは先生へ。";
 
 async function enter(page: Page) {
   await page.goto("/access");
@@ -56,8 +56,8 @@ test("試用の表示はどの画面にも出て、相談室に届くとは書�
 
 test("命や安全に関わる話では、先生や相談室に届いていないことと窓口を伝える", async ({ page }) => {
   await enter(page);
-  await page.getByLabel("相棒に書く").fill("親に殴られている");
-  await page.getByRole("button", { name: "相棒へ送る" }).click();
+  await page.getByLabel("パートナーに書く").fill("親に殴られている");
+  await page.getByRole("button", { name: "パートナーへ送る" }).click();
 
   const card = page.getByRole("region", { name: "大事なお知らせ" });
   await expect(card).toContainText("先生や相談室には届いていません");
@@ -128,8 +128,8 @@ test("cookie を書き換えても、先生や相談室の人物として画面�
 
   // API から送っても、書き換えた先生ではなく生徒の投稿になる
   const words = `書き換えの確かめ ${test.info().testId}`;
-  await page.getByLabel("相棒に書く").fill(words);
-  await page.getByRole("button", { name: "相棒へ送る" }).click();
+  await page.getByLabel("パートナーに書く").fill(words);
+  await page.getByRole("button", { name: "パートナーへ送る" }).click();
   await expect(page.getByRole("log").locator(".bubble.assistant").last()).toBeVisible();
   await page.getByRole("button", { name: "とどける" }).click();
   await expect(page.getByLabel("投稿の文章")).toHaveValue(words);
@@ -170,10 +170,10 @@ test("サーバーの処理を直接呼んでも、先生には切り替えら�
   expect(await currentPerson()).toBe("nakamura");
 });
 
-test("生徒の試用では、話した言葉を相棒に覚えさせられない", async ({ page, request }) => {
+test("生徒の試用では、話した言葉をパートナーに覚えさせられない", async ({ page, request }) => {
   await enter(page);
-  await page.getByLabel("相棒に書く").fill("部活で新しい練習を考えた");
-  await page.getByRole("button", { name: "相棒へ送る" }).click();
+  await page.getByLabel("パートナーに書く").fill("部活で新しい練習を考えた");
+  await page.getByRole("button", { name: "パートナーへ送る" }).click();
   await expect(page.locator(".bubble.assistant").last()).toBeVisible();
   await expect(page.getByRole("button", { name: "これを覚えて" })).toHaveCount(0);
   const response = await page.request.post("/api/memory", { data: { action: "remember", text: "覚えて" } });

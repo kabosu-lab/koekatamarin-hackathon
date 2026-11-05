@@ -41,12 +41,12 @@ function listSpoken(db: DatabaseSync, personId: string): MemoryItem[] {
   return rows.map((row) => ({ id: row.id, kind: "spoken", text: row.text }));
 }
 
-/** 相棒が覚えていることの一覧。いつでも本人が見られる。 */
+/** パートナーが覚えていることの一覧。いつでも本人が見られる。 */
 export function listMemories(db: DatabaseSync, destination: PostDestination, personId: string): MemoryItem[] {
   return [...listSpoken(db, personId), ...listPublishedWords(db, destination, personId)];
 }
 
-/** 本人との話にだけ渡す記憶。この文章は本人の相棒との会話でしか使わない。 */
+/** 本人との話にだけ渡す記憶。この文章は本人のパートナーとの会話でしか使わない。 */
 export function memoryForPrompt(db: DatabaseSync, destination: PostDestination, personId: string): string {
   const spoken = listSpoken(db, personId).slice(0, SPOKEN_FOR_TALK).map((m) => m.text);
   const published = listPublishedWords(db, destination, personId).slice(-PUBLISHED_FOR_TALK).map((m) => m.text);

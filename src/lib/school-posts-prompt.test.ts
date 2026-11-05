@@ -4,7 +4,7 @@ import { createDummyTeams } from "./destination/dummy-teams";
 import { schoolPostsForPrompt } from "./school-posts-prompt";
 import { seedDatabase } from "./seed";
 
-describe("相棒に渡す校内の投稿", () => {
+describe("パートナーに渡す校内の投稿", () => {
   it("本人に見える他の人の投稿だけを、名前とチャネル付きで渡す", () => {
     const db = openDatabase(":memory:");
     seedDatabase(db);

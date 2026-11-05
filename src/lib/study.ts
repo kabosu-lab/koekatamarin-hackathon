@@ -15,7 +15,7 @@ const DEMO_COMPANIONS = ["aoki", "nakamura"];
 
 /** 残り時間はサーバーの時計で数える。端末の時計がずれていても、すぐ終わったりしない。 */
 export type StudySession = { id: string; remainingMs: number };
-/** 自習室に見せるもの。人数と相棒の印だけで、名前は出さない。 */
+/** 自習室に見せるもの。人数とパートナーの印だけで、名前は出さない。 */
 export type StudyPresence = { count: number; tokens: string[] };
 
 function japanParts(now: Date) {

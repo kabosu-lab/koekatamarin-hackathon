@@ -22,7 +22,7 @@ export const STYLE_QUESTION = {
 } as const;
 
 export const KIND_QUESTION = {
-  question: "どんな相棒と一緒にいたいですか？",
+  question: "どんなパートナーと一緒にいたいですか？",
   options: [
     { value: "creature", label: "生き物" },
     { value: "human", label: "人物" },
@@ -119,12 +119,12 @@ export function getAvatar(db: DatabaseSync, personId: string): AvatarView {
     // 読み取れなかったときは、コードで描いた絵が normal で出る
     const asEgg = stage === 0 || art.status === "pending";
     const pose = asEgg ? "egg" : "normal";
-    const label = asEgg ? "もうすぐ生まれそうな卵" : `${stage} 段階目の相棒`;
+    const label = asEgg ? "もうすぐ生まれそうな卵" : `${stage} 段階目のパートナー`;
     return { family: row.family, stage, image: `/api/avatar/art/${art.token}/${pose}?v=${row.family}-${stage}`, label };
   }
   const entry = catalogEntry(row.family);
   if (stage === 0) return { family: row.family, stage, image: companionImage(row.family, 1), label: "声のかたまりが生まれそうです" };
-  const label = stage <= 1 ? "声のかたまり" : `${entry?.name ?? "相棒"}（${stage} 段階目）`;
+  const label = stage <= 1 ? "声のかたまり" : `${entry?.name ?? "パートナー"}（${stage} 段階目）`;
   return { family: row.family, stage, image: companionImage(row.family, stage), label };
 }
 

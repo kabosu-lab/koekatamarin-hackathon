@@ -5,7 +5,7 @@ import { RoomBackdrop } from "./RoomBackdrop";
 import { ROOM_PLACES, type RoomMoment, roomTables } from "./scene";
 
 /**
- * 景色の中の机に、相棒が2人ずつ静かに座る。灯りが机から机へゆっくり渡っていき、部屋がひとつにつながって見える。
+ * 景色の中の机に、パートナーが2人ずつ静かに座る。灯りが机から机へゆっくり渡っていき、部屋がひとつにつながって見える。
  * 夜遅くは促さないよう、ハイタッチと応援をやめ、一人ずつ伸びをするだけにする。
  */
 export function RoomScene({ tokens, moment, season }: { tokens: string[]; moment: RoomMoment; season?: Season }) {

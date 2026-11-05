@@ -2,8 +2,8 @@ import { expect, type Page, test } from "@playwright/test";
 import { switchPerson } from "./helpers";
 
 async function say(page: Page, text: string) {
-  await page.getByLabel("相棒に書く").fill(text);
-  await page.getByRole("button", { name: "相棒へ送る" }).click();
+  await page.getByLabel("パートナーに書く").fill(text);
+  await page.getByRole("button", { name: "パートナーへ送る" }).click();
   await expect(page.getByRole("log").locator(".bubble.assistant").last()).toBeVisible();
 }
 
@@ -68,7 +68,7 @@ test("生徒の日記は担任にだけ届く", async ({ page }) => {
   await expect(page.getByRole("article", { name: "中村 結衣さんから" })).toContainText(words);
 });
 
-test("画面を行き来しても相棒との話は消えない", async ({ page }) => {
+test("画面を行き来してもパートナーとの話は消えない", async ({ page }) => {
   const words = `続きの話 ${test.info().testId}`;
   await page.goto("/");
   await say(page, words);

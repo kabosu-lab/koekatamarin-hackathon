@@ -14,7 +14,7 @@ export function TrialProvider({ trial, keepsWords = true, children }: { trial: b
   );
 }
 
-/** 話した言葉を相棒に覚えさせてよいか。生徒の試用では残さない。 */
+/** 話した言葉をパートナーに覚えさせてよいか。生徒の試用では残さない。 */
 export function useKeepsWords(): boolean {
   return useContext(KeepsWordsContext);
 }

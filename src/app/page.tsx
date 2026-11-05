@@ -61,7 +61,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
         viewer={{ name: viewer.name, label: viewer.label }}
         viewerId={viewer.id}
         promiseSeen={promiseSeen}
-        companionAlt={rewards ? `${viewer.name}さんの相棒` : undefined}
+        companionAlt={rewards ? `${viewer.name}さんのパートナー` : undefined}
         companionColor={look.color ?? companionColor(avatar.family)}
         companionShape={look.shape}
         companionImage={avatar.stage >= 2 ? avatar.image : undefined}

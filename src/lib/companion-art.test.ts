@@ -4,7 +4,7 @@ import { parseTraits } from "./avatar-draw";
 import { COMPANION_FAMILIES, companionColor, companionImage, companionSvg, lumpMarkup } from "./companion-art";
 import { LUMP_SHAPE_NAMES, parseLumpShape } from "./lump-shapes";
 
-describe("相棒の絵", () => {
+describe("パートナーの絵", () => {
   it("一覧のどの系統にも絵があり、動物は14種ある", () => {
     for (const entry of CATALOG) expect(companionSvg(entry.id, 2), entry.id).toContain("<svg");
     expect(COMPANION_FAMILIES).toHaveLength(14);

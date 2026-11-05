@@ -52,7 +52,7 @@ beforeEach(() => {
 });
 
 describe("決めるのは本人", () => {
-  it("相棒の提案だけでは残らない", async () => {
+  it("パートナーの提案だけでは残らない", async () => {
     const { client } = recording({ goal: "毎日歩く", doneGoalId: "" });
     const outcome = await handleGoalCheck(client, db, "saeki", { history: talk("毎日歩きたいな") });
     expect(outcome.body).toEqual({ suggestion: "毎日歩く", done: null });
@@ -135,7 +135,7 @@ describe("促し方", () => {
     expect(text).toContain("褒めるのは周りの人");
   });
 
-  it("相棒への話しかけのときに指示として渡り、できたものは渡らない", async () => {
+  it("パートナーへの話しかけのときに指示として渡り、できたものは渡らない", async () => {
     const goal = addGoal(db, "saeki", "動画を見る", NOW);
     addGoal(db, "saeki", "歩く", NOW);
     handleGoals(db, "saeki", { action: "done", id: goal?.id }, NOW);

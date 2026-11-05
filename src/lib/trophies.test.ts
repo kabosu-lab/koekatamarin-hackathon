@@ -83,7 +83,7 @@ describe("一覧", () => {
       "最初の一歩", "救世主", "恩返し", "頼れる背中", "キラーパス", "名アシスト", "橋をかける人", "リレーの走者",
       "言葉の種", "伝説の一言", "時を超える言葉", "名脇役", "ナイス失敗", "素直な達人", "頼る勇気", "三人寄れば", "満開の立役者", "同じ机の仲間",
       "有言実行", "逃げなかった人", "帰ってきた人", "職員室の生き字引", "コピー機の主", "出張報告の錬金術師", "会議より早い", "伝説の黒板消し",
-      "ありがとう長者", "歩く検索エンジン", "パスの魔術師", "名もなき英雄", "相棒のほうが緊張した", "聞き上手の相棒", "歩く独り言", "AI より人",
+      "ありがとう長者", "歩く検索エンジン", "パスの魔術師", "名もなき英雄", "パートナーのほうが緊張した", "聞き上手のパートナー", "歩く独り言", "AI より人",
       "ブーメラン", "師弟", "同じ悩み", "先生も生徒", "四季の人", "取り消しの美学", "言い直しの勇者", "桜の木の下で", "一周まわって",
     ]) {
       expect(names).toContain(name);
@@ -315,7 +315,7 @@ describe("ユーモア", () => {
     expect(earned("a")).toContain("thanks-millionaire");
   });
 
-  it("相棒のほうが緊張したは、自分だけの投稿では取れない", () => {
+  it("パートナーのほうが緊張したは、自分だけの投稿では取れない", () => {
     post("a", day("2026-10-01"), { scope: "self" });
     expect(earned("a")).not.toContain("first-post");
     post("a", day("2026-10-02"));
@@ -420,7 +420,7 @@ describe("操作の記録", () => {
     expect(earned("a")).toContain("undo-art");
   });
 
-  it("聞き上手の相棒は、下書きができず聞き返されたあとに投稿したとき", async () => {
+  it("聞き上手のパートナーは、下書きができず聞き返されたあとに投稿したとき", async () => {
     const notReady = JSON.stringify({ ready: false, text: "", channelId: "study", kind: "report", researchedWithAi: false });
     const outcome = await handleDraft(claudeWith(notReady), createDummyTeams(db), "a", { history: [{ role: "user", content: "うーん" }] }, db);
     expect(outcome.status).toBe(200);

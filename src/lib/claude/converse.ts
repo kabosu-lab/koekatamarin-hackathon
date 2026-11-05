@@ -7,7 +7,7 @@ const MAX_REPLY_TOKENS = 4000;
 export type ConverseResult = {
   reply: string;
   refused: boolean;
-  /** 投稿にできる要素がそろったと相棒が判断した */
+  /** 投稿にできる要素がそろったとパートナーが判断した */
   ready: boolean;
 };
 
@@ -17,7 +17,7 @@ export function splitReady(text: string): { reply: string; ready: boolean } {
   return { reply: text.split(READY_MARK).join("").trim(), ready };
 }
 
-/** 相棒との会話を1往復進める。履歴は呼び出し側が持つ。 */
+/** パートナーとの会話を1往復進める。履歴は呼び出し側が持つ。 */
 export async function converse(
   claude: ClaudeClient,
   history: ChatMessage[],

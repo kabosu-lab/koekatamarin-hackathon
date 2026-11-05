@@ -67,8 +67,8 @@ test("音が入っていれば、送ったときに音を作る", async ({ page 
 
 async function send(page: Page, words: string) {
   await page.goto("/");
-  await page.getByLabel("相棒に書く").fill(words);
-  await page.getByRole("button", { name: "相棒へ送る" }).click();
+  await page.getByLabel("パートナーに書く").fill(words);
+  await page.getByRole("button", { name: "パートナーへ送る" }).click();
   await expect(page.getByRole("log").locator(".bubble.assistant").last()).toBeVisible();
   await page.getByRole("button", { name: "とどける" }).click();
   await page.getByRole("button", { name: "本人として送る" }).click();
@@ -101,7 +101,7 @@ test("動きを減らす設定では、飛ばさない", async ({ page }) => {
   await expect(page.locator(".send-burst")).toBeHidden();
 });
 
-test("分身が今日のカードと校内チャネルでも見える", async ({ page }) => {
+test("パートナーが今日のカードと校内チャネルでも見える", async ({ page }) => {
   await page.goto("/today");
   await expect(page.locator(".today-card .avatar-image")).toBeVisible();
   await page.goto("/teams?channel=making");

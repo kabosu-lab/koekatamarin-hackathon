@@ -12,16 +12,16 @@ async function noOverflow(page: Page) {
 }
 
 async function say(page: Page, words: string) {
-  await page.getByLabel("相棒に書く").fill(words);
-  await page.getByRole("button", { name: "相棒へ送る" }).click();
+  await page.getByLabel("パートナーに書く").fill(words);
+  await page.getByRole("button", { name: "パートナーへ送る" }).click();
 }
 
-test("生徒はレトロから始まり、液晶の相棒、入力欄、真ん中のマイク、左右の丸ボタンが1画面にある", async ({ page }) => {
+test("生徒はレトロから始まり、液晶のパートナー、入力欄、真ん中のマイク、左右の丸ボタンが1画面にある", async ({ page }) => {
   await asPerson(page, "aoki");
   await page.goto("/");
   await expect(page.locator("html")).toHaveAttribute("data-theme", "retro");
-  await expect(page.getByRole("img", { name: "青木 ひよりさんの相棒" })).toBeVisible();
-  await expect(page.getByLabel("相棒に書く")).toBeVisible();
+  await expect(page.getByRole("img", { name: "青木 ひよりさんのパートナー" })).toBeVisible();
+  await expect(page.getByLabel("パートナーに書く")).toBeVisible();
   const mic = await page.getByRole("button", { name: "押し続けて話す" }).boundingBox();
   const send = await page.getByRole("button", { name: "とどける" }).boundingBox();
   const photo = await page.locator("label.device-side").boundingBox();
@@ -33,7 +33,7 @@ test("生徒はレトロから始まり、液晶の相棒、入力欄、真ん�
   await noOverflow(page);
 });
 
-test("書いて相棒と話し、とどけるで下書きを確かめる。Teams の見え方の中で直接直せる", async ({ page }) => {
+test("書いてパートナーと話し、とどけるで下書きを確かめる。Teams の見え方の中で直接直せる", async ({ page }) => {
   await asPerson(page, "aoki");
   await page.goto("/");
   await expect(page.locator(".promise")).toContainText("要点だけを相談室の先生に伝えます");

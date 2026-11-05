@@ -12,7 +12,7 @@ import "./room.css";
 export const metadata: Metadata = { title: "自習室｜こえかた" };
 export const dynamic = "force-dynamic";
 
-/** 自習室の画面。人数と相棒の情報だけで動き、操作は曲の切り替えだけ。Teams のタブには /tab を置く。配信もない。 */
+/** 自習室の画面。人数とパートナーの情報だけで動き、操作は曲の切り替えだけ。Teams のタブには /tab を置く。配信もない。 */
 export default async function StudyRoomPage({ searchParams }: { searchParams: Promise<{ time?: string | string[] }> }) {
   const { time: requested } = await searchParams;
   const db = getDatabase();

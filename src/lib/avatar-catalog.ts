@@ -18,7 +18,7 @@ export type CatalogEntry = {
 const CREATURE_STAGES = 3;
 const HUMAN_STAGES = 5;
 
-/** 相棒の一覧。絵は companion-art.ts がコードで描く。段階1までは声のかたまりで、育つと動物になる。 */
+/** パートナーの一覧。絵は companion-art.ts がコードで描く。段階1までは声のかたまりで、育つと動物になる。 */
 export const CATALOG: readonly CatalogEntry[] = [
   { id: "dolphin", name: "イルカ", group: "creature", tone: "blue", mood: "人なつこい、水色、つなぐ、軽やか", color: "#7fcfc9", stages: CREATURE_STAGES, poses: [] },
   { id: "cloud", name: "クジラ", group: "creature", tone: "blue", mood: "ゆったり、やさしい、水色、ほっとする、聞き上手", color: "#7fb6d9", stages: CREATURE_STAGES, poses: [] },

@@ -1141,7 +1141,7 @@ main a {
   animation: burst-screen var(--end) linear forwards;
 }
 
-/* かたまりは分身の頭の上で育つ */
+/* かたまりはパートナーの頭の上で育つ */
 .burst-stage {
   position: absolute;
   bottom: 42%;
@@ -1761,7 +1761,7 @@ h2 {
   }
 }
 
-/* 自習室：分身だけが動く。動きは transform だけ */
+/* 自習室：パートナーだけが動く。動きは transform だけ */
 .study-room {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(7rem, 1fr));
@@ -1814,7 +1814,7 @@ h2 {
   animation-name: pose-stretch;
 }
 
-/* 隣がいない分身は、ハイタッチも応援もしない */
+/* 隣がいないパートナーは、ハイタッチも応援もしない */
 .study-buddy.solo .pose.study {
   animation-name: pose-solo-study;
 }
@@ -1958,7 +1958,7 @@ h2 {
   cursor: pointer;
 }
 
-/* ---- 分身とかたまりが主役。太い線、大きな色面、大きな文字 ---- */
+/* ---- パートナーとかたまりが主役。太い線、大きな色面、大きな文字 ---- */
 .home > h1,
 .home > header h1,
 .chie > h1 {
@@ -2070,7 +2070,7 @@ h2 {
   border-radius: 1.5rem;
 }
 
-/* 話す画面：大胆な単色の上に、分身がいる */
+/* 話す画面：大胆な単色の上に、パートナーがいる */
 body:has(.stage-home) {
   background: var(--stage);
 }
@@ -2581,7 +2581,7 @@ body:has(.stage-home) {
   font-weight: 800;
 }
 
-/* 分身を隠す人の画面。自習室は分身そのものの場所なので、そのまま */
+/* パートナーを隠す人の画面。自習室はパートナーそのものの場所なので、そのまま */
 html[data-avatar="hide"] .avatar-image,
 html[data-avatar="hide"] .speaker,
 html[data-avatar="hide"] .burst-speaker {

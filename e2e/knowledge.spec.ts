@@ -20,7 +20,7 @@ test("残す、確認する、広がる、レビューする、直す、探す",
   await become(page, AOKI);
   await page.goto("/teams?channel=study");
   await page.locator("#post-post-study-1").getByRole("link", { name: "知恵に残す" }).click();
-  await page.getByRole("button", { name: "相棒に下書きを作ってもらう" }).click();
+  await page.getByRole("button", { name: "パートナーに下書きを作ってもらう" }).click();
   await page.getByLabel("題").fill("過去問の進め方を残す");
   await page.getByLabel("本文").fill("過去問はネットワークが最後まで苦手でも、半分合うなら順調（野田先生）。");
   await page.getByRole("button", { name: "本人たちに確認してもらう" }).click();
@@ -161,8 +161,8 @@ test("話す画面では、話したあとに押したときだけ探す", async
   });
   await become(page, FUJIMOTO);
   await expect(page.getByRole("button", { name: "校内の知恵を探す" })).toHaveCount(0);
-  await page.getByLabel("相棒に書く").fill("小テストを作りたい");
-  await page.getByRole("button", { name: "相棒へ送る" }).click();
+  await page.getByLabel("パートナーに書く").fill("小テストを作りたい");
+  await page.getByRole("button", { name: "パートナーへ送る" }).click();
   await expect(page.getByRole("button", { name: "校内の知恵を探す" })).toBeEnabled();
   expect(calls).toBe(0);
 

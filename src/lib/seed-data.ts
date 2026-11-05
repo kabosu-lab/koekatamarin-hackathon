@@ -107,7 +107,7 @@ export const people: SeedPerson[] = [
   },
 ];
 
-/** 最初から分身を持っている人。佐伯先生はデモで最初の問いかけから始める。 */
+/** 最初からパートナーを持っている人。佐伯先生はデモで最初の問いかけから始める。 */
 export const seedAvatars: Record<string, string> = {
   ogawara: "elder",
   kawamura: "coat",

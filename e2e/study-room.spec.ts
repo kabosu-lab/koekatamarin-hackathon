@@ -20,7 +20,7 @@ for (const [time, place, label] of SCENES) {
     await expect(room).toHaveText(/^いま \d+ 人が勉強しています$/);
     await expect(room.locator(".room-scene")).toHaveAttribute("data-place", place);
     await expect(room.getByRole("img", { name: label })).toBeVisible();
-    await expect(room.getByRole("img", { name: "勉強中の相棒" }).first()).toBeVisible();
+    await expect(room.getByRole("img", { name: "勉強中のパートナー" }).first()).toBeVisible();
     await expect(room.locator("button, a, input, textarea, video, audio")).toHaveCount(0);
     // 画面の外枠には、デモ用の使う人の切り替えがあるので、自習室の中だけを見る
     await expect(room.getByText(/順位|ランキング|青木|中村/)).toHaveCount(0);
@@ -34,7 +34,7 @@ for (const [width, height, name] of [
   [768, 1024, "iPad の縦"],
   [1024, 768, "iPad の横"],
 ] as const) {
-  test(`${name}（${width}px）で、どの景色も横にはみ出さず、相棒が机ごと収まる`, async ({ page }, info) => {
+  test(`${name}（${width}px）で、どの景色も横にはみ出さず、パートナーが机ごと収まる`, async ({ page }, info) => {
     await page.setViewportSize({ width, height });
     for (const [time] of SCENES) {
       await page.goto(`/study/room?time=${time}`);
@@ -51,7 +51,7 @@ for (const [width, height, name] of [
         expect(box!.x).toBeGreaterThanOrEqual(scene!.x);
         expect(box!.x + box!.width).toBeLessThanOrEqual(scene!.x + scene!.width + 0.5);
       }
-      await expect(page.getByRole("img", { name: "勉強中の相棒" }).first()).toBeVisible();
+      await expect(page.getByRole("img", { name: "勉強中のパートナー" }).first()).toBeVisible();
       await page.screenshot({ path: info.outputPath(`${width}-${time}.png`), fullPage: true });
     }
   });
@@ -82,7 +82,7 @@ test("動きは transform と opacity だけで、ゆったりしている", asy
   }
 });
 
-test("動きを減らす設定では、景色も相棒もすべて止まる", async ({ page }) => {
+test("動きを減らす設定では、景色もパートナーもすべて止まる", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   for (const [time] of SCENES) {
     await page.goto(`/study/room?time=${time}`);

@@ -35,7 +35,7 @@ describe("時間と景色", () => {
 });
 
 describe("机", () => {
-  it("2人ずつ座り、端数の相棒にも机がある", () => {
+  it("2人ずつ座り、端数のパートナーにも机がある", () => {
     expect(roomTables([])).toEqual([]);
     expect(roomTables(["a"])).toEqual([["a"]]);
     expect(roomTables(["a", "b", "c"])).toEqual([["a", "b"], ["c"]]);

@@ -36,7 +36,7 @@ const SCOPE_LABEL = {
 function Author({ name, label, time, image, title }: { name: string; label: string; time: string; image: string; title?: string }) {
   return (
     <p className="author">
-      <Avatar image={image} alt={`${name}さんの相棒`} size={28} />
+      <Avatar image={image} alt={`${name}さんのパートナー`} size={28} />
       <strong>{name}</strong> <PersonTitle title={title} /> <span>{label}</span> <time dateTime={time}>{timeFormat.format(new Date(time))}</time>
     </p>
   );
@@ -74,7 +74,7 @@ function Post({
       {post.scope !== "everyone" && <p className="ai-mark">{SCOPE_LABEL[post.scope]}</p>}
 
       {post.needsLook && !post.sharedToStaff && (
-        <p className="needs-look">相棒より：言い方が少し気になります。人の目で確かめてください（判断するのは先生です）</p>
+        <p className="needs-look">パートナーより：言い方が少し気になります。人の目で確かめてください（判断するのは先生です）</p>
       )}
       {post.sharedToStaff && <p className="needs-look">教職員のチャネルで共有済みです</p>}
       {canShare && post.scope === "everyone" && !post.sharedToStaff && (

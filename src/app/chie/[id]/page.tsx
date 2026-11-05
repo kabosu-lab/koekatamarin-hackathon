@@ -28,7 +28,7 @@ export default async function KnowledgePage({
   const db = getDatabase();
   const item = getKnowledge(db, viewer.id, id);
   if (!item) notFound();
-  // トロフィーのための操作の記録。探して開いたことと、相棒が「聞いてみる？」と案内した相手だけを残す
+  // トロフィーのための操作の記録。探して開いたことと、パートナーが「聞いてみる？」と案内した相手だけを残す
   const now = new Date();
   if (from === "find") noteFoundKnowledge(db, viewer.id, item.id, now);
   if (item.status === "shared") noteAskSuggested(db, viewer.id, item.askableIds.filter((personId) => personId !== viewer.id), now);

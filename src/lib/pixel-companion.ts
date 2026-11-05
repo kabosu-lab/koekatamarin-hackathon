@@ -1,5 +1,5 @@
 /**
- * レトロの相棒のドット絵。すべてコードの中の文字で描く（画像ファイルを使わない）。
+ * レトロのパートナーのドット絵。すべてコードの中の文字で描く（画像ファイルを使わない）。
  * 「.」は透明、「#」は濃い、「+」は中間、「o」は明るい色。左半分だけ書いて左右対称に広げる。
  * たまご→こども→おとなの段階と、おとなの分岐は、この表を足すだけで差し替えられる。
  */
@@ -15,7 +15,7 @@ function mirrored(left: readonly string[]): Sprite {
 export type PixelForms = {
   egg: Sprite;
   child: Sprite;
-  /** 分岐の名前（今は相棒の系統）ごとの姿。ないものは default になる */
+  /** 分岐の名前（今はパートナーの系統）ごとの姿。ないものは default になる */
   adult: Record<string, Sprite> & { default: Sprite };
 };
 

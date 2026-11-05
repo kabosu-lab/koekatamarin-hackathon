@@ -1,4 +1,4 @@
-// 本物の Claude で相棒の話し方を試す入口。料金がかかるので、テストからは呼ばない。
+// 本物の Claude でパートナーの話し方を試す入口。料金がかかるので、テストからは呼ばない。
 //   npm run try:voice                   最初の一言3つを試す
 //   npm run try:voice -- "試したい言葉"  その言葉も足して試す
 import { createClaude } from "../src/lib/claude/index";
@@ -14,7 +14,7 @@ async function main() {
 
   for (const line of [...openingLines, ...process.argv.slice(2)]) {
     const { reply, refused } = await converse(claude, [], line);
-    console.log(`\n話す：${line}\n相棒：${reply}${refused ? "（安全のため断られました）" : ""}`);
+    console.log(`\n話す：${line}\nパートナー：${reply}${refused ? "（安全のため断られました）" : ""}`);
   }
 }
 
