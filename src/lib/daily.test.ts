@@ -273,4 +273,44 @@ describe("夕方のまとめの係", () => {
     expect(outcome.status).toBe(409);
     expect(summarize).not.toHaveBeenCalled();
   });
+
+  it("作っている間に項目が共有されたら、置き換えずに残す", async () => {
+    post();
+    const first = await make();
+    const summarize = vi.fn(async () => {
+      handleCheck(db, "saeki", { itemId: first.items[0].id, checked: true });
+      return { items: ["新しい項目"], usage: null };
+    });
+    const outcome = await handleEvening(scripted, { summarize }, db, "saeki", NOW);
+    expect(outcome.status).toBe(409);
+    const kept = getReport(db, "saeki", DATE);
+    expect(kept?.id).toBe(first.id);
+    expect(kept?.items.find((item) => item.id === first.items[0].id)?.checked).toBe(true);
+  });
+
+  it("作っている間に一言が届いたら、置き換えずに残す", async () => {
+    post();
+    const first = await make();
+    const summarize = vi.fn(async () => {
+      db.prepare("INSERT INTO report_responses (id, report_id, from_person_id, text, created_at) VALUES ('late', ?, 'fujimoto', '返事', ?)").run(first.id, NOW.toISOString());
+      return { items: ["新しい項目"], usage: null };
+    });
+    const outcome = await handleEvening(scripted, { summarize }, db, "saeki", NOW);
+    expect(outcome.status).toBe(409);
+    expect(getReport(db, "saeki", DATE)?.id).toBe(first.id);
+  });
+
+  it("手動のまとめでも、作っている間に共有されたら置き換えない", async () => {
+    const first = await make();
+    const sharing: ClaudeClient = {
+      mode: "real",
+      complete: async () => {
+        handleCheck(db, "saeki", { itemId: first.items[0].id, checked: true });
+        return { text: JSON.stringify({ items: ["新しい項目"] }), refused: false };
+      },
+    };
+    const outcome = await handleMake(sharing, db, "saeki", { conversation: talk }, NOW);
+    expect(outcome.status).toBe(409);
+    expect(getReport(db, "saeki", DATE)?.id).toBe(first.id);
+  });
 });

@@ -168,28 +168,36 @@ function cannotRemake(existing: DailyReport | null): Outcome | null {
   return null;
 }
 
-/** 初めはどれもチェックなしで残す。 */
-function saveReport(
-  db: DatabaseSync,
-  personId: string,
-  date: string,
-  items: string[],
-  existing: DailyReport | null,
-  madeBy: MadeBy,
-  now: Date,
-): DailyReport | null {
-  if (existing) db.prepare("DELETE FROM daily_reports WHERE id = ?").run(existing.id);
-  const reportId = randomUUID();
-  db.prepare("INSERT INTO daily_reports (id, person_id, date, created_at, made_by) VALUES (?, ?, ?, ?, ?)").run(
-    reportId,
-    personId,
-    date,
-    now.toISOString(),
-    madeBy,
-  );
-  const insert = db.prepare("INSERT INTO report_items (id, report_id, position, text) VALUES (?, ?, ?, ?)");
-  items.forEach((text, position) => insert.run(randomUUID(), reportId, position, text));
-  return getReport(db, personId, date);
+/**
+ * 初めはどれもチェックなしで残す。生成を待つ間に共有や一言が届いていることがあるので、
+ * 置き換える直前に確かめ直し、確認と置き換えを1つのトランザクションで行う。
+ */
+function saveReport(db: DatabaseSync, personId: string, date: string, items: string[], madeBy: MadeBy, now: Date): Outcome {
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    const current = getReport(db, personId, date);
+    const blocked = cannotRemake(current);
+    if (blocked) {
+      db.exec("ROLLBACK");
+      return blocked;
+    }
+    if (current) db.prepare("DELETE FROM daily_reports WHERE id = ?").run(current.id);
+    const reportId = randomUUID();
+    db.prepare("INSERT INTO daily_reports (id, person_id, date, created_at, made_by) VALUES (?, ?, ?, ?, ?)").run(
+      reportId,
+      personId,
+      date,
+      now.toISOString(),
+      madeBy,
+    );
+    const insert = db.prepare("INSERT INTO report_items (id, report_id, position, text) VALUES (?, ?, ?, ?)");
+    items.forEach((text, position) => insert.run(randomUUID(), reportId, position, text));
+    db.exec("COMMIT");
+  } catch (error) {
+    db.exec("ROLLBACK");
+    throw error;
+  }
+  return { status: 200, body: { report: getReport(db, personId, date) } };
 }
 
 /** 今日のまとめを作る（手動のボタン）。 */
@@ -218,7 +226,11 @@ export async function handleMake(
     return { status: 503, body: { error: "相棒につながりませんでした" } };
   }
   if (items.length === 0) return { status: 200, body: { report: existing } };
-  return { status: 200, body: { report: saveReport(db, personId, date, items, existing, "manual", now) } };
+  return saveReport(db, personId, date, items, "manual", now);
+}
+
+function withMadeBy(outcome: Outcome, madeBy: MadeBy): Outcome {
+  return outcome.status === 200 ? { status: 200, body: { ...outcome.body, madeBy } } : outcome;
 }
 
 /**
@@ -244,7 +256,7 @@ export async function handleEvening(
     try {
       const { items } = await agent.summarize(activity);
       if (items.length === 0) return { status: 200, body: { report: existing, madeBy: null } };
-      return { status: 200, body: { report: saveReport(db, personId, date, items, existing, "agent", now), madeBy: "agent" } };
+      return withMadeBy(saveReport(db, personId, date, items, "agent", now), "agent");
     } catch (error) {
       console.error("夕方の係が使えませんでした", error instanceof Error ? error.name : "unknown");
     }
@@ -258,7 +270,7 @@ export async function handleEvening(
     return { status: 503, body: { error: "相棒につながりませんでした" } };
   }
   if (items.length === 0) return { status: 200, body: { report: existing, madeBy: null } };
-  return { status: 200, body: { report: saveReport(db, personId, date, items, existing, "manual", now), madeBy: "manual" } };
+  return withMadeBy(saveReport(db, personId, date, items, "manual", now), "manual");
 }
 
 /** 項目ごとのチェック。本人だけが変えられ、外せば届かなくなる。 */
