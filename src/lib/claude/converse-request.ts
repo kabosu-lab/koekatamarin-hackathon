@@ -5,7 +5,7 @@ export const MAX_TEXT_LENGTH = 2000;
 export const MAX_HISTORY = 40;
 
 export type ConverseOutcome =
-  | { status: 200; body: { reply: string; mode: ClaudeClient["mode"] } }
+  | { status: 200; body: { reply: string; mode: ClaudeClient["mode"]; ready: boolean } }
   | { status: 400 | 503; body: { error: string } };
 
 export function isMessage(value: unknown): value is ChatMessage {
@@ -36,8 +36,8 @@ export async function handleConverse(
   if (!parsed) return { status: 400, body: { error: "言葉か会話の記録が正しくありません" } };
 
   try {
-    const { reply } = await converse(claude, parsed.history, parsed.text, memory);
-    return { status: 200, body: { reply, mode: claude.mode } };
+    const { reply, ready } = await converse(claude, parsed.history, parsed.text, memory);
+    return { status: 200, body: { reply, mode: claude.mode, ready } };
   } catch (error) {
     console.error("相棒の呼び出しに失敗", error instanceof Error ? error.name : "unknown");
     return { status: 503, body: { error: "相棒につながりませんでした" } };

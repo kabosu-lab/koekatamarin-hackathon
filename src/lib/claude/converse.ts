@@ -1,5 +1,5 @@
 import { isTrialMode } from "../trial";
-import { companionSystemPrompt, refusalReply, trialCompanionSystemPrompt } from "./persona";
+import { companionSystemPrompt, READY_MARK, refusalReply, trialCompanionSystemPrompt } from "./persona";
 import type { ChatMessage, ClaudeClient } from "./types";
 
 const MAX_REPLY_TOKENS = 4000;
@@ -7,7 +7,15 @@ const MAX_REPLY_TOKENS = 4000;
 export type ConverseResult = {
   reply: string;
   refused: boolean;
+  /** 投稿にできる要素がそろったと相棒が判断した */
+  ready: boolean;
 };
+
+/** 返事から印を取り除き、印があったかを返す。印は返事のどこにあっても画面に出さない */
+export function splitReady(text: string): { reply: string; ready: boolean } {
+  const ready = text.includes(READY_MARK);
+  return { reply: text.split(READY_MARK).join("").trim(), ready };
+}
 
 /** 相棒との会話を1往復進める。履歴は呼び出し側が持つ。 */
 export async function converse(
@@ -24,8 +32,9 @@ export async function converse(
     maxTokens: MAX_REPLY_TOKENS,
   });
 
-  if (refused || text.trim() === "") {
-    return { reply: refusalReply, refused };
+  const { reply, ready } = splitReady(text);
+  if (refused || reply === "") {
+    return { reply: refusalReply, refused, ready: false };
   }
-  return { reply: text, refused: false };
+  return { reply, refused: false, ready };
 }

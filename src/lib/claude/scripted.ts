@@ -1,4 +1,4 @@
-import { openingLines } from "./persona";
+import { openingLines, READY_MARK } from "./persona";
 import type { ClaudeClient } from "./types";
 
 const fallbackReply = "なるほど、聞かせてくれてありがとう。もう少し詳しく教えてもらえますか？";
@@ -15,9 +15,10 @@ function storyReply(spoken: string, talk: string): string | null {
   if (/勉強会|ゼミ/.test(talk)) {
     if (!/\d+時|\d+日|曜/.test(talk)) return "ええやん、告知にしよ。いつやるん？";
     if (!/室|館|オンライン/.test(talk)) return "どこでやるん？";
-    return "そろったね。とどけるで確かめて、みんなに知らせよう。";
+    return `そろったね。とどけるで確かめて、みんなに知らせよう。\n${READY_MARK}`;
   }
-  if (/声を小さく/.test(spoken)) return "それ、コツかもしれんね。ほかの先生にも届けてみる？";
+  // 何があったか（静かになった）、どうしたか（声を小さく）がそろったので、とどけるを光らせる
+  if (/声を小さく/.test(spoken)) return `それ、コツかもしれんね。ほかの先生にも届けてみる？\n${READY_MARK}`;
   if (/静かになった/.test(spoken)) return "へえ、急に静かに。その少し前、何してたん？";
   return null;
 }

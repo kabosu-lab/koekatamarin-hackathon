@@ -23,6 +23,8 @@ test("見どころ：話す、問い返しで気づく、本人が確かめて�
   await input.fill("今日の授業、急に静かになった瞬間があって");
   await input.press("Enter");
   await expect(assistant.last()).toContainText("その少し前、何してたん");
+  // 文字数ではなく、相棒が要素がそろったと判断したときだけ光る
+  await expect(deliver).not.toHaveAttribute("data-ready", "true");
 
   await input.fill(`声を小さくしたんだ ${id}`);
   await input.press("Enter");
@@ -59,7 +61,11 @@ test("動きを減らす設定では、とどけるを動かさず色だけで�
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/");
   const input = page.getByLabel("相棒に書く");
-  await input.fill("今日の授業、急に静かになった瞬間があって、気になっている");
+  // 台本では、何があったか（静かになった）とどうしたか（声を小さく）がそろうと光る
+  await input.fill("今日の授業、急に静かになった瞬間があって");
+  await input.press("Enter");
+  await expect(page.getByRole("log").locator(".bubble.assistant:not(.waiting)")).toHaveCount(1);
+  await input.fill("声を小さくしたら、みんな聞いてくれた");
   await input.press("Enter");
   const face = page.locator('.device-side[data-ready="true"] .device-side-face');
   await expect(face).toBeVisible();

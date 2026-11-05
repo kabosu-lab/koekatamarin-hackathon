@@ -31,7 +31,6 @@ import type { TeamsDelivery } from "@/lib/destination/teams-bridge";
 
 const MAX_TEXT_LENGTH = 2000;
 /** 本人がこれだけ話したら「とどける」を目立たせる。話の中身は見ない */
-const READY_TO_DELIVER_CHARS = 20;
 /** これより短い押し方は触っただけとして、聞いた言葉を送らない */
 const MIN_HOLD_MS = 300;
 /** 押したまま、これだけ上へ動かすと固定になる */
@@ -129,6 +128,8 @@ export function Talk({
   const connectDone = useRef(false);
   // 送ったあとに話した分だけで、次を目立たせるか決める
   const [deliveredAt, setDeliveredAt] = useState(0);
+  /** 相棒が「投稿にできる要素がそろった」と判断した時点の会話の長さ */
+  const [readyAt, setReadyAt] = useState<number | null>(null);
   const [sentTo, setSentTo] = useState<{ channel: ChannelView; postId: string; isPublic: boolean; teams?: TeamsDelivery } | null>(null);
   const stopRef = useRef<(() => void) | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
@@ -206,9 +207,10 @@ export function Talk({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ history, text }),
       });
-      const { reply, mode, safety: notice } = (await response.json().catch(() => ({}))) as {
+      const { reply, mode, ready, safety: notice } = (await response.json().catch(() => ({}))) as {
         reply?: string;
         mode?: string;
+        ready?: boolean;
         safety?: SafetyNotice;
       };
       // 返事が作れなくても、相談室に伝えたことは必ず本人に知らせる
@@ -221,6 +223,8 @@ export function Talk({
       ];
       setMessages(updated);
       setScripted(mode === "scripted");
+      // 相棒が「投稿にできる要素がそろった」と判断したら、とどけるを光らせる。命や安全の案内のときは光らせない
+      if (ready === true && !notice) setReadyAt(updated.length);
       // 命や安全の案内が出ているときは、人の紹介をしない
       if (notice) connectDone.current = true;
       void checkConnect(updated);
@@ -515,11 +519,8 @@ export function Talk({
 
   const canCompose = messages.some((message) => message.role === "user");
   const hasTyped = draft.trim() !== "";
-  const spokenChars = messages
-    .slice(deliveredAt)
-    .filter((message) => message.role === "user")
-    .reduce((total, message) => total + message.content.length, 0);
-  const readyToDeliver = !hasTyped && !listening && !sending && !preparing && spokenChars >= READY_TO_DELIVER_CHARS;
+  // 前に届けたあとで、相棒がそろったと判断したときだけ光る
+  const readyToDeliver = !hasTyped && !listening && !sending && !preparing && readyAt !== null && readyAt > deliveredAt && readyAt <= messages.length;
   const lastUserIndex = messages.map((message) => message.role).lastIndexOf("user");
   const replyCount = messages.filter((message) => message.role === "assistant").length;
 

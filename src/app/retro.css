@@ -583,7 +583,8 @@ html[data-theme="retro"] .talk .device-side[data-mode="send"] .device-side-face 
 }
 
 /* 届けられそうなとき。色と文字で伝え、動きは穏やかに。押さなくても責めない */
-html[data-theme="retro"] .talk .device-side[data-ready="true"] .device-side-face {
+.talk .device-side[data-ready="true"] .device-side-face,
+.talk button[data-ready="true"] {
   background: var(--accent);
   color: var(--on-accent);
 }
@@ -595,7 +596,8 @@ html[data-theme="retro"] .talk .device-side[data-ready="true"] .device-side-face
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  html[data-theme="retro"] .talk .device-side[data-ready="true"] .device-side-face {
+  .talk .device-side[data-ready="true"] .device-side-face,
+  .talk button[data-ready="true"]:not(.device-side) {
     animation: ready-breathe 2.4s ease-in-out infinite;
   }
 }

@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import { createAnthropicClaude, MODEL, type MessagesApi } from "./anthropic";
-import { converse } from "./converse";
+import { converse, splitReady } from "./converse";
 import { createClaude } from "./index";
-import { companionSystemPrompt, openingLines, refusalReply, trialCompanionSystemPrompt } from "./persona";
+import { companionSystemPrompt, openingLines, READY_MARK, refusalReply, trialCompanionSystemPrompt } from "./persona";
 import { createScriptedClaude } from "./scripted";
 
 function stubApi(response: { content: unknown[]; stop_reason: string }) {
@@ -90,14 +90,14 @@ describe("converse", () => {
       [],
       "……",
     );
-    expect(refused).toEqual({ reply: refusalReply, refused: true });
+    expect(refused).toEqual({ reply: refusalReply, refused: true, ready: false });
 
     const empty = await converse(
       { mode: "real", complete: async () => ({ text: "  ", refused: false }) },
       [],
       "……",
     );
-    expect(empty).toEqual({ reply: refusalReply, refused: false });
+    expect(empty).toEqual({ reply: refusalReply, refused: false, ready: false });
   });
 });
 
@@ -128,5 +128,33 @@ describe("最初の一言", () => {
     expect(companionSystemPrompt).toContain("同じトーンで返す");
     expect(companionSystemPrompt).toContain("敬語に戻さず");
     expect(companionSystemPrompt).toContain("相手が使っていない方言は使わない");
+  });
+});
+
+describe("とどけるを光らせる印", () => {
+  it("印を返事から取り除き、あったかどうかを返す", () => {
+    expect(splitReady(`いいね、それ届けてみよう。
+${READY_MARK}`)).toEqual({ reply: "いいね、それ届けてみよう。", ready: true });
+    expect(splitReady("もう少し聞かせて。")).toEqual({ reply: "もう少し聞かせて。", ready: false });
+    expect(splitReady(READY_MARK).reply).toBe("");
+  });
+
+  it("相棒の指示に印の決まりがあり、試用の指示にも残る", () => {
+    expect(companionSystemPrompt).toContain(READY_MARK);
+    expect(trialCompanionSystemPrompt).toContain(READY_MARK);
+  });
+
+  it("印だけの返事は、答えられなかったときの言葉にして、光らせない", async () => {
+    const claude = { mode: "real" as const, complete: async () => ({ text: READY_MARK, refused: false }) };
+    expect(await converse(claude, [], "こんにちは")).toEqual({ reply: refusalReply, refused: false, ready: false });
+  });
+
+  it("台本でも、要素がそろったら光り、そろう前は光らない", async () => {
+    const claude = createScriptedClaude();
+    expect((await converse(claude, [], "今日の授業、急に静かになった瞬間があって")).ready).toBe(false);
+    const history = [{ role: "user" as const, content: "今日の授業、急に静かになった瞬間があって" }, { role: "assistant" as const, content: "へえ" }];
+    const result = await converse(claude, history, "声を小さくしたんだ");
+    expect(result.ready).toBe(true);
+    expect(result.reply).not.toContain(READY_MARK);
   });
 });
