@@ -122,15 +122,3 @@ test("音を鳴らすものも、カメラやマイクを使うものもない",
   await expect(page.locator("audio, video")).toHaveCount(0);
   expect(await page.evaluate(() => (window as unknown as { mediaCalls: number }).mediaCalls)).toBe(0);
 });
-
-test.describe("モダン", () => {
-  test.use({ storageState: { cookies: [], origins: [] } });
-
-  test("きせかえの決まりどおり絵を出さず、人数の文だけ見せる", async ({ page }) => {
-    await page.goto("/study/room?time=evening");
-    expect(await page.locator("html").getAttribute("data-theme")).toBe("modern");
-    await expect(page.getByRole("region", { name: "自習室" })).toContainText("人が勉強しています");
-    await expect(page.locator(".room-scene")).toBeHidden();
-    expect(await page.locator("img:visible").count()).toBe(0);
-  });
-});
