@@ -21,7 +21,6 @@ import { showsRewards } from "@/lib/rewards-view";
 import { pixelStageFor } from "@/lib/pixel-companion";
 import { setAppearance } from "./person-actions";
 import { PixelCompanion } from "./PixelCompanion";
-import { RetroHome } from "./RetroHome";
 import { Talk } from "./Talk";
 
 export const dynamic = "force-dynamic";
@@ -81,13 +80,25 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
   const question = goalQuestion(db, viewer.id, new Date()) ?? dailyQuestion(new Date());
   const pixelStage = pixelStageFor(avatar.family, avatar.stage);
 
-  // レトロの最初の画面。名指しの相手や頑張りの報告から来たときは、そのまま話す画面へ進む
-  if (isRetro && ask === undefined && goal === undefined && talk === undefined) {
+  // レトロは液晶とホイールの配置。ほかの画面へはスワイプと下のナビで移る
+  if (isRetro) {
     return (
-      <>
+      <main className="retro-home">
+        <h1 className="device-logo">こえかた</h1>
         {rewards && <RibbonMoment key={`ribbon-${viewer.id}`} ribbons={listNewRibbons(db, viewer.id)} />}
-        <RetroHome message={question} showCompanion={rewards} stage={pixelStage} branch={avatar.family} name={viewer.name} quickLinks={quickLinks} />
-      </>
+        {quickLinks}
+        <Talk
+          key={viewer.id}
+          device
+          viewer={{ name: viewer.name, label: viewer.label }}
+          viewerId={viewer.id}
+          promiseSeen={promiseSeen}
+          companion={rewards ? <PixelCompanion stage={pixelStage} branch={avatar.family} alt={`${viewer.name}さんの相棒`} size={200} /> : undefined}
+          question={talk === "send" ? SEND_PROMPT : question}
+          initialGoal={doneGoal?.status === "done" ? { id: doneGoal.id, text: doneGoal.text } : null}
+          initialAsk={askPerson ? { id: askPerson.id, name: askPerson.name } : null}
+        />
+      </main>
     );
   }
 
@@ -123,13 +134,12 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
       </header>
       {/* Claude との話は本人だけのもの。人物を切り替えたら会話を持ち越さない */}
       {quickLinks}
-      {isRetro && rewards && <PixelCompanion stage={pixelStage} branch={avatar.family} alt={`${viewer.name}さんの相棒`} size={120} />}
       <Talk
         key={viewer.id}
         viewer={{ name: viewer.name, label: viewer.label }}
         viewerId={viewer.id}
         promiseSeen={promiseSeen}
-        avatarImage={rewards && !isRetro ? avatar.image : undefined}
+        avatarImage={rewards ? avatar.image : undefined}
         question={talk === "send" ? SEND_PROMPT : question}
         initialGoal={doneGoal?.status === "done" ? { id: doneGoal.id, text: doneGoal.text } : null}
         initialAsk={askPerson ? { id: askPerson.id, name: askPerson.name } : null}

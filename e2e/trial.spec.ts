@@ -238,7 +238,6 @@ test.describe("見た目を選んでいない生徒", () => {
     await expect(page.locator(".retro-home")).toBeVisible();
     await expect(page.getByText(NOTICE)).toBeVisible();
     await expect(page.getByRole("button", { name: "改善点を送る" })).toBeVisible();
-    await page.getByRole("link", { name: "はなす" }).click();
     await expect(page.locator(".promise")).toContainText("相談室にも先生にも届きません");
     await expect(page.getByRole("button", { name: "改善点を送る" })).toBeVisible();
   });

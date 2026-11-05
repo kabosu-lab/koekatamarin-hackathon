@@ -85,6 +85,18 @@ export function playRibbonSound(): void {
   }
 }
 
+/** ホイールを回したときの小さな音。 */
+export function playWheelTick(): void {
+  if (document.documentElement.dataset.sound !== "on") return;
+  try {
+    const { audio, out } = setup();
+    void audio.resume();
+    schedulePop(audio, out, audio.currentTime + 0.005, 96, 0.08);
+  } catch {
+    // 音が出せなくても、操作には関係ない
+  }
+}
+
 export function playReachedSound(): void {
   if (document.documentElement.dataset.sound !== "on") return;
   try {

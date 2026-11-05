@@ -52,6 +52,9 @@ html[data-theme="modern"] {
 /* きせかえは色と書体だけを変える。配置と余白はここでは変えない */
 /* レトロの色。画面の作りは retro.css */
 html[data-theme="retro"] {
+  --shell: #d9d4c5;
+  --bezel: #3a3a38;
+  --wheel: #efece1;
   --stage: #a7b58a;
   --lump: #46543a;
   --line-bold: #141d0d;

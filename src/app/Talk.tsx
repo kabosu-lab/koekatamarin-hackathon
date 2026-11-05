@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { type FormEvent, Fragment, useEffect, useRef, useState } from "react";
+import { type FormEvent, Fragment, type ReactNode, useEffect, useRef, useState } from "react";
 import type { Draft, Review } from "@/lib/claude/compose";
 import type { ChatMessage } from "@/lib/claude/types";
 import type { ChannelView, PersonView } from "@/lib/destination/types";
@@ -20,8 +20,12 @@ import type { AttachmentView } from "@/lib/attachment";
 import { loadTalk, saveTalk } from "./talk-storage";
 import { isSpeechSupported, startListening } from "./speech";
 import { Icon } from "./Icon";
+import { ClickWheel } from "./ClickWheel";
 
 const MAX_TEXT_LENGTH = 2000;
+/** これより長く押していたら「押している間だけ聞く」使い方として、離すと止める */
+const HOLD_TO_TALK_MS = 450;
+const WHEEL_PIXELS_PER_DEGREE = 2.2;
 const MAX_HISTORY = 40;
 /** 話の途中で声をかけないよう、少なくとも2往復してから確かめる */
 const CONNECT_MIN_MESSAGES = 4;
@@ -34,6 +38,8 @@ export function Talk({
   promiseSeen = false,
   avatarImage,
   initialGoal = null,
+  device = false,
+  companion,
 }: {
   viewer: { name: string; label: string };
   question: string | null;
@@ -43,6 +49,10 @@ export function Talk({
   avatarImage?: string;
   /** 頑張りたいことを乗り越えて「みんなに言っておく」で来たとき */
   initialGoal?: { id: string; text: string } | null;
+  /** 液晶とホイールの配置（レトロ）。声は送らず入力欄に入り、直してから送る */
+  device?: boolean;
+  /** 液晶に出す相棒 */
+  companion?: ReactNode;
 }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState("");
@@ -74,9 +84,17 @@ export function Talk({
   const stopRef = useRef<(() => void) | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
 
+  const logRef = useRef<HTMLDivElement>(null);
+  const pressedAt = useRef<number | null>(null);
+
   useEffect(() => {
+    // 液晶の配置では、やり取りは枠の中だけで動かし、画面全体は動かさない
+    if (device) {
+      if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight;
+      return;
+    }
     endRef.current?.scrollIntoView?.({ block: "end" });
-  }, [messages, sending, heard]);
+  }, [device, messages, sending, heard, safety, suggestion, goalSuggestion, goalDone, found, notice, sentTo, attachment]);
 
   useEffect(() => () => stopRef.current?.(), []);
 
@@ -292,7 +310,10 @@ export function Talk({
     setListening(true);
     stopRef.current = startListening({
       onInterim: setHeard,
-      onFinal: (text) => void send(text),
+      onFinal: (text) => {
+        if (device) setDraft((current) => (current ? `${current}\n${text}` : text).slice(0, MAX_TEXT_LENGTH));
+        else void send(text);
+      },
       onError: setNotice,
       onEnd: () => {
         setListening(false);
@@ -361,38 +382,8 @@ export function Talk({
 
   const canCompose = messages.some((message) => message.role === "user");
 
-  return (
-    <div className="talk" data-viewer={viewer.name}>
-      {burst && <SendBurst words={burst} avatarImage={avatarImage} onDone={() => setBurst(null)} />}
-      {avatarImage && (
-        <div
-          className="speaker"
-          data-state={listening ? "listening" : sending ? "thinking" : "idle"}
-          data-size={messages.length > 0 && !listening ? "small" : "large"}
-        >
-          <Avatar image={avatarImage} alt={`${viewer.name}さんの相棒`} size={176} />
-        </div>
-      )}
-      <div className="log" role="log" aria-label="相棒との会話">
-        {!acknowledged && (
-          <section className="promise promise-card" aria-label="最初にお伝えすること">
-            <p>{trial ? TRIAL_PROMISE_FULL : PROMISE_FULL}</p>
-            <button
-              type="button"
-              onClick={() => {
-                rememberPromiseSeen();
-                setAcknowledged(true);
-              }}
-            >
-              わかった
-            </button>
-          </section>
-        )}
-        {messages.length === 0 && !listening && (
-          <>
-            {question && <p className="daily-question">{question}</p>}
-          </>
-        )}
+  const bubbleList = (
+    <>
         {messages.map((message, index) => (
           <Fragment key={index}>
             <p className={`bubble ${message.role}`}>
@@ -411,20 +402,11 @@ export function Talk({
             )}
           </Fragment>
         ))}
-        {listening && (
-          <p className="bubble user listening" role="status">
-            <span className="listening-label">聞いています…</span>
-            {heard}
-          </p>
-        )}
-        {sending && (
-          <p className="bubble assistant waiting" role="status">
-            考えています…
-          </p>
-        )}
-        <div ref={endRef} />
-      </div>
+    </>
+  );
 
+  const cards = (
+    <>
       {suggestion && (
         <ConnectCard
           suggestion={suggestion}
@@ -495,7 +477,7 @@ export function Talk({
 
       {goalForPost && (
         <p className="sent" role="status">
-          「{goalForPost.text}」、やったね！「言葉にして送る」で、校内のみんなに伝えられます。
+          「{goalForPost.text}」、やったね！「{device ? "とどける" : "言葉にして送る"}」で、校内のみんなに伝えられます。
         </p>
       )}
 
@@ -519,7 +501,7 @@ export function Talk({
 
       {askTarget && (
         <p className="sent" role="status">
-          {askTarget.name}さんに聞いてみましょう。話したら「言葉にして送る」で、{askTarget.name}さんへのお願いになります。
+          {askTarget.name}さんに聞いてみましょう。話したら「{device ? "とどける" : "言葉にして送る"}」で、{askTarget.name}さんへのお願いになります。
           <button type="button" className="undo" onClick={() => setAskTarget(null)}>
             やめる
           </button>
@@ -543,8 +525,198 @@ export function Talk({
           )}
         </section>
       )}
+    </>
+  );
 
-      {canCompose && !listening && (
+  if (device) {
+    return (
+      <div className="talk device" data-viewer={viewer.name} data-state={listening ? "listening" : sending ? "thinking" : "idle"} data-talking={messages.length > 0 || listening}>
+        {burst && <SendBurst words={burst} avatarImage={avatarImage} onDone={() => setBurst(null)} />}
+        <section className="lcd" aria-label="相棒の画面">
+          {companion && <div className="lcd-companion">{companion}</div>}
+          <div className="log" role="log" aria-label="相棒との会話" ref={logRef} data-noswipe-landscape>
+            {!acknowledged && (
+              <section className="promise promise-card" aria-label="最初にお伝えすること">
+                <p>{trial ? TRIAL_PROMISE_FULL : PROMISE_FULL}</p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    rememberPromiseSeen();
+                    setAcknowledged(true);
+                  }}
+                >
+                  わかった
+                </button>
+              </section>
+            )}
+            {messages.length === 0 && !listening && question && <p className="daily-question">{question}</p>}
+            {bubbleList}
+            {sending && (
+              <p className="bubble assistant waiting" role="status">
+                考えています…
+              </p>
+            )}
+            {cards}
+            {attachment && (
+              <section className="attachment-chip" aria-label="付けたファイル">
+                <AttachmentPreview attachment={attachment} />
+                <p>ひとこと話して、「とどける」を押してください。</p>
+                <button type="button" className="undo" onClick={() => void removeAttachment()}>
+                  外す
+                </button>
+              </section>
+            )}
+          </div>
+          {acknowledged && <p className="promise promise-short">{trial ? TRIAL_PROMISE_SHORT : PROMISE_SHORT}</p>}
+        </section>
+
+        <form className="device-input" onSubmit={submit}>
+          {listening ? (
+            <p className="device-heard" role="status">
+              <span className="listening-label">聞いています…</span>
+              {draft && <span>{draft} </span>}
+              {/* 新しく増えた文字だけが、ぼんやりから固まっていく */}
+              {Array.from(heard).map((character, index) => (
+                <span className="solidify" key={index}>
+                  {character}
+                </span>
+              ))}
+            </p>
+          ) : (
+            <textarea
+              aria-label="相棒に書く"
+              rows={2}
+              maxLength={MAX_TEXT_LENGTH}
+              placeholder="話すか、ここに書く"
+              value={draft}
+              onChange={(event) => setDraft(event.target.value)}
+            />
+          )}
+          <button type="submit" disabled={listening || sending || draft.trim() === ""}>
+            相棒に送る
+          </button>
+        </form>
+
+        <div className="device-controls">
+          <label className="device-side" data-busy={uploading}>
+            <span className="device-side-face">
+              <Icon name="attach" />
+            </span>
+            {uploading ? "付けています" : "写真"}
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp,application/pdf"
+              disabled={uploading || listening}
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                event.target.value = "";
+                if (file) void attach(file);
+              }}
+            />
+          </label>
+
+          <ClickWheel
+            onRotate={(degrees) => {
+              if (logRef.current) logRef.current.scrollTop += degrees * WHEEL_PIXELS_PER_DEGREE;
+            }}
+          >
+            <button
+              type="button"
+              className="device-mic"
+              aria-pressed={listening}
+              disabled={sending}
+              onContextMenu={(event) => event.preventDefault()}
+              onPointerDown={() => {
+                if (listening) {
+                  pressedAt.current = null;
+                  return;
+                }
+                pressedAt.current = Date.now();
+                listen();
+              }}
+              onPointerUp={() => {
+                const started = pressedAt.current;
+                pressedAt.current = null;
+                if (started === null || Date.now() - started >= HOLD_TO_TALK_MS) stopRef.current?.();
+              }}
+              onClick={(event) => {
+                // キーボードで押したときは、押すたびに始める、止めるを切り替える
+                if (event.detail !== 0) return;
+                if (listening) stopRef.current?.();
+                else listen();
+              }}
+            >
+              <Icon name={listening ? "stop" : "talk"} />
+              {listening ? "話し終わった" : "話しかける"}
+            </button>
+          </ClickWheel>
+
+          <button
+            type="button"
+            className="device-side"
+            disabled={!canCompose || listening || sending || preparing}
+            onClick={() => void startCompose(askTarget ?? undefined)}
+          >
+            <span className="device-side-face">
+              <Icon name="send" />
+            </span>
+            {preparing ? "作っています" : "とどける"}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="talk" data-viewer={viewer.name}>
+      {burst && <SendBurst words={burst} avatarImage={avatarImage} onDone={() => setBurst(null)} />}
+      {avatarImage && (
+        <div
+          className="speaker"
+          data-state={listening ? "listening" : sending ? "thinking" : "idle"}
+          data-size={messages.length > 0 && !listening ? "small" : "large"}
+        >
+          <Avatar image={avatarImage} alt={`${viewer.name}さんの相棒`} size={176} />
+        </div>
+      )}
+      <div className="log" role="log" aria-label="相棒との会話">
+        {!acknowledged && (
+          <section className="promise promise-card" aria-label="最初にお伝えすること">
+            <p>{trial ? TRIAL_PROMISE_FULL : PROMISE_FULL}</p>
+            <button
+              type="button"
+              onClick={() => {
+                rememberPromiseSeen();
+                setAcknowledged(true);
+              }}
+            >
+              わかった
+            </button>
+          </section>
+        )}
+        {messages.length === 0 && !listening && (
+          <>
+            {question && <p className="daily-question">{question}</p>}
+          </>
+        )}
+        {bubbleList}
+        {listening && (
+          <p className="bubble user listening" role="status">
+            <span className="listening-label">聞いています…</span>
+            {heard}
+          </p>
+        )}
+        {sending && (
+          <p className="bubble assistant waiting" role="status">
+            考えています…
+          </p>
+        )}
+        <div ref={endRef} />
+      </div>
+
+      {cards}
+
+      {!device && canCompose && !listening && (
         <button type="button" className="compose-start" disabled={sending || preparing} onClick={() => void startCompose(askTarget ?? undefined)}>
           <Icon name="send" />
           {preparing ? "言葉にしています…" : "言葉にして送る"}

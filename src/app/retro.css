@@ -1,4 +1,4 @@
-/* レトロ：液晶の色だけで作る、渋い見た目。機械の形や既存のゲームの意匠は真似しない */
+/* レトロ：携帯ゲーム機の液晶と、回すホイールの手触り。実在の機械の形、ロゴ、名前、キャラクターは写さない */
 
 html[data-theme="retro"] body {
   background-color: var(--ground);
@@ -6,124 +6,6 @@ html[data-theme="retro"] body {
   background-image:
     repeating-linear-gradient(0deg, rgb(20 29 13 / 5%) 0 1px, transparent 1px 3px),
     repeating-linear-gradient(90deg, rgb(20 29 13 / 5%) 0 1px, transparent 1px 3px);
-}
-
-/* 最初の画面では、下のナビの代わりに大きな3つのボタンを置く */
-html[data-theme="retro"] body:has(.retro-home) .bottom-nav {
-  display: none;
-}
-
-.retro-home {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  box-sizing: border-box;
-  width: 100%;
-  max-width: 560px;
-  min-height: 82dvh;
-  margin: 0 auto;
-  padding: 10px 16px 16px;
-  color: var(--ink);
-}
-
-.retro-top {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 4px 12px;
-  border-bottom: 3px solid var(--ink);
-  padding-bottom: 6px;
-}
-
-.retro-top h1 {
-  margin: 0;
-  font-size: 1.5rem;
-  font-weight: 400;
-  letter-spacing: 0.08em;
-}
-
-.retro-top nav {
-  display: flex;
-  gap: 4px;
-}
-
-.retro-top a {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  min-height: 44px;
-  padding: 0 6px;
-  color: var(--ink);
-  font-size: 1.05rem;
-  text-decoration: underline;
-  text-underline-offset: 4px;
-}
-
-.retro-screen {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  text-align: center;
-}
-
-.retro-screen svg {
-  width: min(66vw, 320px);
-  height: auto;
-}
-
-.retro-message {
-  margin: 0;
-  font-size: 1.25rem;
-  line-height: 1.5;
-}
-
-.retro-actions {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-}
-
-.retro-actions a {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  min-height: 92px;
-  border: 3px solid var(--ink);
-  background: var(--ink);
-  color: var(--on-accent);
-  font-size: 1.3rem;
-  text-decoration: none;
-}
-
-.retro-actions a:focus-visible,
-.retro-top a:focus-visible {
-  outline: 3px solid var(--ink);
-  outline-offset: 3px;
-}
-
-.retro-actions a:active {
-  background: var(--pixel-mid);
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .retro-screen .pixel-companion {
-    animation: retro-breathe 1.6s steps(2, jump-none) infinite;
-  }
-}
-
-@keyframes retro-breathe {
-  from {
-    transform: translateY(0);
-  }
-  to {
-    transform: translateY(-6px);
-  }
 }
 
 /* 話す画面などのレトロ。角を立てて、影を消す */
@@ -187,5 +69,470 @@ html[data-theme="retro"] * {
 html[data-theme="retro"] :is(select, .switcher button) {
   border: 2px solid var(--ink);
   background: var(--surface);
+  color: var(--ink);
+}
+
+/* 下のナビは小さく。ログはレトロでだけ出す */
+html:not([data-theme="retro"]) .bottom-nav a[data-tab="/log"] {
+  display: none;
+}
+
+html[data-theme="retro"] .bottom-nav a {
+  font-size: 0.875rem;
+}
+
+/* 本体。話す画面だけ、液晶の外側をプラスチックの色にする */
+html[data-theme="retro"] body:has(.retro-home) {
+  background: var(--shell);
+  background-image: none;
+}
+
+.retro-home {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 8px 14px;
+  color: var(--ink);
+  /* 話が長くなっても伸びない。小さい画面ではホイールが重ならないよう、ページごと動く */
+  flex: 1 0 0;
+  min-height: 500px;
+  display: flex;
+  flex-direction: column;
+}
+
+html[data-theme="retro"] body:has(.retro-home) {
+  height: 100dvh;
+}
+
+/* 本体に書いてある名前と、電源の小さな灯り */
+.device-logo {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 6px;
+  color: var(--bezel);
+  font-size: 0.875rem;
+  font-weight: 400;
+  letter-spacing: 0.2em;
+}
+
+.device-logo::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50% !important;
+  background: #c8452f;
+}
+
+.talk.device .log > * {
+  flex: none;
+}
+
+.talk.device .daily-question {
+  background: transparent;
+}
+
+html[data-theme="retro"] .bottom-nav {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  background: var(--shell);
+  border-top: 2px solid var(--bezel);
+}
+
+html[data-theme="retro"] .bottom-nav a {
+  min-height: 3rem;
+  padding: 0.2rem;
+}
+
+.talk.device {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  /* 液晶とホイールを1画面に収める。ナビや試用の表示を除いた残りを使う */
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+.lcd {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+  border: 6px solid var(--bezel);
+  border-radius: 10px 10px 28px 10px !important;
+  background-color: var(--ground);
+  background-image:
+    repeating-linear-gradient(0deg, rgb(20 29 13 / 5%) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(90deg, rgb(20 29 13 / 5%) 0 1px, transparent 1px 3px);
+}
+
+.lcd-companion {
+  flex: none;
+  display: flex;
+  justify-content: center;
+}
+
+.lcd-companion svg {
+  width: min(44vw, 22dvh);
+  height: auto;
+}
+
+.talk.device[data-talking="true"] .lcd-companion svg {
+  width: min(20vw, 10dvh);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .lcd-companion .pixel-companion {
+    animation: retro-breathe 1.6s steps(2, jump-none) infinite;
+  }
+
+  .talk.device[data-state="listening"] .pixel-companion {
+    animation-duration: 0.4s;
+  }
+
+  .solidify {
+    animation: solidify 0.5s steps(4) both;
+  }
+}
+
+@keyframes retro-breathe {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes solidify {
+  from {
+    opacity: 0.25;
+    filter: blur(3px);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+
+.talk.device .log {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* LINE のように、自分は右、相棒は左 */
+.talk.device .bubble {
+  max-width: 82%;
+  margin: 0;
+  padding: 6px 10px;
+  border: 2px solid var(--ink);
+}
+
+.talk.device .bubble.user {
+  align-self: flex-end;
+  background: var(--ink);
+  color: var(--on-accent);
+}
+
+.talk.device .bubble.assistant {
+  align-self: flex-start;
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.talk.device .daily-question {
+  margin: 0;
+  font-size: 1.1rem;
+  text-align: center;
+}
+
+.talk.device .remember {
+  align-self: flex-end;
+}
+
+.talk.device .promise-short {
+  flex: none;
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.3;
+}
+
+.device-input {
+  flex: none;
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+  padding: 6px;
+  border: 3px solid var(--bezel);
+  background: var(--ground);
+}
+
+.device-input textarea,
+.device-heard {
+  flex: 1;
+  min-width: 0;
+  min-height: 60px;
+  max-height: 84px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 4px;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 1rem;
+  line-height: 1.35;
+  resize: none;
+}
+
+html[data-theme="retro"] .talk .device-input button {
+  flex: none;
+  width: 92px;
+  min-height: 44px;
+  padding: 0 4px;
+  border: 2px solid var(--ink);
+  font-size: 0.875rem;
+  background: var(--ink);
+  color: var(--on-accent);
+}
+
+html[data-theme="retro"] .talk .device-input button:disabled {
+  background: transparent;
+  color: var(--muted);
+}
+
+.device-controls {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+/* ホイール。回す輪と、真ん中のボタン */
+.click-wheel {
+  position: relative;
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: min(50vw, 24dvh, 200px);
+  aspect-ratio: 1;
+  border-radius: 50% !important;
+  background: var(--wheel);
+  box-shadow: inset 0 2px 3px rgb(255 255 255 / 45%), inset 0 -3px 5px rgb(0 0 0 / 18%);
+  touch-action: none;
+  cursor: grab;
+}
+
+.click-wheel-hint {
+  position: absolute;
+  bottom: 3%;
+  color: var(--ink);
+  font-size: 0.75rem;
+  pointer-events: none;
+}
+
+html[data-theme="retro"] .talk .device-mic {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  width: 62%;
+  aspect-ratio: 1;
+  min-height: 0;
+  padding: 0;
+  border: 3px solid var(--ink);
+  border-radius: 50% !important;
+  background: var(--ink);
+  color: var(--on-accent);
+  font-size: 0.875rem;
+  line-height: 1.15;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+html[data-theme="retro"] .talk .device-mic[aria-pressed="true"] {
+  background: var(--danger);
+  color: var(--ink);
+}
+
+html[data-theme="retro"] .talk .device-side {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 76px;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.device-side input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.device-side-face {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border: 3px solid var(--ink);
+  border-radius: 50% !important;
+  background: var(--wheel);
+}
+
+html[data-theme="retro"] .talk .device-side:disabled {
+  opacity: 0.55;
+}
+
+html[data-theme="retro"] .device-side:has(input:focus-visible) .device-side-face,
+html[data-theme="retro"] .talk .device-side:focus-visible .device-side-face {
+  outline: 3px solid var(--ink);
+  outline-offset: 2px;
+}
+
+/* 横画面：左に液晶と入力欄、右にホイールと、その上下に丸ボタン */
+@media (orientation: landscape) and (max-height: 560px) {
+  .retro-home {
+    max-width: none;
+    min-height: 0;
+  }
+
+  .talk.device {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-rows: 1fr auto;
+    min-height: 240px;
+    gap: 6px 10px;
+  }
+
+  .device-logo {
+    display: none;
+  }
+
+  /* 横のナビは細く、アイコンの下に文字 */
+  html[data-theme="retro"] body {
+    grid-template-columns: 4.5rem minmax(0, 1fr);
+  }
+
+  html[data-theme="retro"] .bottom-nav {
+    padding: 0.25rem;
+    gap: 0;
+    border-top: 0;
+    border-right: 2px solid var(--bezel);
+  }
+
+  html[data-theme="retro"] .bottom-nav a {
+    flex-direction: column;
+    justify-content: center;
+    padding: 0.1rem;
+    min-height: 2.75rem;
+    font-size: 0.875rem;
+  }
+
+  .lcd-companion {
+    display: none;
+  }
+
+  .lcd {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .device-input {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .device-input textarea,
+  .device-heard {
+    min-height: 40px;
+    max-height: 44px;
+  }
+
+  .device-controls {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .click-wheel {
+    width: min(38dvh, 150px);
+  }
+
+  .device-side-face {
+    width: 40px;
+    height: 40px;
+  }
+
+  .lcd-companion svg,
+  .talk.device[data-talking="true"] .lcd-companion svg {
+    width: 18dvh;
+  }
+}
+
+/* 広い画面では、本体の高さを抑える */
+@media (min-width: 768px) and (min-height: 561px) {
+  .talk.device {
+    flex: none;
+    height: min(860px, calc(100dvh - 60px));
+  }
+}
+
+.retro-log {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 12px 16px 96px;
+}
+
+.retro-log h1 {
+  margin: 8px 0;
+  font-size: 1.75rem;
+  font-weight: 400;
+}
+
+.retro-log-list {
+  margin: 0 0 16px;
+  padding: 0;
+  list-style: none;
+}
+
+.retro-log-list li {
+  padding: 8px 0;
+  border-bottom: 2px solid var(--ink);
+}
+
+.retro-log-list p {
+  margin: 2px 0 0;
+}
+
+.retro-log nav a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
   color: var(--ink);
 }

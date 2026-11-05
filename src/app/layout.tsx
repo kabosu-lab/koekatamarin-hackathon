@@ -9,6 +9,7 @@ import { isTrialMode, TRIAL_NOTICE } from "@/lib/trial";
 import { BottomNav } from "./BottomNav";
 import { FeedbackSheet } from "./FeedbackSheet";
 import { PersonSwitcher } from "./PersonSwitcher";
+import { SwipeNav } from "./SwipeNav";
 import { TrialProvider } from "./TrialContext";
 import { dotFont } from "./fonts";
 import "./globals.css";
@@ -45,6 +46,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
           {children}
           <PersonSwitcher viewerId={viewer.id} people={selectablePeople(people, trial)} />
           <BottomNav />
+          <SwipeNav />
         </TrialProvider>
       </body>
     </html>

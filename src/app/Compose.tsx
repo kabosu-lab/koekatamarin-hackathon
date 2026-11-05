@@ -144,13 +144,24 @@ export function Compose({
   return (
     <section className="compose-card" aria-label="言葉にして送る">
       <h2>こんな言葉でどうかな？</h2>
-      <textarea
-        aria-label="投稿の文章"
-        rows={4}
-        maxLength={MAX_LENGTH}
-        value={text}
-        onChange={(event) => setText(event.target.value)}
-      />
+      <div className="preview">
+        <p className="preview-title">Teams にはこう見えます（{channel.name}）。文章はここで直せます</p>
+        <p className="preview-author">
+          <strong>{viewer.name}</strong> {viewer.label}
+        </p>
+        {asked && <p className="preview-asked">{asked.name}さんへ</p>}
+        <textarea
+          className="preview-body"
+          aria-label="投稿の文章"
+          rows={4}
+          maxLength={MAX_LENGTH}
+          value={text}
+          onChange={(event) => setText(event.target.value)}
+        />
+        {attachment && <p className="preview-mark">添付：{attachment.fileName}</p>}
+        {draft.researchedWithAi && <p className="preview-mark">AI と調べました</p>}
+        {scopeNote && <p className="preview-scope">{scopeNote}</p>}
+      </div>
 
       {checked ? (
         <div className={`perception ${review.verdict}`} role="status">
@@ -248,18 +259,6 @@ export function Compose({
           </select>
         </label>
       )}
-
-      <div className="preview">
-        <p className="preview-title">Teams にはこう見えます（{channel.name}）</p>
-        <p className="preview-author">
-          <strong>{viewer.name}</strong> {viewer.label}
-        </p>
-        {asked && <p className="preview-asked">{asked.name}さんへ</p>}
-        <p className="preview-body">{text}</p>
-        {attachment && <p className="preview-mark">添付：{attachment.fileName}</p>}
-        {draft.researchedWithAi && <p className="preview-mark">AI と調べました</p>}
-        {scopeNote && <p className="preview-scope">{scopeNote}</p>}
-      </div>
 
       {notice && (
         <p className="notice" role="alert">
