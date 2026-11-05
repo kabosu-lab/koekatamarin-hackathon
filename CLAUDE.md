@@ -17,7 +17,7 @@ scripts/test.sh
 - 質問も回答も、すべて日本語で書く（絶対）
 - テストが通らないものはコミットしない
 - `.env` は読まない・書かない
-- GitHub への push は人の確認後
+- テストと public-check が通ったものだけ origin main へ push する。それ以外は人の確認後
 - 夜間はコミットを小さく、作業ごとに `BACKLOG.md` を更新する（手順は `docs/night-loop.md`）
 - Codex レビュー（`scripts/codex-review.sh`）は回数が限られるので、大きな区切りごとに1回だけ
 

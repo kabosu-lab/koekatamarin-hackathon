@@ -20,7 +20,7 @@ export const dynamic = "force-dynamic";
 export default async function PortfolioPage({ searchParams }: { searchParams: Promise<{ term?: string | string[] }> }) {
   const { viewer } = await getViewer();
   const store = await cookies();
-  const rewards = showsRewards(readAppearance((name) => store.get(name)?.value, viewer.role));
+  const rewards = showsRewards(readAppearance((name) => store.get(name)?.value));
   const db = getDatabase();
   const now = new Date();
   syncRibbons(db, viewer.id, now);

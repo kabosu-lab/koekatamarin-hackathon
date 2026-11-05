@@ -10,7 +10,7 @@ export async function POST(request: Request) {
   const input: unknown = await request.json().catch(() => null);
   const { viewer } = await getViewer();
   const store = await cookies();
-  const rewards = showsRewards(readAppearance((name) => store.get(name)?.value, viewer.role));
+  const rewards = showsRewards(readAppearance((name) => store.get(name)?.value));
   const { status, body } = await handlePortfolio(createClaude(), getDatabase(), viewer.id, input, { rewards });
   return Response.json(body, { status });
 }
