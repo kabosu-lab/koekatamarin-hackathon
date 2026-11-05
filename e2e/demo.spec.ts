@@ -45,7 +45,7 @@ test("先生の一日：話しかける、返す、パス、サンクス、日�
 
   // 生徒の頑張りと「お願いします」が、朝の受信箱に届く
   await page.getByRole("link", { name: "みんな ›" }).click();
-  await page.getByRole("link", { name: /受信箱/ }).click();
+  await page.getByRole("link", { name: /受信箱/ }).first().click();
   await expect(page.getByRole("region", { name: /川村 陽菜さんからのお願い/ })).toBeVisible();
   await expect(page.getByRole("region", { name: /木下 蓮さんからのお願い/ })).toBeVisible();
   await shot(page, "02-受信箱");
@@ -148,7 +148,7 @@ test("先生の一日：話しかける、返す、パス、サンクス、日�
   await shot(page, "09-2-校内の知恵");
 
   // 締め：校内の桜が咲く
-  await page.goto("/minna?season=haru");
+  await page.goto("/sakura?season=haru");
   await expect(page.getByRole("region", { name: "校内の桜" })).toContainText("今年の桜が");
   await shot(page, "10-桜");
 });

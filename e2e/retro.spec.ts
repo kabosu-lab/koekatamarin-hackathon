@@ -89,7 +89,7 @@ test("命や安全の案内はレトロでも液晶の中に見える", async ({
   await noOverflow(page);
 });
 
-test("話す画面の左右のスワイプで、ログとみんなへ移る", async ({ browser }) => {
+test("話す画面の左右のスワイプで、履歴と設定、みんなへ移る", async ({ browser }) => {
   const context = await browser.newContext({ hasTouch: true, viewport: { width: 390, height: 844 } });
   await context.addCookies([{ name: "koekata_person", value: "aoki", domain: "127.0.0.1", path: "/" }]);
   const page = await context.newPage();
@@ -109,9 +109,9 @@ test("話す画面の左右のスワイプで、ログとみんなへ移る", as
   await page.goto("/");
   await expect(async () => {
     await swipe(150);
-    await expect(page).toHaveURL(/\/log$/, { timeout: 1000 });
+    await expect(page).toHaveURL(/\/me$/, { timeout: 1000 });
   }).toPass();
-  await expect(page.getByRole("heading", { name: "ログ" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "履歴と設定" })).toBeVisible();
   await context.close();
 });
 

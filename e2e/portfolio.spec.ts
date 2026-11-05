@@ -8,7 +8,7 @@ test("ポートフォリオは本人だけに見え、選んで確かめたと�
   await page.goto("/");
   await switchPerson(page, "青木 ひより（2年）");
   await page.goto("/me");
-  await expect(page.getByRole("link", { name: "ポートフォリオ" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "ポートフォリオ" }).first()).toBeVisible();
   await page.goto(PAGE);
 
   await expect(page.getByRole("heading", { name: "ポートフォリオ", level: 1 })).toBeVisible();

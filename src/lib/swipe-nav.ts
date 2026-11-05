@@ -1,5 +1,5 @@
-/** スワイプで行き来する画面の並び。話す画面から、右へ戻るとログ、左へ進むとみんな、じぶん。 */
-export const SWIPE_SCREENS = ["/log", "/", "/minna", "/me"] as const;
+/** スワイプで行き来する3枚。指を右へ動かすと履歴と設定、左へ動かすとみんな。 */
+export const SWIPE_SCREENS = ["/me", "/", "/minna"] as const;
 
 const MIN_DISTANCE = 56;
 /** 斜めの動きやスクロールを、画面の移動と間違えない */

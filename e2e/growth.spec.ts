@@ -6,9 +6,9 @@ test("下の階層の画面でも、今どこにいるかが分かる", async ({
   await page.goto("/today");
   await expect(current).toHaveText("みんな");
   await page.goto("/daily");
-  await expect(current).toHaveText("じぶん");
+  await expect(current).toHaveText("履歴と設定");
   await page.goto("/inbox");
-  await expect(current).toHaveText("話す");
+  await expect(current).toHaveText("みんな");
 });
 
 test("最初の問いかけに答えると卵の系統が決まり、絵が読み込まれる", async ({ browser }) => {
@@ -71,7 +71,7 @@ test("プロフィールの下書きを確かめ、1回だけ直して載せ、�
 });
 
 test("校内の桜と、周りの相棒が見える。季節を変えて見られる", async ({ page }) => {
-  await page.goto("/minna");
+  await page.goto("/sakura");
   await expect(page.getByRole("region", { name: "校内の桜" })).toContainText("今年の葉");
   await expect(page.getByRole("region", { name: "桜のまわりの相棒たち" }).getByRole("link")).toHaveCount(9);
 

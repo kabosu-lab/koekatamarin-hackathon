@@ -61,13 +61,9 @@ html[data-theme="retro"] .bottom-nav a {
 }
 
 html[data-theme="retro"] .bottom-nav {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   background: var(--shell);
   border-top: 1px solid var(--line);
-}
-
-html:not([data-theme="retro"]) .bottom-nav a[data-tab="/log"] {
-  display: none;
 }
 
 /* 話す画面だけは本体だけを見せる。使う人の切り替えとナビは、ほかの画面に置く */
@@ -81,8 +77,195 @@ html[data-theme="retro"] body:has(.retro-home) {
   background: linear-gradient(160deg, #cfd8df, #aebcc7);
 }
 
-body:has(.retro-home) :is(.bottom-nav, .demo-switcher) {
+body:has(.retro-home) > :is(.bottom-nav, .demo-switcher) {
   display: none;
+}
+
+/* 3枚を横に並べるときの列。狭い画面では真ん中だけ */
+.device-row {
+  flex: 1 1 0;
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  width: 100%;
+  min-height: 0;
+}
+
+.device-row > .retro-home {
+  flex: 1 1 auto;
+}
+
+.wide-panel {
+  flex: 1 1 0;
+  min-width: 0;
+  border: 0;
+  border-radius: 28px;
+  background: var(--ground);
+  box-shadow: 0 10px 30px rgb(30 40 50 / 25%);
+}
+
+/* みんなと、履歴と設定：中身は窓の中で動く */
+.device-window {
+  display: block;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.device-window .home {
+  width: auto;
+  max-width: none;
+  margin: 0;
+  padding: 0 0 8px;
+  background: transparent;
+}
+
+.device-window .card,
+.device-window .sakura-line {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.device-page .device-mic {
+  text-decoration: none;
+}
+
+html[data-theme="retro"] .talk a.device-side {
+  text-decoration: none;
+}
+
+.device-window .demo-switcher {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0 0;
+}
+
+.sakura-line {
+  display: grid;
+  gap: 2px;
+  min-height: 44px;
+  margin: 8px 0;
+  padding: 0.5rem 0.7rem;
+  border-radius: 12px;
+  background: var(--soft);
+  color: var(--ink);
+  text-decoration: none;
+  font-size: 0.95rem;
+}
+
+.sakura-line small {
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+/* 窓の中は機器の一覧のように、落ち着いた行で見せる */
+.device-window h1 {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 800;
+}
+
+.device-window header {
+  margin: 0 0 6px;
+  padding: 0;
+  border: 0;
+}
+
+.device-window header p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.device-window .group-title {
+  font-size: 1.05rem;
+}
+
+.device-window .hub-links {
+  display: block;
+  margin: 8px 0;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  overflow: hidden;
+}
+
+html[data-theme="retro"] .device-window .hub-links a {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  margin: 0;
+  padding: 0 12px;
+  border: 0;
+  border-top: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
+  color: var(--ink);
+  box-shadow: none;
+  font-size: 1rem;
+  font-weight: 600;
+  transform: none;
+}
+
+html[data-theme="retro"] .device-window .hub-links a:first-child {
+  border-top: 0;
+}
+
+html[data-theme="retro"] .device-window .hub-links a:active {
+  background: var(--soft);
+}
+
+html[data-theme="retro"] .device-window .hub-links a::after {
+  content: "›";
+  margin-left: auto;
+  color: var(--muted);
+}
+
+.device-window .retro-log {
+  width: auto;
+  margin: 0 0 8px;
+  padding: 10px 12px;
+}
+
+.device-window .retro-log h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.device-window .retro-log ul {
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.device-window .retro-log nav a {
+  display: flex;
+  border-top: 1px solid var(--line);
+  text-decoration: none;
+}
+
+/* 欄の中で開かれたときは、外枠を隠して中身だけを見せる */
+html[data-embed] body,
+html[data-embed][data-theme="retro"] body:has(.retro-home) {
+  height: 100dvh;
+  overflow: auto;
+  padding: 0;
+  background: var(--ground);
+}
+
+html[data-embed] .retro-home {
+  padding: 8px;
+  background: transparent;
+}
+
+html[data-embed] :is(.device-controls, .swipe-mark, .bottom-nav, body > .demo-switcher) {
+  display: none;
+}
+
+html[data-embed] .lcd {
+  border: 0;
+  background: transparent;
 }
 
 .retro-home {
@@ -472,6 +655,10 @@ html[data-theme="retro"] .talk .device-side:focus-visible .device-side-face {
   html[data-theme="retro"] body:has(.retro-home) {
     padding: 24px;
     box-sizing: border-box;
+  }
+
+  .device-row > .retro-home {
+    flex: none;
   }
 
   .retro-home {

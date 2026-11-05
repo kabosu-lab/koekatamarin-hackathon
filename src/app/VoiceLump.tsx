@@ -24,6 +24,8 @@ export const LUMP_SHAPES = {
 
 export type LumpShapeName = keyof typeof LUMP_SHAPES;
 
+const MIN_FRAME_MS = 32;
+
 const VERTEX = `#version 300 es
 void main(){vec2 p=vec2(float(gl_VertexID&1),float((gl_VertexID>>1)&1))*4.-1.;gl_Position=vec4(p,0.,1.);}`;
 
@@ -115,7 +117,8 @@ function start(canvas: HTMLCanvasElement, shape: LumpShape, color: string, state
   gl.uniform1f(at("uTail"), shape.tail);
 
   const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  let scale = Math.min(window.devicePixelRatio || 1, 2);
+  // 文字を打つ手を重くしないよう、解像度とコマ数を抑える
+  let scale = Math.min(window.devicePixelRatio || 1, 1.5);
   const pose = { t: 0, listen: 0, hop: 0, blink: 0, nextBlink: 2.5 };
   const draw = () => {
     const box = canvas.getBoundingClientRect();
@@ -149,10 +152,12 @@ function start(canvas: HTMLCanvasElement, shape: LumpShape, color: string, state
   let seen = replies.current;
   const tick = (now: number) => {
     frame = requestAnimationFrame(tick);
-    if (document.hidden) {
+    // 隠れているときと文字を打っているときは描かない
+    if (document.hidden || document.activeElement?.tagName === "TEXTAREA") {
       last = now;
       return;
     }
+    if (now - last < MIN_FRAME_MS) return;
     const dt = Math.min(0.1, (now - last) / 1000);
     last = now;
     pose.t += dt;

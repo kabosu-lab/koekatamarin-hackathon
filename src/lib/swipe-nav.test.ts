@@ -4,13 +4,13 @@ import { swipeTarget } from "./swipe-nav";
 describe("swipeTarget", () => {
   it("縦画面では左右で移動する", () => {
     expect(swipeTarget("/", -120, 4, false)).toBe("/minna");
-    expect(swipeTarget("/", 120, 4, false)).toBe("/log");
-    expect(swipeTarget("/minna", -120, 0, false)).toBe("/me");
+    expect(swipeTarget("/", 120, 4, false)).toBe("/me");
+    expect(swipeTarget("/minna", 120, 0, false)).toBe("/");
   });
 
   it("横画面では上下で移動する", () => {
     expect(swipeTarget("/", 0, -120, true)).toBe("/minna");
-    expect(swipeTarget("/", 0, 120, true)).toBe("/log");
+    expect(swipeTarget("/", 0, 120, true)).toBe("/me");
     expect(swipeTarget("/", -120, 0, true)).toBeNull();
   });
 
@@ -20,8 +20,8 @@ describe("swipeTarget", () => {
   });
 
   it("端と、並びにない画面では移動しない", () => {
-    expect(swipeTarget("/log", 120, 0, false)).toBeNull();
-    expect(swipeTarget("/me", -120, 0, false)).toBeNull();
+    expect(swipeTarget("/me", 120, 0, false)).toBeNull();
+    expect(swipeTarget("/minna", -120, 0, false)).toBeNull();
     expect(swipeTarget("/inbox", -120, 0, false)).toBeNull();
   });
 });

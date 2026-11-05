@@ -34,6 +34,6 @@ test("気になる投稿は先生にだけ確認を促し、先生が押すと�
 });
 
 test("桜の場面は時間帯を持つ", async ({ page }) => {
-  await page.goto("/minna");
+  await page.goto("/sakura");
   await expect(page.locator(".sakura-scene")).toHaveAttribute("data-time", /morning|day|evening|night/);
 });

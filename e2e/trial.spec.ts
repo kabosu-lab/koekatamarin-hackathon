@@ -110,6 +110,8 @@ test("外の URL から開いたときの入力画面への案内は、Mac の�
 test("選べるのは生徒だけで、最初の人物も生徒になる", async ({ page }) => {
   await enter(page);
   await expect(page.locator('.talk[data-viewer="青木 ひより"]')).toBeVisible();
+  await page.goto("/me");
+  await page.goto("/me");
   const options = await page.getByLabel("使う人").locator("option").allTextContents();
   expect(options).toEqual(["青木 ひより（2年）", "木下 蓮（3年・ものづくり部）", "中村 結衣（1年・吹奏楽部）"]);
 });

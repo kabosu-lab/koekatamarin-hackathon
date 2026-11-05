@@ -13,6 +13,7 @@ import { syncGiftEggs } from "@/lib/gift-eggs";
 import { listNewRibbons, syncRibbons } from "@/lib/ribbons";
 import { showsRewards } from "@/lib/rewards-view";
 import { Talk } from "./Talk";
+import { WidePanel } from "./WidePanels";
 
 export const dynamic = "force-dynamic";
 
@@ -42,6 +43,8 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
 
   // 全員同じ1画面。ほかの画面へはスワイプと、下の小さな印から移る
   return (
+    <div className="device-row">
+    <WidePanel src="/me" title="履歴と設定" />
     <main className="retro-home">
       <h1 className="visually-hidden">こえかた</h1>
       {rewards && <RibbonMoment key={`ribbon-${viewer.id}`} ribbons={listNewRibbons(db, viewer.id)} />}
@@ -58,5 +61,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
         initialAsk={askPerson ? { id: askPerson.id, name: askPerson.name } : null}
       />
     </main>
+    <WidePanel src="/minna" title="みんな" />
+    </div>
   );
 }

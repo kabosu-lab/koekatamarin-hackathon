@@ -34,7 +34,15 @@ export function fiscalYearStart(now: Date): string {
 
 /** 葉になるのは人に届いたやり取りだけ。Claude と話すだけでは増えない。年度（4月）で数え直す。 */
 export function countLeaves(db: DatabaseSync, now: Date): number {
-  const since = fiscalYearStart(now);
+  return countLeavesSince(db, fiscalYearStart(now));
+}
+
+/** この7日で増えた葉。季節が変わるまで絵は大きく変わらないので、言葉で育ち具合を補う。 */
+export function leavesThisWeek(db: DatabaseSync, now: Date): number {
+  return countLeavesSince(db, new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString());
+}
+
+function countLeavesSince(db: DatabaseSync, since: string): number {
   const one = (sql: string) => (db.prepare(sql).get(since) as { count: number }).count;
   return (
     // 自分だけの投稿は、人に届いていないので葉にならない

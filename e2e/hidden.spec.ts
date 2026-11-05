@@ -30,7 +30,7 @@ test("しばらく出さないは本人にだけ効き、相手には何も見�
   await expect(list).toContainText(name);
 
   // 相手の画面には、誰かに隠されたことが出ない
-  await page.goto("/");
+  await page.goto("/me");
   const option = page.getByLabel("使う人").locator("option", { hasText: name });
   await switchPerson(page, (await option.textContent()) ?? "");
   for (const path of ["/me", "/today"]) {

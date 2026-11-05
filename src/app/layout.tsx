@@ -9,7 +9,9 @@ import { isTrialMode, TRIAL_NOTICE } from "@/lib/trial";
 import { BottomNav } from "./BottomNav";
 import { FeedbackSheet } from "./FeedbackSheet";
 import { PersonSwitcher } from "./PersonSwitcher";
+import { GlobalSwitcher } from "./GlobalSwitcher";
 import { SwipeNav } from "./SwipeNav";
+import { EmbedMark } from "./WidePanels";
 import { TrialProvider } from "./TrialContext";
 import { dotFont } from "./fonts";
 import "./globals.css";
@@ -44,9 +46,12 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         )}
         <TrialProvider trial={trial}>
           {children}
-          <PersonSwitcher viewerId={viewer.id} people={selectablePeople(people, trial)} />
+          <GlobalSwitcher>
+            <PersonSwitcher viewerId={viewer.id} people={selectablePeople(people, trial)} />
+          </GlobalSwitcher>
           <BottomNav />
           <SwipeNav />
+          <EmbedMark />
         </TrialProvider>
       </body>
     </html>

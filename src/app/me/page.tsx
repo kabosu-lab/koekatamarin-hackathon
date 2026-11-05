@@ -32,6 +32,11 @@ import { listNewRibbons, listTrophyShelves, syncRibbons } from "@/lib/ribbons";
 import { showsRewards } from "@/lib/rewards-view";
 import { ArtRefresher, AvatarFromPhoto, AvatarQuiz, MemoryList, ProfileEditor, ThanksForm } from "./MeActions";
 
+import { DeviceFrame } from "../DeviceFrame";
+import { LogView } from "../log/LogView";
+import { PersonSwitcher } from "../PersonSwitcher";
+import { selectablePeople } from "@/lib/people";
+import { isTrialMode } from "@/lib/trial";
 export const metadata: Metadata = { title: "じぶん｜こえかた" };
 export const dynamic = "force-dynamic";
 
@@ -56,15 +61,36 @@ export default async function MePage() {
   const others = people.filter((p) => p.id !== viewer.id).map(({ id, name, label }) => ({ id, name, label }));
 
   return (
+    <DeviceFrame
+      label="履歴と設定"
+      dot={0}
+      left={{ href: "#settings", label: "設定", icon: "settings" }}
+      right={{ href: "#records", label: "記録", icon: "note" }}
+    >
     <main className="home">
       <header>
-        <h1>じぶん</h1>
+        <h1>履歴と設定</h1>
         <p className="me-name">
           {viewer.name} <PersonTitle title={wornTitle(db, viewer.id)} />
         </p>
       </header>
 
-      <nav className="me-jump" aria-label="じぶんの中の行き先">
+      <section className="card retro-log" aria-label="相棒との話">
+        <h2>相棒との話</h2>
+        <p className="muted">この話はあなただけのものです。タブを閉じると消えます。</p>
+        <LogView viewerName={viewer.name} />
+        <nav aria-label="履歴から行ける画面">
+          <ul>
+            <li><Link href="/walk">歩きながら話す</Link></li>
+            <li><Link href="/daily">一日のまとめ</Link></li>
+            <li><Link href="/lookback">ふりかえり</Link></li>
+            <li><Link href="/portfolio">ポートフォリオ</Link></li>
+            <li><Link href="/yousu">ようす</Link></li>
+          </ul>
+        </nav>
+      </section>
+
+      <nav className="me-jump" aria-label="この画面の中の行き先">
         <a href="#mine"><Icon name="me" />わたし</a>
         <a href="#records"><Icon name="note" />記録</a>
         <a href="#thanks"><Icon name="thanks" />ありがとう</a>
@@ -185,6 +211,8 @@ export default async function MePage() {
 
       <MemoryList key={`${viewer.id}-memory`} initial={listMemories(db, getDestination(db), viewer.id)} />
       <HiddenPeople key={`${viewer.id}-hidden`} initial={listHiddenPeople(db, viewer.id)} />
+      <PersonSwitcher viewerId={viewer.id} people={selectablePeople(people, isTrialMode())} />
     </main>
+    </DeviceFrame>
   );
 }

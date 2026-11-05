@@ -5,11 +5,9 @@ import { usePathname } from "next/navigation";
 import { Icon, type IconName } from "./Icon";
 
 const ITEMS: { href: string; label: string; icon: IconName; also: string[] }[] = [
-  // ログはレトロでだけ出す（retro.css）。ほかの見た目の画面は3つのまま
-  { href: "/log", label: "ログ", icon: "write", also: [] },
-  { href: "/", label: "話す", icon: "talk", also: ["/inbox", "/soudan", "/walk"] },
-  { href: "/minna", label: "みんな", icon: "people", also: ["/today", "/teams", "/study", "/people", "/chie"] },
-  { href: "/me", label: "じぶん", icon: "me", also: ["/daily", "/lookback", "/portfolio", "/yousu"] },
+  { href: "/me", label: "履歴と設定", icon: "me", also: ["/log", "/daily", "/lookback", "/yousu", "/portfolio"] },
+  { href: "/", label: "話す", icon: "talk", also: ["/soudan", "/walk"] },
+  { href: "/minna", label: "みんな", icon: "people", also: ["/inbox", "/today", "/teams", "/study", "/people", "/chie", "/sakura"] },
 ];
 
 function isCurrent(pathname: string, item: (typeof ITEMS)[number]): boolean {
