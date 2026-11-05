@@ -16,7 +16,7 @@ export default async function DailyPage() {
 
   return (
     <main className="home">
-      <BackLink href="/me">じぶんへもどる</BackLink>
+      <BackLink href="/me">履歴と設定へもどる</BackLink>
       <header>
         <h1>今日の{noun}</h1>
       </header>

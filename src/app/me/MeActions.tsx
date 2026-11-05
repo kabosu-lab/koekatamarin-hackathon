@@ -298,13 +298,13 @@ export function AvatarFromPhoto({ label, failed, eggImage }: { label: string; fa
 
   return (
     <section className="card" aria-label="写真から分身を作る">
-      <h2>{label}を、相棒の卵にする</h2>
+      <h2>{label}から、声のかたまりを作る</h2>
       {failed && <p className="notice">前回はうまく読めなかったので、シンプルな絵にしています。もう一度試せます。</p>}
       <p className="muted">
         写真の色や持ち物の雰囲気から、合う相棒を選びます。本人に似せることはしません。写真は Claude に1度だけ見せて、保存しません。
       </p>
       <button type="button" disabled={busy} onClick={() => void start()}>
-        写真から卵を作る
+        写真から作る
       </button>
       {problem && (
         <p className="notice" role="alert">

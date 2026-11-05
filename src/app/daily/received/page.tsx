@@ -15,7 +15,7 @@ export default async function ReceivedPage() {
 
   return (
     <main className="home">
-      <BackLink href="/me">じぶんへもどる</BackLink>
+      <BackLink href="/me">履歴と設定へもどる</BackLink>
       <header>
         <h1>届いた日報と日記</h1>
         <p>本人がチェックを付けて届けた項目だけが見えます。</p>

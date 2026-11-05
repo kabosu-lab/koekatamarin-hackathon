@@ -34,7 +34,7 @@ export default async function PortfolioPage({ searchParams }: { searchParams: Pr
 
   return (
     <main className="home">
-      <BackLink href="/me">じぶんへもどる</BackLink>
+      <BackLink href="/me">履歴と設定へもどる</BackLink>
       <header>
         <h1>ポートフォリオ</h1>
       </header>

@@ -82,7 +82,7 @@ export function TodayCards({ cards: allCards }: { cards: (TodayCard & { authorIm
 
   const note = hiddenNote && (
     <p className="seen-note" role="status">
-      {hiddenNote} <Link href="/me">「じぶん」から戻せます</Link>
+      {hiddenNote} <Link href="/me">「履歴と設定」から戻せます</Link>
     </p>
   );
 

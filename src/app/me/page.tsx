@@ -37,7 +37,7 @@ import { LogView } from "../log/LogView";
 import { PersonSwitcher } from "../PersonSwitcher";
 import { selectablePeople } from "@/lib/people";
 import { isTrialMode } from "@/lib/trial";
-export const metadata: Metadata = { title: "じぶん｜こえかた" };
+export const metadata: Metadata = { title: "履歴と設定｜こえかた" };
 export const dynamic = "force-dynamic";
 
 export default async function MePage() {

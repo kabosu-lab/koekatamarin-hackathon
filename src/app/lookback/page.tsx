@@ -22,7 +22,7 @@ export default async function LookbackPage() {
 
   return (
     <main className="home">
-      <BackLink href="/me">じぶんへもどる</BackLink>
+      <BackLink href="/me">履歴と設定へもどる</BackLink>
       <header>
         <h1>ふりかえり</h1>
       </header>

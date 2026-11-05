@@ -802,3 +802,46 @@ html[data-theme="retro"] .talk .device-side:focus-visible .device-side-face {
   min-height: 44px;
   color: var(--ink);
 }
+
+/* 奥の画面も同じ機器の言葉にそろえる：大きすぎる見出し、太い線、硬い影をやめる */
+html[data-theme="retro"] .home h1 {
+  font-size: 1.5rem;
+  line-height: 1.3;
+}
+
+html[data-theme="retro"] .home > header,
+html[data-theme="retro"] .home > header h1,
+html[data-theme="retro"] .home > h1 {
+  border: 0;
+  padding-bottom: 0;
+}
+
+html[data-theme="retro"] .home h2 {
+  font-size: 1.1rem;
+}
+
+html[data-theme="retro"] .home :is(.card, .today-card, .compose-card, section.card) {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: 0 1px 3px rgb(30 40 50 / 8%);
+}
+
+html[data-theme="retro"] main button:not(.device-mic, .device-side, .like, .link-button, .remember) {
+  border-width: 1px;
+  border-radius: 12px;
+  box-shadow: none;
+  transform: none;
+}
+
+html[data-theme="retro"] .home .hub-links a {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: none;
+}
+
+.inbox-replies a {
+  grid-template-columns: minmax(0, 1fr);
+}

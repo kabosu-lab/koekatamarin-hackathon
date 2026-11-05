@@ -107,7 +107,7 @@ test("Teams の写真（ダミー）から分身を作れて、写真のない�
   await page.goto("/me");
   const section = page.getByRole("region", { name: "写真から分身を作る" });
   await expect(section).toContainText("保存しません");
-  await section.getByRole("button", { name: "写真から卵を作る" }).click();
+  await section.getByRole("button", { name: "写真から作る" }).click();
   // 写真 → 読み取り → 卵 → 誕生 → 得意なこと
   const hatch = page.getByRole("dialog", { name: "相棒の誕生" });
   await expect(hatch.getByText("写真の色と雰囲気を読んでいます")).toBeVisible();

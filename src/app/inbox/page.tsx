@@ -26,7 +26,7 @@ export default async function InboxPage() {
 
   return (
     <main className="home">
-      <BackLink href="/">話すへもどる</BackLink>
+      <BackLink href="/minna">みんなへもどる</BackLink>
       <header>
         <h1>受信箱</h1>
         <p>話すだけで返せます。詳しくないことは、詳しい人につなげます。</p>

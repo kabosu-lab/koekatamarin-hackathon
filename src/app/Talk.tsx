@@ -556,7 +556,7 @@ export function Talk({
               onClick={() => {
                 const text = goalSuggestion;
                 setGoalSuggestion(null);
-                void saveGoal({ action: "add", text }).then((ok) => ok && setNotice("頑張りたいことに残しました。「じぶん」で直したり消したりできます。"));
+                void saveGoal({ action: "add", text }).then((ok) => ok && setNotice("頑張りたいことに残しました。「履歴と設定」で直したり消したりできます。"));
               }}
             >
               しておく

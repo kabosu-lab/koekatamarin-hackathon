@@ -67,7 +67,7 @@ export function PhotoHatch({ eggImage, onFailed }: { eggImage: string; onFailed(
 
       <div className="hatch-words" role="status">
         {phase === "reading" && <h2>写真の色と雰囲気を読んでいます</h2>}
-        {phase === "egg" && <h2>卵が生まれた！</h2>}
+        {phase === "egg" && <h2>声のかたまりが生まれた！</h2>}
         {phase === "crack" && <h2>あっ、動いた！</h2>}
         {phase === "born" && state && (
           <>

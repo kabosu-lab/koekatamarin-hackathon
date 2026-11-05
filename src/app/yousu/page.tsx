@@ -51,7 +51,7 @@ export default async function YousuPage() {
       </dl>
       {avatar.family === null && (
         <p>
-          <Link href="/me">じぶんの画面で、相棒を選べます。</Link>
+          <Link href="/me">履歴と設定の画面で、相棒を選べます。</Link>
         </p>
       )}
     </main>
