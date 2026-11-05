@@ -324,6 +324,11 @@ const MIGRATIONS: readonly string[] = [
    CREATE INDEX trophy_log_by_person ON trophy_log (person_id, kind, created_at);
    ALTER TABLE knowledge_items ADD COLUMN topic TEXT NOT NULL DEFAULT 'general'
      CHECK (topic IN ('general', 'procedure', 'failure', 'tidy'));`,
+  // 届いた返事の知らせを閉じた印。知らせるのは投稿した本人だけなので、返事ごとに1つでよい。今ある返事は知らせない
+  `CREATE TABLE seen_replies (
+     reply_id TEXT PRIMARY KEY REFERENCES replies (id) ON DELETE CASCADE
+   ) STRICT;
+   INSERT INTO seen_replies (reply_id) SELECT id FROM replies;`,
 ];
 
 export const SCHEMA_VERSION

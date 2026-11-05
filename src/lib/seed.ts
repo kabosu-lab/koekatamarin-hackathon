@@ -126,6 +126,8 @@ export function seedDatabase(db: DatabaseSync): void {
       insertPost.run(post.id, post.channelId, post.authorId, post.kind, post.body, toStored(post.createdAt), post.askedPersonId ?? null);
       for (const r of post.replies) {
         insertReply.run(r.id, post.id, r.authorId, r.body, toStored(r.createdAt));
+        // ダミーの返事は「届いた」と知らせない
+        db.prepare("INSERT INTO seen_replies (reply_id) VALUES (?)").run(r.id);
       }
       for (const personId of post.likedBy) {
         insertLike.run(post.id, personId);

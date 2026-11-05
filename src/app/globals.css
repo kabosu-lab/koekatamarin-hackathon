@@ -3248,3 +3248,54 @@ html[data-avatar="hide"] .burst-speaker {
   padding: 0.5rem 0.75rem;
   font-weight: 700;
 }
+
+/* 届いた返事の知らせ。文字は 14px 以上、押す場所は 44px 以上（docs/ui-audit.md） */
+.reply-notice {
+  display: grid;
+  gap: 0.3rem;
+  margin-top: 0.6rem;
+  padding: 0.7rem 0.9rem;
+  border: 2px solid var(--accent);
+  border-radius: 1rem;
+  background: var(--surface);
+}
+
+.reply-notice h2 {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.reply-notice p {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.reply-notice-body {
+  display: -webkit-box;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.reply-notice-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.reply-notice-actions button {
+  min-height: 44px;
+  padding: 0 0.9rem;
+  font-size: 0.9rem;
+}
+
+.reply-notice-more {
+  color: var(--muted, inherit);
+}
+
+html[data-theme="retro"] .retro-home .reply-notice {
+  margin: 0 0 0.4rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: 0.3rem;
+}

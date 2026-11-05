@@ -13,7 +13,9 @@ import { readAppearance } from "@/lib/appearance";
 import { countForNotice } from "@/lib/inbox";
 import { countKnowledgeForNotice } from "@/lib/knowledge";
 import { promiseCookieName } from "@/lib/promise-cookie";
+import { listReplyNotices } from "@/lib/reply-notices";
 import { HomeAside } from "./HomeAside";
+import { ReplyNoticeCard } from "./ReplyNoticeCard";
 import { RibbonMoment } from "./RibbonMoment";
 import { listGiftEggs, syncGiftEggs } from "@/lib/gift-eggs";
 import { listNewRibbons, syncRibbons } from "@/lib/ribbons";
@@ -77,6 +79,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
       )}
     </nav>
   );
+  const replyNotice = <ReplyNoticeCard notices={listReplyNotices(db, viewer.id)} />;
   const question = goalQuestion(db, viewer.id, new Date()) ?? dailyQuestion(new Date());
   const pixelStage = pixelStageFor(avatar.family, avatar.stage);
 
@@ -86,6 +89,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
       <main className="retro-home">
         <h1 className="device-logo">こえかた</h1>
         {rewards && <RibbonMoment key={`ribbon-${viewer.id}`} ribbons={listNewRibbons(db, viewer.id)} />}
+        {replyNotice}
         {quickLinks}
         <Talk
           key={viewer.id}
@@ -132,6 +136,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
           </div>
         </details>
       </header>
+      {replyNotice}
       {/* Claude との話は本人だけのもの。人物を切り替えたら会話を持ち越さない */}
       {quickLinks}
       <Talk
