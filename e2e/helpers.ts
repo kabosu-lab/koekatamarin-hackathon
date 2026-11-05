@@ -12,8 +12,17 @@ export async function switchPerson(page: Page, option: string) {
   await expect(page.locator(`.talk[data-viewer="${name}"]`)).toBeVisible();
 }
 
+/** 画面の準備ができるまで待つ。準備の前に押しても、ボタンは反応しない。 */
+export async function waitForMic(page: Page) {
+  await page.waitForFunction(() => {
+    const mic = document.querySelector(".device-mic");
+    return mic !== null && Object.keys(mic).some((key) => key.startsWith("__reactProps"));
+  });
+}
+
 /** マイクを押し続けてから離す。短い押し方は触っただけとして扱われる。 */
 export async function holdMic(page: Page, ms = 500) {
+  await waitForMic(page);
   await page.locator(".device-mic").hover();
   await page.mouse.down();
   await page.waitForTimeout(ms);

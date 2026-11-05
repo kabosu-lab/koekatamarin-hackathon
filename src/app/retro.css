@@ -224,6 +224,48 @@ body:has(.retro-home) :is(.bottom-nav, .demo-switcher) {
   font-size: 0.875rem;
 }
 
+/* 固定中。歩きながらでも見えるように大きく出す */
+.lock-banner {
+  position: absolute;
+  z-index: 2;
+  top: 8px;
+  left: 8px;
+  right: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 12px;
+  padding: 0.5rem 0.8rem;
+  border-radius: 12px;
+  background: #c23a2c;
+  color: #ffffff;
+}
+
+.lock-banner p {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 800;
+}
+
+.lock-banner small {
+  order: 3;
+  width: 100%;
+  font-size: 0.875rem;
+}
+
+html[data-theme="retro"] .talk .lock-banner button {
+  min-height: 44px;
+  padding: 0 0.9rem;
+  border: 0;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #8f2418;
+  font-size: 1rem;
+  font-weight: 700;
+  box-shadow: none;
+}
+
 /* テキスト */
 .device-input {
   flex: none;

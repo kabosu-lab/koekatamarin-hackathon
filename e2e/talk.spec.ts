@@ -1,6 +1,11 @@
 import { expect, type Page, test } from "@playwright/test";
 import { holdMic } from "./helpers";
 
+// トロフィーが届いた瞬間の全画面の知らせが、マイクの前に重ならないようにする
+test.beforeEach(async ({ context }) => {
+  await context.addCookies([{ name: "koekata_avatar", value: "hide", domain: "127.0.0.1", path: "/" }]);
+});
+
 /** 本物の音声認識の代わりに、決めた言葉を聞き取ったことにする。 */
 async function fakeSpeech(page: Page, spoken: string) {
   await page.addInitScript((text) => {

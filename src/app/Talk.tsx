@@ -18,7 +18,8 @@ import { Avatar } from "./Avatar";
 import { playSendSound, SendBurst } from "./SendBurst";
 import type { AttachmentView } from "@/lib/attachment";
 import { loadTalk, saveTalk } from "./talk-storage";
-import { isSpeechSupported, startListening } from "./speech";
+import { isSpeechSupported, type ListeningSession, startSession } from "./speech";
+import { useLockedTalk } from "./use-locked-talk";
 import { Icon } from "./Icon";
 import { ClickWheel } from "./ClickWheel";
 import { ReplyToast } from "./ReplyToast";
@@ -28,6 +29,10 @@ import type { ReplyNotice } from "@/lib/reply-notices";
 const MAX_TEXT_LENGTH = 2000;
 /** これより短い押し方は触っただけとして、聞いた言葉を送らない */
 const MIN_HOLD_MS = 300;
+/** 押したまま、これだけ上へ動かすと固定になる */
+const LOCK_DISTANCE_PX = 56;
+/** 歩きながら話す間は黙っていることもあるので、長めに待つ */
+const LISTEN_SILENCE_LIMIT_MS = 10 * 60 * 1000;
 const WHEEL_PIXELS_PER_DEGREE = 2.2;
 const MAX_HISTORY = 40;
 /** 話の途中で声をかけないよう、少なくとも2往復してから確かめる */
@@ -94,6 +99,19 @@ export function Talk({
   const heardRef = useRef<HTMLParagraphElement>(null);
   const pressedAt = useRef<number | null>(null);
   const discardHeard = useRef(false);
+  const pressY = useRef<number | null>(null);
+  // 固定にした指を離したときの押した扱いを、止める操作と取り違えない
+  const justLocked = useRef(false);
+  const sessionRef = useRef<ListeningSession | null>(null);
+  const messagesRef = useRef<ChatMessage[]>([]);
+  messagesRef.current = messages;
+  const lockedTalk = useLockedTalk({
+    session: sessionRef,
+    history: () => messagesRef.current.slice(-MAX_HISTORY),
+    onSafety: setSafety,
+    onExchange: (asked, reply) =>
+      setMessages((current) => [...current, { role: "user", content: asked }, { role: "assistant", content: reply }]),
+  });
   // 声が確定したときは、そのときの会話と入力欄で送る
   const latest = useRef({ send: (_text: string) => {}, draft: "" });
 
@@ -325,21 +343,30 @@ export function Talk({
     discardHeard.current = false;
     setHeard("");
     setListening(true);
-    stopRef.current = startListening({
-      onInterim: setHeard,
+    const session = startSession({
+      onInterim: (text) => {
+        setHeard(text);
+        lockedTalk.heard(text);
+      },
       // 話し終えたら、押さなくても相棒へ送る。Teams へ届けるのは本人が確かめて押す
       onFinal: (text) => {
-        if (discardHeard.current) return;
+        const rest = lockedTalk.finish(text).trim();
+        if (discardHeard.current || !rest) return;
         const typed = latest.current.draft.trim();
-        latest.current.send(typed ? `${typed}\n${text}` : text);
+        latest.current.send(typed ? `${typed}\n${rest}` : rest);
       },
       onError: setNotice,
       onEnd: () => {
         setListening(false);
         setHeard("");
         stopRef.current = null;
+        sessionRef.current = null;
+        // 言葉があれば、このあとすぐ onFinal が呼ばれる。そのあとで固定を解く
+        queueMicrotask(() => lockedTalk.finish(""));
       },
-    });
+    }, { silenceLimitMs: LISTEN_SILENCE_LIMIT_MS });
+    sessionRef.current = session;
+    stopRef.current = () => session.stop();
   }
 
   async function attach(file: File) {
@@ -383,7 +410,18 @@ export function Talk({
     listen();
   }
 
+  /** 押したまま上へ動かしたら固定にする。指を離しても聞き続ける。 */
+  function moveMic(y: number) {
+    if (pressY.current === null || pressedAt.current === null) return;
+    if (pressY.current - y < LOCK_DISTANCE_PX) return;
+    pressedAt.current = null;
+    pressY.current = null;
+    justLocked.current = true;
+    lockedTalk.lock();
+  }
+
   function releaseMic() {
+    pressY.current = null;
     const started = pressedAt.current;
     pressedAt.current = null;
     if (started === null) return;
@@ -586,6 +624,15 @@ export function Talk({
         {burst && <SendBurst words={burst} avatarImage={avatarImage} onDone={() => setBurst(null)} />}
         <section className="lcd" aria-label="相棒の画面">
           <ReplyToast initial={notices} paused={listening} />
+          {lockedTalk.locked && (
+            <div className="lock-banner">
+              <p role="status">固定中</p>
+              {lockedTalk.screenNote && <small>{lockedTalk.screenNote}</small>}
+              <button type="button" onClick={() => stopRef.current?.()}>
+                止めて送る
+              </button>
+            </div>
+          )}
           {companionAlt && (
             <div className="lcd-companion">
               <VoiceLump alt={companionAlt} state={listening ? "listening" : sending ? "thinking" : "idle"} replyCount={replyCount} />
@@ -686,19 +733,32 @@ export function Talk({
               onContextMenu={(event) => event.preventDefault()}
               onPointerDown={(event) => {
                 event.currentTarget.setPointerCapture?.(event.pointerId);
+                pressY.current = event.clientY;
                 pressMic();
               }}
+              onPointerMove={(event) => moveMic(event.clientY)}
               onPointerUp={releaseMic}
               onPointerCancel={releaseMic}
               onClick={(event) => {
-                // キーボードでは押し続けられないので、押すたびに始める、止めるを切り替える
+                if (justLocked.current) {
+                  justLocked.current = false;
+                  return;
+                }
+                if (lockedTalk.locked) {
+                  stopRef.current?.();
+                  return;
+                }
+                // 押し続けられないキーボードの操作は、固定と同じ動きにする
                 if (event.detail !== 0) return;
                 if (listening) stopRef.current?.();
-                else listen();
+                else {
+                  listen();
+                  if (isSpeechSupported()) lockedTalk.lock();
+                }
               }}
             >
               <Icon name="talk" />
-              {listening ? "離すと送る" : "押し続けて話す"}
+              {lockedTalk.locked ? "止めて送る" : listening ? "離すと送る" : "押し続けて話す"}
             </button>
           </ClickWheel>
 
