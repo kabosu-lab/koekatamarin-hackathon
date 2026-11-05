@@ -11,8 +11,10 @@ description: ダミーのデータと台本モードでアプリを起動し、�
 2. **起動する**：次をバックグラウンドで動かす。DB は一時フォルダの使い捨てのファイルにする。
 
    ```sh
-   KOEKATA_DB_PATH="<一時フォルダ>/try.db" KOEKATA_CLAUDE=scripted npm run dev -- --hostname 127.0.0.1 --port 3000
+   KOEKATA_DB_PATH="<一時フォルダ>/try.db" KOEKATA_NOTICE_ALWAYS=1 KOEKATA_CLAUDE=scripted npm run dev -- --hostname 127.0.0.1 --port 3000
    ```
+
+   `KOEKATA_NOTICE_ALWAYS=1` がないと、土日と平日の夜は返事の知らせが出ない。
 
 3. **確かめる**：`/api/health` が 200 を返すのを待ち、主な画面（`/`、`/log`、`/minna`、`/me`、`/chie`）を開く。話す画面は、書いて送り、とどけるで確認画面が出るところまで実際に動かし、画面の写真を自分の目で見る。
 4. **伝える**：開く URL と、次の手順を伝える。確かめていないことは、確かめていないと書く。

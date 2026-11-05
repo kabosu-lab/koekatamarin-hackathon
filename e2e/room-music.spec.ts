@@ -54,6 +54,8 @@ test("Teams のタブの画面は、桜と自習室だけで、名前も操作�
 });
 
 test("ほかの画面は外の画面に埋め込む許可を出さない", async ({ page }) => {
-  const response = await page.goto("/me");
-  expect(response?.headers()["content-security-policy"] ?? "").not.toContain("teams.microsoft.com");
+  for (const path of ["/me", "/study/room"]) {
+    const response = await page.goto(path);
+    expect(response?.headers()["content-security-policy"] ?? "").not.toContain("teams.microsoft.com");
+  }
 });

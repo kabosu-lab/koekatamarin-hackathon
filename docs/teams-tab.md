@@ -7,9 +7,8 @@
 | URL | 中身 |
 |---|---|
 | `/tab` | 校内の桜と自習室。名前も投稿の本文も出さず、操作もない |
-| `/study/room` | 自習室だけ |
 
-この2つだけ、Teams の中に埋め込めるように `Content-Security-Policy: frame-ancestors` を付けている（`next.config.ts`）。
+この画面だけ、Teams の中に埋め込めるように `Content-Security-Policy: frame-ancestors` を付けている（`next.config.ts`）。
 
 ## 手順
 
