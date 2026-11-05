@@ -44,6 +44,11 @@ const FATAL_ERRORS: Record<string, string> = {
   "language-not-supported": "このブラウザでは日本語の聞き取りが使えません。文字で書いてください。",
 };
 const GAVE_UP = "うまく聞き取りを続けられませんでした。もう一度話すか、文字で書いてください。";
+/** スマホの聞き取りは声をサーバーへ送って文字にするので、電波が弱いと文字が返ってこないことがある */
+export const SLOW_NOTICE = "まだ文字になっていません。電波が弱いかもしれません。そのまま話し続けるか、文字で書いてください。";
+const DEFAULT_SLOW_MS = 7000;
+/** 止めたあと、ブラウザの終わりの知らせを待つ長さ。来なくても、聞いた言葉は渡す */
+const STOP_GRACE_MS = 2500;
 
 /** これより短く切れたら「すぐ切れた」と数え、続いたらあきらめる（無限に起動し直さない）。 */
 const QUICK_END_MS = 1000;
@@ -81,6 +86,8 @@ export type ListeningSession = {
 export type SessionOptions = {
   /** 声が聞こえないまま、これだけ経ったら止める（マイクを開けたままにしない） */
   silenceLimitMs?: number;
+  /** 聞き始めてから、これだけ経っても文字が1つも返らなければ、電波のことを知らせる（聞き取りは続ける） */
+  slowMs?: number;
   now?(): number;
 };
 
@@ -91,7 +98,7 @@ export type SessionOptions = {
 export function runListening(
   Class: RecognitionConstructor,
   handlers: SpeechHandlers,
-  { silenceLimitMs = DEFAULT_SILENCE_LIMIT_MS, now = Date.now }: SessionOptions = {},
+  { silenceLimitMs = DEFAULT_SILENCE_LIMIT_MS, slowMs = DEFAULT_SLOW_MS, now = Date.now }: SessionOptions = {},
 ): ListeningSession {
   let committed = "";
   let currentFinal = "";
@@ -104,6 +111,11 @@ export function runListening(
   let finished = false;
   let restartTimer: ReturnType<typeof setTimeout> | undefined;
   let silenceTimer: ReturnType<typeof setTimeout> | undefined;
+  let stopTimer: ReturnType<typeof setTimeout> | undefined;
+  let heardAny = false;
+  const slowTimer = setTimeout(() => {
+    if (!heardAny && !finished) handlers.onError(SLOW_NOTICE);
+  }, slowMs);
 
   const commit = () => {
     committed += currentFinal + currentInterim;
@@ -116,6 +128,8 @@ export function runListening(
     finished = true;
     clearTimeout(restartTimer);
     clearTimeout(silenceTimer);
+    clearTimeout(stopTimer);
+    clearTimeout(slowTimer);
     commit();
     if (message) handlers.onError(message);
     handlers.onEnd();
@@ -142,6 +156,7 @@ export function runListening(
       const { finalText, interim } = joinResults(event.results);
       currentFinal = finalText;
       currentInterim = interim;
+      if (finalText || interim) heardAny = true;
       watchSilence();
       handlers.onInterim(committed + currentFinal + currentInterim);
     };
@@ -186,8 +201,15 @@ export function runListening(
       if (finished) return;
       stopping = true;
       clearTimeout(restartTimer);
-      if (current) current.stop();
-      else finish();
+      if (current) {
+        // 電波が弱いと、終わりの知らせが遅れたり来なかったりする。待っても来なければ、届いた分で終える
+        stopTimer = setTimeout(() => {
+          if (current) current.onend = null;
+          current = null;
+          finish();
+        }, STOP_GRACE_MS);
+        current.stop();
+      } else finish();
     },
     pause() {
       if (finished || paused) return;

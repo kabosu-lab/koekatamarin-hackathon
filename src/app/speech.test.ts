@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { joinResults, runListening, type SpeechHandlers } from "./speech";
+import { joinResults, runListening, SLOW_NOTICE, type SpeechHandlers } from "./speech";
 
 type Result = { 0: { transcript: string }; length: number; isFinal: boolean };
 
@@ -145,6 +145,36 @@ describe("runListening", () => {
       vi.advanceTimersByTime(10);
     }
     expect(calls.ended).toBe(0);
+  });
+
+  it("しばらく文字が返らなければ、電波のことを一度だけ知らせ、聞き取りは続ける", () => {
+    const { calls, value } = handlers();
+    runListening(Class, value, { slowMs: 5000 });
+    vi.advanceTimersByTime(5100);
+    expect(calls.errors).toEqual([SLOW_NOTICE]);
+    expect(calls.ended).toBe(0);
+    latest().hear(result("遅れて届いた"));
+    vi.advanceTimersByTime(20_000);
+    expect(calls.errors).toEqual([SLOW_NOTICE]);
+  });
+
+  it("文字が返っていれば、電波の知らせは出さない", () => {
+    const { calls, value } = handlers();
+    runListening(Class, value, { slowMs: 5000 });
+    latest().hear(result("こんにちは", false));
+    vi.advanceTimersByTime(6000);
+    expect(calls.errors).toEqual([]);
+  });
+
+  it("止めたのに終わりの知らせが来なくても、届いた言葉は残して終える", () => {
+    const { calls, value } = handlers();
+    const session = runListening(Class, value);
+    latest().hear(result("途中まで", false));
+    latest().stop = () => {}; // 終わりの知らせが来ない端末
+    session.stop();
+    vi.advanceTimersByTime(3000);
+    expect(calls.ended).toBe(1);
+    expect(calls.final).toEqual(["途中まで"]);
   });
 
   it("止めたあとは聞き直さない", () => {

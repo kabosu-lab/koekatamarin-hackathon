@@ -9,6 +9,7 @@ import type { KnowledgeResult } from "@/lib/knowledge";
 import { PROMISE_FULL, PROMISE_SHORT, promiseCookieName } from "@/lib/promise-cookie";
 import { TRIAL_PROMISE_FULL, TRIAL_PROMISE_SHORT } from "@/lib/trial";
 import { useKeepsWords, useTrial } from "./TrialContext";
+import { useSmoothText } from "./use-smooth-text";
 import { KnowledgeResults } from "./chie/KnowledgeResults";
 import { Compose, type ComposeStart } from "./Compose";
 import { ConnectCard, type ConnectSuggestion } from "./ConnectCard";
@@ -18,7 +19,7 @@ import { Avatar } from "./Avatar";
 import { playSendSound, SendBurst } from "./SendBurst";
 import type { AttachmentView } from "@/lib/attachment";
 import { loadTalk, saveTalk } from "./talk-storage";
-import { isSpeechSupported, type ListeningSession, startSession } from "./speech";
+import { isSpeechSupported, type ListeningSession, SLOW_NOTICE, startSession } from "./speech";
 import { useLockedTalk } from "./use-locked-talk";
 import { Icon } from "./Icon";
 import { ClickWheel } from "./ClickWheel";
@@ -102,6 +103,8 @@ export function Talk({
   const [writing, setWriting] = useState(false);
   const [listening, setListening] = useState(false);
   const [heard, setHeard] = useState("");
+  // 電波が弱くて文字がまとめて届いても、少しずつなめらかに出す
+  const shownHeard = useSmoothText(heard);
   const [sending, setSending] = useState(false);
   const [notice, setNotice] = useState("");
   const [scripted, setScripted] = useState(false);
@@ -164,7 +167,7 @@ export function Talk({
   // 話している最新の行がいつも見えるよう、増えた分だけ上へ送る
   useEffect(() => {
     if (heardRef.current) heardRef.current.scrollTop = heardRef.current.scrollHeight;
-  }, [heard, listening]);
+  }, [shownHeard, listening]);
 
   useEffect(() => () => stopRef.current?.(), []);
 
@@ -382,6 +385,8 @@ export function Talk({
     setListening(true);
     const session = startSession({
       onInterim: (text) => {
+        // 文字が届いたら、電波の知らせは消す
+        setNotice((current) => (current === SLOW_NOTICE ? "" : current));
         setHeard(text);
         lockedTalk.heard(text);
       },
@@ -737,7 +742,7 @@ export function Talk({
               <span className="listening-label">聞いています…</span>
               {draft && <span>{draft} </span>}
               {/* 新しく増えた文字だけが、ぼんやりから固まっていく */}
-              {Array.from(heard).map((character, index) => (
+              {Array.from(shownHeard).map((character, index) => (
                 <span className="solidify" key={index}>
                   {character}
                 </span>

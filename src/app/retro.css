@@ -664,14 +664,13 @@ html[data-theme="retro"] .talk .device-side:focus-visible .device-side-face {
   }
 }
 
+/* ぼかし（filter）は1文字ずつだとスマホで重くカクつくので、色の濃さだけで固まって見せる */
 @keyframes solidify {
   from {
-    opacity: 0.25;
-    filter: blur(3px);
+    opacity: 0.3;
   }
   to {
     opacity: 1;
-    filter: blur(0);
   }
 }
 
@@ -962,4 +961,11 @@ html[data-theme="retro"] :is(.home, .soudan) {
   padding: 2px 8px;
   border-radius: 999px;
   background: rgb(255 255 255 / 82%);
+}
+
+/* 0-0t：会話の上端で、途中まで見える行（「これを覚えて」など）を半分に切って見せない。上の端はやわらかく消す */
+.talk.device .log {
+  padding-top: 14px;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 14px);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 14px);
 }
