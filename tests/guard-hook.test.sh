@@ -38,11 +38,30 @@ check none Bash command "npx tsx --env-file-if-exists=.envx a.ts"
 check none Bash command "git status"
 check none Bash command "git log --grep=push"
 
-check ask Bash command "git push origin main"
-check ask Bash command "git add a && git commit -m x && git push"
+# origin main への通常の push だけは確認を出さない
+check none Bash command "git push origin main"
+check none Bash command "git add a && git commit -m x && git push origin main"
+check none PowerShell command "git push origin main"
+# ほかの push は確認する
+check ask Bash command "git push"
+check ask Bash command "git push origin other"
 check ask Bash command "git -C /repo push"
-check ask PowerShell command "git push origin main"
+check ask Bash command "git push origin main other"
+check ask Bash command "git push origin main:other"
 # 文字列の中でも確認を出す（安全側）
 check ask Bash command "echo git push の説明"
+# 履歴を壊す操作は止める
+check deny Bash command "git push --force origin main"
+check deny Bash command "git push origin main --force"
+check deny Bash command "git push -f origin main"
+check deny Bash command "git push --force-with-lease origin main"
+check deny Bash command "git push origin +main"
+check deny Bash command "git push origin --delete main"
+check deny Bash command "git reset --hard HEAD~1"
+check deny Bash command "git rebase main"
+check deny Bash command "git commit --amend -m x"
+check deny Bash command "git filter-branch --all"
+check deny PowerShell command "git reset --hard"
+check none Bash command "git reset HEAD a.txt"
 
 echo "guard-hook: 通りました"
