@@ -156,7 +156,7 @@ export async function handlePublish(
   input: unknown,
   db?: DatabaseSync,
 ): Promise<PublishOutcome> {
-  const { goalId, text, channelId, kind, researchedWithAi, askedPersonId, scope, scopePersonId, attachmentId } = fields(input);
+  const { announcement, goalId, text, channelId, kind, researchedWithAi, askedPersonId, scope, scopePersonId, attachmentId } = fields(input);
   if (attachmentId !== undefined && (typeof attachmentId !== "string" || !db || !loadPending(db, viewerId, attachmentId))) {
     return { status: 400, body: { error: "添付が見つかりません。もう一度付けてください" } };
   }
@@ -187,6 +187,7 @@ export async function handlePublish(
     const postId = destination.createPost(viewerId, channelId, text, {
       kind: KINDS.find((k) => k === kind),
       researchedWithAi: researchedWithAi === true,
+      announcement: announcement === true,
       askedPersonId,
       scope: knownScope,
       scopePersonId,

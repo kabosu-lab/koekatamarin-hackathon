@@ -115,6 +115,7 @@ export function Compose({
         channelId,
         kind: draft.kind,
         researchedWithAi: draft.researchedWithAi,
+        announcement: draft.announcement === true,
         askedPersonId: asked?.id,
         goalId,
         scope,

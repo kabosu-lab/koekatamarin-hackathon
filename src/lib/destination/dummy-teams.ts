@@ -29,6 +29,7 @@ type PostRow = {
   scope: PostScope;
   scope_person_id: string | null;
   needs_look: number;
+  is_announcement: number;
   shared_to_staff: number;
   asked_person_name: string | null;
   answered: number;
@@ -124,7 +125,7 @@ export function createDummyTeams(db: DatabaseSync): PostDestination {
       const posts = db
         .prepare(
           `SELECT p.id, p.channel_id, p.author_id, a.name AS author_name, a.label AS author_label,
-                  p.kind, p.body, p.created_at, p.researched_with_ai, p.scope, p.scope_person_id, p.needs_look, p.shared_to_staff,
+                  p.kind, p.body, p.created_at, p.researched_with_ai, p.scope, p.scope_person_id, p.needs_look, p.shared_to_staff, p.is_announcement,
                   (SELECT q.name FROM people q WHERE q.id = p.asked_person_id) AS asked_person_name,
                   EXISTS (SELECT 1 FROM replies r WHERE r.post_id = p.id AND r.author_id = p.asked_person_id) AS answered,
                   (SELECT count(*) FROM post_likes l WHERE l.post_id = p.id) AS like_count,
@@ -147,8 +148,17 @@ export function createDummyTeams(db: DatabaseSync): PostDestination {
       );
 
       const selectAttachment = db.prepare("SELECT id, media_type, file_name FROM attachments WHERE post_id = ?");
+      const selectRsvps = db.prepare(
+        "SELECT q.id, q.name FROM post_rsvps x JOIN people q ON q.id = x.person_id WHERE x.post_id = ? ORDER BY q.rowid",
+      );
 
-      return posts.filter((p) => canSeeScope(viewerId, { ...p, author_id: p.author_id })).map((p): PostView => ({
+      return posts.filter((p) => canSeeScope(viewerId, { ...p, author_id: p.author_id })).map((p): PostView => {
+        const rsvps = p.is_announcement === 1 ? (selectRsvps.all(p.id) as { id: string; name: string }[]) : [];
+        return {
+        announcement: p.is_announcement === 1,
+        rsvpCount: rsvps.length,
+        rsvpedByViewer: rsvps.some((rsvp) => rsvp.id === viewerId),
+        rsvpNames: p.author_id === viewerId ? rsvps.map((rsvp) => rsvp.name) : [],
         id: p.id,
         authorId: p.author_id,
         authorName: p.author_name,
@@ -175,14 +185,15 @@ export function createDummyTeams(db: DatabaseSync): PostDestination {
           body: r.body,
           createdAt: r.created_at,
         })),
-      }));
+        };
+      });
     },
 
     createPost(
       viewerId,
       channelId,
       body,
-      { kind = "report", researchedWithAi = false, askedPersonId, scope = "everyone", scopePersonId, needsLook = false } = {},
+      { kind = "report", researchedWithAi = false, askedPersonId, scope = "everyone", scopePersonId, needsLook = false, announcement = false } = {},
     ) {
       requireVisibleChannel(viewerId, channelId);
       if (askedPersonId !== undefined) {
@@ -200,8 +211,8 @@ export function createDummyTeams(db: DatabaseSync): PostDestination {
       }
       const id = randomUUID();
       db.prepare(
-        `INSERT INTO posts (id, channel_id, author_id, kind, body, created_at, researched_with_ai, asked_person_id, scope, scope_person_id, needs_look)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO posts (id, channel_id, author_id, kind, body, created_at, researched_with_ai, asked_person_id, scope, scope_person_id, needs_look, is_announcement)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       ).run(
         id,
         channelId,
@@ -215,6 +226,7 @@ export function createDummyTeams(db: DatabaseSync): PostDestination {
         scope === "person" ? (scopePersonId ?? null) : null,
         // 範囲を絞った投稿は相手を本人が選んでいるので、他の教職員へ広げるきっかけにしない
         needsLook && scope === "everyone" ? 1 : 0,
+        announcement ? 1 : 0,
       );
       return id;
     },
@@ -295,6 +307,14 @@ export function createDummyTeams(db: DatabaseSync): PostDestination {
       if (removed.changes === 0) {
         db.prepare("INSERT INTO post_likes (post_id, person_id) VALUES (?, ?)").run(postId, viewerId);
       }
+    },
+
+    toggleRsvp(viewerId, postId) {
+      requireVisiblePost(viewerId, postId);
+      const row = db.prepare("SELECT is_announcement FROM posts WHERE id = ?").get(postId) as { is_announcement: number } | undefined;
+      if (row?.is_announcement !== 1) throw new DestinationError("告知ではありません");
+      const removed = db.prepare("DELETE FROM post_rsvps WHERE post_id = ? AND person_id = ?").run(postId, viewerId);
+      if (removed.changes === 0) db.prepare("INSERT INTO post_rsvps (post_id, person_id) VALUES (?, ?)").run(postId, viewerId);
     },
   };
 }

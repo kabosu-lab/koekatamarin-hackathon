@@ -51,6 +51,12 @@ export type PostView = {
   likeCount: number;
   likedByViewer: boolean;
   replies: ReplyView[];
+  /** 勉強会などの告知。「行きます」を押せる */
+  announcement: boolean;
+  rsvpCount: number;
+  rsvpedByViewer: boolean;
+  /** 投稿した本人にだけ見える、行く人の名前 */
+  rsvpNames: string[];
 };
 
 export type CreatePostOptions = {
@@ -62,6 +68,8 @@ export type CreatePostOptions = {
   scopePersonId?: string;
   /** 受け取られ方の確認で気になるとされた投稿 */
   needsLook?: boolean;
+  /** 勉強会などの告知 */
+  announcement?: boolean;
 };
 
 export class DestinationError extends Error {}
@@ -79,6 +87,8 @@ export type PostDestination = {
   createPost(viewerId: string, channelId: string, body: string, options?: CreatePostOptions): string;
   createReply(viewerId: string, postId: string, body: string): string;
   toggleLike(viewerId: string, postId: string): void;
+  /** 告知への「行きます」を付けたり外したりする。 */
+  toggleRsvp(viewerId: string, postId: string): void;
   findPersonName(personId: string): string | null;
   /** 気になる投稿を、教職員だけのチャネルで共有する。教職員だけができる。 */
   shareConcern(viewerId: string, postId: string): boolean;

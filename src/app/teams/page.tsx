@@ -13,7 +13,7 @@ import { canSaveKnowledge, excludedFromMaterial } from "@/lib/knowledge";
 import { schoolName } from "@/lib/seed-data";
 import { AttachmentPreview } from "../AttachmentPreview";
 import { Avatar } from "../Avatar";
-import { createPost, createReply, shareConcern, toggleLike } from "./actions";
+import { createPost, createReply, shareConcern, toggleLike, toggleRsvp } from "./actions";
 import "./teams.css";
 
 export const metadata: Metadata = { title: "校内チャネル｜こえかた" };
@@ -95,6 +95,24 @@ function Post({
             いいね {post.likeCount}
           </button>
         </form>
+      )}
+
+      {post.announcement && (
+        <div className="rsvp">
+          {post.authorId === viewerId ? (
+            <p>
+              行きます {post.rsvpCount} 人{post.rsvpNames.length > 0 && `（${post.rsvpNames.join("、")}）`}
+            </p>
+          ) : (
+            <form action={toggleRsvp}>
+              <input type="hidden" name="postId" value={post.id} />
+              <button type="submit" className="like" aria-pressed={post.rsvpedByViewer}>
+                {post.rsvpedByViewer ? "行きます（押し済み）" : "行きます"}
+              </button>
+              <span> {post.rsvpCount} 人</span>
+            </form>
+          )}
+        </div>
       )}
 
       {post.replies.map((reply) => (

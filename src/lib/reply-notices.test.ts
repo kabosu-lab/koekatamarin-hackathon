@@ -69,3 +69,17 @@ describe("届いた返事の知らせ", () => {
     expect(listReplyNotices(db, "aoki")).toEqual([]);
   });
 });
+
+describe("告知への「行きます」", () => {
+  it("告知にだけ押せて、押し直すと外れ、名前は投稿した本人にだけ見える", () => {
+    const postId = teams.createPost("noda", "study", "勉強会のお知らせ", { announcement: true });
+    const view = (viewer: string) => teams.listPosts(viewer, "study").find((post) => post.id === postId)!;
+    teams.toggleRsvp("aoki", postId);
+    expect(view("aoki")).toMatchObject({ announcement: true, rsvpCount: 1, rsvpedByViewer: true, rsvpNames: [] });
+    expect(view("noda").rsvpNames).toEqual(["青木 ひより"]);
+    teams.toggleRsvp("aoki", postId);
+    expect(view("aoki").rsvpCount).toBe(0);
+    const plain = teams.createPost("noda", "study", "ふつうの投稿");
+    expect(() => teams.toggleRsvp("aoki", plain)).toThrow("告知ではありません");
+  });
+});

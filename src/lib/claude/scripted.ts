@@ -10,7 +10,13 @@ const replies: Record<(typeof openingLines)[number], string> = {
 };
 
 /** キーなしで見どころを通すための架空の例。話した本人が自分のコツに気づく流れ。 */
-function storyReply(spoken: string): string | null {
+function storyReply(spoken: string, talk: string): string | null {
+  // 告知は、話の全体を見て足りないことだけ聞く
+  if (/勉強会|ゼミ/.test(talk)) {
+    if (!/\d+時|\d+日|曜/.test(talk)) return "ええやん、告知にしよ。いつやるん？";
+    if (!/室|館|オンライン/.test(talk)) return "どこでやるん？";
+    return "そろったね。とどけるで確かめて、みんなに知らせよう。";
+  }
   if (/声を小さく/.test(spoken)) return "それ、コツかもしれんね。ほかの先生にも届けてみる？";
   if (/静かになった/.test(spoken)) return "へえ、急に静かに。その少し前、何してたん？";
   return null;
@@ -45,6 +51,7 @@ function scriptedDraft(transcript: string, jsonSchema: Record<string, unknown> |
     channelId: channels[1] ?? channels[0] ?? "",
     kind: "report",
     researchedWithAi: spoken.some((line) => line.includes("調べ")),
+    announcement: spoken.some((line) => /勉強会|ゼミ/.test(line)),
   };
 }
 
@@ -201,7 +208,8 @@ export function createScriptedClaude(): ClaudeClient {
       if (task === "review") return { text: JSON.stringify(scriptedReview(messages[0].content)), refused: false };
 
       const last = messages.at(-1)?.content.trim() ?? "";
-      const text = storyReply(last) ?? (replies as Record<string, string>)[last] ?? fallbackReply;
+      const talk = messages.filter((message) => message.role === "user").map((message) => String(message.content)).join("\n");
+      const text = storyReply(last, talk) ?? (replies as Record<string, string>)[last] ?? fallbackReply;
       return { text, refused: false };
     },
   };

@@ -351,6 +351,13 @@ const MIGRATIONS: readonly string[] = [
      kind TEXT NOT NULL CHECK (kind IN ('post', 'reply')),
      teams_id TEXT NOT NULL UNIQUE
    ) STRICT;`,
+  // 告知の投稿と、「行きます」の反応
+  `ALTER TABLE posts ADD COLUMN is_announcement INTEGER NOT NULL DEFAULT 0 CHECK (is_announcement IN (0, 1));
+   CREATE TABLE post_rsvps (
+     post_id TEXT NOT NULL REFERENCES posts (id) ON DELETE CASCADE,
+     person_id TEXT NOT NULL REFERENCES people (id),
+     PRIMARY KEY (post_id, person_id)
+   ) STRICT;`,
 ];
 
 export const SCHEMA_VERSION

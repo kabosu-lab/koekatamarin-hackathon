@@ -33,6 +33,11 @@ export async function shareConcern(form: FormData) {
   revalidatePath("/teams");
 }
 
+export async function toggleRsvp(form: FormData) {
+  destination().toggleRsvp(await viewerId(), field(form, "postId"));
+  revalidatePath("/teams");
+}
+
 export async function toggleLike(form: FormData) {
   destination().toggleLike(await viewerId(), field(form, "postId"));
   revalidatePath("/teams");
