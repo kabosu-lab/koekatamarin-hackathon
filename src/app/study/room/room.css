@@ -1,0 +1,384 @@
+/*
+ * 自習室の景色。絵のファイルを使わず、SVG と CSS で描く。動きは transform と opacity だけ。
+ * .study-room を根に残すので、モダンでは modern.css の決まりどおり景色ごと出ない。
+ */
+
+/* 広い画面の共通の列組みを使わず、景色を1枚で大きく見せる */
+html body .home.room-page {
+  display: flex;
+  flex-direction: column;
+  max-width: min(100%, 64rem);
+}
+
+html body .room-card {
+  display: block;
+  /* 幅を中身から決めない入れ物なので、列の幅いっぱいに広げる（広げないと 0 になる） */
+  width: 100%;
+  container-type: inline-size;
+}
+
+.room-card .study-count {
+  margin-bottom: 0.75rem;
+}
+
+.room-rest {
+  margin: 0.75rem 0 0;
+}
+
+.study-room.room-scene {
+  --buddy: clamp(84px, 25cqw, 112px);
+  --room-wall-height: clamp(190px, 44cqw, 340px);
+  position: relative;
+  isolation: isolate;
+  display: block;
+  padding: 0;
+  overflow: hidden;
+  border-radius: 1rem;
+  background: var(--room-floor);
+}
+
+/* ---- 時間の色 ---- */
+.room-scene[data-time="morning"] {
+  --room-wall: #efe2c8;
+  --room-wainscot: #b98d5e;
+  --room-wood: #a4713f;
+  --room-wood-dark: #6e4726;
+  --room-sky-top: #cfe6f2;
+  --room-sky-bottom: #fff0cb;
+  --room-light: #fff3c9;
+  --room-floor: #c79a68;
+  --room-plank: #b98b5a;
+  --room-desk: #8c5a30;
+  --room-desk-edge: #6e4726;
+  --room-glow: #fff0bd;
+}
+
+.room-scene[data-time="day"] {
+  --room-wall: #f3ecd9;
+  --room-wainscot: #c29a6c;
+  --room-wood: #ad7c4b;
+  --room-wood-dark: #775030;
+  --room-sky-top: #8fc8ee;
+  --room-sky-bottom: #dff1fb;
+  --room-light: #ffffff;
+  --room-floor: #d1a877;
+  --room-plank: #c49a68;
+  --room-desk: #96643a;
+  --room-desk-edge: #775030;
+  --room-glow: #ffffff;
+}
+
+.room-scene[data-time="evening"] {
+  --room-wall: #e9c49a;
+  --room-wainscot: #a9734a;
+  --room-wood: #94603a;
+  --room-wood-dark: #5e3a2a;
+  --room-sky-top: #7d6aa8;
+  --room-sky-bottom: #ffb27a;
+  --room-light: #ffb56b;
+  --room-curtain: #e8d9bd;
+  --room-floor: #b47f50;
+  --room-plank: #a57144;
+  --room-desk: #7c4d2e;
+  --room-desk-edge: #5e3a2a;
+  --room-glow: #ffc98a;
+}
+
+.room-scene[data-time="night"] {
+  --room-wall: #33241f;
+  --room-wainscot: #271a16;
+  --room-wood: #6d4629;
+  --room-wood-dark: #1f1411;
+  --room-sky-top: #10162e;
+  --room-sky-bottom: #2b2a4c;
+  --room-light: #ffd48a;
+  --room-floor: #3d2a22;
+  --room-plank: #33221c;
+  --room-desk: #5d3a24;
+  --room-desk-edge: #3d2517;
+  --room-glow: #ffcf85;
+}
+
+/* ---- 背景と床 ---- */
+.room-backdrop {
+  display: block;
+  width: 100%;
+  height: var(--room-wall-height);
+}
+
+.room-floor {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15.5rem), 1fr));
+  gap: 1.25rem 0.5rem;
+  justify-items: center;
+  margin-top: calc(var(--buddy) * -0.72);
+  padding: 0 0.75rem 1.25rem;
+}
+
+/* 床は景色の下から始める。席が増えて段が増えても、壁を伸ばさず床だけが続く */
+.room-scene::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: var(--room-wall-height) 0 0;
+  background: repeating-linear-gradient(90deg, var(--room-floor) 0 58px, var(--room-plank) 58px 60px);
+}
+
+/* ---- 机と席 ---- */
+.room-table {
+  width: 100%;
+  max-width: 19rem;
+}
+
+.room-seats {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  gap: 0.75rem;
+}
+
+.room-seat {
+  position: relative;
+  width: var(--buddy);
+  height: var(--buddy);
+}
+
+.room-scene .study-buddy {
+  width: 100%;
+  height: 100%;
+}
+
+.room-scene .study-buddy .pose {
+  width: 100%;
+  height: 100%;
+}
+
+/* 灯り：机から机へ、ゆっくり渡っていく。人数がそのまま部屋の明るさになる */
+.room-glow {
+  position: absolute;
+  inset: -30%;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, var(--room-glow), transparent);
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.room-seat-empty {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.room-chair {
+  width: 54%;
+  height: 56%;
+  border: 5px solid var(--room-desk-edge);
+  border-bottom: 0;
+  border-radius: 0.6rem 0.6rem 0 0;
+  opacity: 0.55;
+}
+
+.room-desk {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: center;
+  gap: 0.75rem;
+  height: 1.9rem;
+  margin-top: -1.1rem;
+  border-radius: 0.35rem;
+  border-bottom: 0.45rem solid var(--room-desk-edge);
+  background: var(--room-desk);
+}
+
+.room-things {
+  position: relative;
+  display: block;
+  width: var(--buddy);
+}
+
+.room-book {
+  position: absolute;
+  top: 0.35rem;
+  left: 50%;
+  width: 2.6rem;
+  height: 0.7rem;
+  margin-left: -1.3rem;
+  border-radius: 0.15rem;
+  background: linear-gradient(90deg, #f7f1e2 0 48%, #cfc5ad 48% 52%, #f7f1e2 52%);
+}
+
+/* カップはカフェの机にだけ置く */
+.room-cup {
+  display: none;
+  position: absolute;
+  top: 0.1rem;
+  left: calc(50% + 1.5rem);
+  width: 0.8rem;
+  height: 0.8rem;
+  border-radius: 0 0 0.3rem 0.3rem;
+  background: #f1e7d3;
+}
+
+.room-scene[data-place="cafe"] .room-cup {
+  display: block;
+}
+
+.room-steam {
+  position: absolute;
+  bottom: 110%;
+  left: 30%;
+  width: 0.25rem;
+  height: 0.8rem;
+  border-radius: 1rem;
+  background: rgb(255 255 255 / 45%);
+  opacity: 0;
+}
+
+/* ハイタッチの瞬間だけ、2人の間に小さな光 */
+.room-spark {
+  position: absolute;
+  z-index: 2;
+  top: 12%;
+  left: 50%;
+  width: 1.6rem;
+  height: 1.6rem;
+  margin-left: -0.8rem;
+  background: #fff3b0;
+  clip-path: polygon(50% 0, 60% 40%, 100% 50%, 60% 60%, 50% 100%, 40% 60%, 0 50%, 40% 40%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* 夜遅くは灯りを落とす */
+.room-scene[data-late="true"] .room-backdrop {
+  opacity: 0.6;
+}
+
+.room-scene[data-late="true"] {
+  --room-glow: #c9925a;
+}
+
+/* ---- 動き：ゆっくり、静かに ---- */
+@media (prefers-reduced-motion: no-preference) {
+  .room-glow {
+    animation: room-breathe 11s ease-in-out var(--wave, 0s) infinite;
+  }
+
+  .room-spark {
+    animation: room-spark 20s ease-out var(--wait, 0s) infinite;
+  }
+
+  .room-steam {
+    animation: room-steam 6s ease-in-out var(--wave, 0s) infinite;
+  }
+
+  .room-shaft {
+    animation: room-shaft 18s ease-in-out infinite;
+  }
+
+  .room-mote {
+    animation: room-mote 16s ease-in-out infinite;
+  }
+
+  .room-curtain {
+    transform-box: fill-box;
+    transform-origin: 50% 0;
+    animation: room-curtain 14s ease-in-out infinite;
+  }
+
+  .room-twinkle {
+    animation: room-twinkle 12s ease-in-out infinite;
+  }
+
+  .room-lamp-glow {
+    animation: room-lamp 9s ease-in-out infinite;
+  }
+
+  /* 夜遅くは、外の灯りも部屋の灯りも動かさない */
+  .room-scene[data-late="true"] :is(.room-twinkle, .room-lamp-glow, .room-glow) {
+    animation: none;
+  }
+}
+
+@keyframes room-breathe {
+  0%, 100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+@keyframes room-spark {
+  0%, 46%, 58%, 100% {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  49%, 53% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes room-steam {
+  0% {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  40% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes room-shaft {
+  0%, 100% {
+    opacity: 0.7;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes room-mote {
+  0%, 100% {
+    opacity: 0.25;
+    transform: translate(0, 0);
+  }
+  50% {
+    opacity: 0.9;
+    transform: translate(10px, -16px);
+  }
+}
+
+@keyframes room-curtain {
+  0%, 100% {
+    transform: skewX(0);
+  }
+  50% {
+    transform: skewX(1.2deg);
+  }
+}
+
+@keyframes room-twinkle {
+  0%, 100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 0.95;
+  }
+}
+
+@keyframes room-lamp {
+  0%, 100% {
+    opacity: 0.8;
+  }
+  50% {
+    opacity: 1;
+  }
+}
