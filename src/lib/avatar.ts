@@ -1,3 +1,4 @@
+import { companionImage } from "./companion-art";
 import type { DatabaseSync } from "node:sqlite";
 import { catalogEntry } from "./avatar-catalog";
 
@@ -106,7 +107,8 @@ export function getAvatar(db: DatabaseSync, personId: string): AvatarView {
   const row = db.prepare("SELECT family, shown_stage FROM avatars WHERE person_id = ?").get(personId) as
     | { family: string; shown_stage: number | null }
     | undefined;
-  if (!row) return { family: null, stage: 0, image: "egg.png", label: "まだ卵です" };
+  // 系統が決まる前も、声のかたまりで出す
+  if (!row) return { family: null, stage: 0, image: companionImage("dolphin", 1), label: "声のかたまりが生まれそうです" };
 
   const stage = shownStage(db, personId, row.family, row.shown_stage);
   const art = db.prepare("SELECT token, status FROM avatar_art WHERE person_id = ? AND status != 'none'").get(personId) as
@@ -120,8 +122,10 @@ export function getAvatar(db: DatabaseSync, personId: string): AvatarView {
     const label = asEgg ? "もうすぐ生まれそうな卵" : `${stage} 段階目の相棒`;
     return { family: row.family, stage, image: `/api/avatar/art/${art.token}/${pose}?v=${row.family}-${stage}`, label };
   }
-  if (stage === 0) return { family: row.family, stage, image: "egg.png", label: "もうすぐ生まれそうな卵" };
-  return { family: row.family, stage, image: `${row.family}-${stage}.png`, label: `${stage} 段階目の相棒` };
+  const entry = catalogEntry(row.family);
+  if (stage === 0) return { family: row.family, stage, image: companionImage(row.family, 1), label: "声のかたまりが生まれそうです" };
+  const label = stage <= 1 ? "声のかたまり" : `${entry?.name ?? "相棒"}（${stage} 段階目）`;
+  return { family: row.family, stage, image: companionImage(row.family, stage), label };
 }
 
 

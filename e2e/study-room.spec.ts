@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 
 const SCENES = [
   ["morning", "library", "朝の図書館"],
-  ["day", "library", "昼の図書館"],
+  ["day", "garden", "昼の校庭の桜の下"],
   ["evening", "classroom", "夕方の教室"],
   ["night", "cafe", "夜のカフェ"],
 ] as const;

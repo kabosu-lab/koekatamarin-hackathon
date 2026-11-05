@@ -112,7 +112,7 @@ test("Teams の写真（ダミー）から分身を作れて、写真のない�
   const hatch = page.getByRole("dialog", { name: "相棒の誕生" });
   await expect(hatch.getByText("写真の色と雰囲気を読んでいます")).toBeVisible();
   await expect(hatch.getByRole("heading", { name: /生まれた！$/ }).last()).toBeVisible({ timeout: 20_000 });
-  await expect(hatch).toContainText("雲の子が生まれた！", { timeout: 20_000 });
+  await expect(hatch).toContainText("クジラが生まれた！", { timeout: 20_000 });
   await expect(hatch).toContainText("得意：");
   expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0);
   await hatch.getByRole("button", { name: "よろしくね" }).click();

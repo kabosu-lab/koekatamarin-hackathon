@@ -1,12 +1,12 @@
 import { type TimeOfDay, timeOfDay } from "@/lib/sakura";
 import { isLateNight } from "@/lib/study";
 
-export type RoomPlace = "library" | "classroom" | "cafe";
+export type RoomPlace = "library" | "garden" | "classroom" | "cafe";
 
-/** 朝は図書館、夕方は教室、夜はカフェ。前提：昼は朝の図書館のまま、光だけ高くする。 */
+/** 朝は図書館、昼は校庭の桜の下、夕方は教室、夜はカフェ。 */
 export const ROOM_PLACES: Record<TimeOfDay, { place: RoomPlace; label: string }> = {
   morning: { place: "library", label: "朝の図書館" },
-  day: { place: "library", label: "昼の図書館" },
+  day: { place: "garden", label: "昼の校庭の桜の下" },
   evening: { place: "classroom", label: "夕方の教室" },
   night: { place: "cafe", label: "夜のカフェ" },
 };

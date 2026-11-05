@@ -101,7 +101,7 @@ describe("卵を開ける", () => {
   const teams = () => createDummyTeams(db);
 
   it("必ず一覧の中の絵が生まれ、持っていないものを優先する", async () => {
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < CATALOG.length - 1; i++) {
       const hatched = await openGiftEgg(scripted, db, teams(), "noda", giveEgg("noda"), NOW);
       expect(catalogEntry(hatched?.family)).toBeTruthy();
     }

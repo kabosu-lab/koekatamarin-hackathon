@@ -13,7 +13,7 @@ function render(tokens: string[], moment: Parameters<typeof RoomScene>[0]["momen
 describe("時間と景色", () => {
   it("朝は図書館、夕方は教室、夜はカフェ", () => {
     expect(ROOM_PLACES[roomMoment(at("07:00")).time].place).toBe("library");
-    expect(ROOM_PLACES[roomMoment(at("12:00")).time].place).toBe("library");
+    expect(ROOM_PLACES[roomMoment(at("12:00")).time].place).toBe("garden");
     expect(ROOM_PLACES[roomMoment(at("17:00")).time].place).toBe("classroom");
     expect(ROOM_PLACES[roomMoment(at("20:00")).time].place).toBe("cafe");
   });

@@ -71,6 +71,8 @@ export function Talk({
   notices = [],
   noticePollMs = 30_000,
   companionAlt,
+  companionColor,
+  companionImage,
 }: {
   viewer: { name: string; label: string };
   question: string | null;
@@ -87,6 +89,10 @@ export function Talk({
   noticePollMs?: number;
   /** 窓に出す相棒の名前。報酬を隠している人にはない */
   companionAlt?: string;
+  /** 声のかたまりの色 */
+  companionColor?: string;
+  /** 育って動物になったら、その絵 */
+  companionImage?: string;
 }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState("");
@@ -666,7 +672,14 @@ export function Talk({
           )}
           {companionAlt && (
             <div className="lcd-companion">
-              <VoiceLump alt={companionAlt} state={listening ? "listening" : sending ? "thinking" : "idle"} replyCount={replyCount} />
+              {companionImage ? (
+                <div className="dolphin" data-state={listening ? "listening" : sending ? "thinking" : "idle"}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img className="dolphin-still" src={companionImage} alt={companionAlt} />
+                </div>
+              ) : (
+                <VoiceLump alt={companionAlt} color={companionColor} state={listening ? "listening" : sending ? "thinking" : "idle"} replyCount={replyCount} />
+              )}
             </div>
           )}
           <div className="log" role="log" aria-label="相棒との会話" ref={logRef} data-noswipe-landscape>

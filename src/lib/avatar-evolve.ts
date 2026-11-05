@@ -68,7 +68,11 @@ export function pendingEvolution(db: DatabaseSync, personId: string): number | n
 /** 候補を決まった形で作る。今の系統と、違う方向を2つ。Claude を呼べないときも同じ形で出る。 */
 function codeCandidates(personId: string, family: string, stage: number): Stored[] {
   const order = (id: string) => createHash("sha256").update(`${personId}|${stage}|${id}`).digest("hex");
-  const others = CATALOG.filter((entry) => entry.id !== family).sort((a, b) => order(a.id).localeCompare(order(b.id)));
+  const tone = catalogEntry(family)?.tone;
+  // 最初の色に近い動物を先に出す。最後に選ぶのは本人
+  const others = CATALOG.filter((entry) => entry.id !== family).sort(
+    (a, b) => Number(b.tone === tone) - Number(a.tone === tone) || order(a.id).localeCompare(order(b.id)),
+  );
   const current = catalogEntry(family);
   const different = others.find((entry) => entry.group !== current?.group);
   const picks = [current, others.find((entry) => entry !== different), different].filter((entry) => entry !== null && entry !== undefined);

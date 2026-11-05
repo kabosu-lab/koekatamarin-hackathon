@@ -193,44 +193,23 @@ describe("配信する絵", () => {
     return getAvatar(db, "saeki").image.split("/")[4];
   }
 
-  it("用意した絵があれば、それを出す", async () => {
-    const token = await picked();
-    const dir = artDir(["spirit-1.png", "spirit-2.png", "spirit-3.png", "spirit-hi.png"]);
-    const art = await renderArt(db, token, "normal", {}, dir);
-    expect(art?.contentType).toBe("image/png");
-    expect(Buffer.from(art?.body as Uint8Array).toString()).toMatch(/^spirit-\d\.png$/);
-    expect(Buffer.from((await renderArt(db, token, "highfive", {}, dir))?.body as Uint8Array).toString()).toBe("spirit-hi.png");
-  });
-
-  it("専用のポーズがない系統は、ふつうの絵を出す", async () => {
+  it("相棒は手元の絵があってもコードで描き、どのポーズでも同じ動物を出す", async () => {
     const token = await picked("bird");
     const dir = artDir(["bird-1.png", "bird-2.png", "bird-3.png"]);
-    for (const pose of ["highfive", "cheer", "stretch", "study"] as const) {
-      expect(Buffer.from((await renderArt(db, token, pose, {}, dir))?.body as Uint8Array).toString()).toMatch(/^bird-\d\.png$/);
-    }
-  });
-
-  it("絵がないときと KOEKATA_AVATAR_ART=code のときは、コードの絵に切り替わる", async () => {
-    const token = await picked();
-    const dir = artDir(["spirit-1.png", "spirit-2.png", "spirit-3.png"]);
-    const empty = await renderArt(db, token, "normal", {}, emptyDir());
-    expect(empty?.contentType).toBe("image/svg+xml");
-    expect(empty?.body).toContain(TRAITS.colors[0]);
-    const code = await renderArt(db, token, "normal", { KOEKATA_AVATAR_ART: "code" }, dir);
-    expect(code?.contentType).toBe("image/svg+xml");
+    const art = await renderArt(db, token, "normal", {}, dir);
+    expect(art?.contentType).toBe("image/svg+xml");
     for (const pose of POSES) {
-      expect((await renderArt(db, token, pose, {}, emptyDir()))?.body).not.toMatch(/<text|<script/);
+      const posed = await renderArt(db, token, pose, {}, dir);
+      expect(posed?.body).toBe(art?.body);
+      expect(posed?.body).not.toMatch(/<text|<script|png/);
     }
     expect(await renderArt(db, "unknown", "normal", {})).toBeNull();
   });
 
-  it("名前の一覧にない絵は読めず、一覧は雲の子とポーズを含む", async () => {
+  it("名前の一覧にない絵は読めない。背景の絵はそのまま読める", async () => {
     expect(isArtName("cloud-3.png")).toBe(true);
-    expect(isArtName("cloud-hi.png")).toBe(true);
     expect(isArtName("bird-hi.png")).toBe(false);
     expect(isArtName("../.env")).toBe(false);
-    const placeholder = await loadArt("spirit-1.png", artDir(["spirit-1.png"]), { KOEKATA_AVATAR_ART: "code" });
-    expect(placeholder?.placeholder).toBe(true);
     const background = await loadArt("school-haru.jpg", artDir(["school-haru.jpg"]), { KOEKATA_AVATAR_ART: "code" });
     expect(background?.placeholder).toBe(false);
   });

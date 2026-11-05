@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+import type { Season } from "@/lib/sakura";
 import { StudyBuddy } from "../PresenceView";
 import { RoomBackdrop } from "./RoomBackdrop";
 import { ROOM_PLACES, type RoomMoment, roomTables } from "./scene";
@@ -7,12 +8,12 @@ import { ROOM_PLACES, type RoomMoment, roomTables } from "./scene";
  * 景色の中の机に、相棒が2人ずつ静かに座る。灯りが机から机へゆっくり渡っていき、部屋がひとつにつながって見える。
  * 夜遅くは促さないよう、ハイタッチと応援をやめ、一人ずつ伸びをするだけにする。
  */
-export function RoomScene({ tokens, moment }: { tokens: string[]; moment: RoomMoment }) {
+export function RoomScene({ tokens, moment, season }: { tokens: string[]; moment: RoomMoment; season?: Season }) {
   const { place, label } = ROOM_PLACES[moment.time];
 
   return (
     <div className="study-room room-scene" data-time={moment.time} data-place={place} data-late={moment.late}>
-      <RoomBackdrop place={place} label={label} />
+      <RoomBackdrop place={place} label={label} season={season} />
       <div className="room-floor">
         {roomTables(tokens).map((table, order) => {
           const paired = table.length === 2 && !moment.late;

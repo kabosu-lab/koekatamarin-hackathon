@@ -77,8 +77,8 @@ describe("分身", () => {
     expect(familyFor("human", "fight")).toBeNull();
   });
 
-  it("最初は卵で、問いかけに答えると系統が決まる", () => {
-    expect(getAvatar(db, "saeki")).toMatchObject({ family: null, image: "egg.png" });
+  it("最初は声のかたまりで、問いかけに答えると系統が決まる", () => {
+    expect(getAvatar(db, "saeki")).toMatchObject({ family: null, stage: 0, label: "声のかたまりが生まれそうです" });
     expect(handleChooseAvatar(db, "saeki", { kind: "human", style: "listen" }).status).toBe(200);
     expect(getAvatar(db, "saeki").family).toBe("elder");
   });
@@ -109,7 +109,7 @@ describe("分身", () => {
 
   it("絵の名前が必ずある", () => {
     for (const person of ["ogawara", "kawamura", "noda", "shiraishi", "fujimoto", "aoki", "kinoshita", "nakamura", "saeki"]) {
-      expect(isArtName(getAvatar(db, person).image)).toBe(true);
+      expect(getAvatar(db, person).image).toMatch(/^\/api\/(companion|avatar\/art)\//);
     }
   });
 });

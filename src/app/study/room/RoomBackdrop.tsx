@@ -1,3 +1,4 @@
+import type { Season } from "@/lib/sakura";
 import type { RoomPlace } from "./scene";
 
 /** 景色はすべてコードで描く。絵のファイルも文字も使わない。色は room.css の変数で時間に合わせる。 */
@@ -204,9 +205,54 @@ function Cafe() {
   );
 }
 
+const CANOPY: Record<Season, string[]> = {
+  haru: ["#f7c6d3", "#f3b0c3", "#fbdbe3"],
+  natsu: ["#6fae6a", "#5c9c5c", "#86c07c"],
+  aki: ["#e0a04a", "#d07f3e", "#e9bc62"],
+  fuyu: [],
+};
+
+/** 明るい校庭の桜の木。実在の校舎は描かない。葉の様子は季節で変わる。 */
+function Garden({ season }: { season: Season }) {
+  const colors = CANOPY[season];
+  const blobs = [
+    [400, 92, 128],
+    [288, 124, 84],
+    [516, 124, 88],
+    [342, 62, 70],
+    [462, 58, 74],
+    [224, 160, 52],
+    [580, 160, 54],
+  ];
+  return (
+    <>
+      <defs>
+        <linearGradient id="room-sky" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#a9dcf5" />
+          <stop offset="1" stopColor="#e4f6fb" />
+        </linearGradient>
+      </defs>
+      <rect width="800" height="340" fill="url(#room-sky)" />
+      <ellipse cx="140" cy="60" rx="56" ry="16" fill="#fff" opacity="0.8" />
+      <ellipse cx="680" cy="44" rx="66" ry="17" fill="#fff" opacity="0.8" />
+      <path d="M0 270q200-44 400-24t400-14v108H0z" fill="#a8d58a" />
+      <path d="M382 280q8-90-4-150h44q-12 60-4 150z" fill="#8a6549" />
+      <path d="M396 170Q330 140 280 130M406 160q60-30 110-34M400 130q-30-40-60-60M402 128q26-34 60-64" stroke="#8a6549" strokeWidth="11" fill="none" strokeLinecap="round" />
+      {colors.length > 0 && blobs.map(([x, y, r], index) => <circle key={`${x}-${y}`} cx={x} cy={y} r={r} fill={colors[index % colors.length]} opacity="0.94" />)}
+    </>
+  );
+}
+
 const SCENES = { library: Library, classroom: Classroom, cafe: Cafe };
 
-export function RoomBackdrop({ place, label }: { place: RoomPlace; label: string }) {
+export function RoomBackdrop({ place, label, season = "haru" }: { place: RoomPlace; label: string; season?: Season }) {
+  if (place === "garden") {
+    return (
+      <svg className="room-backdrop" viewBox="0 0 800 340" preserveAspectRatio="xMidYMax slice" role="img" aria-label={label}>
+        <Garden season={season} />
+      </svg>
+    );
+  }
   const Scene = SCENES[place];
   return (
     <svg className="room-backdrop" viewBox="0 0 800 340" preserveAspectRatio="xMidYMax slice" role="img" aria-label={label}>

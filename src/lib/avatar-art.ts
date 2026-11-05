@@ -1,3 +1,4 @@
+import { companionSvg } from "./companion-art";
 import { randomUUID } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
 import { loadArt } from "./art";
@@ -225,11 +226,9 @@ export async function renderArt(
     | { family: string; shown_stage: number | null }
     | undefined;
   const stage = avatar ? Math.max(shownStage(db, row.person_id, avatar.family, avatar.shown_stage), 1) : 1;
-  const name = avatar && artNameFor(avatar.family, stage, pose);
-  if (name) {
-    const art = await loadArt(name, dir, env);
-    if (art && !art.placeholder) return { body: art.body, contentType: art.contentType };
-  }
+  // 相棒はコードで描く。ポーズの動きは画面の CSS で見せる
+  const drawn = avatar && companionSvg(avatar.family, stage);
+  if (drawn) return svg(drawn);
   const code = drawWithCode(traits, stage);
   return svg(toSvg(code.body, code.poses[pose]));
 }

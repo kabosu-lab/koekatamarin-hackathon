@@ -10,7 +10,7 @@ import { listMemories } from "@/lib/memory";
 import { PIXEL_STAGE_LABELS, pixelStageFor } from "@/lib/pixel-companion";
 import { showsRewards } from "@/lib/rewards-view";
 import { BackLink } from "../BackLink";
-import { PixelCompanion } from "../PixelCompanion";
+import { Avatar } from "../Avatar";
 
 export const metadata: Metadata = { title: "ようす｜こえかた" };
 export const dynamic = "force-dynamic";
@@ -30,7 +30,7 @@ export default async function YousuPage() {
     <main className="yousu">
       <BackLink href="/">もどる</BackLink>
       <h1>ようす</h1>
-      {rewards && <PixelCompanion stage={stage} branch={avatar.family} alt={`${viewer.name}さんの相棒`} size={144} />}
+      {rewards && <Avatar image={avatar.image} alt={`${viewer.name}さんの相棒`} size={200} />}
       <dl>
         <div>
           <dt>すがた</dt>

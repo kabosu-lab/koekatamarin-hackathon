@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { getDatabase } from "@/lib/db";
+import { seasonOf } from "@/lib/sakura";
 import { ensureDemoCompanions, getPresence } from "@/lib/study";
 import { Refresher } from "./Refresher";
 import { RoomScene } from "./RoomScene";
@@ -23,7 +24,7 @@ export default async function StudyRoomPage({ searchParams }: { searchParams: Pr
       <h1>自習室</h1>
       <section className="card room-card" aria-label="自習室">
         <p className="study-count">いま {presence.count} 人が勉強しています</p>
-        <RoomScene tokens={presence.tokens} moment={moment} />
+        <RoomScene tokens={presence.tokens} moment={moment} season={seasonOf(now)} />
       </section>
       {moment.late && <p className="room-rest">もう遅い時間です。今日はここまでにして、休みませんか。</p>}
       <Refresher />
