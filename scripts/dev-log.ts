@@ -1,15 +1,15 @@
-// 開発の足跡を、デモの Teams の「開発の足跡」チャネルに1件だけ投稿する。
+// 開発の足跡を、デモの Teams の「開発の足跡」チームに1件だけ投稿する。テストは「テストの結果」、push は「できたこと」へ。
 //   npx tsx scripts/dev-log.ts test <テストの出力のファイル>   scripts/test.sh が通ったとき（件数を拾う）
 //   npx tsx scripts/dev-log.ts push                            push したあと
 // 設定（data/teams.json）やサインインがなければ、黙って飛ばす。失敗しても終わりの値は 0（テストを落とさない）。
-// 撮影用のチャネル（teams.json の channel）には出さない。トークンと ID は画面に出さない。
+// 撮影用のチーム（teams.json の team）には出さない。名前は teams.json の devLog で変えられる。トークンと ID は画面に出さない。
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { getAccessToken, readGraphConfig } from "../src/lib/graph/auth";
 import { countsFromOutput, devLogMessage } from "../src/lib/dev-log";
 
 const GRAPH = "https://graph.microsoft.com/v1.0";
-const DEFAULT_CHANNEL = "開発の足跡";
+const DEFAULTS = { team: "開発の足跡", test: "テストの結果", push: "できたこと" };
 const TIMEOUT_MS = 10_000;
 
 const git = (...args: string[]) => {
@@ -32,10 +32,11 @@ async function main() {
   const [kind, logFile] = process.argv.slice(2);
   if (kind !== "test" && kind !== "push") return;
   if (process.env.KOEKATA_DEV_LOG === "off") return;
-  const config = readGraphConfig() as (ReturnType<typeof readGraphConfig> & { devLogChannel?: string }) | null;
-  if (!config?.team) return;
-  const channelName = config.devLogChannel ?? DEFAULT_CHANNEL;
-  if (channelName === config.channel) return;
+  const config = readGraphConfig() as (ReturnType<typeof readGraphConfig> & { devLog?: Partial<typeof DEFAULTS> }) | null;
+  if (!config) return;
+  const names = { ...DEFAULTS, ...config.devLog };
+  const channelName = names[kind];
+  if (names.team === config.team) return;
   const token = await getAccessToken();
   if (!token) return;
 
@@ -48,7 +49,7 @@ async function main() {
     if (!response.ok) throw new Error(`Teams が ${response.status} を返しました`);
     return (await response.json()) as { value: { id: string; displayName: string }[] };
   };
-  const team = (await call("/me/joinedTeams")).value.find((item) => item.displayName === config.team);
+  const team = (await call("/me/joinedTeams")).value.find((item) => item.displayName === names.team);
   if (!team) return;
   const channel = (await call(`/teams/${team.id}/channels`)).value.find((item) => item.displayName === channelName);
   if (!channel) {

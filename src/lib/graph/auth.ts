@@ -21,6 +21,11 @@ export type GraphConfig = {
   channel?: string;
   /** Teams の投稿を読み込む先のチャネル。ないときは study */
   localChannel?: string;
+  /**
+   * アプリのチャネル → Teams のチームとチャネルの対応表。あるときは team/channel より優先し、
+   * 載っているチャネルだけを送り、読み、元のチャネルに取り込む。載っていないチャネルはアプリの中に残す。
+   */
+  channels?: Record<string, { team: string; channel: string }>;
 };
 type StoredToken = { accessToken: string; refreshToken: string; expiresAt: number };
 type Fetch = typeof fetch;

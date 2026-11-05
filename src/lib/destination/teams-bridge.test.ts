@@ -158,6 +158,8 @@ describe("送る", () => {
     signIn("saeki");
     signIn("noda");
     const { calls, fetcher } = fakeGraph();
+    // 返信の送り先は、元の投稿のチャネルから決める
+    db.prepare("INSERT INTO posts (id, channel_id, author_id, kind, body, created_at) VALUES ('p1', 'study', 'saeki', 'report', '本文', '2026-11-06T00:00:00Z')").run();
     await sendPostToTeams(db, "saeki", "p1", "study", "本文", {}, fetcher);
     const parent = (db.prepare("SELECT teams_id FROM teams_links WHERE local_id = 'p1'").get() as { teams_id: string }).teams_id;
     await sendReplyToTeams(db, "noda", "r1", "p1", "返事", fetcher);
@@ -291,6 +293,59 @@ describe("送った結果", () => {
     expect(teamsSyncMs()).toBe(5000);
     vi.stubEnv("KOEKATA_TEAMS_SYNC_MS", "1");
     expect(teamsSyncMs()).toBe(30_000);
+  });
+});
+
+describe("チャネルの対応表", () => {
+  // チームが2つ（全校と教職員）あるテナントの偽物
+  function mappedGraph(messagesByChannel: Record<string, unknown[]> = {}) {
+    const calls: Call[] = [];
+    const fetcher = vi.fn(async (input: unknown, init?: RequestInit) => {
+      const url = String(input);
+      const method = init?.method ?? "GET";
+      calls.push({ url, method, body: init?.body ? JSON.parse(String(init.body)) : null, token: "" });
+      if (url.endsWith("/me/joinedTeams")) return json({ value: [{ id: "school", displayName: "全校" }, { id: "staff", displayName: "教職員" }] });
+      if (url.endsWith("/teams/school/channels")) return json({ value: [{ id: "c-study", displayName: "勉強会" }, { id: "c-clubs", displayName: "部活" }] });
+      if (url.endsWith("/teams/staff/channels")) return json({ value: [{ id: "c-room", displayName: "職員室" }] });
+      if (method === "POST") return json({ id: `sent-${calls.length}` });
+      const channel = url.match(/channels\/([^/]+)\/messages/)?.[1] ?? "";
+      return json({ value: messagesByChannel[channel] ?? [] });
+    });
+    return { calls, fetcher: fetcher as unknown as typeof fetch };
+  }
+
+  beforeEach(() => {
+    const channels = { study: { team: "全校", channel: "勉強会" }, clubs: { team: "全校", channel: "部活" }, staffroom: { team: "教職員", channel: "職員室" } };
+    writeFileSync(join(dir, "teams.json"), JSON.stringify({ ...CONFIG, channels }));
+  });
+
+  it("アプリのチャネルごとに送り先を変え、教職員だけのチャネルは教職員のチームへ送る", async () => {
+    signIn("saeki");
+    const { calls, fetcher } = mappedGraph();
+    expect(await sendPostToTeams(db, "saeki", "p1", "clubs", "部活の話", {}, fetcher)).toEqual({ state: "sent" });
+    expect(await sendPostToTeams(db, "saeki", "p2", "staffroom", "職員室の話", {}, fetcher)).toEqual({ state: "sent" });
+    const sent = posts(calls).map((call) => call.url);
+    expect(sent[0]).toContain("/teams/school/channels/c-clubs/messages");
+    expect(sent[1]).toContain("/teams/staff/channels/c-room/messages");
+  });
+
+  it("対応表にないチャネルは、アプリの中に残す", async () => {
+    signIn("saeki");
+    const { calls, fetcher } = mappedGraph();
+    expect(await sendPostToTeams(db, "saeki", "p1", "making", "作ったもの", {}, fetcher)).toEqual({ state: "skipped", reason: "kept" });
+    expect(posts(calls)).toHaveLength(0);
+  });
+
+  it("全部のチャネルから読み、取り込んだ投稿は元のチャネルに入れる", async () => {
+    signIn();
+    const { fetcher } = mappedGraph({
+      "c-clubs": [message("m1", "佐伯 みどり", "<p>部活で新記録</p>")],
+      "c-room": [message("m2", "佐伯 みどり", "<p>職員室への連絡</p>")],
+    });
+    await syncFromTeams(db, fetcher);
+    const channelOf = (body: string) => (db.prepare("SELECT channel_id FROM posts WHERE body = ?").get(body) as { channel_id: string } | undefined)?.channel_id;
+    expect(channelOf("部活で新記録")).toBe("clubs");
+    expect(channelOf("職員室への連絡")).toBe("staffroom");
   });
 });
 

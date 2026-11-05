@@ -7,7 +7,8 @@ import type { CreatePostOptions, PostDestination } from "./types";
 /**
  * 本物の Teams とのつなぎ。こえかたの DB を正として、画面はこれまでどおり同期で動く。
  * 送る：本人のトークンがある人の、全員向けで確認の印がない投稿と返信だけ。送れなくてもアプリの送信は失敗にしない。
- * 読む：Teams の投稿と返信を DB へ取り込む。届いた返事の知らせはそのまま働く。
+ * 送り先：data/teams.json の channels（アプリのチャネル → Teams のチームとチャネル）。ないときは、全員が読めるチャネルを team/channel の1か所へ。
+ * 読む：Teams の投稿と返信を DB へ取り込む。対応表があれば元のチャネルへ。届いた返事の知らせはそのまま働く。
  * KOEKATA_TEAMS=off、試用版、設定がないときは通信しない。webhook にすると Workflow で送る（予備。読めない）。
  */
 const GRAPH = "https://graph.microsoft.com/v1.0";
@@ -93,25 +94,45 @@ async function graph<T>(fetcher: Fetch, token: string, path: string, body?: unkn
   return (await response.json()) as T;
 }
 
-let cachedChannelPath: string | null = null;
+type TeamsTarget = { team: string; channel: string };
+
+/** チームとチャネルの名前 → メッセージの場所。名前から ID を探すのは1回だけ。 */
+const cachedPaths = new Map<string, string>();
 
 /** テストのための入口。チャネルの場所の控えを消す。 */
 export function resetTeamsBridge(): void {
-  cachedChannelPath = null;
+  cachedPaths.clear();
   lastSync = 0;
   running = null;
 }
 
-async function channelPath(fetcher: Fetch, token: string, config: GraphConfig): Promise<string> {
-  if (cachedChannelPath) return cachedChannelPath;
+/** アプリのチャネルの送り先。対応表がなければ、全員が読めるチャネルだけを1か所へ。 */
+export function teamsTargetFor(db: DatabaseSync, config: GraphConfig, channelId: string): TeamsTarget | null {
+  if (config.channels) return Object.hasOwn(config.channels, channelId) ? config.channels[channelId] : null;
+  if (!config.team || !config.channel || !isPublicChannel(db, channelId)) return null;
+  return { team: config.team, channel: config.channel };
+}
+
+/** 読み取る先と、取り込むアプリのチャネル。 */
+function syncTargets(config: GraphConfig): { target: TeamsTarget; channelId: string }[] {
+  if (config.channels) return Object.entries(config.channels).map(([channelId, target]) => ({ target, channelId }));
+  if (!config.team || !config.channel) return [];
+  return [{ target: { team: config.team, channel: config.channel }, channelId: config.localChannel ?? DEFAULT_LOCAL_CHANNEL }];
+}
+
+async function channelPath(fetcher: Fetch, token: string, target: TeamsTarget): Promise<string> {
+  const key = `${target.team}\n${target.channel}`;
+  const cached = cachedPaths.get(key);
+  if (cached) return cached;
   const { value: teams } = await graph<{ value: { id: string; displayName: string }[] }>(fetcher, token, "/me/joinedTeams");
-  const team = teams.find((item) => item.displayName === config.team);
+  const team = teams.find((item) => item.displayName === target.team);
   if (!team) throw new Error("チームが見つかりません");
   const { value: channels } = await graph<{ value: { id: string; displayName: string }[] }>(fetcher, token, `/teams/${team.id}/channels`);
-  const channel = channels.find((item) => item.displayName === config.channel);
+  const channel = channels.find((item) => item.displayName === target.channel);
   if (!channel) throw new Error("チャネルが見つかりません");
-  cachedChannelPath = `/teams/${team.id}/channels/${encodeURIComponent(channel.id)}/messages`;
-  return cachedChannelPath;
+  const path = `/teams/${team.id}/channels/${encodeURIComponent(channel.id)}/messages`;
+  cachedPaths.set(key, path);
+  return path;
 }
 
 function saveLink(db: DatabaseSync, localId: string, kind: "post" | "reply", teamsId: string): void {
@@ -140,12 +161,14 @@ function isPublicChannel(db: DatabaseSync, channelId: string): boolean {
 }
 
 /**
- * 全員向けで、確認の印がなく、全員が読めるチャネルの投稿か。送らない理由を返す。
+ * 全員向けで、確認の印がなく、送り先のあるチャネルの投稿か。送らない理由を返す。
  * 確認の印は本人に見せない決まりなので、理由を分けずに「校内だけ」と伝える。
+ * 教職員だけのチャネルも、対応表で教職員のチームへ向けていれば送る。
  */
-function whyStays(db: DatabaseSync, channelId: string, options: CreatePostOptions): "scope" | "kept" | null {
+function whyStays(db: DatabaseSync, channelId: string, options: CreatePostOptions, config: GraphConfig | null): "scope" | "kept" | null {
   if ((options.scope ?? "everyone") !== "everyone") return "scope";
-  if (options.needsLook || !isPublicChannel(db, channelId)) return "kept";
+  if (options.needsLook) return "kept";
+  if (config ? !teamsTargetFor(db, config, channelId) : !isPublicChannel(db, channelId)) return "kept";
   return null;
 }
 
@@ -155,18 +178,19 @@ const personName = (db: DatabaseSync, personId: string) =>
 export async function sendPostToTeams(db: DatabaseSync, viewerId: string, postId: string, channelId: string, body: string, options: CreatePostOptions = {}, fetcher: Fetch = fetch): Promise<TeamsDelivery> {
   const mode = teamsMode();
   if (mode === "off") return { state: "off" };
-  const stays = whyStays(db, channelId, options);
+  const config = mode === "graph" ? readGraphConfig() : null;
+  const stays = whyStays(db, channelId, options, config);
   if (stays) return { state: "skipped", reason: stays };
   try {
     if (mode === "webhook") {
       await sendWebhookCard(personName(db, viewerId), body, fetcher);
       return { state: "sent" };
     }
-    const config = readGraphConfig();
     // 本人の名前で届けるので、本人がサインインしていなければ送らない。試用では決めたダミーの名前で届ける
     const token = await getAccessToken(fetcher, Date.now(), trialTeamsSender() ?? viewerId);
-    if (!config || !token) return { state: "skipped", reason: "signin" };
-    const path = await channelPath(fetcher, token, config);
+    const target = config && teamsTargetFor(db, config, channelId);
+    if (!target || !token) return { state: "skipped", reason: "signin" };
+    const path = await channelPath(fetcher, token, target);
     const sent = await graph<{ id: string }>(fetcher, token, path, { body: { contentType: "text", content: body } });
     saveLink(db, postId, "post", sent.id);
     return { state: "sent" };
@@ -183,8 +207,10 @@ export async function sendReplyToTeams(db: DatabaseSync, viewerId: string, reply
   try {
     const config = readGraphConfig();
     const token = await getAccessToken(fetcher, Date.now(), trialTeamsSender() ?? viewerId);
-    if (!config || !token) return;
-    const path = await channelPath(fetcher, token, config);
+    const channelId = (db.prepare("SELECT channel_id FROM posts WHERE id = ?").get(postId) as { channel_id: string } | undefined)?.channel_id;
+    const target = config && channelId ? teamsTargetFor(db, config, channelId) : null;
+    if (!target || !token) return;
+    const path = await channelPath(fetcher, token, target);
     const sent = await graph<{ id: string }>(fetcher, token, `${path}/${parent}/replies`, { body: { contentType: "text", content: body } });
     saveLink(db, replyId, "reply", sent.id);
   } catch (error) {
@@ -242,15 +268,25 @@ export async function syncFromTeams(db: DatabaseSync, fetcher: Fetch = fetch): P
   if (teamsMode() !== "graph") return;
   const config = readGraphConfig();
   const token = await getAccessToken(fetcher);
-  if (!config?.team || !config.channel || !token) return;
-  const path = await channelPath(fetcher, token, config);
-  const { value: messages } = await graph<{ value: GraphMessage[] }>(fetcher, token, `${path}?$top=30&$expand=replies`);
+  if (!config || !token) return;
   const linked = readLinkedPeople();
-  const localChannel = config.localChannel ?? DEFAULT_LOCAL_CHANNEL;
+  for (const { target, channelId } of syncTargets(config)) {
+    try {
+      await syncChannel(db, fetcher, token, target, channelId, linked);
+    } catch (error) {
+      // 1つのチャネルが読めなくても、ほかのチャネルは取り込む
+      logFailure("読み取り", error);
+    }
+  }
+}
+
+async function syncChannel(db: DatabaseSync, fetcher: Fetch, token: string, target: TeamsTarget, channelId: string, linked: Record<string, string>): Promise<void> {
+  const path = await channelPath(fetcher, token, target);
+  const { value: messages } = await graph<{ value: GraphMessage[] }>(fetcher, token, `${path}?$top=30&$expand=replies`);
   // 古いものから取り込む
   for (const message of [...messages].reverse()) {
     if (message.deletedDateTime) continue;
-    const postId = importPost(db, message, linked, localChannel);
+    const postId = importPost(db, message, linked, channelId);
     if (!postId) continue;
     for (const reply of [...(message.replies ?? [])].sort((a, b) => a.createdDateTime.localeCompare(b.createdDateTime))) {
       if (!reply.deletedDateTime) importReply(db, reply, postId, linked);
