@@ -54,7 +54,7 @@ test("ポートフォリオは本人だけに見え、選んで確かめたと�
   await share.getByRole("button", { name: "届ける項目を選ぶ" }).click();
   await expect(share.getByRole("button", { name: "下書きを作る" })).toBeDisabled();
   await expect(share.getByRole("checkbox", { checked: true })).toHaveCount(0);
-  await share.getByRole("checkbox", { name: /ITパスポート/ }).check();
+  await share.getByRole("checkbox", { name: /2026-09-25 日記：ITパスポート/ }).check();
   await share.getByRole("button", { name: "下書きを作る" }).click();
 
   const preview = share.getByLabel(/Teams にはこう見えます/);
@@ -85,7 +85,7 @@ test("直した言葉が気になるときは伝え、個人攻撃は送れな�
   await page.goto(PAGE);
   const share = page.getByRole("region", { name: "Teams へ届ける" });
   await share.getByRole("button", { name: "届ける項目を選ぶ" }).click();
-  await share.getByRole("checkbox", { name: /ITパスポート/ }).check();
+  await share.getByRole("checkbox", { name: /2026-09-25 日記：ITパスポート/ }).check();
   await share.getByRole("button", { name: "下書きを作る" }).click();
   await share.getByLabel(/Teams にはこう見えます/).fill("死ね");
   await share.getByRole("button", { name: "言葉を確かめる" }).click();
@@ -99,7 +99,7 @@ test("送った直後なら、取り消すと Teams から消える", async ({ p
   await page.goto(PAGE);
   const share = page.getByRole("region", { name: "Teams へ届ける" });
   await share.getByRole("button", { name: "届ける項目を選ぶ" }).click();
-  await share.getByRole("checkbox", { name: /ITパスポート/ }).check();
+  await share.getByRole("checkbox", { name: /2026-09-25 日記：ITパスポート/ }).check();
   await share.getByRole("button", { name: "下書きを作る" }).click();
   await share.getByLabel(/Teams にはこう見えます/).fill("取り消して確かめる投稿");
   await share.getByRole("button", { name: "言葉を確かめる" }).click();
