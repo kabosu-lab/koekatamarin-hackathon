@@ -5,7 +5,7 @@ import { readAppearance } from "@/lib/appearance";
 import { showsRewards } from "@/lib/rewards-view";
 import { getViewer } from "@/lib/current-person";
 import { selectablePeople } from "@/lib/people";
-import { isTrialMode, TRIAL_NOTICE } from "@/lib/trial";
+import { isTrialMode, keepsSpokenWords, onlyStudentsSelectable, TRIAL_NOTICE } from "@/lib/trial";
 import { BottomNav } from "./BottomNav";
 import { FeedbackSheet } from "./FeedbackSheet";
 import { PersonSwitcher } from "./PersonSwitcher";
@@ -43,10 +43,10 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
             <span role="note">{TRIAL_NOTICE}</span> <FeedbackSheet />
           </div>
         )}
-        <TrialProvider trial={trial}>
+        <TrialProvider trial={trial} keepsWords={keepsSpokenWords()}>
           {children}
           <GlobalSwitcher>
-            <PersonSwitcher viewerId={viewer.id} people={selectablePeople(people, trial)} />
+            <PersonSwitcher viewerId={viewer.id} people={selectablePeople(people, onlyStudentsSelectable())} />
           </GlobalSwitcher>
           <BottomNav />
           <SwipeNav />

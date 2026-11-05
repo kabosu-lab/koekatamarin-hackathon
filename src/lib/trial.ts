@@ -11,8 +11,33 @@ export function isTrialMode(): boolean {
   return accessCode() !== null;
 }
 
+/**
+ * 試用で触る人。生徒用と先生用は、別の合言葉・別のポートで動かす（scripts/trial.mjs）。
+ * 指定がなければ生徒として扱う（いちばん控えめな側）。
+ */
+export function trialAudience(): "student" | "teacher" | null {
+  if (!isTrialMode()) return null;
+  return process.env.KOEKATA_TRIAL_AUDIENCE === "teacher" ? "teacher" : "student";
+}
+
+/** 人物の切り替えで生徒だけを選べるか。先生用の試用では先生も選べる。 */
+export function onlyStudentsSelectable(): boolean {
+  return trialAudience() === "student";
+}
+
+/** 話した言葉をサーバーに残してよいか。生徒の試用では、覚えさせることもできない。 */
+export function keepsSpokenWords(): boolean {
+  return trialAudience() !== "student";
+}
+
+/** 試用で Teams へ送るときに使うダミーの人物（そのトークンで送る）。なければ試用では送らない。 */
+export function trialTeamsSender(): string | null {
+  if (!isTrialMode()) return null;
+  return process.env.KOEKATA_TRIAL_TEAMS_AS?.trim() || null;
+}
+
 export const TRIAL_NOTICE =
-  "先生や相談室には届きません。投稿や相棒に覚えさせたことは、試している人に見えることがあります。実名や個人情報は入れないでください。本当に困ったことは先生へ。";
+  "試用版です。相談室には届きません。投稿は練習用の Teams に届くことがあります。投稿や相棒に覚えさせたことは、試している人に見えることがあります。実名や個人情報は入れないでください。本当に困ったことは先生へ。";
 
 export const TRIAL_PROMISE_FULL =
   "試用なので、ここで話したことは相談室にも先生にも届きません。ただし、投稿や相棒に覚えさせたことは、試している人に見えることがあります。本当に困ったことは、先生や近くの大人に直接話してください。";

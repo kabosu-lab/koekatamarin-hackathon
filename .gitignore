@@ -12,6 +12,7 @@ video/out/
 
 # アプリの書き出しと手元のデータ
 .next/
+.next-*/
 next-env.d.ts
 *.tsbuildinfo
 data/

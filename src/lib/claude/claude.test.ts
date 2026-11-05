@@ -20,6 +20,12 @@ describe("createClaude", () => {
     expect(createClaude({ ANTHROPIC_API_KEY: "test-key" }).mode).toBe("real");
   });
 
+  it("試用では、生徒用はキーがあっても台本、先生用は回数の上限つきの本物", () => {
+    expect(createClaude({ ANTHROPIC_API_KEY: "k", KOEKATA_ACCESS_CODE: "x" }).mode).toBe("scripted");
+    expect(createClaude({ ANTHROPIC_API_KEY: "k", KOEKATA_ACCESS_CODE: "x", KOEKATA_TRIAL_AUDIENCE: "student" }).mode).toBe("scripted");
+    expect(createClaude({ ANTHROPIC_API_KEY: "k", KOEKATA_ACCESS_CODE: "x", KOEKATA_TRIAL_AUDIENCE: "teacher" }).mode).toBe("real");
+  });
+
   it("テストの指定があれば、キーがあっても料金を使わない", () => {
     expect(createClaude({ ANTHROPIC_API_KEY: "test-key", KOEKATA_CLAUDE: "scripted" }).mode).toBe("scripted");
   });

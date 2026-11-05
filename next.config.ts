@@ -7,6 +7,8 @@ const allowedOrigins = (process.env.KOEKATA_ALLOWED_ORIGINS ?? "")
   .filter(Boolean);
 
 const nextConfig: NextConfig = {
+  // 試用版は別の書き出し先で動かす。テストの build が動いている試用版を壊さないように
+  ...(process.env.KOEKATA_DIST_DIR ? { distDir: process.env.KOEKATA_DIST_DIR } : {}),
   // 画面の下に重なる開発用の表示を出さない（撮影と確かめるときの邪魔になる）
   devIndicators: false,
   // Teams のタブに置く画面だけ、Teams の中に埋め込めるようにする（docs/teams-tab.md）

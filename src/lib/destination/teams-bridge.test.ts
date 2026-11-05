@@ -91,11 +91,13 @@ describe("通信しないとき", () => {
     expect(spy).not.toHaveBeenCalled();
   });
 
-  it("試用版では通信しない", () => {
+  it("試用版では、送る人が決まっていなければ通信しない", () => {
     signIn("saeki");
     expect(teamsMode()).toBe("graph");
     vi.stubEnv("KOEKATA_ACCESS_CODE", "x");
     expect(teamsMode()).toBe("off");
+    vi.stubEnv("KOEKATA_TRIAL_TEAMS_AS", "saeki");
+    expect(teamsMode()).toBe("graph");
   });
 });
 

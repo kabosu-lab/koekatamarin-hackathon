@@ -8,7 +8,7 @@ import type { ChannelView, PersonView } from "@/lib/destination/types";
 import type { KnowledgeResult } from "@/lib/knowledge";
 import { PROMISE_FULL, PROMISE_SHORT, promiseCookieName } from "@/lib/promise-cookie";
 import { TRIAL_PROMISE_FULL, TRIAL_PROMISE_SHORT } from "@/lib/trial";
-import { useTrial } from "./TrialContext";
+import { useKeepsWords, useTrial } from "./TrialContext";
 import { KnowledgeResults } from "./chie/KnowledgeResults";
 import { Compose, type ComposeStart } from "./Compose";
 import { ConnectCard, type ConnectSuggestion } from "./ConnectCard";
@@ -115,6 +115,7 @@ export function Talk({
   const [remembered, setRemembered] = useState<number[]>([]);
   const [askTarget, setAskTarget] = useState(initialAsk);
   const trial = useTrial();
+  const keepsWords = useKeepsWords();
   const [acknowledged, setAcknowledged] = useState(promiseSeen);
   const [finding, setFinding] = useState(false);
   const [found, setFound] = useState<KnowledgeResult[] | null>(null);
@@ -520,7 +521,7 @@ export function Talk({
               <span className="visually-hidden">{message.role === "user" ? "あなた：" : "相棒："}</span>
               {message.content}
             </p>
-            {message.role === "user" && (!device || index === lastUserIndex) && (
+            {keepsWords && message.role === "user" && (!device || index === lastUserIndex) && (
               <button
                 type="button"
                 className="remember"

@@ -8,7 +8,7 @@ import { cookies } from "next/headers";
 import { APPEARANCE_COOKIES, isAppearanceValue } from "@/lib/appearance";
 import { PERSON_COOKIE } from "@/lib/current-person";
 import { listPeople, selectablePeople } from "@/lib/people";
-import { isTrialMode } from "@/lib/trial";
+import { onlyStudentsSelectable } from "@/lib/trial";
 
 export async function setAppearance(form: FormData) {
   const name = form.get("name");
@@ -23,7 +23,7 @@ export async function setAppearance(form: FormData) {
 export async function switchPerson(form: FormData) {
   const personId = form.get("personId");
   if (typeof personId !== "string") return;
-  if (!selectablePeople(listPeople(), isTrialMode()).some((p) => p.id === personId)) return;
+  if (!selectablePeople(listPeople(), onlyStudentsSelectable()).some((p) => p.id === personId)) return;
   (await cookies()).set(PERSON_COOKIE, personId, { sameSite: "lax", path: "/" });
   revalidatePath("/", "layout");
 }

@@ -82,16 +82,16 @@ export function FeedbackSheet() {
   return (
     <>
       <button type="button" className="feedback-open" onClick={() => dialog.current?.showModal()}>
-        改善点を送る
+        感想を送る
       </button>
       {thanks && (
         <span className="feedback-thanks" role="status">
           ありがとう
         </span>
       )}
-      <dialog ref={dialog} className="feedback-sheet" aria-label="改善点を送る">
+      <dialog ref={dialog} className="feedback-sheet" aria-label="感想を送る">
         <form onSubmit={(event) => void send(event)}>
-          <h2>改善点を送る</h2>
+          <h2>感想を送る</h2>
           <p>名前は書かないでください。ここは相談先ではありません。困っていることは先生に直接話してください。</p>
           <fieldset>
             <legend>どんなことですか</legend>

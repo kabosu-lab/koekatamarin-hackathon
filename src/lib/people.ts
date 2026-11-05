@@ -14,7 +14,7 @@ export function listPeople(): Person[] {
 
 const DEFAULT_PERSON_ID = "saeki";
 
-/** 切り替えで選べる人物。試用では生徒だけ。先生や相談室の先生として操作させない。 */
+/** 切り替えで選べる人物。生徒用の試用では生徒だけ。先生や相談室の先生として操作させない。 */
 export function selectablePeople(people: Person[], trial: boolean): Person[] {
   return trial ? people.filter((p) => p.role === "student") : people;
 }

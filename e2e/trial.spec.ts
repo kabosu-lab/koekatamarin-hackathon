@@ -2,7 +2,7 @@ import { expect, type Page, test } from "@playwright/test";
 
 // 合言葉つきの試用モード。playwright.config.ts の「試用」から、別のサーバーに向けて動く
 const CODE = "test-code";
-const NOTICE = "先生や相談室には届きません。投稿や相棒に覚えさせたことは、試している人に見えることがあります。実名や個人情報は入れないでください。本当に困ったことは先生へ。";
+const NOTICE = "試用版です。相談室には届きません。投稿は練習用の Teams に届くことがあります。投稿や相棒に覚えさせたことは、試している人に見えることがあります。実名や個人情報は入れないでください。本当に困ったことは先生へ。";
 
 async function enter(page: Page) {
   await page.goto("/access");
@@ -170,10 +170,21 @@ test("サーバーの処理を直接呼んでも、先生には切り替えら�
   expect(await currentPerson()).toBe("nakamura");
 });
 
+test("生徒の試用では、話した言葉を相棒に覚えさせられない", async ({ page, request }) => {
+  await enter(page);
+  await page.getByLabel("相棒に書く").fill("部活で新しい練習を考えた");
+  await page.getByRole("button", { name: "相棒へ送る" }).click();
+  await expect(page.locator(".bubble.assistant").last()).toBeVisible();
+  await expect(page.getByRole("button", { name: "これを覚えて" })).toHaveCount(0);
+  const response = await page.request.post("/api/memory", { data: { action: "remember", text: "覚えて" } });
+  expect(response.status()).toBe(403);
+  void request;
+});
+
 test("改善点は種類だけでも送れて、ありがとうと出て、続けて送れる", async ({ page }) => {
   await enter(page);
-  await page.getByRole("button", { name: "改善点を送る" }).click();
-  const sheet = page.getByRole("dialog", { name: "改善点を送る" });
+  await page.getByRole("button", { name: "感想を送る" }).click();
+  const sheet = page.getByRole("dialog", { name: "感想を送る" });
   await expect(sheet).toContainText("名前は書かないでください。ここは相談先ではありません。困っていることは先生に直接話してください。");
   await expect(sheet.getByRole("button", { name: "送る", exact: true })).toBeDisabled();
 
@@ -182,7 +193,7 @@ test("改善点は種類だけでも送れて、ありがとうと出て、続�
   await expect(sheet).toBeHidden();
   await expect(page.locator(".feedback-thanks")).toHaveText("ありがとう");
 
-  await page.getByRole("button", { name: "改善点を送る" }).click();
+  await page.getByRole("button", { name: "感想を送る" }).click();
   await expect(sheet.getByRole("radio", { name: "よかった" })).not.toBeChecked();
   await sheet.getByRole("radio", { name: "動かない" }).check();
   await sheet.getByLabel("くわしく").fill("<script>alert(1)</script>");
@@ -192,14 +203,14 @@ test("改善点は種類だけでも送れて、ありがとうと出て、続�
 
 test("改善点の書きかけは、画面を移っても消えない", async ({ page }) => {
   await enter(page);
-  await page.getByRole("button", { name: "改善点を送る" }).click();
-  const sheet = page.getByRole("dialog", { name: "改善点を送る" });
+  await page.getByRole("button", { name: "感想を送る" }).click();
+  const sheet = page.getByRole("dialog", { name: "感想を送る" });
   await sheet.getByRole("radio", { name: "こうしたい" }).check();
   await sheet.getByLabel("くわしく").fill("書きかけの言葉");
   await sheet.getByRole("button", { name: "閉じる" }).click();
 
   await page.goto("/teams");
-  await page.getByRole("button", { name: "改善点を送る" }).click();
+  await page.getByRole("button", { name: "感想を送る" }).click();
   await expect(sheet.getByLabel("くわしく")).toHaveValue("書きかけの言葉");
   await expect(sheet.getByRole("radio", { name: "こうしたい" })).toBeChecked();
 });
@@ -213,7 +224,7 @@ test("改善点は投稿にも他の画面にも出ず、入口は下のナビ�
     await page.goto(path);
     await expect(page.getByText(secret), path).toHaveCount(0);
   }
-  const open = await page.getByRole("button", { name: "改善点を送る" }).boundingBox();
+  const open = await page.getByRole("button", { name: "感想を送る" }).boundingBox();
   const nav = await page.getByRole("navigation", { name: "画面の切り替え" }).boundingBox();
   expect(open && nav && open.y + open.height <= nav.y).toBe(true);
 });
@@ -244,8 +255,8 @@ test.describe("見た目を選んでいない生徒", () => {
     await page.getByRole("button", { name: "入る" }).click();
     await expect(page.locator(".retro-home")).toBeVisible();
     await expect(page.getByText(NOTICE)).toBeVisible();
-    await expect(page.getByRole("button", { name: "改善点を送る" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "感想を送る" })).toBeVisible();
     await expect(page.locator(".promise")).toContainText("相談室にも先生にも届きません");
-    await expect(page.getByRole("button", { name: "改善点を送る" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "感想を送る" })).toBeVisible();
   });
 });

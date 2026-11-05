@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
 import { getAccessToken, type GraphConfig, readGraphConfig, readLinkedPeople } from "../graph/auth";
-import { isTrialMode } from "../trial";
+import { isTrialMode, trialTeamsSender } from "../trial";
 import type { CreatePostOptions, PostDestination } from "./types";
 
 /**
@@ -52,7 +52,8 @@ export async function awaitTeamsDelivery(postId: string, waitMs = DELIVERY_WAIT_
 }
 
 export function teamsMode(): TeamsMode {
-  if (process.env.KOEKATA_TEAMS === "off" || isTrialMode()) return "off";
+  // 試用は、送る人（デモの閉じたテナントのダミー）が決まっているときだけ送る
+  if (process.env.KOEKATA_TEAMS === "off" || (isTrialMode() && !trialTeamsSender())) return "off";
   if (process.env.KOEKATA_TEAMS === "webhook") return process.env.KOEKATA_TEAMS_WEBHOOK_URL ? "webhook" : "off";
   return readGraphConfig() ? "graph" : "off";
 }
@@ -162,8 +163,8 @@ export async function sendPostToTeams(db: DatabaseSync, viewerId: string, postId
       return { state: "sent" };
     }
     const config = readGraphConfig();
-    // 本人の名前で届けるので、本人がサインインしていなければ送らない
-    const token = await getAccessToken(fetcher, Date.now(), viewerId);
+    // 本人の名前で届けるので、本人がサインインしていなければ送らない。試用では決めたダミーの名前で届ける
+    const token = await getAccessToken(fetcher, Date.now(), trialTeamsSender() ?? viewerId);
     if (!config || !token) return { state: "skipped", reason: "signin" };
     const path = await channelPath(fetcher, token, config);
     const sent = await graph<{ id: string }>(fetcher, token, path, { body: { contentType: "text", content: body } });
@@ -181,7 +182,7 @@ export async function sendReplyToTeams(db: DatabaseSync, viewerId: string, reply
   if (!parent) return;
   try {
     const config = readGraphConfig();
-    const token = await getAccessToken(fetcher, Date.now(), viewerId);
+    const token = await getAccessToken(fetcher, Date.now(), trialTeamsSender() ?? viewerId);
     if (!config || !token) return;
     const path = await channelPath(fetcher, token, config);
     const sent = await graph<{ id: string }>(fetcher, token, `${path}/${parent}/replies`, { body: { contentType: "text", content: body } });
