@@ -5,7 +5,7 @@
 //   npm run trial:stop       止める（夜に必ず止める）
 //   npm run trial -- --local 外へ出さず、手元だけで確かめる
 //
-// 生徒用：台本モード（Claude に送らない）、話した言葉を覚えさせない、生徒だけを選べる。
+// 生徒用：本物の Claude（1時間あたりの回数に上限）、話した言葉を覚えさせない、生徒だけを選べる。Teams へは青木の名前で届く。
 // 先生用：本物の Claude（.env のキー。1時間あたりの回数に上限）、先生も選べる。
 // どちらもダミーのデータで、開発の DB とは別。投稿はデモの閉じたテナントの Teams へ、決めたダミーの名前で届く。
 // 合言葉と URL は data/（Git に入らない）にだけ書く。トークンは読まない、出さない。
@@ -17,12 +17,13 @@ import { join } from "node:path";
 const DIST = ".next-trial";
 const STATE = join("data", "trial.json");
 const ORIGINS = "*.trycloudflare.com";
-const TEAMS_AS = process.env.KOEKATA_TRIAL_TEAMS_AS ?? "saeki";
+// Teams へ送るときの名前。生徒用は生徒のダミー、先生用は先生のダミー（どちらもサインイン済みのデモの人物）
+const TEAMS_AS = { student: process.env.KOEKATA_TRIAL_STUDENT_AS ?? "aoki", teacher: process.env.KOEKATA_TRIAL_TEACHER_AS ?? "saeki" };
 const CLOUDFLARED = process.env.CLOUDFLARED ?? (process.platform === "win32" ? "C:\\Program Files (x86)\\cloudflared\\cloudflared.exe" : "cloudflared");
 const nextBin = join("node_modules", "next", "dist", "bin", "next");
 
 const SITES = [
-  { audience: "student", port: 3201, db: join("data", "trial-students.db"), env: { KOEKATA_CLAUDE: "scripted" } },
+  { audience: "student", port: 3201, db: join("data", "trial-students.db"), env: {} },
   { audience: "teacher", port: 3202, db: join("data", "trial-teachers.db"), env: {} },
 ];
 
@@ -95,7 +96,7 @@ function start() {
         KOEKATA_ALLOWED_ORIGINS: ORIGINS,
         KOEKATA_ACCESS_CODE: codes[site.audience],
         KOEKATA_TRIAL_AUDIENCE: site.audience,
-        KOEKATA_TRIAL_TEAMS_AS: TEAMS_AS,
+        KOEKATA_TRIAL_TEAMS_AS: TEAMS_AS[site.audience],
         KOEKATA_DB_PATH: site.db,
         KOEKATA_NOTICE_ALWAYS: "1",
       },

@@ -20,10 +20,10 @@ describe("createClaude", () => {
     expect(createClaude({ ANTHROPIC_API_KEY: "test-key" }).mode).toBe("real");
   });
 
-  it("試用では、生徒用はキーがあっても台本、先生用は回数の上限つきの本物", () => {
-    expect(createClaude({ ANTHROPIC_API_KEY: "k", KOEKATA_ACCESS_CODE: "x" }).mode).toBe("scripted");
-    expect(createClaude({ ANTHROPIC_API_KEY: "k", KOEKATA_ACCESS_CODE: "x", KOEKATA_TRIAL_AUDIENCE: "student" }).mode).toBe("scripted");
+  it("試用では、生徒用も先生用も回数の上限つきの本物。台本の指定があれば台本", () => {
+    expect(createClaude({ ANTHROPIC_API_KEY: "k", KOEKATA_ACCESS_CODE: "x", KOEKATA_TRIAL_AUDIENCE: "student" }).mode).toBe("real");
     expect(createClaude({ ANTHROPIC_API_KEY: "k", KOEKATA_ACCESS_CODE: "x", KOEKATA_TRIAL_AUDIENCE: "teacher" }).mode).toBe("real");
+    expect(createClaude({ ANTHROPIC_API_KEY: "k", KOEKATA_ACCESS_CODE: "x", KOEKATA_CLAUDE: "scripted" }).mode).toBe("scripted");
   });
 
   it("テストの指定があれば、キーがあっても料金を使わない", () => {

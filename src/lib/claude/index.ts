@@ -10,9 +10,7 @@ import type { ClaudeClient } from "./types";
  */
 export function createClaude(env: Record<string, string | undefined> = process.env): ClaudeClient {
   const trial = Boolean(env.KOEKATA_ACCESS_CODE?.trim());
-  // 生徒の試用では、キーがあっても Claude に送らない
-  const studentTrial = trial && env.KOEKATA_TRIAL_AUDIENCE !== "teacher";
-  if (env.KOEKATA_CLAUDE === "scripted" || !env.ANTHROPIC_API_KEY || studentTrial) {
+  if (env.KOEKATA_CLAUDE === "scripted" || !env.ANTHROPIC_API_KEY) {
     return createScriptedClaude();
   }
   const real = createAnthropicClaude(new Anthropic({ apiKey: env.ANTHROPIC_API_KEY }).beta.messages);
