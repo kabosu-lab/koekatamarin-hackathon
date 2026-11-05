@@ -7,9 +7,15 @@ test("仲間を探す画面はなくなり、入口もない", async ({ page }) 
   await expect(page.getByRole("link", { name: "仲間を探す" })).toHaveCount(0);
 });
 
-test("関連する投稿には理由が付く", async ({ page }) => {
+test("最初の3人のあとは、めくると関係の深い人がおすすめの理由付きで出る", async ({ page }) => {
   await page.goto("/today");
-  await expect(page.locator(".related-line").first()).toContainText(/の話|できた投稿/);
+  const reason = page.locator(".related-line");
+  for (let i = 0; i < 6 && (await reason.count()) === 0; i++) {
+    const next = page.getByRole("button", { name: "次へ" });
+    if ((await next.count()) === 0) await page.getByRole("button", { name: /もっと/ }).first().click();
+    else await next.click();
+  }
+  await expect(reason.first()).toContainText(/^おすすめ：.*(の話|できた投稿|やり取り|同じ|よく書く)/);
 });
 
 test("しばらく出さないは本人にだけ効き、相手には何も見えず、本人が「じぶん」から戻せる", async ({ page }) => {

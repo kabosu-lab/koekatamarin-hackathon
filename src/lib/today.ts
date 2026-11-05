@@ -89,7 +89,30 @@ export function keywordsOf(text: string, excluded: ReadonlySet<string> = new Set
   return [...new Set(found)].filter((word) => !COMMON_WORDS.has(word) && !excluded.has(word));
 }
 
-/** その人のその日のカード。同じ日は同じ順で出て、日が変わると変わる。関連する投稿があれば、ランダムの投稿と交互に出す。 */
+/** 関係の深さを測る材料。話の中身ではなく、立場、公開の投稿、やり取りから作る */
+export type TodayAffinity = {
+  /** 本人の肩書き（例：「国語・2年担任」「2年」） */
+  viewerLabel?: string;
+  /** 本人の頑張りたいこと */
+  goals?: readonly string[];
+  /** 最近やり取りした人（返事をした・もらった） */
+  recentPeople?: ReadonlySet<string>;
+  /** 本人が書いたことのあるチャネル */
+  postedChannels?: ReadonlySet<string>;
+};
+
+/** 最初にランダムで出す人数。そこからめくると、関係の深い人が出てくる */
+export const FIRST_RANDOM = 3;
+
+/** 肩書きを、学年や教科などの手がかりに分ける（「国語・2年担任」→「国語」「2年」） */
+export function labelParts(label: string): string[] {
+  return label
+    .split(/[・、\s]+/)
+    .map((part) => part.match(/^[0-9０-９]年/)?.[0] ?? part.replace(/(担任|副担任|主任|顧問)$/, ""))
+    .filter((part) => part.length >= 2);
+}
+
+/** その人のその日のカード。同じ日は同じ順で出て、日が変わると変わる。最初の3人はランダムで、そのあとは関係の深い人から理由付きで出す。 */
 export function listTodayCards(
   destination: PostDestination,
   viewerId: string,
@@ -97,6 +120,7 @@ export function listTodayCards(
   hidden: ReadonlySet<string> = new Set(),
   myWords: readonly string[] = [],
   celebrated: ReadonlySet<string> = new Set(),
+  affinity: TodayAffinity = {},
 ): TodayCard[] {
   const seed = `${japanDate(now)}|${viewerId}|`;
   const order = (id: string) => createHash("sha256").update(seed + id).digest("hex");
@@ -107,26 +131,35 @@ export function listTodayCards(
   // 校内の人の名前は、関連の語にしない
   const names = new Set(destination.listOtherPeople(viewerId).flatMap((person) => [person.name, ...person.name.split(/\s+/)]));
   const keywords = keywordsOf(myWords.join("\n"), names);
-  const related = new Map<string, string>();
+  const goalWords = keywordsOf((affinity.goals ?? []).join("\n"), names);
+  const myParts = labelParts(affinity.viewerLabel ?? "");
+  // 理由と重み。いちばん重いものを1つだけ、一言で添える
+  const related = new Map<string, { reason: string; weight: number }>();
+  const note = (id: string, reason: string, weight: number) => {
+    const current = related.get(id);
+    if (!current || weight > current.weight) related.set(id, { reason, weight });
+  };
   for (const post of shuffled) {
+    // 頑張りたいことを乗り越えた投稿。褒めるのは人。順位は付けない
+    if (celebrated.has(post.id)) note(post.id, "頑張ってきたことが、できた投稿", 6);
+    const goal = goalWords.find((word) => post.body.includes(word));
+    if (goal) note(post.id, `頑張りたいことの「${goal}」に近い話`, 5);
     const shared = keywords.find((word) => post.body.includes(word));
-    if (shared) related.set(post.id, `同じ「${shared}」の話`);
+    if (shared) note(post.id, `同じ「${shared}」の話`, 4);
+    if (affinity.recentPeople?.has(post.authorId)) note(post.id, "最近やり取りした人", 3);
+    const part = labelParts(post.authorLabel).find((p) => myParts.includes(p));
+    if (part) note(post.id, `同じ${part}`, 2);
+    if (affinity.postedChannels?.has(post.channelId)) note(post.id, `あなたもよく書く「${post.channelName}」`, 1);
   }
-  // 頑張りたいことを乗り越えた投稿を前に。褒めるのは人。順位は付けない
-  for (const post of shuffled) if (celebrated.has(post.id)) related.set(post.id, "頑張ってきたことが、できた投稿");
 
-  const relatedPosts = shuffled
-    .filter((post) => related.has(post.id))
-    .sort((a, b) => Number(celebrated.has(b.id)) - Number(celebrated.has(a.id)));
-  const others = shuffled.filter((post) => !related.has(post.id));
-  const mixed: typeof shuffled = [];
-  for (let i = 0; i < Math.max(relatedPosts.length, others.length); i++) {
-    if (relatedPosts[i]) mixed.push(relatedPosts[i]);
-    if (others[i]) mixed.push(others[i]);
-  }
-  return mixed.slice(0, MAX_CARDS).map((post) => ({
+  // 最初の3人はランダム。そこから先は、関係の深い順に。関係のない人もそのあとに続く
+  const first = shuffled.slice(0, FIRST_RANDOM);
+  const rest = shuffled.slice(FIRST_RANDOM);
+  const weight = (id: string) => related.get(id)?.weight ?? 0;
+  const ordered = [...first, ...rest.map((post, index) => ({ post, index })).sort((a, b) => weight(b.post.id) - weight(a.post.id) || a.index - b.index).map(({ post }) => post)];
+  return ordered.slice(0, MAX_CARDS).map((post) => ({
     ...toCard(post),
-    ...(related.has(post.id) ? { relatedReason: related.get(post.id) } : {}),
+    ...(related.has(post.id) ? { relatedReason: related.get(post.id)!.reason } : {}),
   }));
 }
 
@@ -375,4 +408,26 @@ export async function handleTodayReply(
     if (error instanceof DestinationError) return { status: 400, body: { error: error.message } };
     throw error;
   }
+}
+
+const RECENT_DAYS = 14;
+
+/** 今日の3人のおすすめの材料。肩書き、頑張りたいこと、最近の返事のやり取り、書いたことのあるチャネル。 */
+export function todayAffinity(db: DatabaseSync, viewerId: string, now: Date): TodayAffinity {
+  const since = new Date(now.getTime() - RECENT_DAYS * 24 * 60 * 60 * 1000).toISOString();
+  const label = (db.prepare("SELECT label FROM people WHERE id = ?").get(viewerId) as { label: string } | undefined)?.label;
+  const goals = (db.prepare("SELECT text FROM goals WHERE person_id = ? AND status = 'active'").all(viewerId) as { text: string }[]).map((row) => row.text);
+  const people = db
+    .prepare(
+      `SELECT p.author_id AS id FROM replies r JOIN posts p ON p.id = r.post_id WHERE r.author_id = ? AND r.created_at >= ?
+       UNION SELECT r.author_id AS id FROM replies r JOIN posts p ON p.id = r.post_id WHERE p.author_id = ? AND r.created_at >= ?`,
+    )
+    .all(viewerId, since, viewerId, since) as { id: string }[];
+  const channels = db.prepare("SELECT DISTINCT channel_id FROM posts WHERE author_id = ?").all(viewerId) as { channel_id: string }[];
+  return {
+    viewerLabel: label,
+    goals,
+    recentPeople: new Set(people.map((row) => row.id).filter((id) => id !== viewerId)),
+    postedChannels: new Set(channels.map((row) => row.channel_id)),
+  };
 }

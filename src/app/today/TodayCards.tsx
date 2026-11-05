@@ -25,6 +25,7 @@ export function TodayCards({ cards: allCards }: { cards: (TodayCard & { authorIm
   const [hiddenNote, setHiddenNote] = useState("");
   const cards = useMemo(() => allCards.filter((c) => !hiddenAuthors.includes(c.authorId)), [allCards, hiddenAuthors]);
   const [index, setIndex] = useState(0);
+  const touchX = useRef<number | null>(null);
   const [limit, setLimit] = useState(BATCH);
   const [cheered, setCheered] = useState<string[]>([]);
   const [hints, setHints] = useState<Record<string, string>>({});
@@ -103,7 +104,7 @@ export function TodayCards({ cards: allCards }: { cards: (TodayCard & { authorIm
           <p className="words">今日はここまで。見てくれてありがとう！</p>
           {limit < cards.length && (
             <button type="button" className="secondary" onClick={() => setLimit((value) => value + BATCH)}>
-              もっと見る
+              もっと見る（あなたに近い人）
             </button>
           )}
         </section>
@@ -116,7 +117,19 @@ export function TodayCards({ cards: allCards }: { cards: (TodayCard & { authorIm
   return (
     <>
       {note}
-      <section className="talk today-card" aria-label={`${card.authorName}さんの投稿`}>
+      <section
+        className="talk today-card"
+        aria-label={`${card.authorName}さんの投稿`}
+        // 左へめくると次の人。ボタンの「次へ」と同じ
+        onTouchStart={(event) => {
+          touchX.current = event.touches.length === 1 ? event.touches[0].clientX : null;
+        }}
+        onTouchEnd={(event) => {
+          const start = touchX.current;
+          touchX.current = null;
+          if (start !== null && start - event.changedTouches[0].clientX > 60) setIndex((value) => value + 1);
+        }}
+      >
         <p className="count">
           {index + 1} 枚目（全 {Math.min(limit, cards.length)} 枚）・{card.channelName}
         </p>
@@ -124,7 +137,7 @@ export function TodayCards({ cards: allCards }: { cards: (TodayCard & { authorIm
           <Avatar image={card.authorImage} alt={`${card.authorName}さんの相棒`} size={40} />
           <strong>{card.authorName}</strong> <PersonTitle title={card.authorTitle} />（{card.authorLabel}）
         </p>
-        {card.relatedReason && <p className="count related-line">{card.relatedReason}</p>}
+        {card.relatedReason && <p className="count related-line">おすすめ：{card.relatedReason}</p>}
         <p className="words">{card.body}</p>
         {card.researchedWithAi && <p className="count">AI と調べました</p>}
         {hints[card.postId] && <p className="hint-line">{hints[card.postId]}</p>}

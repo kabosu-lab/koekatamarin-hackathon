@@ -186,11 +186,29 @@ describe("関連する投稿", () => {
     teams.createPost("aoki", "making", `${word}の練習を始めました`, {});
   });
 
-  it("公開の言葉と同じ話題の投稿が先に出て、理由が付く", () => {
+  it("最初の3人はランダムのままで、めくると同じ話題の投稿が理由付きで出る", () => {
     const id = teams.createPost("noda", "making", `${word}の部品を作りました`, {});
+    const plain = listTodayCards(teams, "aoki", NOW).map((c) => c.postId);
     const cards = listTodayCards(teams, "aoki", NOW, new Set(), myWords());
-    expect(cards[0].postId).toBe(id);
-    expect(cards[0].relatedReason).toBe(`同じ「${word}」の話`);
+    expect(cards.slice(0, 3).map((c) => c.postId)).toEqual(plain.slice(0, 3));
+    const at = cards.findIndex((c) => c.postId === id);
+    expect(at).toBeLessThanOrEqual(3);
+    expect(cards[at].relatedReason).toBe(`同じ「${word}」の話`);
+  });
+
+  it("頑張りたいこと、最近のやり取り、同じ学年からも、理由を一言付けて選ぶ", () => {
+    const goalPost = teams.createPost("noda", "making", "毎朝の英単語を続けています", {});
+    const cards = listTodayCards(teams, "aoki", NOW, new Set(), [], new Set(), {
+      viewerLabel: "2年",
+      goals: ["英単語を覚える"],
+      recentPeople: new Set(["kinoshita"]),
+    });
+    const reasons = new Map(cards.map((c) => [c.postId, c.relatedReason]));
+    expect(reasons.get(goalPost)).toBe("頑張りたいことの「英単語」に近い話");
+    const fromKinoshita = cards.find((c) => c.authorId === "kinoshita" && !reasons.get(c.postId)?.startsWith("頑張り"));
+    if (fromKinoshita) expect(fromKinoshita.relatedReason).toBe("最近やり取りした人");
+    const sameGrade = cards.filter((c) => c.relatedReason === "同じ2年");
+    expect(sameGrade.every((c) => c.authorLabel.includes("2年"))).toBe(true);
   });
 
   it("関連がなければランダムのままで、理由は付かない", () => {
@@ -295,5 +313,19 @@ describe("カードからの返信", () => {
     };
     expect((await handleTodayReply(blocking, teams, "noda", { postId: "post-clubs-1", text: "ひどい言葉" })).status).toBe(422);
     expect(replies("post-clubs-1")).toHaveLength(before);
+  });
+});
+
+describe("おすすめの材料", () => {
+  it("肩書き、頑張りたいこと、最近の返事のやり取り、書いたことのあるチャネルを集める", async () => {
+    const { todayAffinity } = await import("./today");
+    teams.createPost("aoki", "making", "部品を作りました", {});
+    const post = teams.createPost("noda", "making", "治具を作りました", {});
+    teams.createReply("aoki", post, "すごい");
+    const affinity = todayAffinity(db, "aoki", NOW);
+    expect(affinity.viewerLabel).toBe("2年");
+    expect(affinity.recentPeople?.has("noda")).toBe(true);
+    expect(affinity.recentPeople?.has("aoki")).toBe(false);
+    expect(affinity.postedChannels?.has("making")).toBe(true);
   });
 });

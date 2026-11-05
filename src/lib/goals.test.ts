@@ -162,13 +162,15 @@ describe("乗り越えた投稿", () => {
     return (outcome.body as { postId: string }).postId;
   }
 
-  it("印の投稿が今日の3人の先頭に出る", async () => {
+  it("印の投稿は、最初の3人のすぐあとまでに出る", async () => {
     const goal = addGoal(db, "aoki", "動画を見る", NOW);
     handleGoals(db, "aoki", { action: "done", id: goal?.id }, NOW);
     const postId = await publish("aoki", goal?.id);
     const cards = listTodayCards(teams, "noda", NOW, new Set(), [], listCelebratedPostIds(db, NOW));
-    expect(cards[0].postId).toBe(postId);
-    expect(cards[0].relatedReason).toContain("できた");
+    const at = cards.findIndex((card) => card.postId === postId);
+    expect(at).toBeGreaterThanOrEqual(0);
+    expect(at).toBeLessThanOrEqual(3);
+    expect(cards[at].relatedReason).toContain("できた");
   });
 
   it("範囲を絞った投稿は、印があっても出ない", async () => {

@@ -38,7 +38,14 @@ test("話の中で提案され、押すと残り、できたら投稿になり�
 
   await switchPerson(page, NODA);
   await page.goto("/today");
-  await expect(page.getByText("頑張ってきたことが、できた投稿")).toBeVisible();
+  // 最初の3人はランダム。めくると、できた投稿がおすすめで出る
+  const done = page.getByText("頑張ってきたことが、できた投稿");
+  for (let i = 0; i < 6 && !(await done.isVisible()); i++) {
+    const next = page.getByRole("button", { name: "次へ" });
+    if ((await next.count()) === 0) await page.getByRole("button", { name: /もっと見る/ }).click();
+    else await next.click();
+  }
+  await expect(done).toBeVisible();
   await expect(page.getByText(/資格の動画/).first()).toBeVisible();
   await page.context().close();
 });
