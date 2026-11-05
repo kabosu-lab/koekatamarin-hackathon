@@ -522,16 +522,19 @@ export function Talk({
   // 前に届けたあとで、相棒がそろったと判断したときだけ光る
   const readyToDeliver = !hasTyped && !listening && !sending && !preparing && readyAt !== null && readyAt > deliveredAt && readyAt <= messages.length;
   const lastUserIndex = messages.map((message) => message.role).lastIndexOf("user");
+  // いちばん新しい相棒の言葉は、相棒から出る吹き出しにする
+  const lastAssistantIndex = messages.map((message) => message.role).lastIndexOf("assistant");
   const replyCount = messages.filter((message) => message.role === "assistant").length;
 
   const bubbleList = (
     <>
         {messages.map((message, index) => (
           <Fragment key={index}>
-            <p className={`bubble ${message.role}`}>
+            <p className={`bubble ${message.role}${index === lastAssistantIndex && !sending ? " latest" : ""}`}>
               <span className="visually-hidden">{message.role === "user" ? "あなた：" : "相棒："}</span>
               {message.content}
             </p>
+            {device && index === lastAssistantIndex && !sending && <span className="speech-tail" aria-hidden="true" />}
             {keepsWords && message.role === "user" && (!device || index === lastUserIndex) && (
               <button
                 type="button"
@@ -718,6 +721,9 @@ export function Talk({
               <p className="bubble assistant waiting" role="status">
                 考えています…
               </p>
+            )}
+            {sending && device && (
+              <span className="speech-tail" aria-hidden="true" />
             )}
             {cards}
             {canCompose && !safety && (

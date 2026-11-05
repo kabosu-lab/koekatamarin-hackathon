@@ -33,28 +33,20 @@ export function GoalsPanel({ initial, initialNudge }: { initial: Goal[]; initial
   return (
     <section className="card goals" aria-label="頑張りたいこと">
       <h2>頑張りたいこと</h2>
-      <p className="muted">あなただけのものです。相棒が話の中で聞いてきます。できなくても減りません。</p>
+      <p className="muted">あなただけのものです。相棒が話の中で背中を押します。できなくても減りません。</p>
 
-      <p className="muted">相棒の促し方</p>
-      <div className="row">
-        {(
-          [
-            ["gentle", "そっと"],
-            ["blunt", "耳が痛め"],
-          ] as const
-        ).map(([value, label]) => (
-          <button
-            key={value}
-            type="button"
-            className="secondary"
-            aria-pressed={nudge === value}
-            onClick={() => void call({ action: "nudge", nudge: value })}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-
+      <form
+        className="goal-add"
+        onSubmit={(event) => {
+          event.preventDefault();
+          void call({ action: "add", text }).then((ok) => ok && setText(""));
+        }}
+      >
+        <input aria-label="頑張りたいことを足す" placeholder="例：毎日10分歩く" value={text} onChange={(event) => setText(event.target.value)} />
+        <button type="submit" disabled={text.trim() === ""}>
+          足す
+        </button>
+      </form>
       {justDone && (
         <div className="goal-done" role="status">
           <p>やったね！みんなに言っておく？</p>
@@ -123,18 +115,27 @@ export function GoalsPanel({ initial, initialNudge }: { initial: Goal[]; initial
         ))}
       </ul>
 
-      <form
-        className="goal-add"
-        onSubmit={(event) => {
-          event.preventDefault();
-          void call({ action: "add", text }).then((ok) => ok && setText(""));
-        }}
-      >
-        <input aria-label="頑張りたいことを足す" placeholder="例：毎日10分歩く" value={text} onChange={(event) => setText(event.target.value)} />
-        <button type="submit" disabled={text.trim() === ""}>
-          足す
-        </button>
-      </form>
+      <p className="muted">相棒の促し方</p>
+      <div className="row">
+        {(
+          [
+            ["gentle", "そっと"],
+            ["blunt", "耳が痛め"],
+          ] as const
+        ).map(([value, label]) => (
+          <button
+            key={value}
+            type="button"
+            className="secondary"
+            aria-pressed={nudge === value}
+            onClick={() => void call({ action: "nudge", nudge: value })}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+
       {notice && (
         <p className="notice" role="alert">
           {notice}

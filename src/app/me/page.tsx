@@ -10,6 +10,7 @@ import { listTitles, wornTitle } from "@/lib/titles";
 import { PersonTitle } from "../PersonTitle";
 import { TitleCollection } from "./TitleCollection";
 import { Avatar } from "../Avatar";
+import { companionImage } from "@/lib/companion-art";
 import { cookies } from "next/headers";
 import { APPEARANCE_OPTIONS, readAppearance } from "@/lib/appearance";
 import { setAppearance } from "../person-actions";
@@ -66,6 +67,20 @@ export default async function MePage() {
       dot={0}
       left={{ href: "#settings", label: "設定", icon: "settings" }}
       right={{ href: "#records", label: "記録", icon: "note" }}
+      screen={
+        // 上の窓は、自分と相棒。スマホで読みやすいよう、中身は窓の下に広げる
+        <div className="me-screen">
+          {rewards && avatar.family && (
+            // 相棒はコードで描いた絵（声のかたまりか、育った動物）
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={companionImage(avatar.family, avatar.stage)} alt={`${viewer.name}さんの相棒`} width={84} height={84} />
+          )}
+          <div>
+            <strong>{viewer.name}</strong>
+            <small>{viewer.label}</small>
+          </div>
+        </div>
+      }
     >
     <main className="home">
       <header>
@@ -74,6 +89,9 @@ export default async function MePage() {
           {viewer.name} <PersonTitle title={wornTitle(db, viewer.id)} />
         </p>
       </header>
+
+      {/* 頑張りたいことは、いちばん上。足すのも「できた」も1回押すだけ */}
+      <GoalsPanel key={`${viewer.id}-goals`} initial={listGoals(db, viewer.id)} initialNudge={getNudge(db, viewer.id)} />
 
       <section className="card retro-log" aria-label="相棒との話">
         <h2>相棒との話</h2>
@@ -161,7 +179,6 @@ export default async function MePage() {
         <Link href="/portfolio"><Icon name="note" />ポートフォリオ</Link>
         <Link href="/inbox"><Icon name="inbox" />受信箱</Link>
       </div>
-      <GoalsPanel key={`${viewer.id}-goals`} initial={listGoals(db, viewer.id)} initialNudge={getNudge(db, viewer.id)} />
 
       <h2 className="group-title" id="thanks"><Icon name="thanks" />ありがとう</h2>
       <ThanksForm key={`${viewer.id}-thanks`} people={others} />

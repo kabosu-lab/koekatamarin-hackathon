@@ -5,6 +5,8 @@ import { cookies } from "next/headers";
 import { readAppearance } from "@/lib/appearance";
 import { getViewer } from "@/lib/current-person";
 import { getDatabase } from "@/lib/db";
+import { getDestination } from "@/lib/destination/current";
+import { recentFeed, shortAgo } from "@/lib/minna-feed";
 import { syncFromTeamsIfStale } from "@/lib/destination/teams-bridge";
 import { activeEvents } from "@/lib/events";
 import { listGiftEggs } from "@/lib/gift-eggs";
@@ -37,6 +39,8 @@ export default async function MinnaPage() {
   const eggs = rewards ? listGiftEggs(db, viewer.id).length : 0;
   const hasAlerts = !isTrialMode() && viewer.role !== "student" && (viewer.id === counselorId || listAlertsFor(db, viewer.id).length > 0);
   const grown = leavesThisWeek(db, now);
+  const destination = getDestination(db);
+  const feed = recentFeed(destination.listChannels(viewer.id), (channelId) => destination.listPosts(viewer.id, channelId), 6);
 
   return (
     <DeviceFrame
@@ -61,6 +65,37 @@ export default async function MinnaPage() {
           <h1>みんな</h1>
           <p>{schoolName}</p>
         </header>
+
+
+        {feed.length > 0 && (
+          <section className="minna-feed" aria-label="最近の投稿と返事">
+            <h2>最近の投稿と返事</h2>
+            <ul>
+              {feed.map(({ post, channel, activeAt }) => {
+                const lastReply = post.replies.at(-1);
+                return (
+                  <li key={post.id}>
+                    <Link href={`/teams?channel=${channel.id}#post-${post.id}`}>
+                      <span className="minna-feed-head">
+                        <strong>{post.authorName}</strong>
+                        <small>
+                          {channel.name}・{shortAgo(activeAt, now)}
+                        </small>
+                      </span>
+                      <span className="minna-feed-body">{post.body}</span>
+                      {lastReply && (
+                        <span className="minna-feed-reply">
+                          ↳ {lastReply.authorName}：{lastReply.body}
+                          {post.replies.length > 1 && <small>（返事 {post.replies.length} 件）</small>}
+                        </span>
+                      )}
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        )}
 
         {/* 校内の桜。個人を比べず、責めない。控えめでも枯れない */}
         <Link className="sakura-line" href="/sakura" aria-label="校内の桜">
