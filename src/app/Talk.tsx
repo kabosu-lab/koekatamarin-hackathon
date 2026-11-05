@@ -86,6 +86,7 @@ export function Talk({
   const endRef = useRef<HTMLDivElement>(null);
 
   const logRef = useRef<HTMLDivElement>(null);
+  const heardRef = useRef<HTMLParagraphElement>(null);
   const pressedAt = useRef<number | null>(null);
   const discardHeard = useRef(false);
   // 声が確定したときは、そのときの会話と入力欄で送る
@@ -99,6 +100,11 @@ export function Talk({
     }
     endRef.current?.scrollIntoView?.({ block: "end" });
   }, [device, messages, sending, heard, safety, suggestion, goalSuggestion, goalDone, found, notice, sentTo, attachment]);
+
+  // 話している最新の行がいつも見えるよう、増えた分だけ上へ送る
+  useEffect(() => {
+    if (heardRef.current) heardRef.current.scrollTop = heardRef.current.scrollHeight;
+  }, [heard, listening]);
 
   useEffect(() => () => stopRef.current?.(), []);
 
@@ -620,7 +626,7 @@ export function Talk({
 
         <form className="device-input" onSubmit={submit}>
           {listening ? (
-            <p className="device-heard" role="status">
+            <p className="device-heard" role="status" ref={heardRef}>
               <span className="listening-label">聞いています…</span>
               {draft && <span>{draft} </span>}
               {/* 新しく増えた文字だけが、ぼんやりから固まっていく */}

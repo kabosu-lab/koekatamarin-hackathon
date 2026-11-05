@@ -187,3 +187,41 @@ test("文字は Enter で送り、変換を決める Enter では送らない。
   await expect(page.getByRole("log").locator(".bubble.user").last()).toHaveText(/変換中/);
   await expect(page.getByRole("button", { name: "とどける" })).toBeEnabled();
 });
+
+test("話す言葉が増えても、最新の行がテキスト欄に見えて、欄の高さは変わらない", async ({ page }) => {
+  await page.addInitScript(() => {
+    const store = window as unknown as Record<string, unknown>;
+    class GrowingRecognition {
+      onresult: ((event: unknown) => void) | null = null;
+      onend: (() => void) | null = null;
+      onerror: ((event: unknown) => void) | null = null;
+      start() {
+        store.current = this;
+      }
+      stop() {
+        this.onend?.();
+      }
+      say(text: string) {
+        this.onresult?.({ resultIndex: 0, results: [Object.assign([{ transcript: text }], { isFinal: false })] });
+      }
+    }
+    Object.assign(window, { webkitSpeechRecognition: GrowingRecognition, SpeechRecognition: GrowingRecognition });
+  });
+  await page.goto("/");
+  await page.locator(".device-mic").hover();
+  await page.mouse.down();
+  const heard = page.locator(".device-heard");
+  await expect(heard).toBeVisible();
+  const first = await heard.boundingBox();
+  await page.evaluate(() => {
+    const store = window as unknown as { current: { say(text: string): void } };
+    store.current.say(`${"はじめの言葉".repeat(40)}さいごの言葉`);
+  });
+  await expect(heard).toContainText("さいごの言葉");
+  await expect
+    .poll(() => heard.evaluate((element) => element.scrollHeight - element.scrollTop - element.clientHeight))
+    .toBeLessThanOrEqual(1);
+  expect((await heard.boundingBox())?.height).toBe(first?.height);
+  expect(await heard.evaluate((element) => element.scrollHeight > element.clientHeight)).toBe(true);
+  await page.mouse.up();
+});
