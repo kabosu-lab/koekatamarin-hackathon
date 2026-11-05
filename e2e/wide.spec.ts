@@ -58,14 +58,19 @@ test("みんなと、履歴と設定も同じ本体で、ホイールで一覧�
   const cx = wheel.x + wheel.width / 2;
   const cy = wheel.y + wheel.height / 2;
   const r = wheel.width * 0.46;
-  await page.mouse.move(cx + r, cy);
-  await page.mouse.down();
-  for (const degrees of [20, 40, 60, 80, 100]) {
-    const radians = (degrees * Math.PI) / 180;
-    await page.mouse.move(cx + r * Math.cos(radians), cy + r * Math.sin(radians));
-  }
-  await page.mouse.up();
-  await expect.poll(() => win.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+  // トロフィーが届いた瞬間の全画面の知らせが重なることがあるので、閉じてから回す
+  await expect(async () => {
+    const moment = page.locator(".ribbon-moment");
+    if (await moment.isVisible()) await moment.click();
+    await page.mouse.move(cx + r, cy);
+    await page.mouse.down();
+    for (const degrees of [20, 40, 60, 80, 100]) {
+      const radians = (degrees * Math.PI) / 180;
+      await page.mouse.move(cx + r * Math.cos(radians), cy + r * Math.sin(radians));
+    }
+    await page.mouse.up();
+    expect(await win.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+  }).toPass({ timeout: 15_000 });
 });
 
 test("みんなの一番上に校内の桜があり、すぐ下に受信箱、自習室の入口もある", async ({ page }) => {
