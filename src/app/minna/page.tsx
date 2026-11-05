@@ -10,6 +10,12 @@ import { cookies } from "next/headers";
 import { readAppearance } from "@/lib/appearance";
 import { activeEvents } from "@/lib/events";
 import { showsRewards } from "@/lib/rewards-view";
+import { listGiftEggs } from "@/lib/gift-eggs";
+import { countForNotice } from "@/lib/inbox";
+import { countKnowledgeForNotice } from "@/lib/knowledge";
+import { listAlertsFor } from "@/lib/safety";
+import { counselorId } from "@/lib/seed-data";
+import { isTrialMode } from "@/lib/trial";
 import { Avatar } from "../Avatar";
 
 export const metadata: Metadata = { title: "みんな｜こえかた" };
@@ -32,6 +38,10 @@ export default async function MinnaPage({ searchParams }: { searchParams: Promis
   const rewards = showsRewards(readAppearance((name) => store.get(name)?.value));
   const events = rewards ? activeEvents(now) : [];
   const inEvent = events.length > 0;
+  const waiting = countForNotice(db, viewer.id, now);
+  const knowledgeTasks = countKnowledgeForNotice(db, viewer.id, now);
+  const eggs = rewards ? listGiftEggs(db, viewer.id).length : 0;
+  const hasAlerts = !isTrialMode() && viewer.role !== "student" && (viewer.id === counselorId || listAlertsFor(db, viewer.id).length > 0);
 
   return (
     <main className="home">
@@ -39,6 +49,27 @@ export default async function MinnaPage({ searchParams }: { searchParams: Promis
         <h1>みんな</h1>
         <p>{schoolName}</p>
       </header>
+
+      <nav className="quick-links" aria-label="届いているもの">
+        <Link href="/inbox">
+          <Icon name="inbox" />
+          受信箱
+          {waiting > 0 && `（お願いが ${waiting} 件）`}
+          {knowledgeTasks > 0 && `（知恵の確認が ${knowledgeTasks} 件）`}
+        </Link>
+        {eggs > 0 && (
+          <Link href="/me">
+            <Icon name="gift" />
+            贈り物の卵が届いています
+          </Link>
+        )}
+        {hasAlerts && (
+          <Link href="/soudan">
+            <Icon name="shield" />
+            相談室への知らせを見る
+          </Link>
+        )}
+      </nav>
 
       <div className="hub-links">
         <Link href="/today">

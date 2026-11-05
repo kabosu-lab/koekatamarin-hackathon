@@ -237,6 +237,7 @@ test("贈り物の卵を開け、生まれた相棒を選べる", async ({ brows
   const page = await (await browser.newContext()).newPage();
   await page.goto("/");
   await switchPerson(page, "野田 翔（情報・ものづくり部顧問）");
+  await page.goto("/minna");
   await expect(page.getByRole("link", { name: "贈り物の卵が届いています" })).toBeVisible();
   await page.goto("/me");
   const section = page.getByRole("region", { name: "贈り物の卵" });

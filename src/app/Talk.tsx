@@ -21,7 +21,9 @@ import { loadTalk, saveTalk } from "./talk-storage";
 import { isSpeechSupported, startListening } from "./speech";
 import { Icon } from "./Icon";
 import { ClickWheel } from "./ClickWheel";
+import { ReplyToast } from "./ReplyToast";
 import { VoiceLump } from "./VoiceLump";
+import type { ReplyNotice } from "@/lib/reply-notices";
 
 const MAX_TEXT_LENGTH = 2000;
 /** これより短い押し方は触っただけとして、聞いた言葉を送らない */
@@ -40,6 +42,7 @@ export function Talk({
   avatarImage,
   initialGoal = null,
   device = false,
+  notices = [],
   companionAlt,
 }: {
   viewer: { name: string; label: string };
@@ -52,6 +55,8 @@ export function Talk({
   initialGoal?: { id: string; text: string } | null;
   /** 窓とホイールの配置 */
   device?: boolean;
+  /** 開いたときに届いている返事 */
+  notices?: ReplyNotice[];
   /** 窓に出す相棒の名前。報酬を隠している人にはない */
   companionAlt?: string;
 }) {
@@ -580,6 +585,7 @@ export function Talk({
       <div className="talk device" data-viewer={viewer.name} data-state={listening ? "listening" : sending ? "thinking" : "idle"} data-talking={messages.length > 0}>
         {burst && <SendBurst words={burst} avatarImage={avatarImage} onDone={() => setBurst(null)} />}
         <section className="lcd" aria-label="相棒の画面">
+          <ReplyToast initial={notices} paused={listening} />
           {companionAlt && (
             <div className="lcd-companion">
               <VoiceLump alt={companionAlt} state={listening ? "listening" : sending ? "thinking" : "idle"} replyCount={replyCount} />

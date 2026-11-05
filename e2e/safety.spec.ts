@@ -31,6 +31,7 @@ test("心配な話は要点だけ相談室に届き、本人が選んだ先生�
   await expect(card).toContainText("大河原 誠先生にも伝えました");
 
   await switchPerson(page, "白石 文（養護・相談室）");
+  await page.goto("/minna");
   await page.getByRole("link", { name: "相談室への知らせを見る" }).click();
   const alert = page.getByRole("article", { name: "木下 蓮さんについての知らせ" });
   await expect(alert).toBeVisible();
@@ -39,6 +40,7 @@ test("心配な話は要点だけ相談室に届き、本人が選んだ先生�
 
   await page.goto("/");
   await switchPerson(page, "川村 陽菜（理科・1年副担任）");
+  await page.goto("/minna");
   await expect(page.getByRole("link", { name: "相談室への知らせを見る" })).toHaveCount(0);
   await switchTo2(page, "川村 陽菜（理科・1年副担任）");
   await expect(page.getByRole("article", { name: "木下 蓮さんについての知らせ" })).toHaveCount(0);
@@ -89,6 +91,7 @@ test("生徒には知らせの入口がなく、URL を開いても何も見え�
   await page.goto("/");
   await switchPerson(page, "青木 ひより（2年）");
   await expect(page.getByLabel("使う人")).toHaveValue("aoki");
+  await page.goto("/minna");
   await expect(page.getByRole("link", { name: "相談室への知らせを見る" })).toHaveCount(0);
 
   await page.goto("/soudan");

@@ -111,6 +111,7 @@ body:has(.retro-home) :is(.bottom-nav, .demo-switcher) {
 
 /* 窓 */
 .lcd {
+  position: relative;
   flex: 1;
   min-height: 0;
   display: flex;

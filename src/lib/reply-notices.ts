@@ -53,3 +53,25 @@ export function markRepliesSeen(db: DatabaseSync, viewerId: string, replyIds: st
   );
   for (const replyId of replyIds) mark.run(replyId, viewerId);
 }
+
+const RECENT_REPLIES = 20;
+
+/** 受信箱に出す、自分の投稿に届いた返事。知らせが消えたあとも読める。 */
+export function listRecentReplies(db: DatabaseSync, viewerId: string): ReplyNotice[] {
+  const rows = db
+    .prepare(
+      `SELECT r.id, r.post_id, r.author_id, r.body, p.channel_id, a.name AS author_name
+       FROM replies r
+       JOIN posts p ON p.id = r.post_id
+       JOIN people a ON a.id = r.author_id
+       WHERE p.author_id = ? AND r.author_id <> ?
+       ORDER BY r.created_at DESC, r.rowid DESC
+       LIMIT ?`,
+    )
+    .all(viewerId, viewerId, RECENT_REPLIES) as { id: string; post_id: string; author_id: string; body: string; channel_id: string; author_name: string }[];
+  const hidden = listHiddenIds(db, viewerId);
+  const forgotten = forgottenSources(db);
+  return rows
+    .filter((row) => !hidden.has(row.author_id) && !forgotten.has(`${row.author_id}|${row.id}`))
+    .map((row) => ({ replyId: row.id, postId: row.post_id, channelId: row.channel_id, authorName: row.author_name, body: row.body }));
+}

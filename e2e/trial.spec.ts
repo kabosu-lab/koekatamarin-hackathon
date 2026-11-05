@@ -120,7 +120,9 @@ test("cookie を書き換えても、先生や相談室の人物として画面�
   await page.goto("/");
   await expect(page.locator('.talk[data-viewer="青木 ひより"]')).toBeVisible();
   await expect(page.locator('.talk[data-viewer="白石 文"]')).toHaveCount(0);
+  await page.goto("/minna");
   await expect(page.getByRole("link", { name: "相談室への知らせを見る" })).toHaveCount(0);
+  await page.goto("/");
 
   // API から送っても、書き換えた先生ではなく生徒の投稿になる
   const words = `書き換えの確かめ ${test.info().testId}`;

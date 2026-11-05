@@ -44,6 +44,7 @@ test("先生の一日：話しかける、返す、パス、サンクス、日�
   await say(page, "今日は作文の一言のことを相談された");
 
   // 生徒の頑張りと「お願いします」が、朝の受信箱に届く
+  await page.getByRole("link", { name: "みんな ›" }).click();
   await page.getByRole("link", { name: /受信箱/ }).click();
   await expect(page.getByRole("region", { name: /川村 陽菜さんからのお願い/ })).toBeVisible();
   await expect(page.getByRole("region", { name: /木下 蓮さんからのお願い/ })).toBeVisible();

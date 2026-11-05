@@ -82,7 +82,8 @@ test("声で話して返せる", async ({ page }) => {
   await expect(card.getByLabel("話したこと")).toHaveValue("声で話した返事");
 });
 
-test("最初の画面に受信箱への入口がある", async ({ page }) => {
+test("みんなの画面の上に受信箱への入口がある", async ({ page }) => {
   await page.goto("/");
+  await page.goto("/minna");
   await expect(page.getByRole("link", { name: /受信箱/ })).toBeVisible();
 });

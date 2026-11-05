@@ -6,6 +6,7 @@ import { getDestination } from "@/lib/destination/current";
 import { countContributions } from "@/lib/avatar";
 import { listInbox, listPassCandidates } from "@/lib/inbox";
 import { listKnowledgeTasks } from "@/lib/knowledge";
+import { listRecentReplies } from "@/lib/reply-notices";
 import { KnowledgeTasks } from "../chie/KnowledgeTasks";
 import { InboxCard } from "./InboxCard";
 
@@ -18,6 +19,7 @@ export default async function InboxPage() {
   const db = getDatabase();
   const teams = getDestination(db);
   const items = listInbox(db, viewer.id);
+  const replies = listRecentReplies(db, viewer.id);
   const { goals, assists } = countContributions(db, viewer.id);
 
   return (
@@ -30,6 +32,22 @@ export default async function InboxPage() {
       <p className="inbox-counts">
         解決 {goals}・つないだ {assists}
       </p>
+
+      {replies.length > 0 && (
+        <section className="card inbox-replies" id="replies" aria-label="届いた返事">
+          <h2>届いた返事</h2>
+          <ul>
+            {replies.map((reply) => (
+              <li key={reply.replyId}>
+                <Link href={`/teams?channel=${encodeURIComponent(reply.channelId)}#post-${reply.postId}`}>
+                  <strong>{reply.authorName}さん</strong>
+                  <span>{reply.body}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <KnowledgeTasks tasks={listKnowledgeTasks(db, viewer.id)} />
 
