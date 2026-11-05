@@ -8,6 +8,7 @@ import { getDestination } from "@/lib/destination/current";
 import { MAX_BODY_LENGTH, type PostView } from "@/lib/destination/types";
 import { getAvatar } from "@/lib/avatar";
 import { getViewer } from "@/lib/current-person";
+import { syncFromTeamsIfStale } from "@/lib/destination/teams-bridge";
 import { canSaveKnowledge, excludedFromMaterial } from "@/lib/knowledge";
 import { schoolName } from "@/lib/seed-data";
 import { AttachmentPreview } from "../AttachmentPreview";
@@ -126,6 +127,8 @@ export default async function TeamsPage({
   const { viewer, people } = await getViewer();
 
   const db = getDatabase();
+
+  await syncFromTeamsIfStale(db);
   const images = Object.fromEntries(people.map((p) => [p.id, getAvatar(db, p.id).image]));
   const titles = wornTitles(db);
   const teams = getDestination(db);

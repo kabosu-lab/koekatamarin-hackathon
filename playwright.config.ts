@@ -53,6 +53,10 @@ export default defineConfig({
       timeout: 180_000,
       // テストの記録を手元のデータと混ぜず、毎回まっさらから始める
       env: {
+        // data/ に設定があっても、テストから本物の Teams へ送らない
+        KOEKATA_TEAMS: "off",
+        KOEKATA_GRAPH_DIR: join(tmpdir(), "koekata-e2e-no-graph"),
+        KOEKATA_TEAMS_WEBHOOK_URL: "",
         KOEKATA_DB_PATH: join(tmpdir(), `koekata-e2e-${process.pid}.db`),
         // .env にキーがあっても、テストでは料金を使わない
         KOEKATA_CLAUDE: "scripted",
@@ -67,6 +71,10 @@ export default defineConfig({
       reuseExistingServer: false,
       timeout: 240_000,
       env: {
+        // data/ に設定があっても、テストから本物の Teams へ送らない
+        KOEKATA_TEAMS: "off",
+        KOEKATA_GRAPH_DIR: join(tmpdir(), "koekata-e2e-no-graph"),
+        KOEKATA_TEAMS_WEBHOOK_URL: "",
         KOEKATA_DB_PATH: join(tmpdir(), `koekata-e2e-trial-${process.pid}.db`),
         KOEKATA_CLAUDE: "scripted",
         KOEKATA_ACCESS_CODE: "test-code",

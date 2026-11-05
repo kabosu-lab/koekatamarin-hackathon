@@ -9,5 +9,7 @@ export default defineConfig({
     testTimeout: 30_000,
     environment: "node",
     include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
+    // data/ に設定があっても、テストから本物の Teams へ送らない
+    env: { KOEKATA_TEAMS: "off", KOEKATA_GRAPH_DIR: "no-graph-in-tests", KOEKATA_TEAMS_WEBHOOK_URL: "" },
   },
 });

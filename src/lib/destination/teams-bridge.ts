@@ -1,0 +1,285 @@
+import { randomUUID } from "node:crypto";
+import type { DatabaseSync } from "node:sqlite";
+import { getAccessToken, type GraphConfig, readGraphConfig, readLinkedPeople } from "../graph/auth";
+import { isTrialMode } from "../trial";
+import type { CreatePostOptions, PostDestination } from "./types";
+
+/**
+ * 本物の Teams とのつなぎ。こえかたの DB を正として、画面はこれまでどおり同期で動く。
+ * 送る：本人のトークンがある人の、全員向けで確認の印がない投稿と返信だけ。送れなくてもアプリの送信は失敗にしない。
+ * 読む：Teams の投稿と返信を DB へ取り込む。届いた返事の知らせはそのまま働く。
+ * KOEKATA_TEAMS=off、試用版、設定がないときは通信しない。webhook にすると Workflow で送る（予備。読めない）。
+ */
+const GRAPH = "https://graph.microsoft.com/v1.0";
+const SYNC_INTERVAL_MS = 30_000;
+const REQUEST_TIMEOUT_MS = 8_000;
+/** 画面を待たせない。間に合わなければ、次に開いたときに反映される */
+const SYNC_WAIT_MS = 2_500;
+const DEFAULT_LOCAL_CHANNEL = "study";
+
+type Fetch = typeof fetch;
+export type TeamsMode = "off" | "graph" | "webhook";
+
+export function teamsMode(): TeamsMode {
+  if (process.env.KOEKATA_TEAMS === "off" || isTrialMode()) return "off";
+  if (process.env.KOEKATA_TEAMS === "webhook") return process.env.KOEKATA_TEAMS_WEBHOOK_URL ? "webhook" : "off";
+  return readGraphConfig() ? "graph" : "off";
+}
+
+type GraphMessage = {
+  id: string;
+  createdDateTime: string;
+  deletedDateTime?: string | null;
+  from: { user?: { id?: string; displayName?: string } | null } | null;
+  body: { content: string; contentType?: string };
+  replies?: GraphMessage[];
+};
+
+/** Teams の HTML を文字だけにする。画面には HTML を出さない。 */
+export function plainText(html: string): string {
+  return html
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/p>/gi, "\n")
+    .replace(/<[^>]*>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&amp;/g, "&")
+    .trim();
+}
+
+async function graph<T>(fetcher: Fetch, token: string, path: string, body?: unknown): Promise<T> {
+  const response = await fetcher(`${GRAPH}${path}`, {
+    method: body === undefined ? "GET" : "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: body === undefined ? undefined : JSON.stringify(body),
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+  });
+  if (!response.ok) throw new Error(`Graph ${response.status}`);
+  return (await response.json()) as T;
+}
+
+let cachedChannelPath: string | null = null;
+
+/** テストのための入口。チャネルの場所の控えを消す。 */
+export function resetTeamsBridge(): void {
+  cachedChannelPath = null;
+  lastSync = 0;
+  running = null;
+}
+
+async function channelPath(fetcher: Fetch, token: string, config: GraphConfig): Promise<string> {
+  if (cachedChannelPath) return cachedChannelPath;
+  const { value: teams } = await graph<{ value: { id: string; displayName: string }[] }>(fetcher, token, "/me/joinedTeams");
+  const team = teams.find((item) => item.displayName === config.team);
+  if (!team) throw new Error("チームが見つかりません");
+  const { value: channels } = await graph<{ value: { id: string; displayName: string }[] }>(fetcher, token, `/teams/${team.id}/channels`);
+  const channel = channels.find((item) => item.displayName === config.channel);
+  if (!channel) throw new Error("チャネルが見つかりません");
+  cachedChannelPath = `/teams/${team.id}/channels/${encodeURIComponent(channel.id)}/messages`;
+  return cachedChannelPath;
+}
+
+function saveLink(db: DatabaseSync, localId: string, kind: "post" | "reply", teamsId: string): void {
+  db.prepare("INSERT OR IGNORE INTO teams_links (local_id, kind, teams_id) VALUES (?, ?, ?)").run(localId, kind, teamsId);
+}
+
+const teamsIdOf = (db: DatabaseSync, localId: string) =>
+  (db.prepare("SELECT teams_id FROM teams_links WHERE local_id = ?").get(localId) as { teams_id: string } | undefined)?.teams_id ?? null;
+
+const localIdOf = (db: DatabaseSync, teamsId: string) =>
+  (db.prepare("SELECT local_id FROM teams_links WHERE teams_id = ?").get(teamsId) as { local_id: string } | undefined)?.local_id ?? null;
+
+/** 取り消したときに、Teams に届いた分が残るかどうか。 */
+export function reachedTeams(db: DatabaseSync, postId: string): boolean {
+  return teamsIdOf(db, postId) !== null;
+}
+
+/** 失敗の中身だけを残す。URL とトークンは出さない。 */
+function logFailure(what: string, error: unknown): void {
+  console.error(`Teams への${what}に失敗`, error instanceof Error ? error.message.slice(0, 80) : "unknown");
+}
+
+function isPublicChannel(db: DatabaseSync, channelId: string): boolean {
+  const row = db.prepare("SELECT audience FROM channels WHERE id = ?").get(channelId) as { audience: string } | undefined;
+  return row?.audience === "everyone";
+}
+
+/** 全員向けで、確認の印がなく、全員が読めるチャネルの投稿か。 */
+function canLeave(db: DatabaseSync, channelId: string, options: CreatePostOptions): boolean {
+  return (options.scope ?? "everyone") === "everyone" && !options.needsLook && isPublicChannel(db, channelId);
+}
+
+const personName = (db: DatabaseSync, personId: string) =>
+  (db.prepare("SELECT name FROM people WHERE id = ?").get(personId) as { name: string } | undefined)?.name ?? "";
+
+export async function sendPostToTeams(db: DatabaseSync, viewerId: string, postId: string, channelId: string, body: string, options: CreatePostOptions = {}, fetcher: Fetch = fetch): Promise<void> {
+  const mode = teamsMode();
+  if (mode === "off" || !canLeave(db, channelId, options)) return;
+  try {
+    if (mode === "webhook") {
+      await sendWebhookCard(personName(db, viewerId), body, fetcher);
+      return;
+    }
+    const config = readGraphConfig();
+    // 本人の名前で届けるので、本人がサインインしていなければ送らない
+    const token = await getAccessToken(fetcher, Date.now(), viewerId);
+    if (!config || !token) return;
+    const path = await channelPath(fetcher, token, config);
+    const sent = await graph<{ id: string }>(fetcher, token, path, { body: { contentType: "text", content: body } });
+    saveLink(db, postId, "post", sent.id);
+  } catch (error) {
+    logFailure("投稿", error);
+  }
+}
+
+export async function sendReplyToTeams(db: DatabaseSync, viewerId: string, replyId: string, postId: string, body: string, fetcher: Fetch = fetch): Promise<void> {
+  if (teamsMode() !== "graph") return;
+  const parent = teamsIdOf(db, postId);
+  if (!parent) return;
+  try {
+    const config = readGraphConfig();
+    const token = await getAccessToken(fetcher, Date.now(), viewerId);
+    if (!config || !token) return;
+    const path = await channelPath(fetcher, token, config);
+    const sent = await graph<{ id: string }>(fetcher, token, `${path}/${parent}/replies`, { body: { contentType: "text", content: body } });
+    saveLink(db, replyId, "reply", sent.id);
+  } catch (error) {
+    logFailure("返信", error);
+  }
+}
+
+/** Workflow の「Webhook を受けたらチャネルに投稿」へカードを送る（予備）。 */
+async function sendWebhookCard(author: string, body: string, fetcher: Fetch): Promise<void> {
+  const url = process.env.KOEKATA_TEAMS_WEBHOOK_URL;
+  if (!url) return;
+  const response = await fetcher(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      type: "message",
+      attachments: [
+        {
+          contentType: "application/vnd.microsoft.card.adaptive",
+          content: {
+            type: "AdaptiveCard",
+            $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
+            version: "1.4",
+            body: [
+              { type: "TextBlock", text: author, weight: "Bolder" },
+              { type: "TextBlock", text: body, wrap: true },
+            ],
+          },
+        },
+      ],
+    }),
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+  });
+  if (!response.ok) throw new Error(`Workflow ${response.status}`);
+}
+
+/** Teams の人を、こえかたの人物に対応させる。サインインの記録を優先し、なければ同じ名前の人。 */
+function matchPerson(db: DatabaseSync, message: GraphMessage, linked: Record<string, string>): string | null {
+  const user = message.from?.user;
+  if (user?.id && linked[user.id]) return linked[user.id];
+  if (!user?.displayName) return null;
+  return (db.prepare("SELECT id FROM people WHERE name = ?").get(user.displayName) as { id: string } | undefined)?.id ?? null;
+}
+
+/** こえかたから送った直後で印がまだない投稿を、二重に取り込まない。 */
+function unlinkedLocal(db: DatabaseSync, table: "posts" | "replies", authorId: string, body: string): string | null {
+  const row = db
+    .prepare(`SELECT id FROM ${table} WHERE author_id = ? AND body = ? AND id NOT IN (SELECT local_id FROM teams_links) ORDER BY created_at DESC LIMIT 1`)
+    .get(authorId, body) as { id: string } | undefined;
+  return row?.id ?? null;
+}
+
+/** Teams の投稿と返信を DB へ取り込む。本文のないもの（Workflow のカードなど）と、対応する人がいないものは飛ばす。 */
+export async function syncFromTeams(db: DatabaseSync, fetcher: Fetch = fetch): Promise<void> {
+  if (teamsMode() !== "graph") return;
+  const config = readGraphConfig();
+  const token = await getAccessToken(fetcher);
+  if (!config?.team || !config.channel || !token) return;
+  const path = await channelPath(fetcher, token, config);
+  const { value: messages } = await graph<{ value: GraphMessage[] }>(fetcher, token, `${path}?$top=30&$expand=replies`);
+  const linked = readLinkedPeople();
+  const localChannel = config.localChannel ?? DEFAULT_LOCAL_CHANNEL;
+  // 古いものから取り込む
+  for (const message of [...messages].reverse()) {
+    if (message.deletedDateTime) continue;
+    const postId = importPost(db, message, linked, localChannel);
+    if (!postId) continue;
+    for (const reply of [...(message.replies ?? [])].sort((a, b) => a.createdDateTime.localeCompare(b.createdDateTime))) {
+      if (!reply.deletedDateTime) importReply(db, reply, postId, linked);
+    }
+  }
+}
+
+function importPost(db: DatabaseSync, message: GraphMessage, linked: Record<string, string>, channelId: string): string | null {
+  const known = localIdOf(db, message.id);
+  if (known) return known;
+  const text = plainText(message.body.content);
+  const authorId = matchPerson(db, message, linked);
+  if (!text || !authorId) return null;
+  const pending = unlinkedLocal(db, "posts", authorId, text);
+  if (pending) {
+    saveLink(db, pending, "post", message.id);
+    return pending;
+  }
+  const id = randomUUID();
+  db.prepare("INSERT INTO posts (id, channel_id, author_id, kind, body, created_at) VALUES (?, ?, ?, 'report', ?, ?)").run(id, channelId, authorId, text, message.createdDateTime);
+  saveLink(db, id, "post", message.id);
+  return id;
+}
+
+function importReply(db: DatabaseSync, reply: GraphMessage, postId: string, linked: Record<string, string>): void {
+  if (localIdOf(db, reply.id)) return;
+  const text = plainText(reply.body.content);
+  const authorId = matchPerson(db, reply, linked);
+  if (!text || !authorId) return;
+  const pending = unlinkedLocal(db, "replies", authorId, text);
+  if (pending) {
+    saveLink(db, pending, "reply", reply.id);
+    return;
+  }
+  const id = randomUUID();
+  db.prepare("INSERT INTO replies (id, post_id, author_id, body, created_at) VALUES (?, ?, ?, ?, ?)").run(id, postId, authorId, text, reply.createdDateTime);
+  saveLink(db, id, "reply", reply.id);
+}
+
+let lastSync = 0;
+let running: Promise<void> | null = null;
+
+/** 画面を開いたときの取り込み。間隔を空け、画面を長く待たせず、失敗しても画面は出す。 */
+export async function syncFromTeamsIfStale(db: DatabaseSync, fetcher: Fetch = fetch, now = Date.now()): Promise<void> {
+  if (teamsMode() !== "graph") return;
+  if (!running && now - lastSync >= SYNC_INTERVAL_MS) {
+    lastSync = now;
+    running = syncFromTeams(db, fetcher)
+      .catch((error) => logFailure("読み取り", error))
+      .finally(() => {
+        running = null;
+      });
+  }
+  if (running) await Promise.race([running, new Promise((done) => setTimeout(done, SYNC_WAIT_MS))]);
+}
+
+/** 投稿先を包み、こえかたの DB に残したあとで Teams へも届ける。 */
+export function withTeamsBridge(inner: PostDestination, db: DatabaseSync): PostDestination {
+  if (teamsMode() === "off") return inner;
+  return {
+    ...inner,
+    createPost(viewerId, channelId, body, options) {
+      const id = inner.createPost(viewerId, channelId, body, options);
+      void sendPostToTeams(db, viewerId, id, channelId, body.trim(), options);
+      return id;
+    },
+    createReply(viewerId, postId, body) {
+      const id = inner.createReply(viewerId, postId, body);
+      void sendReplyToTeams(db, viewerId, id, postId, body.trim());
+      return id;
+    },
+  };
+}

@@ -345,6 +345,12 @@ const MIGRATIONS: readonly string[] = [
      updated_at TEXT NOT NULL,
      PRIMARY KEY (person_id, term)
    ) STRICT;`,
+  // こえかたの投稿と返信が、本物の Teams のどれにあたるか。取り消しても残し、読み込み直さない
+  `CREATE TABLE teams_links (
+     local_id TEXT PRIMARY KEY,
+     kind TEXT NOT NULL CHECK (kind IN ('post', 'reply')),
+     teams_id TEXT NOT NULL UNIQUE
+   ) STRICT;`,
 ];
 
 export const SCHEMA_VERSION

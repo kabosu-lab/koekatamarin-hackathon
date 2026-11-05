@@ -6,6 +6,7 @@ import { cookies } from "next/headers";
 import Link from "next/link";
 import { getViewer } from "@/lib/current-person";
 import { getDatabase } from "@/lib/db";
+import { syncFromTeamsIfStale } from "@/lib/destination/teams-bridge";
 import { dailyQuestion } from "@/lib/daily-question";
 import { getGoal, goalQuestion } from "@/lib/goals";
 import { readAppearance } from "@/lib/appearance";
@@ -28,6 +29,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
   const { ask, goal, talk } = await searchParams;
   const { viewer, people } = await getViewer();
   const db = getDatabase();
+  await syncFromTeamsIfStale(db);
   const waiting = countForNotice(db, viewer.id, new Date());
   const knowledgeTasks = countKnowledgeForNotice(db, viewer.id, new Date());
   // 知恵の画面から「聞いてみる？」で来たときの相手

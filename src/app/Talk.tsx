@@ -303,7 +303,8 @@ export function Talk({
     }).catch(() => null);
     if (response?.ok) {
       setSentTo(null);
-      setNotice("取り消しました。言葉はもう一度作り直せます。");
+      const { teamsKept } = (await response.json().catch(() => ({}))) as { teamsKept?: boolean };
+      setNotice(teamsKept ? "こえかたでは取り消しました。Teams に届いた分は、Teams で消してください。" : "取り消しました。言葉はもう一度作り直せます。");
     } else {
       setNotice("もう取り消せません（返信が付いたか、時間が過ぎました）。");
     }

@@ -1,0 +1,250 @@
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import type { DatabaseSync } from "node:sqlite";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { openDatabase } from "../db";
+import { listReplyNotices } from "../reply-notices";
+import { seedDatabase } from "../seed";
+import { createDummyTeams } from "./dummy-teams";
+import { plainText, reachedTeams, resetTeamsBridge, sendPostToTeams, sendReplyToTeams, syncFromTeams, syncFromTeamsIfStale, teamsMode, withTeamsBridge } from "./teams-bridge";
+
+const CONFIG = { tenant: "example.test", clientId: "dummy", team: "T", channel: "C" };
+const FAR = Date.now() + 3_600_000;
+let dir: string;
+let db: DatabaseSync;
+
+const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
+
+type Call = { url: string; method: string; body: unknown; token: string };
+
+/** Graph の偽物。チーム、チャネル、投稿の一覧に答え、呼ばれた内容を残す。 */
+function fakeGraph(messages: unknown[] = [], fail = false) {
+  const calls: Call[] = [];
+  const fetcher = vi.fn(async (input: unknown, init?: RequestInit) => {
+    const url = String(input);
+    const method = init?.method ?? "GET";
+    calls.push({
+      url,
+      method,
+      body: init?.body ? JSON.parse(String(init.body)) : null,
+      token: String((init?.headers as Record<string, string>)?.Authorization ?? ""),
+    });
+    if (url.endsWith("/me/joinedTeams")) return json({ value: [{ id: "team1", displayName: "T" }] });
+    if (url.endsWith("/teams/team1/channels")) return json({ value: [{ id: "chan1", displayName: "C" }] });
+    if (method === "POST") return fail ? json({}, 500) : json({ id: `sent-${calls.length}` });
+    return json({ value: messages });
+  });
+  return { calls, fetcher: fetcher as unknown as typeof fetch, spy: fetcher };
+}
+
+const posts = (calls: Call[]) => calls.filter((call) => call.method === "POST");
+
+function signIn(person?: string) {
+  const name = person ? `teams-token-${person}.json` : "teams-token.json";
+  writeFileSync(join(dir, name), JSON.stringify({ accessToken: `token-${person ?? "reader"}`, refreshToken: "r", expiresAt: FAR }));
+}
+
+const message = (id: string, name: string, content: string, replies: unknown[] = []) => ({
+  id,
+  createdDateTime: "2026-11-05T10:00:00Z",
+  from: { user: { id: `u-${name}`, displayName: name } },
+  body: { content, contentType: "html" },
+  replies,
+});
+
+beforeEach(() => {
+  dir = mkdtempSync(join(tmpdir(), "koekata-bridge-"));
+  vi.stubEnv("KOEKATA_GRAPH_DIR", dir);
+  vi.stubEnv("KOEKATA_TEAMS", "");
+  vi.stubEnv("KOEKATA_TEAMS_WEBHOOK_URL", "");
+  writeFileSync(join(dir, "teams.json"), JSON.stringify(CONFIG));
+  resetTeamsBridge();
+  db = openDatabase(":memory:");
+  seedDatabase(db);
+});
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+  rmSync(dir, { recursive: true, force: true });
+});
+
+describe("通信しないとき", () => {
+  it("KOEKATA_TEAMS=off なら、設定とトークンがあっても通信しない", async () => {
+    vi.stubEnv("KOEKATA_TEAMS", "off");
+    signIn();
+    signIn("saeki");
+    const { fetcher, spy } = fakeGraph();
+    expect(teamsMode()).toBe("off");
+    await sendPostToTeams(db, "saeki", "p", "study", "本文", {}, fetcher);
+    await syncFromTeams(db, fetcher);
+    await syncFromTeamsIfStale(db, fetcher);
+    expect(spy).not.toHaveBeenCalled();
+  });
+
+  it("設定がなければ通信せず、投稿先も包まない", async () => {
+    rmSync(join(dir, "teams.json"));
+    const { fetcher, spy } = fakeGraph();
+    const inner = createDummyTeams(db);
+    expect(withTeamsBridge(inner, db)).toBe(inner);
+    await syncFromTeams(db, fetcher);
+    expect(spy).not.toHaveBeenCalled();
+  });
+
+  it("試用版では通信しない", () => {
+    signIn("saeki");
+    expect(teamsMode()).toBe("graph");
+    vi.stubEnv("KOEKATA_ACCESS_CODE", "x");
+    expect(teamsMode()).toBe("off");
+  });
+});
+
+describe("送る", () => {
+  it("本人の名前（本人のトークン）で全員向けの投稿を送り、印を残す", async () => {
+    signIn("saeki");
+    const { calls, fetcher } = fakeGraph();
+    await sendPostToTeams(db, "saeki", "p1", "study", "届けたい言葉", {}, fetcher);
+    const [sent] = posts(calls);
+    expect(sent.url).toContain("/teams/team1/channels/chan1/messages");
+    expect(sent.token).toBe("Bearer token-saeki");
+    expect(sent.body).toEqual({ body: { contentType: "text", content: "届けたい言葉" } });
+    expect(reachedTeams(db, "p1")).toBe(true);
+  });
+
+  it("本人がサインインしていなければ、ほかの人のトークンで送らない", async () => {
+    signIn();
+    signIn("noda");
+    const { fetcher, spy } = fakeGraph();
+    await sendPostToTeams(db, "saeki", "p1", "study", "本文", {}, fetcher);
+    expect(spy).not.toHaveBeenCalled();
+  });
+
+  it("範囲を絞った投稿、確認が必要な投稿、教職員だけのチャネルは送らない", async () => {
+    signIn("saeki");
+    const { fetcher, spy } = fakeGraph();
+    await sendPostToTeams(db, "saeki", "a", "study", "本文", { scope: "self" }, fetcher);
+    await sendPostToTeams(db, "saeki", "b", "study", "本文", { scope: "managers" }, fetcher);
+    await sendPostToTeams(db, "saeki", "c", "study", "本文", { scope: "person", scopePersonId: "noda" }, fetcher);
+    await sendPostToTeams(db, "saeki", "d", "study", "本文", { needsLook: true }, fetcher);
+    await sendPostToTeams(db, "saeki", "e", "staffroom", "本文", {}, fetcher);
+    expect(spy).not.toHaveBeenCalled();
+  });
+
+  it("送れなくても例外にせず、ログにトークンを出さない", async () => {
+    signIn("saeki");
+    const logged = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const { fetcher } = fakeGraph([], true);
+    await expect(sendPostToTeams(db, "saeki", "p1", "study", "本文", {}, fetcher)).resolves.toBeUndefined();
+    expect(reachedTeams(db, "p1")).toBe(false);
+    expect(JSON.stringify(logged.mock.calls)).not.toContain("token-saeki");
+    logged.mockRestore();
+  });
+
+  it("投稿先を包んでも、Teams に送れなくてもこえかたには残る", async () => {
+    signIn("saeki");
+    const logged = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    vi.stubGlobal("fetch", fakeGraph([], true).fetcher);
+    const destination = withTeamsBridge(createDummyTeams(db), db);
+    const id = destination.createPost("saeki", "study", "残る言葉");
+    expect(destination.listPosts("saeki", "study").some((post) => post.id === id)).toBe(true);
+    await new Promise((done) => setTimeout(done, 20));
+    vi.unstubAllGlobals();
+    logged.mockRestore();
+  });
+
+  it("Teams に届いた投稿への返信だけを、本人のトークンで送る", async () => {
+    signIn("saeki");
+    signIn("noda");
+    const { calls, fetcher } = fakeGraph();
+    await sendPostToTeams(db, "saeki", "p1", "study", "本文", {}, fetcher);
+    const parent = (db.prepare("SELECT teams_id FROM teams_links WHERE local_id = 'p1'").get() as { teams_id: string }).teams_id;
+    await sendReplyToTeams(db, "noda", "r1", "p1", "返事", fetcher);
+    const reply = posts(calls).at(-1)!;
+    expect(reply.url).toContain(`/messages/${parent}/replies`);
+    expect(reply.token).toBe("Bearer token-noda");
+    const before = posts(calls).length;
+    await sendReplyToTeams(db, "noda", "r2", "local-only", "返事", fetcher);
+    expect(posts(calls).length).toBe(before);
+  });
+
+  it("予備の Workflow は、設定したときだけカードで送り、失敗のログに URL を出さない", async () => {
+    vi.stubEnv("KOEKATA_TEAMS", "webhook");
+    expect(teamsMode()).toBe("off");
+    vi.stubEnv("KOEKATA_TEAMS_WEBHOOK_URL", "https://example.test/secret-hook");
+    expect(teamsMode()).toBe("webhook");
+    const { calls, fetcher } = fakeGraph();
+    await sendPostToTeams(db, "saeki", "p1", "study", "カードの本文", {}, fetcher);
+    const sent = calls[0].body as { attachments: { content: { body: { text: string }[] } }[] };
+    expect(sent.attachments[0].content.body.map((block) => block.text)).toEqual(["佐伯 みどり", "カードの本文"]);
+    const logged = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    await sendPostToTeams(db, "saeki", "p2", "study", "本文", {}, fakeGraph([], true).fetcher);
+    expect(JSON.stringify(logged.mock.calls)).not.toContain("secret-hook");
+    logged.mockRestore();
+  });
+});
+
+describe("読む", () => {
+  beforeEach(() => signIn());
+
+  it("投稿と返信を取り込み、HTML は文字だけにする。二度読んでも増えない", async () => {
+    const messages = [message("m1", "佐伯 みどり", "<p>最初の<b>工夫</b> &amp; 気づき</p>", [message("r1", "大河原 誠", "<p>真似します</p>")])];
+    await syncFromTeams(db, fakeGraph(messages).fetcher);
+    await syncFromTeams(db, fakeGraph(messages).fetcher);
+    const rows = db.prepare("SELECT body, author_id, channel_id FROM posts WHERE body LIKE '最初の%'").all();
+    expect(rows).toEqual([{ body: "最初の工夫 & 気づき", author_id: "saeki", channel_id: "study" }]);
+    expect(db.prepare("SELECT author_id FROM replies WHERE body = '真似します'").all()).toEqual([{ author_id: "ogawara" }]);
+  });
+
+  it("Teams で書かれた返事が、投稿した本人の知らせに出る", async () => {
+    signIn("saeki");
+    const send = fakeGraph();
+    const post = createDummyTeams(db).createPost("saeki", "study", "こえかたからの言葉");
+    await sendPostToTeams(db, "saeki", post, "study", "こえかたからの言葉", {}, send.fetcher);
+    const teamsId = (db.prepare("SELECT teams_id FROM teams_links WHERE local_id = ?").get(post) as { teams_id: string }).teams_id;
+    await syncFromTeams(db, fakeGraph([message(teamsId, "佐伯 みどり", "こえかたからの言葉", [message("r1", "大河原 誠", "それ真似します")])]).fetcher);
+    expect(listReplyNotices(db, "saeki").map((notice) => [notice.authorName, notice.body])).toEqual([["大河原 誠", "それ真似します"]]);
+    expect(db.prepare("SELECT count(*) AS c FROM posts WHERE body = 'こえかたからの言葉'").get()).toEqual({ c: 1 });
+  });
+
+  it("送った直後で印がまだない投稿を、二重に取り込まない", async () => {
+    createDummyTeams(db).createPost("saeki", "study", "同じ言葉");
+    await syncFromTeams(db, fakeGraph([message("m9", "佐伯 みどり", "同じ言葉")]).fetcher);
+    expect(db.prepare("SELECT count(*) AS c FROM posts WHERE body = '同じ言葉'").get()).toEqual({ c: 1 });
+  });
+
+  it("本文のないカードと、対応する人がいない投稿は取り込まない", async () => {
+    const before = db.prepare("SELECT count(*) AS c FROM posts").get();
+    await syncFromTeams(
+      db,
+      fakeGraph([
+        { id: "w1", createdDateTime: "2026-11-05T10:00:00Z", from: { application: { displayName: "Workflows" } }, body: { content: "" } },
+        message("x1", "知らない人", "本文"),
+      ]).fetcher,
+    );
+    expect(db.prepare("SELECT count(*) AS c FROM posts").get()).toEqual(before);
+  });
+
+  it("サインインの記録があれば、名前より優先して人物を決める", async () => {
+    writeFileSync(join(dir, "teams-people.json"), JSON.stringify({ "u-こえかたデモ": "noda" }));
+    await syncFromTeams(db, fakeGraph([message("m2", "こえかたデモ", "デモの言葉")]).fetcher);
+    expect(db.prepare("SELECT author_id FROM posts WHERE body = 'デモの言葉'").all()).toEqual([{ author_id: "noda" }]);
+  });
+
+  it("画面からの取り込みは間隔を空け、失敗しても例外にしない", async () => {
+    const logged = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const failing = vi.fn(async () => json({}, 500));
+    await syncFromTeamsIfStale(db, failing as unknown as typeof fetch, 1_000_000);
+    const count = failing.mock.calls.length;
+    expect(count).toBeGreaterThan(0);
+    await syncFromTeamsIfStale(db, failing as unknown as typeof fetch, 1_000_001);
+    expect(failing.mock.calls.length).toBe(count);
+    logged.mockRestore();
+  });
+});
+
+describe("文字にする", () => {
+  it("改行を残し、タグを消す", () => {
+    expect(plainText("<p>一行目</p><p>二行目<br/>三行目</p>")).toBe("一行目\n二行目\n三行目");
+    expect(plainText('<attachment id="x"></attachment>')).toBe("");
+  });
+});
