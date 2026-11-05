@@ -8,8 +8,7 @@ import { getDestination } from "@/lib/destination/current";
 import { MAX_BODY_LENGTH, type PostView } from "@/lib/destination/types";
 import { getAvatar } from "@/lib/avatar";
 import { getViewer } from "@/lib/current-person";
-import { canSaveKnowledge } from "@/lib/knowledge";
-import { forgottenSources } from "@/lib/memory";
+import { canSaveKnowledge, excludedFromMaterial } from "@/lib/knowledge";
 import { schoolName } from "@/lib/seed-data";
 import { AttachmentPreview } from "../AttachmentPreview";
 import { Avatar } from "../Avatar";
@@ -135,7 +134,7 @@ export default async function TeamsPage({
   // 人物を切り替えて見られなくなったチャネルは、最初のチャネルへ戻す
   const channel = channels.find((c) => c.id === requested) ?? channels[0];
   const posts = teams.listPosts(viewer.id, channel.id);
-  const forgotten = forgottenSources(db);
+  const excluded = excludedFromMaterial(db);
 
   return (
     <div className="teams">
@@ -177,7 +176,7 @@ export default async function TeamsPage({
                 images={images}
                 titles={titles}
                 canShare={viewer.role !== "student" && channel.audience === "everyone" && post.authorId !== viewer.id}
-                canSave={channel.audience === "everyone" && canSaveKnowledge(post, viewer.id, forgotten)}
+                canSave={channel.audience === "everyone" && canSaveKnowledge(post, viewer.id, excluded)}
               />)
           )}
 

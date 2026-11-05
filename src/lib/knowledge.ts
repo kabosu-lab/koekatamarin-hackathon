@@ -99,43 +99,54 @@ function fields(input: unknown): Record<string, unknown> {
   return typeof input === "object" && input !== null ? (input as Record<string, unknown>) : {};
 }
 
-/** 知恵の材料にしてよい投稿か。校内に公開され、生徒も読めるチャネルの、確認の必要がないものだけ。 */
-function isPublicMaterial(post: PostView, forgotten: Set<string>): boolean {
-  return post.scope === "everyone" && post.kind !== "notice" && !post.needsLook && !forgotten.has(`${post.authorId}|${post.id}`);
+/**
+ * 知恵の材料から外す言葉。本人が忘れてと言ったものと、確認が必要な投稿。
+ * 画面用の needsLook は本人と生徒には常に false なので使わず、DB の印を誰に対しても同じに見る。
+ */
+export function excludedFromMaterial(db: DatabaseSync): Set<string> {
+  const excluded = forgottenSources(db);
+  const flagged = db.prepare("SELECT author_id, id FROM posts WHERE needs_look = 1").all() as { author_id: string; id: string }[];
+  for (const post of flagged) excluded.add(`${post.author_id}|${post.id}`);
+  return excluded;
 }
 
-function usableReplies(post: PostView, forgotten: Set<string>) {
-  return post.replies.filter((reply) => !forgotten.has(`${reply.authorId}|${reply.id}`));
+/** 知恵の材料にしてよい投稿か。校内に公開され、生徒も読めるチャネルの、確認の必要がないものだけ。 */
+function isPublicMaterial(post: PostView, excluded: Set<string>): boolean {
+  return post.scope === "everyone" && post.kind !== "notice" && !excluded.has(`${post.authorId}|${post.id}`);
+}
+
+function usableReplies(post: PostView, excluded: Set<string>) {
+  return post.replies.filter((reply) => !excluded.has(`${reply.authorId}|${reply.id}`));
 }
 
 /** この人が、この投稿のやり取りから知恵を残せるか。ほかの人の言葉を、関わっていない人が広げないようにする。 */
-export function canSaveKnowledge(post: PostView, viewerId: string, forgotten: Set<string>): boolean {
-  if (!isPublicMaterial(post, forgotten)) return false;
-  const replies = usableReplies(post, forgotten);
+export function canSaveKnowledge(post: PostView, viewerId: string, excluded: Set<string>): boolean {
+  if (!isPublicMaterial(post, excluded)) return false;
+  const replies = usableReplies(post, excluded);
   if (!replies.some((reply) => reply.authorId !== post.authorId)) return false;
   return post.authorId === viewerId || replies.some((reply) => reply.authorId === viewerId);
 }
 
 type Material = { post: PostView; channelId: string; replies: PostView["replies"]; contributorIds: string[] };
 
-function publicPosts(destination: PostDestination, viewerId: string, forgotten: Set<string>) {
+function publicPosts(destination: PostDestination, viewerId: string, excluded: Set<string>) {
   return destination
     .listChannels(viewerId)
     .filter((channel) => channel.audience === "everyone")
     .flatMap((channel) =>
       destination
         .listPosts(viewerId, channel.id)
-        .filter((post) => isPublicMaterial(post, forgotten))
+        .filter((post) => isPublicMaterial(post, excluded))
         .map((post) => ({ post, channelId: channel.id })),
     );
 }
 
 /** 残す材料を集める。言葉が使われた人は Claude に書かせず、実際の投稿者と返信者から決める。 */
 export function loadMaterial(db: DatabaseSync, destination: PostDestination, viewerId: string, postId: string): Material | null {
-  const forgotten = forgottenSources(db);
-  const found = publicPosts(destination, viewerId, forgotten).find(({ post }) => post.id === postId);
-  if (!found || !canSaveKnowledge(found.post, viewerId, forgotten)) return null;
-  const replies = usableReplies(found.post, forgotten);
+  const excluded = excludedFromMaterial(db);
+  const found = publicPosts(destination, viewerId, excluded).find(({ post }) => post.id === postId);
+  if (!found || !canSaveKnowledge(found.post, viewerId, excluded)) return null;
+  const replies = usableReplies(found.post, excluded);
   return {
     post: found.post,
     channelId: found.channelId,
@@ -811,7 +822,7 @@ export async function handleKnowledgeFind(
   }
 
   const hidden = listHiddenIds(db, viewerId);
-  const forgotten = forgottenSources(db);
+  const excluded = excludedFromMaterial(db);
   const shared = listSharedKnowledge(db, viewerId).map((item) => getKnowledge(db, viewerId, item.id)).filter((item) => item !== null);
   const covered = new Set(shared.map((item) => item.sourcePostId));
   const asPerson = (id: string, name: string, label: string): KnowledgePerson => ({ id, name, label });
@@ -832,11 +843,11 @@ export async function handleKnowledgeFind(
       researchedWithAi: item.researchedWithAi,
     });
   }
-  const posts = publicPosts(destination, viewerId, forgotten)
+  const posts = publicPosts(destination, viewerId, excluded)
     .filter(({ post }) => !covered.has(post.id) && post.authorId !== viewerId && !hidden.has(post.authorId))
     .slice(-MAX_MATERIAL_POSTS);
   for (const { post, channelId } of posts) {
-    const replies = usableReplies(post, forgotten);
+    const replies = usableReplies(post, excluded);
     const people = new Map([[post.authorId, asPerson(post.authorId, post.authorName, post.authorLabel)]]);
     for (const reply of replies) people.set(reply.authorId, asPerson(reply.authorId, reply.authorName, reply.authorLabel));
     const everyone = [...people.values()];

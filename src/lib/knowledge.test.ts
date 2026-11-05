@@ -6,9 +6,11 @@ import { openDatabase } from "./db";
 import { createDummyTeams } from "./destination/dummy-teams";
 import type { PostDestination } from "./destination/types";
 import {
+  canSaveKnowledge,
   confirmKnowledge,
   deleteKnowledgeNote,
   draftKnowledge,
+  excludedFromMaterial,
   findKnowledge,
   getKnowledge,
   handleKnowledgeCreate,
@@ -392,5 +394,41 @@ describe("生徒に生徒を紹介しない（聞いてみる？）", () => {
     const item = getKnowledge(db, "fujimoto", "knowledge-festival-video");
     expect(item?.askableIds).toEqual(expect.arrayContaining(["noda", "kinoshita"]));
     expect(item?.askInChannel).toBe(false);
+  });
+});
+
+describe("確認が必要な投稿", () => {
+  function flaggedPost(): string {
+    const postId = teams.createPost("aoki", "study", "確認が必要な投稿の本文", { needsLook: true });
+    teams.createReply("noda", postId, "先生の返事");
+    teams.createReply("kinoshita", postId, "生徒の返事");
+    return postId;
+  }
+
+  it("本人、生徒、教職員のどの立場からも知恵に残せない", () => {
+    const postId = flaggedPost();
+    for (const viewer of ["aoki", "kinoshita", "noda"]) {
+      expect(loadMaterial(db, teams, viewer, postId)).toBeNull();
+    }
+    const post = teams.listPosts("aoki", "study").find((candidate) => candidate.id === postId)!;
+    expect(canSaveKnowledge(post, "aoki", excludedFromMaterial(db))).toBe(false);
+  });
+
+  it("本人、生徒、教職員のどの立場でも、探す材料に入らない", async () => {
+    flaggedPost();
+    teams.createPost("noda", "study", "印のない投稿の本文");
+    for (const viewer of ["aoki", "nakamura", "saeki"]) {
+      const { client, requests } = recording({ results: [] });
+      await handleKnowledgeFind(client, db, teams, viewer, { query: "投稿の本文" });
+      const sent = requests.map((request) => JSON.stringify(request.messages)).join();
+      expect(sent).toContain("印のない投稿の本文");
+      expect(sent).not.toContain("確認が必要な投稿の本文");
+    }
+  });
+
+  it("確認の印がない投稿は、今までどおり残せる", () => {
+    const postId = teams.createPost("aoki", "study", "ふつうの投稿");
+    teams.createReply("noda", postId, "返事");
+    expect(loadMaterial(db, teams, "aoki", postId)?.post.id).toBe(postId);
   });
 });
