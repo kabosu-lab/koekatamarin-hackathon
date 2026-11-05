@@ -7,7 +7,7 @@ import { openDatabase } from "../db";
 import { listReplyNotices } from "../reply-notices";
 import { seedDatabase } from "../seed";
 import { createDummyTeams } from "./dummy-teams";
-import { plainText, reachedTeams, resetTeamsBridge, sendPostToTeams, sendReplyToTeams, syncFromTeams, syncFromTeamsIfStale, teamsMode, withTeamsBridge } from "./teams-bridge";
+import { awaitTeamsDelivery, plainText, reachedTeams, resetTeamsBridge, sendPostToTeams, sendReplyToTeams, syncFromTeams, syncFromTeamsIfStale, teamsMode, teamsSyncMs, withTeamsBridge } from "./teams-bridge";
 
 const CONFIG = { tenant: "example.test", clientId: "dummy", team: "T", channel: "C" };
 const FAR = Date.now() + 3_600_000;
@@ -134,7 +134,7 @@ describe("送る", () => {
     signIn("saeki");
     const logged = vi.spyOn(console, "error").mockImplementation(() => undefined);
     const { fetcher } = fakeGraph([], true);
-    await expect(sendPostToTeams(db, "saeki", "p1", "study", "本文", {}, fetcher)).resolves.toBeUndefined();
+    await expect(sendPostToTeams(db, "saeki", "p1", "study", "本文", {}, fetcher)).resolves.toEqual({ state: "failed" });
     expect(reachedTeams(db, "p1")).toBe(false);
     expect(JSON.stringify(logged.mock.calls)).not.toContain("token-saeki");
     logged.mockRestore();
@@ -239,6 +239,56 @@ describe("読む", () => {
     await syncFromTeamsIfStale(db, failing as unknown as typeof fetch, 1_000_001);
     expect(failing.mock.calls.length).toBe(count);
     logged.mockRestore();
+  });
+});
+
+describe("送った結果", () => {
+  const sendVia = (fetcher: typeof fetch, options = {}, viewer = "saeki", channel = "study") =>
+    sendPostToTeams(db, viewer, "p1", channel, "本文", options, fetcher);
+
+  it("届いたとき、範囲を絞ったとき、サインインがないとき、失敗したときを分けて返す", async () => {
+    signIn("saeki");
+    expect(await sendVia(fakeGraph().fetcher)).toEqual({ state: "sent" });
+    expect(await sendVia(fakeGraph().fetcher, { scope: "self" })).toEqual({ state: "skipped", reason: "scope" });
+    expect(await sendVia(fakeGraph().fetcher, {}, "noda")).toEqual({ state: "skipped", reason: "signin" });
+    const logged = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    expect(await sendVia(fakeGraph([], true).fetcher)).toEqual({ state: "failed" });
+    logged.mockRestore();
+  });
+
+  it("確認の印と、教職員だけのチャネルは、理由を分けずに校内だけとして返す", async () => {
+    signIn("saeki");
+    const needsLook = await sendVia(fakeGraph().fetcher, { needsLook: true });
+    const staff = await sendVia(fakeGraph().fetcher, {}, "saeki", "staffroom");
+    expect(needsLook).toEqual({ state: "skipped", reason: "kept" });
+    expect(staff).toEqual(needsLook);
+  });
+
+  it("KOEKATA_TEAMS=off なら off を返す", async () => {
+    vi.stubEnv("KOEKATA_TEAMS", "off");
+    expect(await sendVia(fakeGraph().fetcher)).toEqual({ state: "off" });
+  });
+
+  it("包んだ投稿先の結果を受け取れて、遅いときは確認中を返す", async () => {
+    signIn("saeki");
+    vi.stubGlobal("fetch", fakeGraph().fetcher);
+    const destination = withTeamsBridge(createDummyTeams(db), db);
+    const id = destination.createPost("saeki", "study", "届く言葉");
+    expect(await awaitTeamsDelivery(id)).toEqual({ state: "sent" });
+    vi.stubGlobal("fetch", (() => new Promise(() => undefined)) as unknown as typeof fetch);
+    resetTeamsBridge();
+    const slow = destination.createPost("saeki", "study", "遅い言葉");
+    expect(await awaitTeamsDelivery(slow, 10)).toEqual({ state: "pending" });
+    vi.unstubAllGlobals();
+    expect(await awaitTeamsDelivery("unknown")).toEqual({ state: "off" });
+  });
+
+  it("取り込みの間隔は環境変数で変えられ、おかしな値は既定に戻す", () => {
+    expect(teamsSyncMs()).toBe(30_000);
+    vi.stubEnv("KOEKATA_TEAMS_SYNC_MS", "5000");
+    expect(teamsSyncMs()).toBe(5000);
+    vi.stubEnv("KOEKATA_TEAMS_SYNC_MS", "1");
+    expect(teamsSyncMs()).toBe(30_000);
   });
 });
 

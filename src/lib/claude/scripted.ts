@@ -9,6 +9,13 @@ const replies: Record<(typeof openingLines)[number], string> = {
   私は嫌やわ: "そっか、嫌かあ。無理に使わんでええよ。どのへんが嫌やった？",
 };
 
+/** キーなしで見どころを通すための架空の例。話した本人が自分のコツに気づく流れ。 */
+function storyReply(spoken: string): string | null {
+  if (/声を小さく/.test(spoken)) return "それ、コツかもしれんね。ほかの先生にも届けてみる？";
+  if (/静かになった/.test(spoken)) return "へえ、急に静かに。その少し前、何してたん？";
+  return null;
+}
+
 function scriptedWalk(content: string, jsonSchema: Record<string, unknown> | undefined) {
   const spoken = content.match(/<話>\n([\s\S]*)\n<\/話>/)?.[1]?.trim() ?? "";
   const drafts = (jsonSchema?.properties as { drafts?: { items?: { properties?: { channelId?: { enum?: string[] } } } } } | undefined)?.drafts;
@@ -194,7 +201,7 @@ export function createScriptedClaude(): ClaudeClient {
       if (task === "review") return { text: JSON.stringify(scriptedReview(messages[0].content)), refused: false };
 
       const last = messages.at(-1)?.content.trim() ?? "";
-      const text = (replies as Record<string, string>)[last] ?? fallbackReply;
+      const text = storyReply(last) ?? (replies as Record<string, string>)[last] ?? fallbackReply;
       return { text, refused: false };
     },
   };

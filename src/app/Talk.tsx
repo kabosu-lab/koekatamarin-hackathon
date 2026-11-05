@@ -25,8 +25,11 @@ import { ClickWheel } from "./ClickWheel";
 import { ReplyToast } from "./ReplyToast";
 import { VoiceLump } from "./VoiceLump";
 import type { ReplyNotice } from "@/lib/reply-notices";
+import type { TeamsDelivery } from "@/lib/destination/teams-bridge";
 
 const MAX_TEXT_LENGTH = 2000;
+/** 本人がこれだけ話したら「とどける」を目立たせる。話の中身は見ない */
+const READY_TO_DELIVER_CHARS = 20;
 /** これより短い押し方は触っただけとして、聞いた言葉を送らない */
 const MIN_HOLD_MS = 300;
 /** 押したまま、これだけ上へ動かすと固定になる */
@@ -38,6 +41,24 @@ const MAX_HISTORY = 40;
 /** 話の途中で声をかけないよう、少なくとも2往復してから確かめる */
 const CONNECT_MIN_MESSAGES = 4;
 
+/** 送った結果を正直に伝える。本物の Teams に届いていないのに「届きました」と言わない。 */
+export function deliveryText(channelName: string, teams?: TeamsDelivery): string {
+  switch (teams?.state) {
+    case "sent":
+      return `Teams の${channelName}にも届きました。`;
+    case "pending":
+      return "こえかたに残しました。Teams へは確認中です。";
+    case "failed":
+      return "こえかたに残しました。Teams へは届いていません（つながりませんでした）。";
+    case "skipped":
+      if (teams.reason === "scope") return "こえかたに残しました。範囲を絞った投稿は Teams へ送りません。";
+      if (teams.reason === "signin") return "こえかたに残しました。Teams へは届いていません（この人はサインインしていません）。";
+      return "こえかたに残しました。この投稿は校内だけに届きます。";
+    default:
+      return `${channelName}に届きました。`;
+  }
+}
+
 export function Talk({
   viewer,
   question,
@@ -48,6 +69,7 @@ export function Talk({
   initialGoal = null,
   device = false,
   notices = [],
+  noticePollMs = 30_000,
   companionAlt,
 }: {
   viewer: { name: string; label: string };
@@ -62,6 +84,7 @@ export function Talk({
   device?: boolean;
   /** 開いたときに届いている返事 */
   notices?: ReplyNotice[];
+  noticePollMs?: number;
   /** 窓に出す相棒の名前。報酬を隠している人にはない */
   companionAlt?: string;
 }) {
@@ -91,7 +114,9 @@ export function Talk({
   const [goalForPost, setGoalForPost] = useState<{ id: string; text: string } | null>(initialGoal);
   const goalAsked = useRef(false);
   const connectDone = useRef(false);
-  const [sentTo, setSentTo] = useState<{ channel: ChannelView; postId: string; isPublic: boolean } | null>(null);
+  // 送ったあとに話した分だけで、次を目立たせるか決める
+  const [deliveredAt, setDeliveredAt] = useState(0);
+  const [sentTo, setSentTo] = useState<{ channel: ChannelView; postId: string; isPublic: boolean; teams?: TeamsDelivery } | null>(null);
   const stopRef = useRef<(() => void) | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
 
@@ -454,9 +479,10 @@ export function Talk({
             setComposing(null);
             setNotice("撮り直したものや別のファイルを、もう一度付けてください。");
           }}
-          onSent={(channel, postId, words, isPublic) => {
+          onSent={(channel, postId, words, isPublic, teams) => {
             setComposing(null);
-            setSentTo({ channel, postId, isPublic });
+            setSentTo({ channel, postId, isPublic, teams });
+            setDeliveredAt(messages.length);
             setGoalForPost(null);
             setAttachment(null);
             setBurst(words);
@@ -469,6 +495,11 @@ export function Talk({
 
   const canCompose = messages.some((message) => message.role === "user");
   const hasTyped = draft.trim() !== "";
+  const spokenChars = messages
+    .slice(deliveredAt)
+    .filter((message) => message.role === "user")
+    .reduce((total, message) => total + message.content.length, 0);
+  const readyToDeliver = !hasTyped && !listening && !sending && !preparing && spokenChars >= READY_TO_DELIVER_CHARS;
   const lastUserIndex = messages.map((message) => message.role).lastIndexOf("user");
   const replyCount = messages.filter((message) => message.role === "assistant").length;
 
@@ -582,7 +613,7 @@ export function Talk({
 
       {sentTo && (
         <p className="sent" role="status">
-          {sentTo.channel.name}に届きました。<Link href={`/teams?channel=${sentTo.channel.id}`}>校内チャネルで見る</Link>
+          {deliveryText(sentTo.channel.name, sentTo.teams)}<Link href={`/teams?channel=${sentTo.channel.id}`}>校内チャネルで見る</Link>
           <button type="button" className="undo" onClick={() => void undoSent()}>
             送ったものを取り消す
           </button>
@@ -623,7 +654,7 @@ export function Talk({
       <div className="talk device" data-viewer={viewer.name} data-state={listening ? "listening" : sending ? "thinking" : "idle"} data-talking={messages.length > 0}>
         {burst && <SendBurst words={burst} avatarImage={avatarImage} onDone={() => setBurst(null)} />}
         <section className="lcd" aria-label="相棒の画面">
-          <ReplyToast initial={notices} paused={listening} />
+          <ReplyToast initial={notices} paused={listening} pollMs={noticePollMs} />
           {lockedTalk.locked && (
             <div className="lock-banner">
               <p role="status">固定中</p>
@@ -766,6 +797,7 @@ export function Talk({
             type="button"
             className="device-side"
             data-mode={hasTyped ? "send" : "deliver"}
+            data-ready={readyToDeliver}
             disabled={listening || sending || preparing || (!hasTyped && !canCompose)}
             onClick={() => {
               if (hasTyped) void send(draft);
@@ -776,6 +808,7 @@ export function Talk({
               <Icon name="send" />
             </span>
             {hasTyped ? "相棒へ送る" : preparing ? "作っています" : "とどける"}
+            {readyToDeliver && <small className="ready-note">言葉になりそう</small>}
           </button>
         </div>
 

@@ -5,13 +5,12 @@ import { useEffect, useRef, useState } from "react";
 import type { ReplyNotice } from "@/lib/reply-notices";
 
 const SHOW_MS = 8_000;
-const POLL_MS = 30_000;
 
 /**
  * 届いた返事を、窓の上に短く知らせる。アプリを開いているときだけで、スマホの通知は作らない。
  * 話している間は出さず、終わってから出す。消えたあとも受信箱で読める。
  */
-export function ReplyToast({ initial, paused }: { initial: ReplyNotice[]; paused: boolean }) {
+export function ReplyToast({ initial, paused, pollMs }: { initial: ReplyNotice[]; paused: boolean; pollMs: number }) {
   const [waiting, setWaiting] = useState(initial);
   const [shown, setShown] = useState<ReplyNotice[]>([]);
   const seen = useRef(new Set<string>());
@@ -27,9 +26,9 @@ export function ReplyToast({ initial, paused }: { initial: ReplyNotice[]; paused
         return [...notices.filter((notice) => !known.has(notice.replyId)), ...current];
       });
     };
-    const timer = setInterval(() => void poll(), POLL_MS);
+    const timer = setInterval(() => void poll(), pollMs);
     return () => clearInterval(timer);
-  }, []);
+  }, [pollMs]);
 
   useEffect(() => {
     if (paused || shown.length > 0 || waiting.length === 0) return;

@@ -13,6 +13,8 @@ npm ci
 npm run dev
 ```
 
+返事の知らせは、時間外（土日と平日の夜など）には出ない作りです。審査や撮影で試すときは `KOEKATA_NOTICE_ALWAYS=1` を付けて起動してください。
+
 `http://localhost:3000` をスマホの幅で開きます。
 
 **API キーがなくても流れを確かめられます。** そのときは Claude の代わりに台本が答え、画面にそのことを表示します。本物の Claude で動かすときは、`.env.example` をコピーして `.env` を作り、`ANTHROPIC_API_KEY` を入れます。

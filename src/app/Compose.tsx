@@ -1,5 +1,6 @@
 "use client";
 
+import type { TeamsDelivery } from "@/lib/destination/teams-bridge";
 import { Icon } from "./Icon";
 import { useState } from "react";
 import type { Draft, Review } from "@/lib/claude/compose";
@@ -23,7 +24,7 @@ type Props = ComposeStart & {
   onCancel(): void;
   /** 添付を付け直すために、話す画面へ戻る */
   onReplaceAttachment?(): void;
-  onSent(channel: ChannelView, postId: string, words: string, isPublic: boolean): void;
+  onSent(channel: ChannelView, postId: string, words: string, isPublic: boolean, teams?: TeamsDelivery): void;
 };
 
 const SCOPE_OPTIONS: { value: PostScope; label: string }[] = [
@@ -121,7 +122,7 @@ export function Compose({
         attachmentId: attachment?.id,
       });
       if (ok) {
-        onSent(channel, data.postId as string, text, scope === "everyone");
+        onSent(channel, data.postId as string, text, scope === "everyone", data.teams as TeamsDelivery | undefined);
         return;
       }
       if (status === 422 && data.review) {

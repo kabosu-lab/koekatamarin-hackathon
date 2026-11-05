@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { getViewer } from "@/lib/current-person";
 import { getDatabase } from "@/lib/db";
-import { syncFromTeamsIfStale } from "@/lib/destination/teams-bridge";
+import { syncFromTeamsIfStale, teamsSyncMs } from "@/lib/destination/teams-bridge";
 import { dailyQuestion } from "@/lib/daily-question";
 import { getGoal, goalQuestion } from "@/lib/goals";
 import { readAppearance } from "@/lib/appearance";
@@ -51,6 +51,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
       <Talk
         key={viewer.id}
         device
+        noticePollMs={teamsSyncMs()}
         notices={isNoticeHours(new Date()) ? listReplyNotices(db, viewer.id) : []}
         viewer={{ name: viewer.name, label: viewer.label }}
         viewerId={viewer.id}

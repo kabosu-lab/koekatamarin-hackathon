@@ -582,6 +582,31 @@ html[data-theme="retro"] .talk .device-side[data-mode="send"] .device-side-face 
   color: var(--on-accent);
 }
 
+/* 届けられそうなとき。色と文字で伝え、動きは穏やかに。押さなくても責めない */
+html[data-theme="retro"] .talk .device-side[data-ready="true"] .device-side-face {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.ready-note {
+  color: var(--accent-deep);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html[data-theme="retro"] .talk .device-side[data-ready="true"] .device-side-face {
+    animation: ready-breathe 2.4s ease-in-out infinite;
+  }
+}
+
+@keyframes ready-breathe {
+  50% {
+    transform: scale(1.06);
+    box-shadow: 0 0 0 6px rgb(31 111 120 / 16%);
+  }
+}
+
 html[data-theme="retro"] .talk .device-side:disabled {
   opacity: 0.5;
 }

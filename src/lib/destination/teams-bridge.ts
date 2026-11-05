@@ -11,7 +11,13 @@ import type { CreatePostOptions, PostDestination } from "./types";
  * KOEKATA_TEAMS=off、試用版、設定がないときは通信しない。webhook にすると Workflow で送る（予備。読めない）。
  */
 const GRAPH = "https://graph.microsoft.com/v1.0";
-const SYNC_INTERVAL_MS = 30_000;
+const DEFAULT_SYNC_MS = 30_000;
+
+/** 取り込みの間隔。撮影のときだけ KOEKATA_TEAMS_SYNC_MS で短くできる。 */
+export function teamsSyncMs(): number {
+  const value = Number(process.env.KOEKATA_TEAMS_SYNC_MS);
+  return Number.isFinite(value) && value >= 1000 ? value : DEFAULT_SYNC_MS;
+}
 const REQUEST_TIMEOUT_MS = 8_000;
 /** 画面を待たせない。間に合わなければ、次に開いたときに反映される */
 const SYNC_WAIT_MS = 2_500;
@@ -19,6 +25,31 @@ const DEFAULT_LOCAL_CHANNEL = "study";
 
 type Fetch = typeof fetch;
 export type TeamsMode = "off" | "graph" | "webhook";
+
+/** Teams へ届いたかどうか。画面に正直に出す。 */
+export type TeamsDelivery =
+  | { state: "off" }
+  | { state: "sent" }
+  | { state: "pending" }
+  | { state: "skipped"; reason: "scope" | "kept" | "signin" }
+  | { state: "failed" };
+
+const DELIVERY_WAIT_MS = 4_000;
+const deliveries = new Map<string, Promise<TeamsDelivery>>();
+
+/** 送った結果を、長く待たずに受け取る。間に合わなければ確認中として返す。 */
+export async function awaitTeamsDelivery(postId: string, waitMs = DELIVERY_WAIT_MS): Promise<TeamsDelivery> {
+  const delivery = deliveries.get(postId);
+  if (!delivery) return { state: "off" };
+  deliveries.delete(postId);
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const late = new Promise<TeamsDelivery>((done) => {
+    timer = setTimeout(() => done({ state: "pending" }), waitMs);
+  });
+  const result = await Promise.race([delivery, late]);
+  clearTimeout(timer);
+  return result;
+}
 
 export function teamsMode(): TeamsMode {
   if (process.env.KOEKATA_TEAMS === "off" || isTrialMode()) return "off";
@@ -107,31 +138,40 @@ function isPublicChannel(db: DatabaseSync, channelId: string): boolean {
   return row?.audience === "everyone";
 }
 
-/** 全員向けで、確認の印がなく、全員が読めるチャネルの投稿か。 */
-function canLeave(db: DatabaseSync, channelId: string, options: CreatePostOptions): boolean {
-  return (options.scope ?? "everyone") === "everyone" && !options.needsLook && isPublicChannel(db, channelId);
+/**
+ * 全員向けで、確認の印がなく、全員が読めるチャネルの投稿か。送らない理由を返す。
+ * 確認の印は本人に見せない決まりなので、理由を分けずに「校内だけ」と伝える。
+ */
+function whyStays(db: DatabaseSync, channelId: string, options: CreatePostOptions): "scope" | "kept" | null {
+  if ((options.scope ?? "everyone") !== "everyone") return "scope";
+  if (options.needsLook || !isPublicChannel(db, channelId)) return "kept";
+  return null;
 }
 
 const personName = (db: DatabaseSync, personId: string) =>
   (db.prepare("SELECT name FROM people WHERE id = ?").get(personId) as { name: string } | undefined)?.name ?? "";
 
-export async function sendPostToTeams(db: DatabaseSync, viewerId: string, postId: string, channelId: string, body: string, options: CreatePostOptions = {}, fetcher: Fetch = fetch): Promise<void> {
+export async function sendPostToTeams(db: DatabaseSync, viewerId: string, postId: string, channelId: string, body: string, options: CreatePostOptions = {}, fetcher: Fetch = fetch): Promise<TeamsDelivery> {
   const mode = teamsMode();
-  if (mode === "off" || !canLeave(db, channelId, options)) return;
+  if (mode === "off") return { state: "off" };
+  const stays = whyStays(db, channelId, options);
+  if (stays) return { state: "skipped", reason: stays };
   try {
     if (mode === "webhook") {
       await sendWebhookCard(personName(db, viewerId), body, fetcher);
-      return;
+      return { state: "sent" };
     }
     const config = readGraphConfig();
     // 本人の名前で届けるので、本人がサインインしていなければ送らない
     const token = await getAccessToken(fetcher, Date.now(), viewerId);
-    if (!config || !token) return;
+    if (!config || !token) return { state: "skipped", reason: "signin" };
     const path = await channelPath(fetcher, token, config);
     const sent = await graph<{ id: string }>(fetcher, token, path, { body: { contentType: "text", content: body } });
     saveLink(db, postId, "post", sent.id);
+    return { state: "sent" };
   } catch (error) {
     logFailure("投稿", error);
+    return { state: "failed" };
   }
 }
 
@@ -255,7 +295,7 @@ let running: Promise<void> | null = null;
 /** 画面を開いたときの取り込み。間隔を空け、画面を長く待たせず、失敗しても画面は出す。 */
 export async function syncFromTeamsIfStale(db: DatabaseSync, fetcher: Fetch = fetch, now = Date.now()): Promise<void> {
   if (teamsMode() !== "graph") return;
-  if (!running && now - lastSync >= SYNC_INTERVAL_MS) {
+  if (!running && now - lastSync >= teamsSyncMs()) {
     lastSync = now;
     running = syncFromTeams(db, fetcher)
       .catch((error) => logFailure("読み取り", error))
@@ -273,7 +313,7 @@ export function withTeamsBridge(inner: PostDestination, db: DatabaseSync): PostD
     ...inner,
     createPost(viewerId, channelId, body, options) {
       const id = inner.createPost(viewerId, channelId, body, options);
-      void sendPostToTeams(db, viewerId, id, channelId, body.trim(), options);
+      deliveries.set(id, sendPostToTeams(db, viewerId, id, channelId, body.trim(), options));
       return id;
     },
     createReply(viewerId, postId, body) {

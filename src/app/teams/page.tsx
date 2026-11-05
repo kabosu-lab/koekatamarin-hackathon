@@ -8,7 +8,7 @@ import { getDestination } from "@/lib/destination/current";
 import { MAX_BODY_LENGTH, type PostView } from "@/lib/destination/types";
 import { getAvatar } from "@/lib/avatar";
 import { getViewer } from "@/lib/current-person";
-import { syncFromTeamsIfStale } from "@/lib/destination/teams-bridge";
+import { syncFromTeamsIfStale, teamsMode } from "@/lib/destination/teams-bridge";
 import { canSaveKnowledge, excludedFromMaterial } from "@/lib/knowledge";
 import { schoolName } from "@/lib/seed-data";
 import { AttachmentPreview } from "../AttachmentPreview";
@@ -145,7 +145,7 @@ export default async function TeamsPage({
       <header className="bar">
         <div>
           <h1>校内チャネル</h1>
-          <p>{schoolName}・Teams 風のダミー画面</p>
+          <p>{schoolName}・{teamsMode() === "graph" ? "本物の Teams のチャネルとつないでいます" : "Teams 風のダミー画面"}</p>
         </div>
       </header>
 
