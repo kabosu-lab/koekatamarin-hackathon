@@ -1,4 +1,4 @@
-/** スワイプで行き来する3枚。指を右へ動かすと履歴と設定、左へ動かすとみんな。 */
+/** スワイプで行き来する3枚。指を右へ動かすと履歴と設定、左へ動かすとみんな。端から先は反対の端へ回る。 */
 export const SWIPE_SCREENS = ["/me", "/", "/minna"] as const;
 
 const MIN_DISTANCE = 56;
@@ -15,5 +15,7 @@ export function swipeTarget(pathname: string, dx: number, dy: number, landscape:
   const along = landscape ? dy : dx;
   const across = landscape ? dx : dy;
   if (Math.abs(along) < MIN_DISTANCE || Math.abs(along) < Math.abs(across) * DOMINANCE) return null;
-  return SWIPE_SCREENS[index + (along < 0 ? 1 : -1)] ?? null;
+  // 端からさらに同じ向きへ動かすと、反対の端へ回る（3枚がつながった輪）
+  const count = SWIPE_SCREENS.length;
+  return SWIPE_SCREENS[(index + (along < 0 ? 1 : -1) + count) % count];
 }

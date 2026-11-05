@@ -135,6 +135,8 @@ export function Talk({
   const pressedAt = useRef<number | null>(null);
   const discardHeard = useRef(false);
   const pressY = useRef<number | null>(null);
+  /** 押したまま上へずらした割合（0〜1）。押していないときは null */
+  const [lift, setLift] = useState<number | null>(null);
   // 固定にした指を離したときの押した扱いを、止める操作と取り違えない
   const justLocked = useRef(false);
   const sessionRef = useRef<ListeningSession | null>(null);
@@ -448,7 +450,9 @@ export function Talk({
   /** 押したまま上へ動かしたら固定にする。指を離しても聞き続ける。 */
   function moveMic(y: number) {
     if (pressY.current === null || pressedAt.current === null) return;
+    setLift(Math.max(0, Math.min(1, (pressY.current - y) / LOCK_DISTANCE_PX)));
     if (pressY.current - y < LOCK_DISTANCE_PX) return;
+    setLift(null);
     pressedAt.current = null;
     pressY.current = null;
     justLocked.current = true;
@@ -456,6 +460,7 @@ export function Talk({
   }
 
   function releaseMic() {
+    setLift(null);
     pressY.current = null;
     const started = pressedAt.current;
     pressedAt.current = null;
@@ -746,6 +751,7 @@ export function Talk({
               value={draft}
               onChange={(event) => setDraft(event.target.value)}
               onKeyDown={enterToSend}
+              placeholder="ここに打つか、下のボタンを押して話す"
             />
           )}
         </form>
@@ -782,6 +788,7 @@ export function Talk({
               onPointerDown={(event) => {
                 event.currentTarget.setPointerCapture?.(event.pointerId);
                 pressY.current = event.clientY;
+                setLift(0);
                 pressMic();
               }}
               onPointerMove={(event) => moveMic(event.clientY)}
@@ -808,6 +815,13 @@ export function Talk({
               <Icon name="talk" />
               {lockedTalk.locked ? "止めて送る" : listening ? "離すと送る" : "押し続けて話す"}
             </button>
+            {listening && lift !== null && !lockedTalk.locked && (
+              // 押している間だけ、上へずらすと固定になることを目で見せる
+              <span className="lock-hint" aria-hidden="true" style={{ "--lift": lift } as React.CSSProperties}>
+                <span className="lock-hint-arrow">↑</span>
+                上へずらすと固定
+              </span>
+            )}
           </ClickWheel>
 
           <button

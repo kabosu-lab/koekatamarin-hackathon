@@ -13,10 +13,12 @@ import { countKnowledgeForNotice } from "@/lib/knowledge";
 import { isKohoOfficer } from "@/lib/koho";
 import { showsRewards } from "@/lib/rewards-view";
 import { listAlertsFor } from "@/lib/safety";
-import { getSakura, leavesThisWeek } from "@/lib/sakura";
+import { getSakura, isBloomingSeason, leavesThisWeek, timeOfDay } from "@/lib/sakura";
 import { counselorId, schoolName } from "@/lib/seed-data";
 import { isTrialMode } from "@/lib/trial";
 import { DeviceFrame } from "../DeviceFrame";
+import { RoomBackdrop } from "../study/room/RoomBackdrop";
+import "../study/room/room.css";
 
 export const metadata: Metadata = { title: "みんな｜こえかた" };
 export const dynamic = "force-dynamic";
@@ -42,6 +44,17 @@ export default async function MinnaPage() {
       dot={2}
       left={{ href: "/today", label: "今日の3人", icon: "heart" }}
       right={{ href: "/inbox", label: "受信箱", icon: "inbox" }}
+      screen={
+        // 上の窓は、校内の桜。触ると詳しい画面へ
+        <Link className="sakura-scene minna-sakura" data-time={timeOfDay(now)} href="/sakura" aria-label="桜の木を大きく見る">
+          <RoomBackdrop place="garden" label="校庭の桜の木" season={sakura.season} />
+          {isBloomingSeason(sakura.season) &&
+            Array.from({ length: 6 }, (_, i) => (
+              <span key={i} className="petal" aria-hidden="true" style={{ left: `${8 + i * 15}%`, animationDelay: `${i * 0.9}s` }} />
+            ))}
+          <span className="caption">今年の葉 {sakura.leaves} 枚</span>
+        </Link>
+      }
     >
       <main className="home">
         <header>

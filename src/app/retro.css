@@ -845,3 +845,121 @@ html[data-theme="retro"] .home .hub-links a {
 .inbox-replies a {
   grid-template-columns: minmax(0, 1fr);
 }
+
+/* 0-0t：入力欄だとひと目で分かるように、枠をはっきりさせ、案内の文字を出す */
+html[data-theme="retro"] .talk .device-input {
+  border: 2px solid var(--input-line);
+  background: #fff;
+}
+
+.device-input textarea::placeholder {
+  color: #6b7280;
+  opacity: 1;
+}
+
+/* 0-0t：押している間、上へずらすと固定になることを見せる。ずらすほど上がって濃くなる */
+.lock-hint {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 6px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 10px;
+  border-radius: 12px;
+  background: rgb(20 24 32 / 86%);
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 700;
+  white-space: nowrap;
+  pointer-events: none;
+  transform: translate(-50%, calc(var(--lift, 0) * -18px));
+  opacity: calc(0.75 + var(--lift, 0) * 0.25);
+  z-index: 5;
+}
+
+.lock-hint-arrow {
+  font-size: 1.3rem;
+  line-height: 1;
+  animation: lock-hint-bob 0.9s ease-in-out infinite;
+}
+
+@keyframes lock-hint-bob {
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+/* 0-0t：スワイプで画面を指に付けて動かしても、横にはみ出してスクロールしない */
+html[data-theme="retro"],
+html[data-theme="retro"] body {
+  overflow-x: clip;
+}
+
+/* 0-0t：押したときの反応を軽く、すぐに */
+html[data-theme="retro"] :is(button, a, .device-side):not(.device-mic) {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lock-hint-arrow {
+    animation: none;
+  }
+}
+
+/* 0-0t：みんなの画面。上の窓に校内の桜、その下に中身を広げる */
+.device-screen {
+  flex: 0 0 auto;
+  height: clamp(130px, 26dvh, 230px);
+  padding: 0;
+}
+
+.device-screen .minna-sakura {
+  display: block;
+  height: 100%;
+  min-height: 0;
+  margin: 0;
+  border-radius: 9px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.device-screen .minna-sakura .room-backdrop {
+  height: 100%;
+}
+
+.device-screen .minna-sakura .caption {
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.device-body {
+  flex: 1 1 0;
+  min-height: 0;
+  margin: 8px 0 4px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.device-body .home {
+  width: auto;
+  max-width: none;
+  margin: 0;
+  padding: 0 2px 8px;
+  background: transparent;
+}
+
+/* 0-0t：画面の出方はスワイプのすべり込みにまとめる。二重に動かさない */
+html[data-theme="retro"] :is(.home, .soudan) {
+  animation: none;
+}
+
+.device-screen .minna-sakura .caption {
+  inset: auto auto 6px 6px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 82%);
+}

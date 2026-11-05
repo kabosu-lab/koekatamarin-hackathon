@@ -7,7 +7,7 @@ const goHome = (extra: Record<string, string> = {}) =>
   new Response(null, { status: 303, headers: { Location: "/", "Cache-Control": "no-store", ...extra } });
 
 /** 人物やデータを読むレイアウトを通さないよう、JavaScript も使わない1枚の画面として返す。 */
-function page(problem: string | null, status: number) {
+function page(problem: string | null, status: number, numeric = false) {
   const html = `<!doctype html>
 <html lang="ja">
 <head>
@@ -31,7 +31,7 @@ function page(problem: string | null, status: number) {
   <h1>こえかた</h1>
   <form method="post" action="/access">
     <label for="code">合言葉</label>
-    <input id="code" name="code" type="password" autocomplete="off" required autofocus>
+    <input id="code" name="code" type="password" autocomplete="off" required autofocus${numeric ? ' inputmode="numeric" pattern="[0-9]*"' : ""}>
     ${problem ? `<p class="problem" role="alert">${problem}</p>` : ""}
     <button type="submit">入る</button>
   </form>
@@ -45,14 +45,18 @@ function page(problem: string | null, status: number) {
   });
 }
 
+/** 数字だけの合言葉なら、スマホで数字のキーボードを出す */
+const isDigits = (code: string) => /^\d+$/.test(code);
+
 export function GET() {
-  return accessCode() === null ? goHome() : page(null, 200);
+  const code = accessCode();
+  return code === null ? goHome() : page(null, 200, isDigits(code));
 }
 
 export async function POST(request: Request) {
   const code = accessCode();
   if (code === null) return goHome();
   const form = await request.formData().catch(() => null);
-  if (!codeMatches(form?.get("code"), code)) return page("合言葉が違います。", 401);
+  if (!codeMatches(form?.get("code"), code)) return page("合言葉が違います。", 401, isDigits(code));
   return goHome({ "Set-Cookie": accessCookieHeader(code) });
 }

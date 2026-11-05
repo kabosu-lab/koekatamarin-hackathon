@@ -19,9 +19,12 @@ describe("swipeTarget", () => {
     expect(swipeTarget("/", -100, 90, false)).toBeNull();
   });
 
-  it("端と、並びにない画面では移動しない", () => {
-    expect(swipeTarget("/me", 120, 0, false)).toBeNull();
-    expect(swipeTarget("/minna", -120, 0, false)).toBeNull();
+  it("端からさらに同じ向きへ動かすと、反対の端へ回る", () => {
+    expect(swipeTarget("/me", 120, 0, false)).toBe("/minna");
+    expect(swipeTarget("/minna", -120, 0, false)).toBe("/me");
+  });
+
+  it("並びにない画面では移動しない", () => {
     expect(swipeTarget("/inbox", -120, 0, false)).toBeNull();
   });
 });

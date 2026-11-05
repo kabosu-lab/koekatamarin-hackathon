@@ -27,8 +27,9 @@ const SITES = [
   { audience: "teacher", port: 3202, db: join("data", "trial-teachers.db"), env: {} },
 ];
 
-const WORDS = ["さくら", "みかん", "そら", "うみ", "ほし", "かぜ", "もり", "にじ", "ゆき", "つき", "はな", "くも"];
-const newCode = () => `${WORDS[randomInt(WORDS.length)]}${WORDS[randomInt(WORDS.length)]}${randomInt(100, 1000)}`;
+// iPhone の数字キーボードで打てるよう、数字6桁にする
+const newCode = () => String(randomInt(100000, 1000000));
+const usable = (codes) => codes && /^\d{6}$/.test(codes.student ?? "") && /^\d{6}$/.test(codes.teacher ?? "") && codes.student !== codes.teacher;
 
 function readState() {
   try {
@@ -81,7 +82,8 @@ function tunnel(port, onUrl) {
 function start() {
   if (process.argv.includes("--build") || !existsSync(join(DIST, "BUILD_ID"))) build();
   const state = readState();
-  const codes = state.codes ?? { student: newCode(), teacher: newCode() };
+  let codes = usable(state.codes) ? state.codes : { student: newCode(), teacher: newCode() };
+  while (codes.student === codes.teacher) codes = { ...codes, teacher: newCode() };
   const urls = {};
   const pids = [];
   writeState({ ...state, codes, urls, pids });
