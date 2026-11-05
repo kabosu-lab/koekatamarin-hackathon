@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import { getDatabase } from "@/lib/db";
 import { seasonOf } from "@/lib/sakura";
 import { ensureDemoCompanions, getPresence } from "@/lib/study";
+import { getRoomMusic } from "@/lib/room-music";
 import { Refresher } from "./Refresher";
+import { RoomMusic } from "./RoomMusic";
 import { RoomScene } from "./RoomScene";
 import { roomMoment } from "./scene";
 import "./room.css";
@@ -27,6 +29,7 @@ export default async function StudyRoomPage({ searchParams }: { searchParams: Pr
         <RoomScene tokens={presence.tokens} moment={moment} season={seasonOf(now)} />
       </section>
       {moment.late && <p className="room-rest">もう遅い時間です。今日はここまでにして、休みませんか。</p>}
+      <RoomMusic initial={getRoomMusic(db, now)} />
       <Refresher />
     </main>
   );

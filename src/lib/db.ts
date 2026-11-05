@@ -364,6 +364,12 @@ const MIGRATIONS: readonly string[] = [
      status TEXT NOT NULL CHECK (status IN ('waiting', 'agreed', 'declined')),
      requested_at TEXT NOT NULL
    ) STRICT;`,
+  // 自習室に流れる曲。部屋に1つで、誰が切り替えたかは残さない
+  `CREATE TABLE room_music (
+     id INTEGER PRIMARY KEY CHECK (id = 1),
+     track TEXT NOT NULL,
+     changed_at INTEGER NOT NULL
+   ) STRICT;`,
 ];
 
 export const SCHEMA_VERSION

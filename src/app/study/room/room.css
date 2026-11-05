@@ -387,3 +387,20 @@ html body .room-card {
 .room-scene[data-place="garden"]::after {
   background: linear-gradient(180deg, #a8d58a, #8fc477);
 }
+
+.room-music {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.room-music p {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+}
+
+.room-music small {
+  color: var(--muted);
+  font-size: 0.875rem;
+}

@@ -1,0 +1,22 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/teams/v1.17/MicrosoftTeams.schema.json",
+  "manifestVersion": "1.17",
+  "version": "1.0.0",
+  "id": "{{APP_ID}}",
+  "developer": {
+    "name": "こえかた",
+    "websiteUrl": "https://{{HOST}}/tab",
+    "privacyUrl": "https://{{HOST}}/tab",
+    "termsOfUseUrl": "https://{{HOST}}/tab"
+  },
+  "name": { "short": "こえかた" },
+  "description": {
+    "short": "校内の桜と自習室",
+    "full": "校内の桜の育ち具合と、自習室で勉強している人数を見られます。名前や投稿の本文は出ません。"
+  },
+  "icons": { "color": "color.png", "outline": "outline.png" },
+  "accentColor": "#1F6F78",
+  "staticTabs": [],
+  "configurableTabs": [],
+  "validDomains": ["{{HOST}}"]
+}
