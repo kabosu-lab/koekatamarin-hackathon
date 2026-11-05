@@ -10,6 +10,7 @@ export function KnowledgeNew({ postId }: { postId: string }) {
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState("");
   const [existing, setExisting] = useState<string | null>(null);
+  const [topic, setTopic] = useState("general");
 
   async function post(url: string, payload: Record<string, unknown>) {
     setBusy(true);
@@ -42,7 +43,7 @@ export function KnowledgeNew({ postId }: { postId: string }) {
 
   async function create() {
     if (!draft) return;
-    const body = await post("/api/chie", { postId, ...draft });
+    const body = await post("/api/chie", { postId, ...draft, topic });
     if (body) router.push(`/chie/${body.itemId as string}`);
   }
 
@@ -58,6 +59,13 @@ export function KnowledgeNew({ postId }: { postId: string }) {
           <input id="chie-title" value={draft.title} maxLength={60} onChange={(event) => setDraft({ ...draft, title: event.target.value })} />
           <label htmlFor="chie-text">本文</label>
           <textarea id="chie-text" rows={6} maxLength={2000} value={draft.body} onChange={(event) => setDraft({ ...draft, body: event.target.value })} />
+          <label htmlFor="chie-topic">どんな知恵ですか</label>
+          <select id="chie-topic" value={topic} onChange={(event) => setTopic(event.target.value)}>
+            <option value="general">そのほか</option>
+            <option value="procedure">手順</option>
+            <option value="failure">うまくいかなかった経験</option>
+            <option value="tidy">掃除や片付けの工夫</option>
+          </select>
           <p className="muted">やり取りに書かれていないことは足されていないか、確かめてください。言葉を使われた全員が確認すると、校内に広がります。</p>
           <button type="button" disabled={busy || !draft.title.trim() || !draft.body.trim()} onClick={() => void create()}>
             本人たちに確認してもらう

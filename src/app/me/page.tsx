@@ -28,7 +28,7 @@ import { GiftEggs } from "./GiftEggs";
 import { listCompanions, listGiftEggs, syncGiftEggs } from "@/lib/gift-eggs";
 import { RibbonMoment } from "../RibbonMoment";
 import { Ribbons } from "./Ribbons";
-import { EVENT_SLOTS, listNewRibbons, listRibbons, STICKER_SLOTS, syncRibbons } from "@/lib/ribbons";
+import { listNewRibbons, listTrophyShelves, syncRibbons } from "@/lib/ribbons";
 import { showsRewards } from "@/lib/rewards-view";
 import { ArtRefresher, AvatarFromPhoto, AvatarQuiz, MemoryList, ProfileEditor, ThanksForm } from "./MeActions";
 
@@ -153,7 +153,7 @@ export default async function MePage() {
 
       {rewards && <h2 className="group-title" id="collect"><Icon name="gift" />集める</h2>}
       {rewards && <GiftEggs key={`${viewer.id}-eggs`} eggs={listGiftEggs(db, viewer.id)} companions={listCompanions(db, viewer.id)} />}
-      {rewards && <Ribbons key={`${viewer.id}-ribbons`} initial={listRibbons(db, viewer.id)} slots={STICKER_SLOTS} eventSlots={EVENT_SLOTS} />}
+      {rewards && <Ribbons key={`${viewer.id}-ribbons`} shelves={listTrophyShelves(db, viewer.id)} />}
       {rewards && <RibbonMoment key={`${viewer.id}-moment`} ribbons={listNewRibbons(db, viewer.id)} />}
 
       <h2 className="group-title" id="settings"><Icon name="settings" />設定</h2>

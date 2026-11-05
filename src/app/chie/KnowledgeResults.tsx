@@ -16,7 +16,7 @@ export function KnowledgeResults({
       {results.map((result) => (
         <li key={result.key}>
           <strong>
-            {result.knowledgeId ? <Link href={`/chie/${result.knowledgeId}`}>{result.title}</Link> : result.title}
+            {result.knowledgeId ? <Link href={`/chie/${result.knowledgeId}?from=find`}>{result.title}</Link> : result.title}
           </strong>
           <p className="chie-body">{result.body}</p>
           {result.researchedWithAi && <p className="ai-mark">AI と調べました</p>}

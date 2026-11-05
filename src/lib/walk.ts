@@ -3,6 +3,7 @@ import { ComposeError, reviewPost, type Draft, type DraftChannel, type Review } 
 import type { ClaudeClient } from "./claude/types";
 import type { PostDestination } from "./destination/types";
 import { assessSafety, assessWithoutClaude, createSafetyNotice, type SafetyNoticeBody } from "./safety";
+import { noteWalkFinished } from "./trophy-log";
 
 const MAX_TOKENS = 4000;
 export const MAX_WALK_TEXT = 20_000;
@@ -142,6 +143,7 @@ export async function handleWalkFinish(
   if (!result) {
     return { status: 503, body: { error: "整理できませんでした。話した言葉は残っています。もう一度押してください。", safety } };
   }
+  noteWalkFinished(db, viewerId, now);
   return {
     status: 200,
     body: { ...result, enough: result.drafts.length >= MIN_DRAFTS, channels, people: destination.listOtherPeople(viewerId), safety, mode: claude.mode },

@@ -11,6 +11,7 @@ import { countContributions, getAvatar } from "@/lib/avatar";
 import { getDatabase } from "@/lib/db";
 import { listPublicRibbons } from "@/lib/ribbons";
 import { Avatar } from "../../Avatar";
+import { Sticker } from "../../Sticker";
 
 import { BackLink } from "@/app/BackLink";
 export const metadata: Metadata = { title: "プロフィール｜こえかた" };
@@ -40,12 +41,12 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
         <p>{person.public_profile || "プロフィールはまだありません。"}</p>
       </section>
       {ribbons.length > 0 && (
-        <section className="card ribbons" aria-label="リボン">
-          <h2>リボン</h2>
-          <ul className="ribbon-list">
+        <section className="card ribbons" aria-label="トロフィー">
+          <h2>トロフィー</h2>
+          <ul className="trophy-profile-list">
             {ribbons.map((ribbon) => (
               <li key={ribbon.id}>
-                <span className="ribbon-mark" aria-hidden="true" />
+                <Sticker art={ribbon.art} />
                 <div>
                   <strong>{ribbon.name}</strong>
                   <small>{ribbon.description}</small>

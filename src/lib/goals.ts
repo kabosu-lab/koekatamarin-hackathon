@@ -3,6 +3,7 @@ import type { DatabaseSync } from "node:sqlite";
 import { isMessage, MAX_HISTORY } from "./claude/converse-request";
 import type { ChatMessage, ClaudeClient } from "./claude/types";
 import { isNoticeHours } from "./inbox";
+import { noteGoalTouched } from "./trophy-log";
 
 export const MAX_GOAL_LENGTH = 60;
 const MAX_ACTIVE_GOALS = 10;
@@ -86,6 +87,10 @@ export function handleGoals(db: DatabaseSync, personId: string, input: unknown, 
     return done();
   }
   if (typeof id !== "string") return { status: 400, body: { error: "依頼が正しくありません" } };
+
+  // 止まっていたかは、この操作で更新する前の日時で見る
+  const before = db.prepare("SELECT updated_at FROM goals WHERE id = ? AND person_id = ?").get(id, personId) as { updated_at: string } | undefined;
+  if (before && (action === "edit" || action === "done" || action === "reopen")) noteGoalTouched(db, personId, before.updated_at, now);
 
   if (action === "edit") {
     const cleaned = normalize(text);

@@ -6,6 +6,8 @@ import { MAX_BODY_LENGTH, type PostAttachment, type PostDestination, type PostVi
 import { forgottenSources } from "./memory";
 import { isNoticeHours } from "./inbox";
 import { listHiddenIds } from "./hidden-people";
+import { KNOWLEDGE_TOPICS } from "./trophies";
+import { noteAskSuggested, noteKnowledgeFixed } from "./trophy-log";
 
 const MAX_TOKENS = 3000;
 const MAX_RESULTS = 3;
@@ -245,9 +247,11 @@ export async function handleKnowledgeCreate(
   input: unknown,
   now: Date = new Date(),
 ): Promise<Outcome> {
-  const { postId, title, body } = fields(input);
+  const { postId, title, body, topic: chosenTopic } = fields(input);
   const text = validText(title, body);
   if (typeof postId !== "string" || !text) return { status: 400, body: { error: "題か本文が空か、長すぎます" } };
+  const topic = chosenTopic === undefined ? "general" : KNOWLEDGE_TOPICS.find((value) => value === chosenTopic);
+  if (!topic) return { status: 400, body: { error: "知恵の種類が正しくありません" } };
   const material = loadMaterial(db, destination, viewerId, postId);
   if (!material) return { status: 404, body: { error: "このやり取りは知恵に残せません" } };
   const existing = activeItemFor(db, postId);
@@ -258,9 +262,9 @@ export async function handleKnowledgeCreate(
   const id = randomUUID();
   const stamp = now.toISOString();
   db.prepare(
-    `INSERT INTO knowledge_items (id, source_post_id, title, body, status, author_id, created_at, updated_at)
-     VALUES (?, ?, ?, ?, 'confirming', ?, ?, ?)`,
-  ).run(id, postId, text.title, text.body, viewerId, stamp, stamp);
+    `INSERT INTO knowledge_items (id, source_post_id, title, body, status, author_id, created_at, updated_at, topic)
+     VALUES (?, ?, ?, ?, 'confirming', ?, ?, ?, ?)`,
+  ).run(id, postId, text.title, text.body, viewerId, stamp, stamp, topic);
   const insert = db.prepare("INSERT INTO knowledge_contributors (item_id, person_id, state) VALUES (?, ?, ?)");
   for (const personId of material.contributorIds) insert.run(id, personId, personId === viewerId ? "ok" : "waiting");
   promoteIfReady(db, id, now);
@@ -592,6 +596,7 @@ export async function handleKnowledgeEdit(
   const reconfirm = item.fix_requested === 1 || isMajorEdit(before, after);
   const stamp = now.toISOString();
   db.prepare("UPDATE knowledge_items SET title = ?, body = ?, updated_at = ? WHERE id = ?").run(text.title, text.body, stamp, itemId);
+  if (before !== after) noteKnowledgeFixed(db, viewerId, itemId, now);
   if (reconfirm) {
     db.prepare("UPDATE knowledge_items SET status = 'confirming', fix_requested = 0 WHERE id = ?").run(itemId);
     db.prepare(
@@ -865,6 +870,7 @@ export async function handleKnowledgeFind(
       ...(results.get(id) as Omit<KnowledgeResult, "reason">),
       reason,
     }));
+    noteAskSuggested(db, viewerId, found.flatMap((result) => result.askable.map((person) => person.id)), new Date());
     return { status: 200, body: { results: found, mode: claude.mode } };
   } catch (error) {
     console.error("知恵の検索に失敗", error instanceof Error ? error.name : "unknown");

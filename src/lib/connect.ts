@@ -3,6 +3,7 @@ import { isMessage, MAX_HISTORY } from "./claude/converse-request";
 import type { ChatMessage, ClaudeClient } from "./claude/types";
 import type { PostDestination } from "./destination/types";
 import { forgottenSources } from "./memory";
+import { noteAskSuggested } from "./trophy-log";
 
 const MAX_TOKENS = 2000;
 const MIN_MESSAGES = 4;
@@ -206,6 +207,7 @@ export async function handleConnect(
   }
   try {
     const suggestion = await suggestPerson(claude, history, buildConnectTargets(db, destination, viewerId), now);
+    if (suggestion?.personId) noteAskSuggested(db, viewerId, [suggestion.personId], now);
     return { status: 200, body: { suggestion } };
   } catch (error) {
     console.error("人につなぐ処理に失敗", error instanceof Error ? error.name : "unknown");

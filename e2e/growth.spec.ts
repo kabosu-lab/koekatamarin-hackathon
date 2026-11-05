@@ -204,32 +204,43 @@ test("育つと進化の候補から本人が選び、隠している間も育�
   await page.context().close();
 });
 
-test("リボンが届いて飾られ、公開を選ぶとプロフィールに出る", async ({ browser }) => {
+test("トロフィーが届いて棚に並び、公開を選ぶとプロフィールに出る", async ({ browser }) => {
   const page = await (await browser.newContext()).newPage();
   await page.goto("/");
   await switchPerson(page, "大河原 誠（英語・学年主任）");
   await page.goto("/me");
-  const ribbons = page.getByRole("region", { name: "リボン" });
-  await expect(ribbons.getByText("はじめての一言")).toBeVisible();
-  // シール帳：もらったものはシールになり、残りは影で見える。数や割合は出さない
-  await expect(ribbons.locator('[data-slot="first-answer"][data-earned="true"]')).toBeAttached();
-  await expect(ribbons.locator('[data-earned="false"]').first()).toBeAttached();
-  await expect(ribbons.locator(".sticker-book")).not.toContainText(/\d|％|%/);
-  await expect(ribbons.locator(".ribbon-story").first()).toContainText("日");
-  const row = ribbons.getByRole("listitem").filter({ hasText: "はじめての一言" });
-  await expect(page.getByRole("region", { name: "リボン" }).locator("li").first()).toBeVisible();
+  const trophies = page.getByRole("region", { name: "トロフィー" });
+  // 棚：もらったものは杯になり、残りは影で見える。数や割合は出さない
+  await expect(trophies.locator('[data-slot="first-answer"][data-earned="true"]')).toBeVisible();
+  await expect(trophies.locator('[data-earned="false"]').first()).toBeAttached();
+  await trophies.getByRole("button", { name: "最初の一歩" }).click();
+  await expect(trophies.locator(".ribbon-story")).toContainText("日");
 
   const viewer = await (await browser.newContext()).newPage();
   await viewer.goto("/people/ogawara");
-  await expect(viewer.getByText("はじめての一言")).toHaveCount(0);
+  await expect(viewer.getByText("最初の一歩")).toHaveCount(0);
 
-  await row.getByRole("checkbox", { name: "プロフィールに出す" }).click();
-  await expect(row.getByRole("checkbox")).toBeChecked();
+  const checkbox = trophies.getByRole("checkbox", { name: "プロフィールに出す" });
+  await checkbox.click();
+  await expect(checkbox).toBeChecked();
   await expect.poll(async () => {
     await viewer.reload();
-    return viewer.getByText("はじめての一言").count();
+    return viewer.getByText("最初の一歩").count();
   }).toBe(1);
   await viewer.context().close();
+  await page.context().close();
+});
+
+test("取っていない隠しトロフィーは、名前も条件も画面に渡らない", async ({ browser }) => {
+  const page = await (await browser.newContext()).newPage();
+  await page.goto("/");
+  await switchPerson(page, "大河原 誠（英語・学年主任）");
+  const response = await page.goto("/me");
+  const html = (await response?.text()) ?? "";
+  for (const secret of ["言い直しの勇者", "角が取れました", "言い換えの提案を受け入れて"]) expect(html).not.toContain(secret);
+  const trophies = page.getByRole("region", { name: "トロフィー" });
+  await trophies.getByRole("button", { name: "隠しトロフィー" }).first().click();
+  await expect(trophies.getByText("取るまで、条件はひみつです。")).toBeVisible();
   await page.context().close();
 });
 
@@ -250,13 +261,68 @@ test("贈り物の卵を開け、生まれた相棒を選べる", async ({ brows
   await page.context().close();
 });
 
+test("まだ取っていない棚にも、影と条件が見える", async ({ browser }) => {
+  const page = await (await browser.newContext()).newPage();
+  await page.goto("/");
+  await switchPerson(page, "木下 蓮（3年・ものづくり部）");
+  await page.goto("/me");
+  const trophies = page.getByRole("region", { name: "トロフィー" });
+  const shelf = trophies.locator(".trophy-shelf").filter({ hasText: "頑張りをたたえる" });
+  for (const name of ["有言実行", "逃げなかった人", "帰ってきた人"]) await expect(shelf.getByRole("button", { name })).toBeVisible();
+  await shelf.getByRole("button", { name: "逃げなかった人" }).click();
+  await expect(shelf.locator(".trophy-detail")).toContainText("止まっていた頑張りたいことに");
+  await page.context().close();
+});
+
+test("レトロでは、棚と届いた瞬間のトロフィーが液晶の色だけになる", async ({ browser }) => {
+  const page = await (await browser.newContext()).newPage();
+  await page.goto("/");
+  await switchPerson(page, "大河原 誠（英語・学年主任）");
+  await page.context().addCookies([{ name: "koekata_theme", value: "retro", domain: "127.0.0.1", path: "/" }]);
+  await page.goto("/me");
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "retro");
+  await expect(page.locator(".trophy-cup-body").first()).toBeVisible();
+  // 届いた瞬間はいつ出るか決まらないので、同じ部品を置いて色を見る
+  const colors = await page.evaluate(() => {
+    const color = (value: string) => {
+      const probe = document.createElement("i");
+      probe.style.color = value;
+      document.body.append(probe);
+      const computed = getComputedStyle(probe).color;
+      probe.remove();
+      return computed;
+    };
+    const card = document.createElement("span");
+    card.className = "ribbon-card";
+    const confetti = document.createElement("i");
+    confetti.className = "ribbon-confetti";
+    card.append(confetti);
+    document.body.append(card);
+    const result = {
+      ink: color("var(--ink)"),
+      ground: color("var(--ground)"),
+      cup: getComputedStyle(document.querySelector(".trophy-cup-body") as Element).fill,
+      emblem: getComputedStyle(document.querySelector(".trophy-emblem") as Element).fill,
+      cardBackground: getComputedStyle(card).backgroundColor,
+      confetti: getComputedStyle(confetti).backgroundColor,
+    };
+    card.remove();
+    return result;
+  });
+  expect(colors.cup).toBe(colors.ink);
+  expect(colors.confetti).toBe(colors.ink);
+  expect(colors.emblem).toBe(colors.ground);
+  expect(colors.cardBackground).toBe(colors.ground);
+  await page.context().close();
+});
+
 for (const width of [768, 1280]) {
-  test(`贈り物の卵とリボンは ${width} 幅でも、はみ出さない`, async ({ browser }) => {
+  test(`贈り物の卵とトロフィーは ${width} 幅でも、はみ出さない`, async ({ browser }) => {
     const page = await (await browser.newContext({ viewport: { width, height: 900 } })).newPage();
     await page.goto("/");
     await switchPerson(page, "野田 翔（情報・ものづくり部顧問）");
     await page.goto("/me");
-    await expect(page.getByRole("region", { name: "リボン" })).toBeVisible();
+    await expect(page.getByRole("region", { name: "トロフィー" })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0);
     await page.context().close();
   });
@@ -269,10 +335,10 @@ test("分身を隠すと報酬も出ないが、見せると裏で集まって�
   await page.goto("/me");
   await page.getByRole("button", { name: "隠す", exact: true }).click();
   await expect(page.getByText("相棒は隠しています")).toBeVisible();
-  await expect(page.getByRole("region", { name: "リボン" })).toHaveCount(0);
+  await expect(page.getByRole("region", { name: "トロフィー" })).toHaveCount(0);
   await expect(page.getByRole("region", { name: "贈り物の卵" })).toHaveCount(0);
   await page.getByRole("button", { name: "表示する", exact: true }).click();
-  await expect(page.getByRole("region", { name: "リボン" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "トロフィー" })).toBeVisible();
   await page.context().close();
 });
 

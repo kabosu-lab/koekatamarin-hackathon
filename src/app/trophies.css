@@ -1,0 +1,148 @@
+/* トロフィーの棚。順位も数もない。globals.css を他のタブが触るので、ここに分ける */
+.trophy-shelf {
+  margin-top: 0.75rem;
+}
+
+.trophy-shelf > h3 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 0.25rem;
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.trophy-shelf-done {
+  padding: 0.1rem 0.6rem;
+  border-radius: 999px;
+  background: #ffd23c;
+  color: #111;
+  font-size: 0.875rem;
+}
+
+.trophy-slots {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(4rem, 1fr));
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.trophy-shelf[data-complete="true"] .trophy-slots {
+  border-bottom: 4px solid #ffd23c;
+}
+
+button.trophy-slot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 44px;
+  aspect-ratio: 1;
+  padding: 0.25rem;
+  border: 2px solid transparent;
+  border-radius: 0.75rem;
+  background: none;
+  box-shadow: none;
+  color: inherit;
+  transform: none;
+}
+
+button.trophy-slot[aria-pressed="true"] {
+  border-color: currentColor;
+}
+
+.trophy-slot .trophy-cup {
+  width: 100%;
+  max-width: 3.5rem;
+  height: auto;
+}
+
+.trophy-shadow {
+  fill: currentColor;
+  opacity: 0.2;
+}
+
+.trophy-detail {
+  margin-top: 0.5rem;
+  padding: 0.75rem;
+  border: 2px solid currentColor;
+  border-radius: 0.75rem;
+}
+
+.trophy-detail strong,
+.trophy-detail span,
+.trophy-detail label {
+  display: block;
+}
+
+.trophy-quip {
+  margin-top: 0.25rem;
+  font-weight: 700;
+}
+
+.trophy-detail label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 44px;
+  font-size: 0.875rem;
+}
+
+.trophy-profile-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.trophy-profile-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.trophy-profile-list .trophy-cup {
+  flex: none;
+  width: 2.75rem;
+}
+
+.trophy-profile-list strong,
+.trophy-profile-list small {
+  display: block;
+}
+
+/* レトロ：液晶の色だけで描く。杯は濃い色、印は液晶の地の色 */
+html[data-theme="retro"] .trophy-cup-body {
+  fill: var(--ink);
+  stroke: var(--ink);
+}
+
+html[data-theme="retro"] .trophy-emblem {
+  fill: var(--ground);
+}
+
+html[data-theme="retro"] .trophy-shelf-done {
+  background: var(--ink);
+  color: var(--ground);
+}
+
+html[data-theme="retro"] .trophy-shelf[data-complete="true"] .trophy-slots {
+  border-bottom-color: var(--ink);
+}
+
+html[data-theme="retro"] .ribbon-moment {
+  color: var(--ink);
+}
+
+html[data-theme="retro"] .ribbon-card {
+  border-color: var(--ink);
+  background: var(--ground);
+}
+
+html[data-theme="retro"] .ribbon-confetti {
+  background: var(--ink);
+}

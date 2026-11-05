@@ -313,6 +313,17 @@ const MIGRATIONS: readonly string[] = [
      screen_width INTEGER,
      created_at TEXT NOT NULL
    ) STRICT;`,
+  // トロフィーの判定に使う操作の記録。話の中身も投稿の本文も残さない。知恵の種類は本人が選ぶ（本文を読んで判定しないため）
+  `CREATE TABLE trophy_log (
+     id INTEGER PRIMARY KEY,
+     person_id TEXT NOT NULL REFERENCES people (id),
+     kind TEXT NOT NULL,
+     ref TEXT NOT NULL DEFAULT '',
+     created_at TEXT NOT NULL
+   ) STRICT;
+   CREATE INDEX trophy_log_by_person ON trophy_log (person_id, kind, created_at);
+   ALTER TABLE knowledge_items ADD COLUMN topic TEXT NOT NULL DEFAULT 'general'
+     CHECK (topic IN ('general', 'procedure', 'failure', 'tidy'));`,
 ];
 
 export const SCHEMA_VERSION

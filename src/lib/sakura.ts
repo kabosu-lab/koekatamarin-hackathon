@@ -23,13 +23,18 @@ export function parseSeason(value: unknown): Season | null {
   return SEASONS.find((s) => s === value) ?? null;
 }
 
-/** 葉になるのは人に届いたやり取りだけ。Claude と話すだけでは増えない。年度（4月）で数え直す。 */
-export function countLeaves(db: DatabaseSync, now: Date): number {
+/** 今の年度の始まり（4月1日、日本時間）。 */
+export function fiscalYearStart(now: Date): string {
   const [year, month] = new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit" })
     .format(now)
     .split("-")
     .map(Number);
-  const since = new Date(`${month >= 4 ? year : year - 1}-04-01T00:00:00+09:00`).toISOString();
+  return new Date(`${month >= 4 ? year : year - 1}-04-01T00:00:00+09:00`).toISOString();
+}
+
+/** 葉になるのは人に届いたやり取りだけ。Claude と話すだけでは増えない。年度（4月）で数え直す。 */
+export function countLeaves(db: DatabaseSync, now: Date): number {
+  const since = fiscalYearStart(now);
   const one = (sql: string) => (db.prepare(sql).get(since) as { count: number }).count;
   return (
     // 自分だけの投稿は、人に届いていないので葉にならない

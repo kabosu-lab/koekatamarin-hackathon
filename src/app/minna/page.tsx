@@ -89,7 +89,7 @@ export default async function MinnaPage({ searchParams }: { searchParams: Promis
         <section className="event-banner" key={event.id} aria-label="期間限定のイベント">
           <strong>{event.name}</strong>
           <span>{event.message}</span>
-          <small>期間限定のリボン「{event.ribbon.name}」：{event.ribbon.description}と届きます</small>
+          <small>期間限定のトロフィー「{event.ribbon.name}」：{event.ribbon.description}と届きます</small>
         </section>
       ))}
 

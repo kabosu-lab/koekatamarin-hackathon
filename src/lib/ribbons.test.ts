@@ -20,12 +20,12 @@ describe("リボン", () => {
     expect(ids("noda")).toContain("first-answer");
   });
 
-  it("投稿や応援だけでは届かない", () => {
+  it("投稿や応援だけでは、初めての投稿のほかは届かない", () => {
     db.prepare("INSERT INTO post_likes (post_id, person_id) VALUES ('post-clubs-1', 'saeki') ON CONFLICT DO NOTHING").run();
     db.prepare("DELETE FROM replies WHERE author_id = 'nakamura'").run();
     db.prepare("DELETE FROM thanks WHERE to_person_id = 'nakamura'").run();
     syncRibbons(db, "nakamura", NOW);
-    expect(ids("nakamura")).toEqual([]);
+    expect(ids("nakamura").filter((id) => id !== "first-post")).toEqual([]);
   });
 
   it("元の行動が消えても、一度もらったリボンは減らない", () => {
@@ -39,7 +39,7 @@ describe("リボン", () => {
   it("並びは定義の順だけで、順位や点数を返さない", () => {
     syncRibbons(db, "noda", NOW);
     const [first] = listRibbons(db, "noda");
-    expect(Object.keys(first).sort()).toEqual(["description", "id", "isPublic", "name", "story", "storyAt"]);
+    expect(Object.keys(first).sort()).toEqual(["art", "description", "hidden", "id", "isPublic", "name", "quip", "selfOnly", "story", "storyAt"]);
   });
 
   it("他の人には、本人が公開を選んだものだけ見える", () => {

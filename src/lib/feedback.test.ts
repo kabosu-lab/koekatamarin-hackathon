@@ -79,7 +79,8 @@ describe("既存のデータベース", () => {
     try {
       const before = openDatabase(path);
       seedDatabase(before);
-      before.exec(`DROP TABLE trial_feedback; PRAGMA user_version = ${SCHEMA_VERSION - 1};`);
+      // 試用を始めた時点の版へ戻す（trial_feedback より後の変更も外す）
+      before.exec(`DROP TABLE trophy_log; ALTER TABLE knowledge_items DROP COLUMN topic; DROP TABLE trial_feedback; PRAGMA user_version = ${SCHEMA_VERSION - 2};`);
       const posts = (before.prepare("SELECT count(*) AS c FROM posts").get() as { c: number }).c;
       expect(posts).toBeGreaterThan(0);
       before.close();

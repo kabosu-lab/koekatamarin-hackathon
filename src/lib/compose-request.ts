@@ -20,6 +20,7 @@ import {
   type PostDestination,
 } from "./destination/types";
 import type { PostKind } from "./seed-data";
+import { noteAlternatives, noteDraftNotReady, notePublished, noteUndone } from "./trophy-log";
 
 type Failure = { status: 400 | 422 | 503; body: { error: string; review?: Review } };
 
@@ -52,6 +53,14 @@ function validText(text: unknown): text is string {
 function logFailure(error: unknown) {
   // 話の中身をログに残さない
   console.error("言葉にする処理に失敗", error instanceof Error ? error.name : "unknown");
+}
+
+/** トロフィーのための操作の記録。下書きができなかった（相棒が聞き返した）ことと、言い換えの案だけを残す。 */
+function noteDraftOutcome(db: DatabaseSync | undefined, viewerId: string, review: Review | null): void {
+  if (!db) return;
+  const now = new Date();
+  if (review) noteAlternatives(db, viewerId, review.alternatives, now);
+  else noteDraftNotReady(db, viewerId, now);
 }
 
 export async function handleDraft(
@@ -93,6 +102,7 @@ export async function handleDraft(
       if (!stored) return { status: 400, body: { error: "添付が見つかりません。もう一度付けてください" } };
       const { draft, notices } = await draftFromAttachment(claude, toClaudeAttachment(stored), history as ChatMessage[], channels);
       const review = draft.ready ? await reviewPost(claude, draft.text) : null;
+      noteDraftOutcome(db, viewerId, review);
       return {
         status: 200,
         body: {
@@ -106,6 +116,7 @@ export async function handleDraft(
     }
     const draft = await draftPost(claude, history as ChatMessage[], channels, askedName);
     const review = draft.ready ? await reviewPost(claude, draft.text) : null;
+    noteDraftOutcome(db, viewerId, review);
     return { status: 200, body: { draft, review, channels, people: destination.listOtherPeople(viewerId) } };
   } catch (error) {
     logFailure(error);
@@ -114,20 +125,23 @@ export async function handleDraft(
 }
 
 /** 送った直後の取り消し。 */
-export function handleUndo(destination: PostDestination, viewerId: string, input: unknown, now: Date = new Date()) {
+export function handleUndo(destination: PostDestination, viewerId: string, input: unknown, now: Date = new Date(), db?: DatabaseSync) {
   const { postId } = fields(input);
   if (typeof postId !== "string" || !destination.undoPost(viewerId, postId, now)) {
     return { status: 409, body: { error: "もう取り消せません" } };
   }
+  if (db) noteUndone(db, viewerId, now);
   return { status: 200, body: { ok: true } };
 }
 
-export async function handleReview(claude: ClaudeClient, input: unknown): Promise<ReviewOutcome> {
+export async function handleReview(claude: ClaudeClient, input: unknown, db?: DatabaseSync, viewerId?: string): Promise<ReviewOutcome> {
   const { text } = fields(input);
   if (!validText(text)) return { status: 400, body: { error: "本文が空か、長すぎます" } };
 
   try {
-    return { status: 200, body: { review: await reviewPost(claude, text) } };
+    const review = await reviewPost(claude, text);
+    if (db && viewerId) noteAlternatives(db, viewerId, review.alternatives, new Date());
+    return { status: 200, body: { review } };
   } catch (error) {
     logFailure(error);
     return UNAVAILABLE;
@@ -179,7 +193,10 @@ export async function handlePublish(
       needsLook: review.verdict === "caution",
     });
     if (typeof attachmentId === "string" && db) linkAttachment(db, viewerId, attachmentId, postId);
-    if (db) markCelebrated(db, viewerId, goalId, postId, new Date());
+    if (db) {
+      markCelebrated(db, viewerId, goalId, postId, new Date());
+      notePublished(db, viewerId, { text, askedPersonId }, new Date());
+    }
     return { status: 200, body: { postId, channelId } };
   } catch (error) {
     if (error instanceof DestinationError) return { status: 400, body: { error: error.message } };

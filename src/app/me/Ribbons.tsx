@@ -1,97 +1,121 @@
 "use client";
 
 import { useState } from "react";
-import type { RibbonDefinition, RibbonView } from "@/lib/ribbons";
-import { Sticker, StickerShape } from "../Sticker";
+import type { RibbonView, ShelfSlot, TrophyShelf } from "@/lib/ribbons";
+import { Sticker, StickerShadow } from "../Sticker";
 
 const dateFormat = new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", year: "numeric", month: "numeric", day: "numeric" });
 
-/** 花の形の台紙。全部そろうと、真ん中が灯って一枚の絵柄になる。数や割合は出さない。 */
-function StickerBook({ slots, earned }: { slots: readonly RibbonDefinition[]; earned: Set<string> }) {
-  const complete = slots.every((slot) => earned.has(slot.id));
-  return (
-    <>
-      <div className="sticker-book" data-complete={complete} role="img" aria-label={complete ? "シール帳の花が完成しました" : "シール帳"}>
-        <svg viewBox="-110 -110 220 220" aria-hidden="true">
-          {slots.map((slot, index) => {
-            const angle = (index * 2 * Math.PI) / slots.length - Math.PI / 2;
-            const x = Math.round(Math.cos(angle) * 72);
-            const y = Math.round(Math.sin(angle) * 72);
-            return (
-              <g key={slot.id} transform={`translate(${x} ${y})`} data-slot={slot.id} data-earned={earned.has(slot.id)}>
-                {earned.has(slot.id) ? <StickerShape id={slot.id} /> : <circle r="28" className="sticker-slot-empty" />}
-              </g>
-            );
-          })}
-          <circle r="26" className="sticker-center" />
-        </svg>
+function slotLabel(slot: ShelfSlot): string {
+  if (slot.state === "earned") return slot.trophy.name;
+  if (slot.state === "open") return `${slot.name}（まだ）`;
+  return "隠しトロフィー";
+}
+
+function SlotDetail({
+  slot,
+  isPublic,
+  onToggle,
+}: {
+  slot: ShelfSlot;
+  isPublic: boolean;
+  onToggle(trophy: RibbonView, isPublic: boolean): void;
+}) {
+  if (slot.state === "secret") {
+    return (
+      <div className="trophy-detail">
+        <strong>隠しトロフィー</strong>
+        <span>取るまで、条件はひみつです。</span>
       </div>
-      {complete && <p className="sticker-book-done">花が咲きました</p>}
-    </>
+    );
+  }
+  if (slot.state === "open") {
+    return (
+      <div className="trophy-detail">
+        <strong>{slot.name}</strong>
+        <span>{slot.description}</span>
+      </div>
+    );
+  }
+  const { trophy } = slot;
+  return (
+    <div className="trophy-detail">
+      <strong>{trophy.name}</strong>
+      <span className="ribbon-story">{trophy.story}</span>
+      {trophy.storyAt && <span className="ribbon-date">{dateFormat.format(new Date(trophy.storyAt))}</span>}
+      {trophy.quip && <span className="trophy-quip">{trophy.quip}</span>}
+      {trophy.selfOnly ? (
+        <span className="muted">あなただけに見えます。</span>
+      ) : (
+        <label>
+          <input type="checkbox" checked={isPublic} onChange={(event) => onToggle(trophy, event.target.checked)} />
+          プロフィールに出す
+        </label>
+      )}
+    </div>
   );
 }
 
-/** 集めたリボン。順位はなく、減らない。プロフィールに出すかは1つずつ本人が選ぶ。 */
-export function Ribbons({
-  initial,
-  slots,
-  eventSlots,
-}: {
-  initial: RibbonView[];
-  slots: readonly RibbonDefinition[];
-  eventSlots: readonly RibbonDefinition[];
-}) {
-  const [ribbons, setRibbons] = useState(initial);
+/** 集めたトロフィー。順位はなく、減らない。プロフィールに出すかは1つずつ本人が選ぶ。 */
+export function Ribbons({ shelves }: { shelves: TrophyShelf[] }) {
+  const [selected, setSelected] = useState<string | null>(null);
+  const [publicIds, setPublicIds] = useState(
+    () => new Set(shelves.flatMap((shelf) => shelf.slots.flatMap((slot) => (slot.state === "earned" && slot.trophy.isPublic ? [slot.trophy.id] : [])))),
+  );
   const [problem, setProblem] = useState("");
 
-  async function toggle(id: string, isPublic: boolean) {
+  async function toggle(trophy: RibbonView, isPublic: boolean) {
     setProblem("");
     const response = await fetch("/api/ribbons", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "public", id, isPublic }),
+      body: JSON.stringify({ action: "public", id: trophy.id, isPublic }),
     }).catch(() => null);
-    if (response?.ok) setRibbons((list) => list.map((r) => (r.id === id ? { ...r, isPublic } : r)));
-    else setProblem("変えられませんでした。もう一度押してください。");
+    if (!response?.ok) {
+      setProblem("変えられませんでした。もう一度押してください。");
+      return;
+    }
+    setPublicIds((current) => {
+      const next = new Set(current);
+      if (isPublic) next.add(trophy.id);
+      else next.delete(trophy.id);
+      return next;
+    });
   }
 
-  const earned = new Set(ribbons.map((ribbon) => ribbon.id));
-  const events = eventSlots.filter((slot) => earned.has(slot.id));
+  const anyEarned = shelves.some((shelf) => shelf.slots.some((slot) => slot.state === "earned"));
 
   return (
-    <section className="card ribbons" aria-label="リボン">
-      <h2>リボン</h2>
-      <StickerBook slots={slots} earned={earned} />
-      {events.length > 0 && (
-        <ul className="sticker-events" aria-label="期間限定のシール">
-          {events.map((slot) => (
-            <li key={slot.id}>
-              <Sticker id={slot.id} />
-              {slot.name}
-            </li>
-          ))}
-        </ul>
-      )}
-      {ribbons.length === 0 ? (
-        <p className="muted">誰かの役に立つと届きます。</p>
-      ) : (
-        <ul className="ribbon-list">
-          {ribbons.map((ribbon) => (
-            <li key={ribbon.id}>
-              <Sticker id={ribbon.id} />
-              <div>
-                <strong>{ribbon.name}</strong>
-                <span className="ribbon-story">{ribbon.story}</span>
-                {ribbon.storyAt && <span className="ribbon-date">{dateFormat.format(new Date(ribbon.storyAt))}</span>}
-                <label>
-                  <input type="checkbox" checked={ribbon.isPublic} onChange={(event) => void toggle(ribbon.id, event.target.checked)} />
-                  プロフィールに出す
-                </label>
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
+    <section className="card ribbons" aria-label="トロフィー">
+      <h2>トロフィー</h2>
+      {!anyEarned && <p className="muted">誰かの役に立つと届きます。</p>}
+      {shelves.map((shelf) => {
+        const open = shelf.slots.find((slot) => slot.key === selected);
+        return (
+          <div key={shelf.category} className="trophy-shelf" data-complete={shelf.complete}>
+            <h3>
+              {shelf.label}
+              {shelf.complete && <span className="trophy-shelf-done">そろいました</span>}
+            </h3>
+            <ul className="trophy-slots">
+              {shelf.slots.map((slot) => (
+                <li key={slot.key} data-slot={slot.state === "secret" ? undefined : slot.key} data-earned={slot.state === "earned"}>
+                  <button
+                    type="button"
+                    className="trophy-slot"
+                    aria-label={slotLabel(slot)}
+                    aria-pressed={selected === slot.key}
+                    onClick={() => setSelected((current) => (current === slot.key ? null : slot.key))}
+                  >
+                    {slot.state === "earned" ? <Sticker art={slot.trophy.art} /> : <StickerShadow />}
+                  </button>
+                </li>
+              ))}
+            </ul>
+            {open && <SlotDetail slot={open} isPublic={open.state === "earned" && publicIds.has(open.trophy.id)} onToggle={(trophy, value) => void toggle(trophy, value)} />}
+          </div>
+        );
+      })}
       {problem && (
         <p className="notice" role="alert">
           {problem}
