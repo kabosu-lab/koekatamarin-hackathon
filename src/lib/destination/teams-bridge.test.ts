@@ -7,7 +7,7 @@ import { openDatabase } from "../db";
 import { listReplyNotices } from "../reply-notices";
 import { seedDatabase } from "../seed";
 import { createDummyTeams } from "./dummy-teams";
-import { awaitTeamsDelivery, plainText, reachedTeams, resetTeamsBridge, sendPostToTeams, sendReplyToTeams, syncFromTeams, syncFromTeamsIfStale, teamsMode, teamsSyncMs, withTeamsBridge } from "./teams-bridge";
+import { awaitTeamsDelivery, nameWithoutRole, plainText, reachedTeams, resetTeamsBridge, sendPostToTeams, sendReplyToTeams, syncFromTeams, syncFromTeamsIfStale, teamsMode, teamsSyncMs, withTeamsBridge } from "./teams-bridge";
 
 const CONFIG = { tenant: "example.test", clientId: "dummy", team: "T", channel: "C" };
 const FAR = Date.now() + 3_600_000;
@@ -346,6 +346,20 @@ describe("チャネルの対応表", () => {
     const channelOf = (body: string) => (db.prepare("SELECT channel_id FROM posts WHERE body = ?").get(body) as { channel_id: string } | undefined)?.channel_id;
     expect(channelOf("部活で新記録")).toBe("clubs");
     expect(channelOf("職員室への連絡")).toBe("staffroom");
+  });
+});
+
+describe("名前の照合", () => {
+  it("末尾の役割の括弧を外して、ダミーの人物と比べる", async () => {
+    expect(nameWithoutRole("白石 文（養護教諭）")).toBe("白石 文");
+    expect(nameWithoutRole("佐伯 みどり（国語・2年担任）")).toBe("佐伯 みどり");
+    expect(nameWithoutRole("青木 ひより")).toBe("青木 ひより");
+    signIn();
+    const { fetcher } = fakeGraph([message("m-role", "川村 陽菜（理科・2年目）", "<p>理科室の予約の話</p>")]);
+    // 名前で照合させるため、サインインの記録の ID とは別の人にする
+    await syncFromTeams(db, fetcher);
+    const row = db.prepare("SELECT author_id FROM posts WHERE body = ?").get("理科室の予約の話") as { author_id: string } | undefined;
+    expect(row?.author_id).toBe("kawamura");
   });
 });
 

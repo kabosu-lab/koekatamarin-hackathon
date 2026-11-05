@@ -192,6 +192,18 @@ export const channels: SeedChannel[] = [
     description: "教職員だけのチャネル",
     audience: "staff",
   },
+  {
+    id: "lessons",
+    name: "授業づくり",
+    description: "授業の工夫や教材を教職員で分け合う",
+    audience: "staff",
+  },
+  {
+    id: "school-tips",
+    name: "校務の知恵",
+    description: "校務の手順やこつを教職員で残す",
+    audience: "staff",
+  },
 ];
 
 export const posts: SeedPost[] = [

@@ -247,12 +247,17 @@ async function sendWebhookCard(author: string, body: string, fetcher: Fetch): Pr
   if (!response.ok) throw new Error(`Workflow ${response.status}`);
 }
 
+/** 表示名の末尾の役割の括弧（例：「白石 文（養護教諭）」）を外す。 */
+export function nameWithoutRole(displayName: string): string {
+  return displayName.replace(/\s*[（(][^（）()]*[）)]\s*$/, "").trim();
+}
+
 /** Teams の人を、こえかたの人物に対応させる。サインインの記録を優先し、なければ同じ名前の人。 */
 function matchPerson(db: DatabaseSync, message: GraphMessage, linked: Record<string, string>): string | null {
   const user = message.from?.user;
   if (user?.id && linked[user.id]) return linked[user.id];
   if (!user?.displayName) return null;
-  return (db.prepare("SELECT id FROM people WHERE name = ?").get(user.displayName) as { id: string } | undefined)?.id ?? null;
+  return (db.prepare("SELECT id FROM people WHERE name = ?").get(nameWithoutRole(user.displayName)) as { id: string } | undefined)?.id ?? null;
 }
 
 /** こえかたから送った直後で印がまだない投稿を、二重に取り込まない。 */

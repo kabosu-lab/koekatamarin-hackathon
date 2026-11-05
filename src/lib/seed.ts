@@ -89,9 +89,16 @@ function syncKnowledgeNotes(db: DatabaseSync): void {
   db.prepare("INSERT INTO app_meta (key, value) VALUES (?, '1')").run(NOTES_SEEDED);
 }
 
+/** あとから足したチャネルを、すでにある DB にも入れる。名前や中身は変えない。 */
+function syncChannels(db: DatabaseSync): void {
+  const insert = db.prepare("INSERT OR IGNORE INTO channels (id, name, description, audience) VALUES (?, ?, ?, ?)");
+  for (const c of channels) insert.run(c.id, c.name, c.description, c.audience);
+}
+
 export function seedDatabase(db: DatabaseSync): void {
   const { count } = db.prepare("SELECT count(*) AS count FROM people").get() as { count: number };
   if (count > 0) {
+    syncChannels(db);
     syncPeople(db);
     syncKnowledge(db);
     syncKnowledgeNotes(db);
