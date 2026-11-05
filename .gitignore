@@ -20,6 +20,7 @@ playwright-report/
 
 # Claude Code の手元設定
 .claude/settings.local.json
+.claude/worktrees/
 
 # OS・エディタ
 .DS_Store
