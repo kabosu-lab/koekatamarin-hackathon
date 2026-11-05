@@ -329,6 +329,22 @@ const MIGRATIONS: readonly string[] = [
      reply_id TEXT PRIMARY KEY REFERENCES replies (id) ON DELETE CASCADE
    ) STRICT;
    INSERT INTO seen_replies (reply_id) SELECT id FROM replies;`,
+  // ポートフォリオ。本人が選んだ印と、本人が残したふりかえりだけを持つ。本文を写さないので、元の投稿を取り消せば一緒に消える
+  `CREATE TABLE portfolio_items (
+     person_id TEXT NOT NULL REFERENCES people (id),
+     term TEXT NOT NULL,
+     kind TEXT NOT NULL CHECK (kind IN ('post', 'thanks', 'knowledge', 'trophy')),
+     ref TEXT NOT NULL,
+     added_at TEXT NOT NULL,
+     PRIMARY KEY (person_id, term, kind, ref)
+   ) STRICT;
+   CREATE TABLE portfolio_reflections (
+     person_id TEXT NOT NULL REFERENCES people (id),
+     term TEXT NOT NULL,
+     text TEXT NOT NULL,
+     updated_at TEXT NOT NULL,
+     PRIMARY KEY (person_id, term)
+   ) STRICT;`,
 ];
 
 export const SCHEMA_VERSION

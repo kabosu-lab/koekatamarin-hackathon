@@ -1,0 +1,50 @@
+/* ポートフォリオの画面だけの配置。色は親の文字色に合わせ、見た目ごとの配色を変えない */
+.portfolio-note {
+  margin: 0 0 12px;
+}
+
+.portfolio-terms {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.portfolio-terms a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid currentColor;
+  border-radius: 8px;
+  color: inherit;
+}
+
+.portfolio-terms a[aria-current="page"] {
+  border-width: 2px;
+  font-weight: 700;
+}
+
+.portfolio-day summary {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  cursor: pointer;
+}
+
+.portfolio-day ul {
+  margin: 0 0 8px;
+  padding-left: 20px;
+}
+
+.portfolio-entry {
+  display: grid;
+  gap: 4px;
+  padding: 10px 0;
+  border-top: 1px solid currentColor;
+}
+
+.portfolio-meta {
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}

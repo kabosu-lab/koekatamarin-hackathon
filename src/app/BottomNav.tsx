@@ -9,7 +9,7 @@ const ITEMS: { href: string; label: string; icon: IconName; also: string[] }[] =
   { href: "/log", label: "ログ", icon: "write", also: [] },
   { href: "/", label: "話す", icon: "talk", also: ["/inbox", "/soudan", "/walk"] },
   { href: "/minna", label: "みんな", icon: "people", also: ["/today", "/teams", "/study", "/people", "/chie"] },
-  { href: "/me", label: "じぶん", icon: "me", also: ["/daily", "/lookback", "/yousu"] },
+  { href: "/me", label: "じぶん", icon: "me", also: ["/daily", "/lookback", "/portfolio", "/yousu"] },
 ];
 
 function isCurrent(pathname: string, item: (typeof ITEMS)[number]): boolean {
