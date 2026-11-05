@@ -4,6 +4,7 @@ import type { ClaudeClient } from "./claude/types";
 import { getDestination } from "./destination/current";
 import { goalsForPrompt } from "./goals";
 import { memoryForPrompt } from "./memory";
+import { schoolPostsForPrompt } from "./school-posts-prompt";
 import { assessSafety, assessWithoutClaude, createSafetyNotice, type SafetyNoticeBody } from "./safety";
 
 export type { SafetyNoticeBody };
@@ -21,7 +22,11 @@ export async function handleTalk(
     handleConverse(
       claude,
       input,
-      parsed ? [memoryForPrompt(db, getDestination(db), viewerId), goalsForPrompt(db, viewerId)].filter(Boolean).join("\n\n") : "",
+      parsed
+        ? [memoryForPrompt(db, getDestination(db), viewerId), goalsForPrompt(db, viewerId), schoolPostsForPrompt(getDestination(db), viewerId)]
+            .filter(Boolean)
+            .join("\n\n")
+        : "",
     ),
     parsed
       ? assessSafety(claude, parsed.history, parsed.text).catch((error: unknown) => {
