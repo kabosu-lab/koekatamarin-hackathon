@@ -38,14 +38,17 @@ test("文字をとても大きくしても、どの画面も横にあふれな�
   await context.close();
 });
 
-test("もどるは画面の先頭にあり、デモ用の切り替えは一番下に1つだけ", async ({ page }) => {
+test("もどるは画面の先頭に「‹ 行き先」の形であり、下のタブとデモ用の切り替えは出ない", async ({ page }) => {
   for (const path of SUB_PAGES) {
     await page.goto(path);
     const back = page.locator(".back-link");
     await expect(back, path).toHaveCount(1);
+    await expect(back, path).toHaveText(/^‹ /);
     const box = await back.boundingBox();
     expect(box?.y, path).toBeLessThan(120);
-    await expect(page.locator(".demo-switcher"), path).toHaveCount(1);
+    // 0-1q：古い形の目印。使う人の切り替えは「履歴と設定」の「設定」の中だけ
+    await expect(page.locator(".demo-switcher"), path).toHaveCount(0);
+    await expect(page.locator(".bottom-nav"), path).toHaveCount(0);
   }
 });
 

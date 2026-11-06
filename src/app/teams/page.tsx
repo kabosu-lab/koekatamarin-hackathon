@@ -15,6 +15,7 @@ import { AttachmentPreview } from "../AttachmentPreview";
 import { Avatar } from "../Avatar";
 import { createPost, createReply, shareConcern, toggleLike, toggleRsvp } from "./actions";
 import "./teams.css";
+import "../ui/ui.css";
 
 export const metadata: Metadata = { title: "校内チャネル｜こえかた" };
 export const dynamic = "force-dynamic";

@@ -9,7 +9,7 @@ import { KnowledgeActions } from "./KnowledgeActions";
 import { KnowledgeNotes } from "./KnowledgeNotes";
 import { AttachmentPreview } from "../../AttachmentPreview";
 
-import { BackLink } from "@/app/BackLink";
+import { PageShell } from "@/app/ui/PageShell";
 export const metadata: Metadata = { title: "校内の知恵｜こえかた" };
 export const dynamic = "force-dynamic";
 
@@ -34,9 +34,7 @@ export default async function KnowledgePage({
   if (item.status === "shared") noteAskSuggested(db, viewer.id, item.askableIds.filter((personId) => personId !== viewer.id), now);
 
   return (
-    <main className="home chie">
-      <BackLink href="/chie">校内の知恵へもどる</BackLink>
-      <h1>{item.title}</h1>
+    <PageShell back={{ href: "/chie", label: "校内の知恵" }} title={item.title} className="chie">
       {item.status === "confirming" && <p className="notice">まだ確認中で、関わる人にしか見えていません。</p>}
       {item.status === "withdrawn" && <p className="notice">取り下げました。あなたにしか見えていません。</p>}
 
@@ -79,6 +77,6 @@ export default async function KnowledgePage({
       </section>
 
       <KnowledgeActions key={`${viewer.id}-${item.id}`} item={item} viewerId={viewer.id} />
-    </main>
+    </PageShell>
   );
 }

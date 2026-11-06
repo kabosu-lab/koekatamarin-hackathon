@@ -13,7 +13,7 @@ import { listPublicRibbons } from "@/lib/ribbons";
 import { Avatar } from "../../Avatar";
 import { Sticker } from "../../Sticker";
 
-import { BackLink } from "@/app/BackLink";
+import { PageShell } from "@/app/ui/PageShell";
 export const metadata: Metadata = { title: "プロフィール｜こえかた" };
 export const dynamic = "force-dynamic";
 
@@ -31,11 +31,8 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
   const ribbons = rewards ? listPublicRibbons(db, id) : [];
 
   return (
-    <main className="home">
-      <BackLink href="/minna">みんなへもどる</BackLink>
-      <h1>{person.name}</h1>
+    <PageShell back={{ href: "/minna", label: "みんな" }} title={person.name} lead={person.label}>
       <PersonTitle title={wornTitle(db, id)} />
-      <p>{person.label}</p>
       <section className="card partner" aria-label="パートナー">
         {rewards && <Avatar image={avatar.image} alt={`${person.name}さんのパートナー`} />}
         <p>{person.public_profile || "プロフィールはまだありません。"}</p>
@@ -63,6 +60,6 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
         </p>
         <p className="muted">人と比べるものではありません。</p>
       </section>
-    </main>
+    </PageShell>
   );
 }

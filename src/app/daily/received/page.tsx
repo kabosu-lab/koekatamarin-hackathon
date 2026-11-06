@@ -5,7 +5,7 @@ import { listReceived } from "@/lib/daily";
 import { getDatabase } from "@/lib/db";
 import { RespondForm } from "./RespondForm";
 
-import { BackLink } from "@/app/BackLink";
+import { PageShell } from "@/app/ui/PageShell";
 export const metadata: Metadata = { title: "届いた日報と日記｜こえかた" };
 export const dynamic = "force-dynamic";
 
@@ -14,12 +14,7 @@ export default async function ReceivedPage() {
   const reports = listReceived(getDatabase(), viewer.id);
 
   return (
-    <main className="home">
-      <BackLink href="/me">履歴と設定へもどる</BackLink>
-      <header>
-        <h1>届いた日報と日記</h1>
-        <p>本人がチェックを付けて届けた項目だけが見えます。</p>
-      </header>
+    <PageShell back={{ href: "/me", label: "履歴と設定" }} title="届いた日報と日記" lead="本人がチェックを付けて届けた項目だけが見えます。">
       {reports.length === 0 ? (
         <p className="seen-note">届いているものはありません。</p>
       ) : (
@@ -43,6 +38,6 @@ export default async function ReceivedPage() {
           </article>
         ))
       )}
-    </main>
+    </PageShell>
   );
 }

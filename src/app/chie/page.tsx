@@ -6,7 +6,7 @@ import { listKnowledgeTasks, listSharedKnowledge } from "@/lib/knowledge";
 import { KnowledgeFinder } from "./KnowledgeFinder";
 import { KnowledgeTasks } from "./KnowledgeTasks";
 
-import { BackLink } from "@/app/BackLink";
+import { PageShell } from "@/app/ui/PageShell";
 export const metadata: Metadata = { title: "校内の知恵｜こえかた" };
 export const dynamic = "force-dynamic";
 
@@ -16,12 +16,12 @@ export default async function ChiePage() {
   const items = listSharedKnowledge(db, viewer.id);
 
   return (
-    <main className="home chie">
-      <BackLink href="/minna">みんなへもどる</BackLink>
-      <header>
-        <h1>校内の知恵</h1>
-        <p>やった人の経験です。公式の規程ではありません。古くなったら、みんなで直せます。</p>
-      </header>
+    <PageShell
+      back={{ href: "/minna", label: "みんな" }}
+      title="校内の知恵"
+      lead="やった人の経験です。公式の規程ではありません。古くなったら、みんなで直せます。"
+      className="chie"
+    >
       <KnowledgeFinder key={viewer.id} viewerName={viewer.name} />
       <KnowledgeTasks tasks={listKnowledgeTasks(db, viewer.id)} />
       <section className="card" aria-label="広がっている知恵">
@@ -48,6 +48,6 @@ export default async function ChiePage() {
           </ul>
         )}
       </section>
-    </main>
+    </PageShell>
   );
 }

@@ -5,7 +5,7 @@ import { getDatabase } from "@/lib/db";
 import { listAlertsFor } from "@/lib/safety";
 import { isTrialMode } from "@/lib/trial";
 
-import { BackLink } from "@/app/BackLink";
+import { PageShell } from "@/app/ui/PageShell";
 export const metadata: Metadata = { title: "相談室への知らせ｜こえかた" };
 export const dynamic = "force-dynamic";
 
@@ -23,19 +23,22 @@ export default async function SoudanPage() {
 
   if (isTrialMode()) {
     return (
-      <main className="soudan">
-        <BackLink href="/">話すへもどる</BackLink>
-        <h1>相談室への知らせ</h1>
-        <p>これは試用なので、相談室に知らせは届きません。本当に困ったことは、先生や近くの大人に直接話してください。</p>
-      </main>
+      <PageShell
+        back={{ href: "/", label: "話す" }}
+        title="相談室への知らせ"
+        lead="これは試用なので、相談室に知らせは届きません。本当に困ったことは、先生や近くの大人に直接話してください。"
+        className="soudan"
+       />
     );
   }
 
   return (
-    <main className="soudan">
-      <BackLink href="/">話すへもどる</BackLink>
-      <h1>相談室への知らせ</h1>
-      <p>{viewer.name}さんに届いているものだけが見えます。チームでどう共有するかは、相談室の先生が判断します。</p>
+    <PageShell
+      back={{ href: "/", label: "話す" }}
+      title="相談室への知らせ"
+      lead={`${viewer.name}さんに届いているものだけが見えます。チームでどう共有するかは、相談室の先生が判断します。`}
+      className="soudan"
+    >
       <p>AI の判断には、見逃しも誤りもあります。人の見守りの代わりにはなりません。</p>
 
       {alerts.length === 0 ? (
@@ -55,6 +58,6 @@ export default async function SoudanPage() {
           </article>
         ))
       )}
-    </main>
+    </PageShell>
   );
 }
