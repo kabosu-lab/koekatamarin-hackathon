@@ -86,8 +86,10 @@ test("0-1l：新しく話すと、前の話は話の履歴に残り、大きな�
   await page.getByRole("button", { name: "新しく話す" }).click();
   await expect(page.getByRole("log").locator(".chat-row")).toHaveCount(0);
   await expect(page.locator(".talk.device")).toHaveAttribute("data-talking", "false");
-  await page.goto("/me?open=talk");
-  await expect(page.getByText(words)).toBeVisible();
+  // 次に話すと、前の話は会話の上に残っていて読める
+  await input.fill("次の話");
+  await input.press("Enter");
+  await expect(page.getByRole("region", { name: "前の話" })).toContainText(words);
 });
 
 test("0-2a：話す前は、パートナーを触るたびに一言が替わり、弾む", async ({ page }) => {

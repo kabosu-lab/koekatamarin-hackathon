@@ -109,8 +109,7 @@ test("先生の一日：話しかける、返す、パス、サンクス、日�
   await shot(page, "06-パートナーとありがとう");
 
   // 夕方：日報が届き、チェックを付けて管理職へ
-  await page.goto("/me?open=records");
-  await page.getByRole("link", { name: "今日の日報" }).click();
+  await page.goto("/me?open=daily");
   const box = page.getByRole("checkbox", { name: /作文の一言/ });
   await expect(box).not.toBeChecked();
   await box.click();

@@ -13,9 +13,8 @@ test("話したことが日報の項目になり、チェックした項目だ�
   await switchPerson(page, "川村 陽菜（理科・1年副担任・生徒指導）");
   await say(page, shared);
 
-  await page.getByRole("link", { name: "履歴と設定" }).click();
-  await page.getByRole("link", { name: "記録" }).click();
-  await page.getByRole("link", { name: "今日の日報" }).click();
+  // 日報は「履歴と設定」の「日報」のタイルの中。開くだけで自動でまとまる
+  await page.goto("/me?open=daily");
 
   const item = page.getByRole("checkbox", { name: shared });
   await expect(item).not.toBeChecked();

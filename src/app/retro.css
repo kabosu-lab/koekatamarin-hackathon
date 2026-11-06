@@ -1743,3 +1743,43 @@ html[data-theme="retro"] .talk .partner-tap:active {
   box-shadow: none;
   color: inherit;
 }
+
+/* 0-1l：前の話は今の会話の上にうすく残す */
+.chat-archive {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  opacity: 0.7;
+}
+
+.chat-archive ol {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.chat-archive-row {
+  max-width: 82%;
+  padding: 0.4em 0.75em;
+  border-radius: 1em;
+  background: rgb(255 255 255 / 70%);
+  font-size: 0.92rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.chat-archive-row.me {
+  align-self: flex-end;
+  background: rgb(31 111 120 / 18%);
+}
+
+.chat-archive-divider {
+  margin: 4px 0;
+  color: var(--muted);
+  font-size: 0.75rem;
+  text-align: center;
+}

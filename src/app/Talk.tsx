@@ -29,7 +29,7 @@ import { playSendSound, SendBurst } from "./SendBurst";
 import { audioOutput, playCommitPop, playReadyChord } from "./sound";
 import { raiseLevel, type DeliverLevel } from "@/lib/send-sound";
 import type { AttachmentView } from "@/lib/attachment";
-import { archiveTalk, loadTalk, saveTalk } from "./talk-storage";
+import { archiveTalk, loadArchive, loadTalk, saveTalk } from "./talk-storage";
 import { isSpeechSupported, type ListeningSession, SLOW_NOTICE, startSession } from "./speech";
 import { useLockedTalk } from "./use-locked-talk";
 import { Icon } from "./Icon";
@@ -61,8 +61,8 @@ const WHEEL_CHIPS: (ChipItem & { href: string })[] = [
   { id: "room", label: "自習室（一緒に勉強する）", code: "S-04", icon: "book", href: "/study/room" },
   { id: "chie", label: "校内の知恵", code: "K-05", icon: "idea", href: "/chie" },
   { id: "goals", label: "頑張りたいこと", code: "G-06", icon: "flag", href: "/me?open=goals" },
-  { id: "talk", label: "話の履歴", code: "H-07", icon: "chat", href: "/me?open=talk" },
-  { id: "records", label: "記録", code: "R-08", icon: "note", href: "/me?open=records" },
+  { id: "daily", label: "日報・日記", code: "D-07", icon: "note", href: "/me?open=daily" },
+  { id: "lookback", label: "ふりかえり", code: "L-08", icon: "clock", href: "/me?open=lookback" },
   { id: "settings", label: "設定", code: "C-09", icon: "settings", href: "/me?open=settings" },
 ];
 const MAX_HISTORY = 40;
@@ -133,6 +133,9 @@ export function Talk({
   const [listening, setListening] = useState(false);
   // 0-1l：新しく話すと、大きな姿が戻ってくる（戻る動きを一度だけ見せる）
   const [returning, setReturning] = useState(false);
+  // 0-1l：新しく話す前の話。話す画面の会話を上へたどると読める（話の履歴のタイルはなくした）
+  const [archived, setArchived] = useState<ChatMessage[][]>([]);
+  useEffect(() => setArchived(loadArchive(viewer.name)), [viewer.name]);
   // 0-2a：パートナーの話しかけ。Claude は呼ばず、時刻・立場・頑張りたいことで手元の一覧から選ぶ
   const lineBase = { role: (viewer.role ?? "teacher") as "student" | "teacher" | "admin", firstTime: !promiseSeen, goal: initialGoal?.text ?? null };
   const [tapCount, setTapCount] = useState(0);
@@ -943,6 +946,7 @@ export function Talk({
                 className="new-talk"
                 onClick={() => {
                   archiveTalk(viewer.name, messages);
+                  setArchived(loadArchive(viewer.name));
                   askedFeedback.current = null;
                   setMessages([]);
                   setReadyAt(null);
@@ -960,6 +964,21 @@ export function Talk({
               >
                 新しく話す
               </button>
+            )}
+            {messages.length > 0 && archived.length > 0 && (
+              // 前の話は、今の会話の上にうすく残す。上へたどると読める
+              <section className="chat-archive" aria-label="前の話">
+                {archived.map((talk, talkIndex) => (
+                  <ol key={talkIndex}>
+                    {talk.map((message, index) => (
+                      <li key={index} className={`chat-archive-row ${message.role === "user" ? "me" : "partner"}`}>
+                        {message.content}
+                      </li>
+                    ))}
+                  </ol>
+                ))}
+                <p className="chat-archive-divider">ここから新しい話</p>
+              </section>
             )}
             {chatList}
             {preparing && (

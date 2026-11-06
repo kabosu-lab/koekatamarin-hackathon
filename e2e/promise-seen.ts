@@ -11,4 +11,7 @@ export const PROMISE_SEEN = ["saeki", "ogawara", "kawamura", "noda", "shiraishi"
   httpOnly: false,
   secure: false,
   sameSite: "Lax" as const,
-}));
+})).concat([
+  // その日はじめての「みんな」で出る今日の3人のモーダルも、ふだんのテストでは見たことにする（モーダルそのものは minna.spec.ts で確かめる）
+  { name: "koekata_today_seen", value: "1", domain: "127.0.0.1", path: "/", expires: -1, httpOnly: false, secure: false, sameSite: "Lax" as const },
+]);
