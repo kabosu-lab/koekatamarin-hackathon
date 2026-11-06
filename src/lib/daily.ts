@@ -305,8 +305,7 @@ export async function handleSync(
     console.error("まとめの作成に失敗", error instanceof Error ? error.name : "unknown");
     return { status: 503, body: { error: "パートナーにつながりませんでした" } };
   }
-  if (made.length === 0 && !existing) return { status: 200, body: { report: null, called: true, eveningDue: false } };
-
+  // 何も返ってこなくても、含めた範囲は残す（項目なしの日報）。同じ材料で開くたびに呼び直さないため
   const looseIds = new Set(loose.map((i) => i.id));
   const saved = inTransaction(db, () => {
     // 待つ間に、別の画面が先に整え直したか、項目が届けられたり直されたりしていたら、置き換えずに今のものを返す

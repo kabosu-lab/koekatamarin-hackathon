@@ -231,6 +231,15 @@ describe("足し算で整え直す", () => {
     expect(again.requests).toHaveLength(1);
   });
 
+  it("Claude が空を返したら、項目なしで残し、次に開いても呼ばない", async () => {
+    const empty = recording([]);
+    await handleSync(empty.client, db, "saeki", { conversation: [{ role: "user", content: "おはよう" }] }, NOW);
+    expect(getReport(db, "saeki", DATE)?.items).toEqual([]);
+    expect(listReceived(db, "fujimoto")).toEqual([]);
+    await handleSync(empty.client, db, "saeki", { conversation: [{ role: "user", content: "おはよう" }] }, later(5));
+    expect(empty.requests).toHaveLength(1);
+  });
+
   it("Claude が何も返さなくても、前の項目は消さない", async () => {
     await make();
     const empty = recording([]);
