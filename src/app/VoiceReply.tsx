@@ -8,6 +8,8 @@ import { isSpeechSupported, startListening } from "./speech";
 
 const MAX_LENGTH = 2000;
 
+export type VoiceReplyRestore = { text: string; review: Review | null };
+
 async function postJson(url: string, body: unknown) {
   const response = await fetch(url, {
     method: "POST",
@@ -30,6 +32,8 @@ export function VoiceReply({
   disabled = false,
   onBusyChange,
   onSent,
+  onFailed,
+  restore,
 }: {
   postId: string;
   draftUrl: string;
@@ -38,13 +42,20 @@ export function VoiceReply({
   disabled?: boolean;
   onBusyChange?(busy: boolean): void;
   onSent(): void;
+  /**
+   * 0-2l(2)：あれば、押した瞬間に onSent を呼び、送信は裏で進める。失敗したときだけこれを呼ぶ
+   * （呼んだ側は restore に渡して開き直す）。なければ送り終えてから onSent を呼ぶ
+   */
+  onFailed?(restore: VoiceReplyRestore, message: string): void;
+  /** 送れなかった返信を、確かめた形のまま戻す */
+  restore?: VoiceReplyRestore;
 }) {
   const [spoken, setSpoken] = useState("");
   const [listening, setListening] = useState(false);
   const [question, setQuestion] = useState("");
-  const [text, setText] = useState<string | null>(null);
-  const [review, setReview] = useState<Review | null>(null);
-  const [reviewedText, setReviewedText] = useState("");
+  const [text, setText] = useState<string | null>(restore?.text ?? null);
+  const [review, setReview] = useState<Review | null>(restore?.review ?? null);
+  const [reviewedText, setReviewedText] = useState(restore?.review ? restore.text : "");
   const [busy, setBusyState] = useState(false);
   const [notice, setNotice] = useState("");
   const stopRef = useRef<(() => void) | null>(null);
@@ -113,6 +124,20 @@ export function VoiceReply({
   }
 
   async function send() {
+    if (onFailed && text !== null) {
+      // 押した瞬間に届いた音と見た目を出す。結果は裏で
+      const sent = text;
+      playReachedSound();
+      onSent();
+      const result = await postJson(replyUrl, { postId, text: sent }).catch(() => null);
+      if (result?.ok) return;
+      const blockedReview = result?.status === 422 && result.data.review ? (result.data.review as Review) : null;
+      onFailed(
+        { text: sent, review: blockedReview ?? review },
+        blockedReview ? "この言葉では送れませんでした。言い方を一緒に考えましょう。" : "まだ届いていません。返信の言葉は残してあるので、もう一度押してください。",
+      );
+      return;
+    }
     setBusy(true);
     setNotice("");
     try {

@@ -34,6 +34,7 @@ import { archiveTalk, loadArchive, loadTalk, saveTalk } from "./talk-storage";
 import { isSpeechSupported, type ListeningSession, SLOW_NOTICE, startSession } from "./speech";
 import { useLockedTalk } from "./use-locked-talk";
 import { Icon } from "./Icon";
+import "./new-talk.css";
 import { postFeedback } from "./FeedbackSheet";
 import { isFeedbackConsent } from "@/lib/feedback-consent";
 import { ClickWheel } from "./ClickWheel";
@@ -158,6 +159,25 @@ export function Talk({
   const [notice, setNotice] = useState("");
   const [scripted, setScripted] = useState(false);
   const [composing, setComposing] = useState<ComposeStart | null>(null);
+  // 0-2n：「新しい話にする？」を出しているアイコンの場所（会話の何番目か）
+  const [askNewAt, setAskNewAt] = useState<number | null>(null);
+  const politeTalk = viewer.role !== undefined && viewer.role !== "student";
+  useEffect(() => {
+    if (askNewAt === null) return;
+    // 外を押せば消える
+    const away = (event: PointerEvent) => {
+      if (!(event.target instanceof Element) || !event.target.closest("[data-new-talk-ask]")) setAskNewAt(null);
+    };
+    const escape = (event: globalThis.KeyboardEvent) => {
+      if (event.key === "Escape") setAskNewAt(null);
+    };
+    document.addEventListener("pointerdown", away);
+    document.addEventListener("keydown", escape);
+    return () => {
+      document.removeEventListener("pointerdown", away);
+      document.removeEventListener("keydown", escape);
+    };
+  }, [askNewAt]);
   // シートを閉じても下書き（composing）は残し、とどけるでもう一度開くと続きから
   const [sheetOpen, setSheetOpen] = useState(false);
   const [preparing, setPreparing] = useState(false);
@@ -762,6 +782,32 @@ export function Talk({
   ) : (
     <VoiceLump alt={companionAlt ?? ""} color={companionColor} shape={companionShape} state={listening ? "listening" : sending ? "thinking" : "idle"} replyCount={replyCount} />
   );
+  /** 0-1l：前の話は「話の履歴」に残して畳み、大きなパートナーと最初の吹き出しに戻る */
+  function startNewTalk() {
+    setAskNewAt(null);
+    archiveTalk(viewer.name, messages);
+    setArchived(loadArchive(viewer.name));
+    askedFeedback.current = null;
+    setMessages([]);
+    setReadyAt(null);
+    setDeliveredAt(0);
+    levelRef.current = 0;
+    setLevel(0);
+    popStep.current = 0;
+    setSentTo(null);
+    setSuggestion(null);
+    stopCompose();
+    setComposing(null);
+    setSheetOpen(false);
+    setReturning(true);
+    window.setTimeout(() => setReturning(false), 700);
+  }
+  /** 0-2n：会話の中のアイコンを押すと弾み、「新しい話にする？」を横に出す。新しく話す入口はここ1つ */
+  function tapChatIcon(index: number) {
+    partnerTap.onTap();
+    if (listening || sending) return;
+    setAskNewAt((current) => (current === index ? null : index));
+  }
   /** パートナーを触る。話す前は一言が次へ替わり、会話のあとは弾むだけ（0-2a (5)） */
   function tapPartner() {
     partnerTap.onTap();
@@ -779,7 +825,22 @@ export function Talk({
             {messages[index - 1]?.role === "assistant" ? (
               <span className="chat-icon chat-icon-space" aria-hidden="true" />
             ) : (
-              <span className="chat-icon" aria-hidden="true" data-react={index === lastAssistantIndex ? (partnerTap.reaction ?? undefined) : undefined} onClick={tapPartner} onAnimationEnd={partnerTap.onAnimationEnd}>
+              <span
+                className="chat-icon"
+                role="button"
+                tabIndex={0}
+                aria-label="パートナー。押すと新しい話にできます"
+                aria-expanded={askNewAt === index}
+                data-new-talk-ask
+                data-react={index === askNewAt || (askNewAt === null && index === lastAssistantIndex) ? (partnerTap.reaction ?? undefined) : undefined}
+                onClick={() => tapChatIcon(index)}
+                onKeyDown={(event) => {
+                  if (event.key !== "Enter" && event.key !== " ") return;
+                  event.preventDefault();
+                  tapChatIcon(index);
+                }}
+                onAnimationEnd={partnerTap.onAnimationEnd}
+              >
                 {icon}
               </span>
             )}
@@ -787,6 +848,14 @@ export function Talk({
               <span className="visually-hidden">パートナー：</span>
               {message.content}
             </p>
+            {askNewAt === index && !listening && !sending && (
+              <div className="new-talk-ask" role="group" aria-label={politeTalk ? "新しい話にしますか？" : "新しい話にする？"} data-new-talk-ask>
+                <p>{politeTalk ? "新しい話にしますか？" : "新しい話にする？"}</p>
+                <button type="button" className="new-talk" onClick={startNewTalk}>
+                  新しく話す
+                </button>
+              </div>
+            )}
           </div>
         ) : (
           <div className="chat-row me" key={index} data-index={index}>
@@ -1043,33 +1112,6 @@ export function Talk({
             </div>
           )}
           <div className="log" role="log" aria-label="パートナーとの会話" ref={logRef} data-noswipe-landscape>
-            {messages.length > 0 && !listening && !sending && (
-              // 0-1l：前の話は「話の履歴」に残して畳み、大きなパートナーに戻る
-              <button
-                type="button"
-                className="new-talk"
-                onClick={() => {
-                  archiveTalk(viewer.name, messages);
-                  setArchived(loadArchive(viewer.name));
-                  askedFeedback.current = null;
-                  setMessages([]);
-                  setReadyAt(null);
-                  setDeliveredAt(0);
-                  levelRef.current = 0;
-                  setLevel(0);
-                  popStep.current = 0;
-                  setSentTo(null);
-                  setSuggestion(null);
-                  stopCompose();
-                  setComposing(null);
-                  setSheetOpen(false);
-                  setReturning(true);
-                  window.setTimeout(() => setReturning(false), 700);
-                }}
-              >
-                新しく話す
-              </button>
-            )}
             {messages.length > 0 && archived.length > 0 && (
               // 前の話は、今の会話の上にうすく残す。上へたどると読める
               <section className="chat-archive" aria-label="前の話">
