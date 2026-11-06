@@ -13,8 +13,7 @@ import { activeEvents } from "@/lib/events";
 import { listGiftEggs } from "@/lib/gift-eggs";
 import { listCelebratedPostIds } from "@/lib/goals";
 import { listHiddenIds } from "@/lib/hidden-people";
-import { countForNotice } from "@/lib/inbox";
-import { countKnowledgeForNotice } from "@/lib/knowledge";
+import { countNew } from "@/lib/new-counts";
 import { isKohoOfficer } from "@/lib/koho";
 import { showsRewards } from "@/lib/rewards-view";
 import { listAlertsFor } from "@/lib/safety";
@@ -51,13 +50,13 @@ export default async function MinnaPage({ searchParams }: { searchParams: Promis
   const store = await cookies();
   const rewards = showsRewards(readAppearance((name) => store.get(name)?.value));
   const events = rewards ? activeEvents(now) : [];
-  const waiting = countForNotice(db, viewer.id, now);
-  const knowledgeTasks = countKnowledgeForNotice(db, viewer.id, now);
   const eggs = rewards ? listGiftEggs(db, viewer.id).length : 0;
   const hasAlerts = !isTrialMode() && viewer.role !== "student" && (viewer.id === counselorId || listAlertsFor(db, viewer.id).length > 0);
   const grown = leavesThisWeek(db, now);
   const destination = getDestination(db);
   const teamsLink = teamsUrl();
+  // 0-2v：新着の数はホーム・履歴と設定・ホイールと同じ数え方（1か所）
+  const counts = countNew(db, destination, viewer.id, now, { rewards, todaySeen: Boolean(store.get(TODAY_SEEN_COOKIE)) });
   const channels = destination.listChannels(viewer.id);
   const feed = recentFeed(channels, (channelId) => destination.listPosts(viewer.id, channelId), FEED_LIMIT);
 
@@ -149,11 +148,11 @@ export default async function MinnaPage({ searchParams }: { searchParams: Promis
           dock={
             // 0-2f(1)：入口は、いちばん下に固定したアイコンの帯の1か所だけ（Teams の下の帯のように）
             <nav className="minna-dock" aria-label="みんなの入口" data-noswipe>
-              <TodayEntrance />
+              <TodayEntrance badge={counts.today} />
               <Link className="minna-dock-item" href="/inbox">
                 <Icon name="inbox" />
                 <span>受信箱</span>
-                {waiting + knowledgeTasks > 0 && <span className="minna-dock-badge">{waiting + knowledgeTasks}</span>}
+                {counts.inbox > 0 && <span className="minna-dock-badge">{counts.inbox}</span>}
               </Link>
               <Link className="minna-dock-item" href="/study/room" aria-label="自習室（一緒に勉強する）">
                 <Icon name="book" />

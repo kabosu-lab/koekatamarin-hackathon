@@ -57,9 +57,9 @@ function markSeen() {
   document.cookie = `${TODAY_SEEN_COOKIE}=1; path=/; max-age=${secondsToJapanMidnight()}; samesite=lax`;
 }
 
-type Today = { open: boolean; show(): void; hide(): void };
+type Today = { open: boolean; opened: boolean; show(): void; hide(): void };
 
-const TodayContext = createContext<Today>({ open: false, show: () => {}, hide: () => {} });
+const TodayContext = createContext<Today>({ open: false, opened: false, show: () => {}, hide: () => {} });
 
 export const useToday = () => useContext(TodayContext);
 
@@ -69,6 +69,8 @@ export const useToday = () => useContext(TodayContext);
  */
 export function TodayProvider({ initialOpen, children }: { initialOpen: boolean; children: ReactNode }) {
   const [open, setOpen] = useState(initialOpen);
+  // 0-2v：一度開いたら、下の帯の数を消す
+  const [opened, setOpened] = useState(initialOpen);
   useEffect(() => {
     if (!initialOpen) return;
     if (window.self !== window.top) {
@@ -77,15 +79,27 @@ export function TodayProvider({ initialOpen, children }: { initialOpen: boolean;
     }
     markSeen();
   }, [initialOpen]);
-  return <TodayContext.Provider value={{ open, show: () => setOpen(true), hide: () => setOpen(false) }}>{children}</TodayContext.Provider>;
+  const show = () => {
+    markSeen();
+    setOpened(true);
+    setOpen(true);
+  };
+  return <TodayContext.Provider value={{ open, opened, show, hide: () => setOpen(false) }}>{children}</TodayContext.Provider>;
+}
+
+/** 0-2v：今日の3人の画面（/today）を開いたら、今日はもう見たことにする */
+export function MarkTodaySeen() {
+  useEffect(() => markSeen(), []);
+  return null;
 }
 
 /** 下の帯の「今日の3人」。2回目からはここから開く */
-export function TodayEntrance() {
-  const { show } = useToday();
+export function TodayEntrance({ badge = 0 }: { badge?: number }) {
+  const { show, opened } = useToday();
   return (
     <button type="button" className="minna-dock-item" aria-haspopup="dialog" onClick={show}>
       <Icon name="heart" />
+      {badge > 0 && !opened && <span className="minna-dock-badge">{badge}</span>}
       {/* 狭い欄では「今日の」「3人」の2行に折る（途中で切らない。0-2i） */}
       <span>
         今日の<wbr />

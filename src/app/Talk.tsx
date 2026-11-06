@@ -39,9 +39,8 @@ import "./new-talk.css";
 import { postFeedback } from "./FeedbackSheet";
 import { isFeedbackConsent } from "@/lib/feedback-consent";
 import { ClickWheel } from "./ClickWheel";
-import { ReplyToast } from "./ReplyToast";
 import { VoiceLump } from "./VoiceLump";
-import type { ReplyNotice } from "@/lib/reply-notices";
+import type { NewsLine } from "@/lib/new-counts";
 import type { LumpShapeName } from "@/lib/lump-shapes";
 import type { TeamsDelivery } from "@/lib/destination/teams-bridge";
 
@@ -104,8 +103,8 @@ export function Talk({
   avatarImage,
   initialGoal = null,
   device = false,
-  notices = [],
-  noticePollMs = 30_000,
+  news = null,
+  newCounts,
   companionAlt,
   companionColor,
   companionShape,
@@ -121,9 +120,10 @@ export function Talk({
   initialGoal?: { id: string; text: string } | null;
   /** 窓とホイールの配置 */
   device?: boolean;
-  /** 開いたときに届いている返事 */
-  notices?: ReplyNotice[];
-  noticePollMs?: number;
+  /** 0-2v：新着があるときの最初の一言と、押すと行く先 */
+  news?: NewsLine | null;
+  /** 0-2v：新着の数（下の左右の点と、ホイールのチップのバッジ） */
+  newCounts?: { me: number; minna: number; inbox: number; today: number };
   /** 窓に出すパートナーの名前。報酬を隠している人にはない */
   companionAlt?: string;
   /** 声のかたまりの色 */
@@ -146,14 +146,14 @@ export function Talk({
   const [tapCount, setTapCount] = useState(0);
   const [recentLines, setRecentLines] = useState<string[]>([]);
   const [line, setLine] = useState<PartnerLine>(() =>
-    question ? { text: question, kind: "ask" } : nextPartnerLine({ ...lineBase, hour: partnerHour(new Date()), tapCount: 0 }),
+    news ? { text: news.text, kind: "news" } : question ? { text: question, kind: "ask" } : nextPartnerLine({ ...lineBase, hour: partnerHour(new Date()), tapCount: 0 }),
   );
   const [greetingTyped, setGreetingTyped] = useState(false);
   const partnerTap = usePartnerTap(messages.length > 0);
   const invite = usePartnerInvite({ typed: greetingTyped, spoken: messages.length > 0 || listening || draft.trim() !== "" });
   // 数秒触られなければ、操作の案内をそっと添える（0-1g(2)）。一度話したら出さない
   useEffect(() => {
-    if (invite.nudge && messages.length === 0) setLine({ text: inviteLine(lineBase.role), kind: "guide" });
+    if (invite.nudge && messages.length === 0 && line.kind !== "news") setLine({ text: inviteLine(lineBase.role), kind: "guide" });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [invite.nudge]);
   const [heard, setHeard] = useState("");
@@ -849,6 +849,11 @@ export function Talk({
   function tapPartner() {
     partnerTap.onTap();
     if (messages.length > 0) return;
+    // 0-2v：新着の知らせは、押すとその画面へ（帯やバナーは別に出さない）
+    if (line.kind === "news" && news) {
+      router.push(news.href);
+      return;
+    }
     const recent = [...recentLines, line.text].slice(-3);
     setRecentLines(recent);
     setLine(nextPartnerLine({ ...lineBase, hour: partnerHour(new Date()), tapCount: tapCount + 1, recent }));
@@ -1112,13 +1117,12 @@ export function Talk({
           <PartnerBackdrop owner={viewerId} role={viewer.role} onRare={(prefix) => setLine((current) => ({ ...current, text: prefix + current.text }))} />
           <WheelCarousel
             ref={carouselRef}
-            items={WHEEL_CHIPS}
+            items={newCounts ? WHEEL_CHIPS.map((chip) => ({ ...chip, badge: newCounts[chip.id as "inbox" | "today"] })) : WHEEL_CHIPS}
             onOpen={(item) => {
               const chip = WHEEL_CHIPS.find((candidate) => candidate.id === item.id);
               if (chip && chip.id !== "home") router.push(chip.href);
             }}
           />
-          <ReplyToast initial={notices} paused={listening} pollMs={noticePollMs} />
           {lockedTalk.locked && (
             <div className="lock-banner">
               {/* 0-1t：止まった・失敗に見えないよう、やわらかい帯で */}
@@ -1138,6 +1142,7 @@ export function Talk({
                   kind={line.kind}
                   delayMs={300}
                   onTap={tapPartner}
+                  label={line.kind === "news" ? `${line.text}。押すと開きます` : undefined}
                   onTyped={() => setGreetingTyped(true)}
                   reaction={partnerTap.reaction}
                   onAnimationEnd={partnerTap.onAnimationEnd}
@@ -1293,13 +1298,19 @@ export function Talk({
         </div>
 
         <nav className="swipe-mark" aria-label="画面の切り替え">
-          <Link href="/me">‹ 履歴と設定</Link>
+          <Link href="/me">
+            ‹ 履歴と設定
+            {(newCounts?.me ?? 0) > 0 && <span className="swipe-new" role="img" aria-label="新着あり" />}
+          </Link>
           <span className="swipe-dots" aria-hidden="true">
             <i />
             <i data-current />
             <i />
           </span>
-          <Link href="/minna">みんな ›</Link>
+          <Link href="/minna">
+            {(newCounts?.minna ?? 0) > 0 && <span className="swipe-new" role="img" aria-label="新着あり" />}
+            みんな ›
+          </Link>
         </nav>
       </div>
     );

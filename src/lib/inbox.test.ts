@@ -7,7 +7,6 @@ import { createDummyTeams } from "./destination/dummy-teams";
 import type { PostDestination } from "./destination/types";
 import { countContributions } from "./avatar";
 import {
-  countForNotice,
   draftReply,
   handleInboxReply,
   draftPass,
@@ -78,13 +77,6 @@ describe("時間外は通知しない", () => {
     ["2026-11-08T01:00:00Z", false, "日曜 10:00"],
   ])("%s は %s（%s）", (time, expected) => {
     expect(isNoticeHours(new Date(time))).toBe(expected);
-  });
-
-  it("時間外は件数を出さないが、受信箱の中身は残っている", () => {
-    const night = new Date("2026-11-04T13:00:00Z");
-    expect(countForNotice(db, "saeki", NOW)).toBe(2);
-    expect(countForNotice(db, "saeki", night)).toBe(0);
-    expect(listInbox(db, "saeki")).toHaveLength(2);
   });
 });
 

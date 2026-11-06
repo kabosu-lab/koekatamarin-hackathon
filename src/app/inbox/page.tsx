@@ -8,6 +8,7 @@ import { listInbox, listPassCandidates } from "@/lib/inbox";
 import { listKnowledgeTasks } from "@/lib/knowledge";
 import { listKohoRequests } from "@/lib/koho";
 import { listRecentReplies } from "@/lib/reply-notices";
+import { markInboxOpened } from "@/lib/new-counts";
 import { agreeKoho, declineKoho } from "../koho/actions";
 import { KnowledgeTasks } from "../chie/KnowledgeTasks";
 import { listReceived } from "@/lib/daily";
@@ -32,6 +33,8 @@ export default async function InboxPage() {
     db,
     replies.map((reply) => reply.replyId),
   );
+  // 0-2v：開いたら、返事と届いた日報の新着の数は消える（お願いは応えるまで残る）
+  markInboxOpened(db, viewer.id);
 
   return (
     // 0-2q(5)：「解決・つないだ」の数は「これまで」の帯にあるので、ここには出さない。広い画面でも1列

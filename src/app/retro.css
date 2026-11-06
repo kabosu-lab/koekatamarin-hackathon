@@ -658,6 +658,16 @@ html[data-theme="retro"] .talk .device-side:focus-visible .device-side-face {
   justify-content: flex-end;
 }
 
+/* 0-2v：どちら側に新着があるかの小さな点。払う向きがそのまま分かる */
+.swipe-new {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin: 0 6px;
+  border-radius: 50%;
+  background: #ff5a3c;
+}
+
 .swipe-dots {
   display: flex;
   gap: 6px;
