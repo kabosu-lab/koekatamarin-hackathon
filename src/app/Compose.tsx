@@ -2,7 +2,7 @@
 
 import type { TeamsDelivery } from "@/lib/destination/teams-bridge";
 import { Icon } from "./Icon";
-import { Fragment, type KeyboardEvent, useLayoutEffect, useRef, useState } from "react";
+import { Fragment, type KeyboardEvent, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { Draft, Review } from "@/lib/claude/compose";
 import type { AttachmentNotice, AttachmentNoticeKind, AttachmentView } from "@/lib/attachment";
 import type { ChannelView, PersonView, PostScope } from "@/lib/destination/types";
@@ -11,7 +11,10 @@ import "./compose.css";
 
 export type ComposeStart = {
   draft: Draft;
-  review: Review;
+  /** 本文が書き終わってから届く（0-2l）。届くまでは null */
+  review: Review | null;
+  /** 0-2l：本文を流しながら書いている間 true。書き終わるまで送れない */
+  writing?: boolean;
   channels: ChannelView[];
   people: PersonView[];
   asked?: { id: string; name: string };
@@ -26,6 +29,22 @@ type Props = ComposeStart & {
   /** 添付を付け直すために、話す画面へ戻る */
   onReplaceAttachment?(): void;
   onSent(channel: ChannelView, postId: string, words: string, isPublic: boolean, teams?: TeamsDelivery): void;
+  /**
+   * 0-2l(2)：あれば、押した瞬間にこれを呼んで終わる（送信は呼んだ側が裏で進める）。
+   * なければ今までどおり、送り終えてから onSent を呼ぶ
+   */
+  onSendStart?(send: ComposeSend): void;
+};
+
+/** 押した瞬間に渡す、送る中身 */
+export type ComposeSend = {
+  channel: ChannelView;
+  words: string;
+  isPublic: boolean;
+  /** 送る言葉で確かめた受け取られ方 */
+  review: Review | null;
+  /** /api/publish に送る中身 */
+  body: Record<string, unknown>;
 };
 
 const SCOPE_OPTIONS: { value: PostScope; label: string }[] = [
@@ -63,17 +82,36 @@ export function Compose({
   asked,
   goalId,
   attachment,
+  writing = false,
   viewer,
   onCancel,
   onReplaceAttachment,
   onSent,
+  onSendStart,
 }: Props) {
   const [acknowledged, setAcknowledged] = useState(false);
   const noticesOpen = (attachment?.notices.length ?? 0) > 0 && !acknowledged;
-  const [text, setText] = useState(draft.text);
-  const [channelId, setChannelId] = useState(draft.channelId);
-  const [review, setReview] = useState(firstReview);
-  const [reviewedText, setReviewedText] = useState(draft.text);
+  // 0-2l：書いている間は流れてくる本文をそのまま見せ、本人が直したらその言葉を使う
+  const [edited, setEdited] = useState<string | null>(null);
+  const text = writing ? draft.text : (edited ?? draft.text);
+  const setText = setEdited;
+  // 送り先は、本人が選ぶまでは下書きの送り先。まだ決まっていなければ出さない
+  const [pickedChannel, setChannelId] = useState<string | null>(null);
+  const channelId = pickedChannel ?? draft.channelId;
+  // 受け取られ方は、本人が確かめ直すまでは最初に届いたもの
+  const [rechecked, setRechecked] = useState<{ review: Review; text: string } | null>(null);
+  const current = rechecked ?? (firstReview ? { review: firstReview, text: draft.text } : null);
+  const review = current?.review ?? null;
+  const reviewedText = current?.text ?? "";
+  const setReview = (next: Review, target: string) => setRechecked({ review: next, text: target });
+  // 0-1n：3秒たっても本文が出はじめないときは、何をしているかを一言
+  const [slow, setSlow] = useState(false);
+  const waitingFirstWords = writing && draft.text === "";
+  useEffect(() => {
+    if (!waitingFirstWords) return;
+    const timer = window.setTimeout(() => setSlow(true), 3000);
+    return () => window.clearTimeout(timer);
+  }, [waitingFirstWords]);
   const [scope, setScope] = useState<PostScope>("everyone");
   const [scopePersonId, setScopePersonId] = useState("");
   const [busy, setBusy] = useState(false);
@@ -101,9 +139,9 @@ export function Compose({
     });
     observer.observe(body);
     return () => observer.disconnect();
-  }, [text]);
+  }, [text, writing]);
 
-  const channel = channels.find((c) => c.id === channelId) ?? channels[0];
+  const channel: ChannelView | undefined = channels.find((c) => c.id === channelId);
   // 0-2k：送り先を誰が見るのかを、数と一文で見せる。肩書きが学年から始まる人は生徒（ダミーの決まり）
   const isStudent = (label: string) => /^[0-9０-９]年/.test(label);
   const staffCount = people.filter((person) => !isStudent(person.label)).length + (isStudent(viewer.label) ? 0 : 1);
@@ -114,8 +152,8 @@ export function Compose({
       : channel.audience === "staff"
         ? `${channel.name}：先生 ${staffCount}人が見ます。生徒には見えません`
         : `${channel.name}：先生 ${staffCount}人と生徒 ${studentCount}人が見ます`;
-  const checked = text.trim() === reviewedText.trim();
-  const blocked = checked && review.verdict === "block";
+  const checked = !writing && review !== null && text.trim() === reviewedText.trim();
+  const blocked = checked && review?.verdict === "block";
   const missingPerson = scope === "person" && scopePersonId === "";
   const scopeNote =
     scope === "person"
@@ -132,8 +170,7 @@ export function Compose({
     try {
       const { ok, data } = await postJson("/api/review", { text: target });
       if (!ok) throw new Error("review failed");
-      setReview(data.review as Review);
-      setReviewedText(target);
+      setReview(data.review as Review, target);
     } catch {
       setNotice("確かめられませんでした。もう一度押してください。");
     } finally {
@@ -142,28 +179,34 @@ export function Compose({
   }
 
   async function send() {
+    if (!channel) return;
+    const body = {
+      text,
+      channelId,
+      kind: draft.kind,
+      researchedWithAi: draft.researchedWithAi,
+      announcement: draft.announcement === true,
+      askedPersonId: asked?.id,
+      goalId,
+      scope,
+      scopePersonId: scope === "person" ? scopePersonId : undefined,
+      attachmentId: attachment?.id,
+    };
+    // 0-2l(2)：押した瞬間に送ったあとの動きを始め、送信は呼んだ側が裏で進める
+    if (onSendStart) {
+      onSendStart({ channel, words: text, isPublic: scope === "everyone", review, body });
+      return;
+    }
     setBusy(true);
     setNotice("");
     try {
-      const { ok, status, data } = await postJson("/api/publish", {
-        text,
-        channelId,
-        kind: draft.kind,
-        researchedWithAi: draft.researchedWithAi,
-        announcement: draft.announcement === true,
-        askedPersonId: asked?.id,
-        goalId,
-        scope,
-        scopePersonId: scope === "person" ? scopePersonId : undefined,
-        attachmentId: attachment?.id,
-      });
+      const { ok, status, data } = await postJson("/api/publish", body);
       if (ok) {
         onSent(channel, data.postId as string, text, scope === "everyone", data.teams as TeamsDelivery | undefined);
         return;
       }
       if (status === 422 && data.review) {
-        setReview(data.review as Review);
-        setReviewedText(text);
+        setReview(data.review as Review, text);
         return;
       }
       setNotice(
@@ -182,7 +225,9 @@ export function Compose({
     <section className="compose-card compose-sheet" aria-label="言葉にして送る">
       <h2>こんな言葉でどうかな？</h2>
       <div className="preview">
-        <p className="preview-title">Teams にはこう見えます（{channel.name}）。文章はここで直せます</p>
+        <p className="preview-title">
+          Teams にはこう見えます{channel ? `（${channel.name}）` : ""}。{writing ? "パートナーが書いています" : "文章はここで直せます"}
+        </p>
         <p className="preview-author">
           <strong>{viewer.name}</strong> {viewer.label}
         </p>
@@ -195,13 +240,29 @@ export function Compose({
           maxLength={MAX_LENGTH}
           value={text}
           onChange={(event) => setText(event.target.value)}
+          readOnly={writing}
+          hidden={writing}
         />
+        {writing && (
+          // 0-2l：本文は流れてくるそばから1文字ずつ入り、カーソルが点滅する。書き終わったら直せる欄に替わる
+          <p className="preview-body compose-writing" aria-hidden="true">
+            {text}
+            <span className="compose-caret" />
+          </p>
+        )}
+        {writing && <span className="visually-hidden" role="status">下書きを書いています</span>}
         {attachment && <p className="preview-mark">添付：{attachment.fileName}</p>}
         {draft.researchedWithAi && <p className="preview-mark">AI と調べました</p>}
         {scopeNote && <p className="preview-scope">{scopeNote}</p>}
       </div>
 
-      {checked ? (
+      {writing ? (
+        waitingFirstWords && slow && <small className="compose-slow">話したことから、投稿の下書きを作っています…</small>
+      ) : !review ? (
+        <p className="perception waiting" role="status">
+          受け取られ方を確かめています…
+        </p>
+      ) : checked && review ? (
         <div className={`perception ${review.verdict}`} role="status">
           <p>{review.perception}</p>
           {review.alternatives.map((alternative) => (
@@ -225,7 +286,7 @@ export function Compose({
         </button>
       )}
 
-      {attachment && (
+      {!writing && attachment && (
         <div className="attachment-check" aria-label="添付の確認" role="group">
           <AttachmentPreview attachment={attachment} />
           {attachment.notices.length > 0 ? (
@@ -261,6 +322,7 @@ export function Compose({
         </div>
       )}
 
+      {!writing && (
       <ChipGroup
         label="送り先のチャネル"
         value={channelId}
@@ -276,8 +338,9 @@ export function Compose({
           }))}
         onChange={setChannelId}
       />
+      )}
 
-      {!asked && (
+      {!writing && !asked && (
         <ChipGroup
           label="見える範囲"
           value={scope}
@@ -305,7 +368,7 @@ export function Compose({
         </p>
       )}
 
-      {audienceLine && (
+      {!writing && audienceLine && (
         <p className="compose-audience" role="status">
           {audienceLine}
         </p>
@@ -315,7 +378,7 @@ export function Compose({
           <Icon name="cancel" />
           取り消す
         </button>
-        <button type="button" disabled={busy || !checked || blocked || missingPerson || noticesOpen} onClick={() => void send()}>
+        <button type="button" disabled={busy || writing || !checked || blocked || missingPerson || noticesOpen || !channel} onClick={() => void send()}>
           <Icon name="send" />
           本人として送る
         </button>

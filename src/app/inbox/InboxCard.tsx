@@ -41,21 +41,21 @@ export function InboxCard({ item, candidates }: { item: InboxItem; candidates: P
     }
   }
 
+  // 0-2l(2)：押した瞬間に「つなぎました」にし、送信は裏で進める。失敗したときだけ、選んだ相手と言葉を残して戻す
   async function pass() {
-    setBusy(true);
     setNotice("");
+    setDone("passed");
     try {
       const { ok, status } = await postJson("/api/inbox/pass", { postId: item.postId, toPersonId: passTo, text: passWords });
       if (status === 422) {
+        setDone(null);
         setNotice("この言葉では送れません。言い方を変えてください。");
         return;
       }
       if (!ok) throw new Error("pass failed");
-      setDone("passed");
     } catch {
-      setNotice("つなげませんでした。もう一度押してください。");
-    } finally {
-      setBusy(false);
+      setDone(null);
+      setNotice("まだつなげていません。言葉は残してあるので、もう一度押してください。");
     }
   }
 

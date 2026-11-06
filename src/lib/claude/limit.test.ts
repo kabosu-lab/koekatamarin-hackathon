@@ -18,6 +18,26 @@ describe("試用の回数の上限", () => {
     expect((await limited.complete(request)).text).toBe("本物");
   });
 
+  it("流す呼び出しも同じ数え方で、超えたら台本の答えをまとめて渡す", async () => {
+    const log: number[] = [];
+    const real: ClaudeClient = {
+      ...client("本物"),
+      stream: async (_request, onText) => {
+        onText("本");
+        onText("物");
+        return { text: "本物", refused: false };
+      },
+    };
+    const limited = limitClaude(real, client("台本"), 1, () => 0, log);
+    const chunks: string[] = [];
+    expect((await limited.stream!(request, (chunk) => chunks.push(chunk))).text).toBe("本物");
+    expect(chunks).toEqual(["本", "物"]);
+    const later: string[] = [];
+    expect((await limited.stream!(request, (chunk) => later.push(chunk))).text).toBe("台本");
+    expect(later).toEqual(["台本"]);
+    expect(log).toHaveLength(1);
+  });
+
   it("数えるのは時刻だけ", () => {
     const log: number[] = [];
     expect(takeCall(5, 1, log)).toBe(true);

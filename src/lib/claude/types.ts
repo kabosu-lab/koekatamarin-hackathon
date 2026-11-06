@@ -34,4 +34,6 @@ export type ClaudeResponse = {
 export type ClaudeClient = {
   mode: "real" | "scripted";
   complete(request: ClaudeRequest): Promise<ClaudeResponse>;
+  /** 返事を流しながら受け取る（0-2l の下書き）。onText に続きを少しずつ渡し、最後に全体を返す。流せないものは持たない */
+  stream?(request: ClaudeRequest, onText: (chunk: string) => void): Promise<ClaudeResponse>;
 };
