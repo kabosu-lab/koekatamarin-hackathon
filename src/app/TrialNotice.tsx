@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { FeedbackSheet } from "./FeedbackSheet";
+import { audioOutput } from "./sound";
 
 const SEEN_KEY = "koekata_trial_notice_seen";
 const OPEN_EVENT = "koekata:trial-notice";
@@ -25,6 +26,8 @@ export function TrialNotice({ text }: { text: string }) {
   }, []);
 
   function close() {
+    // iOS は最初のタップまで音を出せない。このタップで音の準備をする（0-1v）
+    audioOutput();
     try {
       localStorage.setItem(SEEN_KEY, "1");
     } catch {

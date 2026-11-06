@@ -18,6 +18,7 @@ import { SafetyCard, type SafetyNotice } from "./SafetyCard";
 import { AttachmentPreview } from "./AttachmentPreview";
 import { Avatar } from "./Avatar";
 import { playSendSound, SendBurst } from "./SendBurst";
+import { audioOutput } from "./sound";
 import type { AttachmentView } from "@/lib/attachment";
 import { loadTalk, saveTalk } from "./talk-storage";
 import { isSpeechSupported, type ListeningSession, SLOW_NOTICE, startSession } from "./speech";
@@ -755,6 +756,8 @@ export function Talk({
           type="button"
           autoFocus
           onClick={() => {
+            // iOS は最初のタップまで音を出せない。このタップで音の準備をする（0-1v）
+            audioOutput();
             rememberPromiseSeen();
             setAcknowledged(true);
           }}

@@ -30,12 +30,11 @@ export const APPEARANCE_OPTIONS = [
     ],
   },
   {
+    // 0-1v：アプリの中で音を消す設定はなくした。音は初めから鳴らし、切るのは端末の消音や音量で。
+    // 値の形だけ残す（前に「音なし」を選んだ人の cookie があっても、もう効かない）
     name: "sound",
-    label: "音（いつでも消せます。最初の画面からも切り替えられます）",
-    options: [
-      { value: "off", label: "音なし" },
-      { value: "on", label: "音あり" },
-    ],
+    label: "音",
+    options: [{ value: "on", label: "音あり" }],
   },
 ] as const;
 
@@ -56,11 +55,11 @@ export function isAppearanceValue(name: string, value: string): name is Appearan
   return group !== undefined && group.options.some((option) => option.value === value);
 }
 
-/** 見た目は全員同じ1つにした。選べるのは文字の大きさ、音、パートナーの表示だけ。内部の名前は retro のまま。 */
+/** 見た目は全員同じ1つにした。選べるのは文字の大きさとパートナーの表示だけ（音はいつも鳴らす）。内部の名前は retro のまま。 */
 export function readAppearance(read: (cookie: string) => string | undefined): Appearance {
   const get = (name: AppearanceName) => {
     const value = read(APPEARANCE_COOKIES[name]);
     return value !== undefined && isAppearanceValue(name, value) ? value : DEFAULTS[name];
   };
-  return { theme: DEFAULTS.theme, size: get("size"), sound: get("sound"), avatar: get("avatar") };
+  return { theme: DEFAULTS.theme, size: get("size"), sound: DEFAULTS.sound, avatar: get("avatar") };
 }

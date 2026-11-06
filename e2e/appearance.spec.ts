@@ -49,13 +49,14 @@ test("開いただけでは鳴らさない", async ({ page }) => {
   expect(await made()).toBe(0);
 });
 
-test("音を消すと、送っても音を作らない", async ({ page }) => {
+test("0-1v：アプリの中で音を消す設定はなく、前に「音なし」を選んでいても音は鳴る", async ({ page }) => {
   const made = await countAudio(page);
   await page.context().addCookies([{ name: "koekata_sound", value: "off", domain: "127.0.0.1", path: "/" }]);
-  await page.goto("/");
-  await send(page, `静かな言葉 ${test.info().testId}`);
+  await page.goto("/me?open=settings");
+  await expect(page.getByRole("button", { name: "音なし" })).toHaveCount(0);
+  await send(page, `前は静かにしていた言葉 ${test.info().testId}`);
   await expect(page.locator(".sent")).toBeVisible();
-  expect(await made()).toBe(0);
+  expect(await made()).toBeGreaterThan(0);
 });
 
 test("音が入っていれば、送ったときに音を作る", async ({ page }) => {
