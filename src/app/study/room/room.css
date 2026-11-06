@@ -583,18 +583,22 @@ html body .room-fit .room-more {
   z-index: 3;
   top: 8px;
   right: 8px;
-  max-width: calc(100% - 9rem);
+  max-width: calc(100% - 7.5rem);
 }
 
+/* 狭い画面では、音の札は曲の札の下へ回る */
 .room-fit .room-music-actions {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   gap: 6px;
 }
 
+/* 狭い画面でも曲名を切らない。入らなければ札の中で折り返す */
 html body .room-fit .room-music-change {
   min-width: 0;
-  overflow: hidden;
+  white-space: normal;
+  text-align: left;
 }
 
 html body .room-fit .room-music-change:disabled {
@@ -602,8 +606,8 @@ html body .room-fit .room-music-change:disabled {
 }
 
 .room-fit .room-music-name {
-  overflow: hidden;
   font-size: inherit;
+  word-break: keep-all;
 }
 
 html body .room-fit .room-music-play {
@@ -623,8 +627,9 @@ html body .room-fit .room-music-play {
 .room-hint {
   position: absolute;
   z-index: 3;
-  top: 60px;
+  /* 上の札にかからないよう、下の帯のすぐ上に出す */
   right: 16px;
+  bottom: calc(var(--fit-band) + 8px);
   left: 16px;
   width: fit-content;
   margin: 0 auto;
@@ -718,7 +723,8 @@ html body .room-band button {
 
 /* 動きを減らす設定：意味は残し、動きだけ消す */
 @media (prefers-reduced-motion: reduce) {
-  .room-music-toast {
+  .room-music-toast,
+  .room-hint {
     animation: none;
   }
 }
