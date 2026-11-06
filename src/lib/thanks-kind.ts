@@ -10,6 +10,14 @@ export const THANKS_KINDS: Record<ThanksKind, { label: string; icon: "heart" | "
   congrats: { label: "おめでとう", icon: "star" },
 };
 
+/**
+ * 投稿の種類に合う入口の言葉（0-2j）。頑張りには「おめでとう」、お知らせと報告には「ありがとう」。
+ * 困りごと・悩みには置かない（返事で応える）
+ */
+export function thanksEntryLabel(kind: string): "ありがとう" | "おめでとう" | null {
+  return kind === "effort" ? "おめでとう" : kind === "notice" || kind === "report" ? "ありがとう" : null;
+}
+
 /** はっきりした言葉を先に見て、次に弱い手がかりを見る。どれもなければ、ありがとう */
 const RULES: readonly [RegExp, ThanksKind][] = [
   [/おめでと|祝/, "congrats"],

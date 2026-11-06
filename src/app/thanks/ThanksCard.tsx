@@ -303,7 +303,7 @@ export function ThanksEntry({
       {mounted &&
         createPortal(
           // 下のめくる部品（今日の3人・みんなの横なで）に指の動きを渡さない
-          <div className="thanks-sheet-host" data-noswipe onPointerDown={stop} onPointerMove={stop} onPointerUp={stop} onClick={stop} onTouchStart={stop} onTouchEnd={stop}>
+          <div className="thanks-sheet-host" data-noswipe onKeyDown={stop} onPointerDown={stop} onPointerMove={stop} onPointerUp={stop} onClick={stop} onTouchStart={stop} onTouchEnd={stop}>
             <BottomSheet open={open} onClose={() => setOpen(false)} label={`${person.name}さんへのサンクスカード`}>
               <section className="thanks-sheet" aria-label="サンクスカードを送る">
                 <h2>{person.name}さんへ</h2>

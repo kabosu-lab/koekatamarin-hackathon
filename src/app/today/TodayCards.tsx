@@ -7,6 +7,7 @@ import type { CheerHint, TodayCard } from "@/lib/today";
 import { Avatar } from "../Avatar";
 import { PersonTitle } from "../PersonTitle";
 import { ThanksEntry } from "../thanks/ThanksCard";
+import { thanksEntryLabel } from "@/lib/thanks-kind";
 import { CardReply } from "./CardReply";
 
 const BATCH = 3;
@@ -156,7 +157,9 @@ export function TodayCards({ cards: allCards }: { cards: (TodayCard & { authorIm
           </p>
         )}
         <CardReply key={card.postId} postId={card.postId} />
-        <ThanksEntry key={`thanks-${card.postId}`} person={{ id: card.authorId, name: card.authorName, label: card.authorLabel }} />
+        {thanksEntryLabel(card.kind) && (
+          <ThanksEntry key={`thanks-${card.postId}`} person={{ id: card.authorId, name: card.authorName, label: card.authorLabel }} label={thanksEntryLabel(card.kind)!} />
+        )}
         <Link href={`/teams?channel=${card.channelId}`}>校内チャネルで見る</Link>
         <button type="button" className="hide-person" onClick={() => void hideAuthor(card.authorId, card.authorName)}>
           しばらく出さない

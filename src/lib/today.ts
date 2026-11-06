@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
 import { ComposeError, reviewPost } from "./claude/compose";
 import type { ClaudeClient } from "./claude/types";
+import type { PostKind } from "./seed-data";
 import { buildPublicEntries } from "./connect";
 import { DestinationError, type PostDestination, type PostView } from "./destination/types";
 import { draftReply, isNoticeHours } from "./inbox";
@@ -24,6 +25,8 @@ export type TodayCard = {
   replyCount: number;
   likedByViewer: boolean;
   researchedWithAi: boolean;
+  /** 投稿の種類（ありがとう・おめでとうの出し分けに使う） */
+  kind: PostKind;
   /** 自分と関連があるときの短い理由。公開の言葉から作る */
   relatedReason?: string;
 };
@@ -59,6 +62,7 @@ function toCard(post: ReturnType<typeof visiblePosts>[number]): TodayCard {
     replyCount: post.replies.length,
     likedByViewer: post.likedByViewer,
     researchedWithAi: post.researchedWithAi,
+    kind: post.kind,
   };
 }
 

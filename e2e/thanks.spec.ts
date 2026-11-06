@@ -118,10 +118,16 @@ test("今日の3人のカードの「ありがとう」からも、画面の中�
   if (!(await modal.isVisible())) await page.getByRole("navigation", { name: "みんなの入口" }).getByRole("button", { name: "今日の3人" }).click();
   await expect(modal).toBeVisible();
   // 見えているのは今のカードだけ（ほかのカードは読み上げからも外れている）
-  const entry = modal.getByRole("button", { name: /さんにありがとうを送る$/ });
+  // 困りごと・悩みのカードには置かないので、置いてあるカードまでめくる
+  const entry = modal.getByRole("button", { name: /さんに(ありがとう|おめでとう)を送る$/ });
+  for (let turn = 0; turn < 8 && !(await entry.isVisible()); turn += 1) {
+    await modal.focus().catch(() => {});
+    await page.keyboard.press("ArrowRight");
+    await page.waitForTimeout(350);
+  }
   await expect(entry).toBeVisible();
   const label = (await entry.getAttribute("aria-label")) ?? "";
-  const name = label.replace(/さんにありがとうを送る$/, "");
+  const name = label.replace(/さんに(ありがとう|おめでとう)を送る$/, "");
   await entry.click();
   const sheet = page.getByRole("dialog", { name: `${name}さんへのサンクスカード` });
   await expect(sheet).toBeVisible();

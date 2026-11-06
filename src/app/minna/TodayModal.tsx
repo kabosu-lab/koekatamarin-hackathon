@@ -4,6 +4,13 @@ import { Icon } from "@/app/Icon";
 import { createContext, type CSSProperties, type KeyboardEvent, type PointerEvent, type ReactNode, useContext, useEffect, useRef, useState } from "react";
 import { Avatar } from "../Avatar";
 import { ThanksEntry } from "../thanks/ThanksCard";
+import { thanksEntryLabel } from "@/lib/thanks-kind";
+
+/** 投稿の種類に合う入口だけ置く。困りごと・悩みには置かない */
+function CardThanks({ card }: { card: { authorId: string; authorName: string; authorLabel: string; kind: string } }) {
+  const label = thanksEntryLabel(card.kind);
+  return label ? <ThanksEntry person={{ id: card.authorId, name: card.authorName, label: card.authorLabel }} label={label} /> : null;
+}
 import { ReplyField } from "./ReplyField";
 import { TODAY_SEEN_COOKIE } from "./today-seen";
 
@@ -33,6 +40,7 @@ export type TodayModalCard = {
   /** 3人のあとの、関係のありそうな投稿 */
   related: boolean;
   reason?: string;
+  kind: string;
 };
 
 const reducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -280,7 +288,7 @@ export function TodayModal({ cards }: { cards: TodayModalCard[] }) {
                   liked={card.liked}
                   replyCount={card.replyCount}
                 />
-                <ThanksEntry person={{ id: card.authorId, name: card.authorName, label: card.authorLabel }} />
+                <CardThanks card={card} />
               </article>
             ))}
             <section className="minna-today-card minna-today-end" aria-label="おしまい" aria-hidden={index !== last} inert={index !== last}>

@@ -29,6 +29,7 @@ import { TodayEntrance, TodayModal, type TodayModalCard, TodayProvider } from ".
 import { teamsUrl } from "./teams-link";
 import { TODAY_SEEN_COOKIE } from "./today-seen";
 import { ThanksEntry } from "../thanks/ThanksCard";
+import { thanksEntryLabel } from "@/lib/thanks-kind";
 import type { PostView } from "@/lib/destination/types";
 import "./minna.css";
 
@@ -89,6 +90,7 @@ export default async function MinnaPage({ searchParams }: { searchParams: Promis
     replyCount: card.replyCount,
     related,
     reason: related ? card.relatedReason : undefined,
+    kind: card.kind,
   }));
   // その日はじめて開いたときだけ自動で出す。広い画面の左右の欄（iframe）と、動画用の早回しでは出さない
   const embedded = (await headers()).get("sec-fetch-dest") === "iframe";
@@ -195,7 +197,8 @@ export default async function MinnaPage({ searchParams }: { searchParams: Promis
                               <small>{shortAgo(reply.createdAt, now)}</small>
                             </span>
                             <p className="minna-post-body">{reply.body}</p>
-                            {reply.authorId !== viewer.id && <ThanksEntry person={{ id: reply.authorId, name: reply.authorName, label: reply.authorLabel }} />}
+                            {/* 助けてもらった場所：自分の投稿への返事にだけ置く */}
+                            {post.authorId === viewer.id && reply.authorId !== viewer.id && <ThanksEntry person={{ id: reply.authorId, name: reply.authorName, label: reply.authorLabel }} />}
                           </li>
                         ))}
                       </ul>
@@ -234,7 +237,7 @@ export default async function MinnaPage({ searchParams }: { searchParams: Promis
 /** 0-2j：頑張りの投稿には「おめでとう」、お知らせや報告には「ありがとう」。困りごとの投稿には置かない（返事で応える） */
 function PostThanks({ post, viewerId }: { post: PostView; viewerId: string }) {
   if (post.authorId === viewerId) return null;
-  const label = post.kind === "effort" ? "おめでとう" : post.kind === "notice" || post.kind === "report" ? "ありがとう" : null;
+  const label = thanksEntryLabel(post.kind);
   if (!label) return null;
   return <ThanksEntry person={{ id: post.authorId, name: post.authorName, label: post.authorLabel }} label={label} />;
 }
