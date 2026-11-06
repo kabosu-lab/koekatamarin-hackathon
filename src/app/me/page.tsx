@@ -38,6 +38,7 @@ import { DeviceFrame } from "../DeviceFrame";
 import { type MeTileKey, resolveOpenKey } from "./tiles";
 import { Reflection } from "./Reflection";
 import { SoFar } from "./SoFar";
+import { getSoFar } from "@/lib/so-far";
 import { PersonSwitcher } from "../PersonSwitcher";
 import { selectablePeople } from "@/lib/people";
 import { isTrialMode, onlyStudentsSelectable } from "@/lib/trial";
@@ -73,7 +74,13 @@ export default async function MePage({ searchParams }: { searchParams: Promise<{
   const openKey = resolveOpenKey(typeof requested === "string" ? requested : undefined);
 
   // 0-2b：タイルは6枚（3列×2段）。受信箱は「みんな」とホイール、話の履歴は「話す」の会話に任せる
-  const tiles: { key: MeTileKey; label: string; icon: IconName; badge?: string; content: () => ReactNode }[] = [
+  const tiles: {
+    key: MeTileKey;
+    label: string;
+    icon: IconName;
+    badge?: string;
+    content: () => ReactNode;
+  }[] = [
     {
       key: "daily",
       label: noun,
@@ -163,16 +170,32 @@ export default async function MePage({ searchParams }: { searchParams: Promise<{
               </button>
             </form>
           )}
-          {appearance.theme !== "modern" && appearance.avatar === "hide" && <p className="muted">パートナーは隠しています。裏で育っています。</p>}
+          {appearance.theme !== "modern" && appearance.avatar === "hide" && (
+            <p className="muted">パートナーは隠しています。裏で育っています。</p>
+          )}
           {evolution !== null && rewards && <EvolutionCard key={evolution} />}
+          {/* 案に置き場所がないので、ようすは今のままパートナーの中に置く */}
+          <Link className="me-sub-link" href="/yousu">
+            ようす（パートナーの姿と、これまでの数）
+          </Link>
           {rewards && photoState.status === "pending" && <ArtRefresher />}
           {rewards && photoState.canUsePhoto && (
-            <AvatarFromPhoto label={photos.label} failed={photoState.status === "failed"} eggImage={`/api/avatar/art/${roomToken(db, viewer.id)}/egg`} />
+            <AvatarFromPhoto
+              label={photos.label}
+              failed={photoState.status === "failed"}
+              eggImage={`/api/avatar/art/${roomToken(db, viewer.id)}/egg`}
+            />
           )}
           {rewards && !avatar.family && (
             <AvatarQuiz
-              kindQuestion={{ question: KIND_QUESTION.question, options: KIND_QUESTION.options }}
-              styleQuestion={{ question: STYLE_QUESTION.question, options: STYLE_QUESTION.options }}
+              kindQuestion={{
+                question: KIND_QUESTION.question,
+                options: KIND_QUESTION.options,
+              }}
+              styleQuestion={{
+                question: STYLE_QUESTION.question,
+                options: STYLE_QUESTION.options,
+              }}
             />
           )}
           {rewards && (
@@ -298,6 +321,8 @@ export default async function MePage({ searchParams }: { searchParams: Promise<{
                 assists: counts.assists,
                 thanks: counts.thanksReceived,
               }}
+              story={getSoFar(db, viewer.id, now)}
+              rewards={rewards}
             />
           </>
         )}

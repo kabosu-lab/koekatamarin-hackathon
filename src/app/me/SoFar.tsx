@@ -1,6 +1,8 @@
 "use client";
 
-import { type CSSProperties, type ReactNode, useEffect, useState } from "react";
+import { type CSSProperties, useEffect, useState } from "react";
+import type { SoFarStory as Story } from "@/lib/so-far";
+import { SoFarStory } from "./SoFarStory";
 import { playCommitPop, playReachedSound } from "../sound";
 import { digitColumns, parseCounts, planRoll, ROLL_MS, type RollPlan, SO_FAR_ITEMS, type SoFarCounts } from "./so-far-roll";
 import "./so-far.css";
@@ -41,19 +43,21 @@ function Digits({ from, to }: { from: number; to: number }) {
 
 /**
  * 0-2b 第2段：タイルの下の「これまで」の帯。前に見たときから増えた数字だけが転がる。
- * 前回値は sessionStorage。押すと、children（インフォグラフィック）を開く。
+ * 前回値は sessionStorage。押すと、インフォグラフィック（SoFarStory）が開く。
  */
 export function SoFar({
   personId,
   counts,
-  onOpen,
-  children,
+  story,
+  rewards,
 }: {
   personId: string;
   counts: SoFarCounts;
-  onOpen?: () => void;
-  children?: ReactNode;
+  /** 押すと開くインフォグラフィックの材料 */
+  story: Story;
+  rewards: boolean;
 }) {
+  const [open, setOpen] = useState(false);
   const [plan, setPlan] = useState<RollPlan | null>(null);
   const [reduced, setReduced] = useState(false);
   // 数が変わったときだけ動く（同じ数で描き直しても転がらない）
@@ -95,42 +99,53 @@ export function SoFar({
   const rows = [SO_FAR_ITEMS.filter((item) => !item.helped), SO_FAR_ITEMS.filter((item) => item.helped)];
 
   return (
-    <section className="card me-so-far" aria-label="これまで" data-rolling={plan ? "" : undefined} data-reduced={reduced ? "" : undefined}>
-      <button type="button" className="so-far-band" onClick={onOpen} aria-haspopup={onOpen ? "dialog" : undefined}>
-        {rows.map((row, index) => (
-          <span className="so-far-row" key={index} data-helped={index === 1 ? "" : undefined}>
-            {row.map((item) => {
-              const value = counts[item.key];
-              const roll = plan?.rolls.find((candidate) => candidate.key === item.key);
-              return (
-                <span className="so-far-item" key={item.key} data-zero={value === 0 ? "" : undefined}>
-                  {item.label}{" "}
-                  {roll && !reduced ? (
-                    <span className="so-far-num" style={{ "--delay": `${roll.delay}ms` } as CSSProperties}>
-                      <span className="visually-hidden">{value}</span>
-                      <Digits from={roll.from} to={roll.to} />
-                    </span>
-                  ) : (
-                    <span className="so-far-num">{value}</span>
-                  )}
-                  {roll && (
-                    <span
-                      className="so-far-up"
-                      style={{ "--landing": `${reduced ? 0 : roll.delay + ROLL_MS}ms` } as CSSProperties}
-                    >
-                      ▲+{roll.to - roll.from}
-                    </span>
-                  )}
-                </span>
-              );
-            })}
+    <>
+      <section
+        className="card me-so-far"
+        aria-label="これまで"
+        data-rolling={plan ? "" : undefined}
+        data-reduced={reduced ? "" : undefined}
+      >
+        <button type="button" className="so-far-band" onClick={() => setOpen(true)} aria-haspopup="dialog">
+          {rows.map((row, index) => (
+            <span className="so-far-row" key={index} data-helped={index === 1 ? "" : undefined}>
+              {row.map((item) => {
+                const value = counts[item.key];
+                const roll = plan?.rolls.find((candidate) => candidate.key === item.key);
+                return (
+                  <span className="so-far-item" key={item.key} data-zero={value === 0 ? "" : undefined}>
+                    {item.label}{" "}
+                    {roll && !reduced ? (
+                      <span className="so-far-num" style={{ "--delay": `${roll.delay}ms` } as CSSProperties}>
+                        <span className="visually-hidden">{value}</span>
+                        <Digits from={roll.from} to={roll.to} />
+                      </span>
+                    ) : (
+                      <span className="so-far-num">{value}</span>
+                    )}
+                    {roll && (
+                      <span
+                        className="so-far-up"
+                        style={
+                          {
+                            "--landing": `${reduced ? 0 : roll.delay + ROLL_MS}ms`,
+                          } as CSSProperties
+                        }
+                      >
+                        ▲+{roll.to - roll.from}
+                      </span>
+                    )}
+                  </span>
+                );
+              })}
+            </span>
+          ))}
+          <span className="so-far-more" aria-hidden="true">
+            ›
           </span>
-        ))}
-        <span className="so-far-more" aria-hidden="true">
-          ›
-        </span>
-      </button>
-      {children}
-    </section>
+        </button>
+      </section>
+      <SoFarStory open={open} onClose={() => setOpen(false)} story={story} rewards={rewards} />
+    </>
   );
 }

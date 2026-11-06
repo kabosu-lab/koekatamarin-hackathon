@@ -1,0 +1,478 @@
+/*
+ * 0-2b 第3段：「これまで」のインフォグラフィック。
+ * 色は背景・文字・--accent・薄い下地の4つ。紙吹雪や星は使わない。
+ * 動かすのは transform と opacity だけ：棒は scaleY、線は scaleX、点と葉は scale。
+ * 標準 cubic-bezier(0.2, 0.8, 0.2, 1)、ばね cubic-bezier(0.34, 1.56, 0.64, 1)。
+ */
+.so-far-story .bottom-sheet-panel {
+  width: 100%;
+  height: 100dvh;
+  max-height: 100dvh;
+  border-radius: 0;
+  background: var(--surface, #fff);
+  color: var(--ink);
+}
+
+/* せり上がりは 220ms、暗幕は 160ms（案のとおり） */
+.so-far-story .bottom-sheet[data-state="open"] .bottom-sheet-panel {
+  transition:
+    transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    opacity 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.so-far-story .bottom-sheet[data-state="open"] .bottom-sheet-scrim {
+  transition: opacity 160ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.so-far-story .bottom-sheet-body {
+  display: flex;
+  flex-direction: column;
+}
+
+.so-far-scene {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  min-height: 0;
+  padding: 8px 0 16px;
+  text-align: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.so-far-scene h2 {
+  margin: 0;
+  color: var(--muted);
+  font-size: 1rem;
+  letter-spacing: 0.08em;
+}
+
+.so-far-hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+  opacity: 0.7;
+}
+
+.so-far-big {
+  margin: 0;
+  font-size: clamp(1.8rem, 6dvh, 2.6rem);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.so-far-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.so-far-actions > * {
+  display: inline-flex;
+  flex: 1 1 0;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  max-width: 14rem;
+}
+
+.so-far-read {
+  border-radius: 1.1rem;
+  background: var(--accent);
+  color: var(--on-accent, #fff);
+  font-weight: 800;
+  text-decoration: none;
+}
+
+/* 共通の出方：下から 8px、200ms 標準 */
+.so-far-rise {
+  animation: so-far-rise 200ms cubic-bezier(0.2, 0.8, 0.2, 1) var(--at, 0ms) both;
+}
+
+.so-far-pop {
+  animation: so-far-pop 220ms cubic-bezier(0.34, 1.56, 0.64, 1) var(--at, 600ms) both;
+}
+
+@keyframes so-far-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes so-far-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* ① はじまり：卵から今の姿へ点線が伸びる */
+.so-far-begin,
+.so-far-first {
+  display: grid;
+  gap: 18px;
+  justify-items: center;
+}
+
+.so-far-path {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.so-far-egg {
+  width: 40px;
+  height: 50px;
+  fill: var(--surface, #fff);
+  stroke: var(--accent);
+  stroke-width: 2;
+}
+
+.so-far-dash {
+  display: block;
+  width: 120px;
+  height: 0;
+  border-top: 3px dotted var(--accent);
+  transform-origin: 0 50%;
+  animation: so-far-grow-x 600ms cubic-bezier(0.2, 0.8, 0.2, 1) 200ms both;
+}
+
+@keyframes so-far-grow-x {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+/* ② 積み上がる棒：1マス＝1回。右の3本（人の役に立った数）は薄い下地で区切る */
+.so-far-bars {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 6px;
+  width: min(100%, 28rem);
+  align-items: end;
+}
+
+.so-far-bar {
+  display: grid;
+  gap: 4px;
+  justify-items: center;
+  padding: 6px 2px;
+  border-radius: 10px;
+}
+
+.so-far-bar[data-helped] {
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+.so-far-cells {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 3px;
+  justify-content: flex-start;
+  height: calc(12 * 15px);
+  width: 70%;
+}
+
+.so-far-cells i {
+  display: block;
+  height: 12px;
+  border-radius: 3px;
+  background: var(--accent);
+  transform-origin: 50% 100%;
+  animation: so-far-grow-y 160ms cubic-bezier(0.2, 0.8, 0.2, 1) var(--at, 0ms) both;
+}
+
+@keyframes so-far-grow-y {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+
+.so-far-bar strong {
+  font-size: 1.1rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.so-far-bar strong[data-zero] {
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1.6rem;
+}
+
+.so-far-bar small {
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+/* ③ 届いた日の点：週×曜日。色は1色、週末も同じ。連続を強調しない */
+.so-far-days-wrap {
+  display: grid;
+  gap: 14px;
+  justify-items: center;
+}
+
+.so-far-days {
+  display: grid;
+  grid-auto-flow: column;
+  grid-template-rows: repeat(7, 12px);
+  grid-auto-columns: 12px;
+  gap: 4px;
+  max-width: 100%;
+}
+
+.so-far-days i {
+  display: block;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--ink) 10%, transparent);
+}
+
+.so-far-days i[data-reached],
+.so-far-days i[data-study] {
+  animation: so-far-dot 200ms cubic-bezier(0.34, 1.56, 0.64, 1) var(--at, 0ms) both;
+}
+
+.so-far-days i[data-reached] {
+  background: var(--accent);
+}
+
+.so-far-days i[data-study] {
+  background: color-mix(in srgb, var(--accent) 40%, transparent);
+}
+
+@keyframes so-far-dot {
+  from {
+    transform: scale(0);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+.so-far-after {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.so-far-after small {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 400;
+}
+
+/* ④ つながりの線：線は自分の側から scaleX で伸び、着いたら名前がばねで止まる */
+.so-far-web {
+  position: relative;
+  width: min(100%, 22rem, 46dvh);
+  aspect-ratio: 1;
+}
+
+.so-far-line {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 30%;
+  height: 2px;
+  background: var(--accent);
+  transform-origin: 0 50%;
+  transform: rotate(var(--angle)) scaleX(1);
+  animation: so-far-line 260ms cubic-bezier(0.2, 0.8, 0.2, 1) var(--at, 0ms) both;
+}
+
+@keyframes so-far-line {
+  from {
+    transform: rotate(var(--angle)) scaleX(0);
+  }
+  to {
+    transform: rotate(var(--angle)) scaleX(1);
+  }
+}
+
+.so-far-person {
+  position: absolute;
+  max-width: 7.5em;
+  font-size: 0.85rem;
+  font-weight: 700;
+  line-height: 1.3;
+  translate: -50% -50%;
+  animation: so-far-arrive 260ms cubic-bezier(0.34, 1.56, 0.64, 1) var(--at, 0ms) both;
+}
+
+@keyframes so-far-arrive {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.so-far-me {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--surface, #fff);
+  box-shadow: 0 0 0 2px var(--accent);
+  font-weight: 800;
+  translate: -50% -50%;
+}
+
+.so-far-me img {
+  width: 56px;
+  height: 56px;
+}
+
+.so-far-more-people {
+  position: absolute;
+  right: 0;
+  bottom: -8px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+/* ⑤ 桜とパートナー：葉が1枚ずつ枝へ飛んで着く */
+.so-far-tree,
+.so-far-tree-text {
+  display: grid;
+  gap: 12px;
+  justify-items: center;
+  width: min(100%, 26rem);
+}
+
+.so-far-branch {
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.so-far-branch path {
+  fill: none;
+  stroke: color-mix(in srgb, var(--ink) 55%, transparent);
+  stroke-width: 4;
+  stroke-linecap: round;
+}
+
+.so-far-leaf {
+  fill: var(--accent);
+  rotate: -30deg;
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+  animation: so-far-leaf 600ms cubic-bezier(0.2, 0.8, 0.2, 1) var(--at, 0ms) both;
+}
+
+@keyframes so-far-leaf {
+  from {
+    opacity: 0;
+    translate: 0 60px;
+    scale: 0.4;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+    scale: 1;
+  }
+}
+
+.so-far-stages {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.so-far-trophies,
+.so-far-words {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.so-far-words li {
+  font-size: 1.1rem;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.so-far-words small {
+  display: block;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+/* データ0の人：枝に光る空の場所が呼吸する */
+.so-far-empty-leaf {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2;
+  stroke-dasharray: 3 3;
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+  animation: so-far-breathe 2s ease-in-out infinite;
+}
+
+@keyframes so-far-breathe {
+  0%,
+  100% {
+    opacity: 0.4;
+    scale: 0.9;
+  }
+  50% {
+    opacity: 1;
+    scale: 1.1;
+  }
+}
+
+/* 動きを減らす設定：全部の場面を静止で縦に並べ、スクロールで読む */
+.so-far-still {
+  display: grid;
+  gap: 28px;
+  padding-bottom: 16px;
+}
+
+.so-far-still .so-far-scene {
+  cursor: default;
+}
+
+.so-far-story[data-reduced] *,
+.so-far-story[data-reduced] *::before {
+  animation: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .so-far-story * {
+    animation: none !important;
+  }
+}

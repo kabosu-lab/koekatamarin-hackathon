@@ -1,4 +1,5 @@
-import { expect, test } from "@playwright/test";
+import { expect, type Locator, type Page, test } from "@playwright/test";
+import { PROMISE_SEEN } from "./promise-seen";
 import { switchPerson } from "./helpers";
 
 // 0-2b：履歴と設定の「これまで」。帯（第2段）と、押すと開くインフォグラフィック（第3段）
@@ -27,4 +28,98 @@ test("「これまで」の帯は、前に見たときから増えた数だけ�
   await expect(band.locator(".so-far-item", { has: page.locator(".so-far-up") })).toContainText("届けた");
   // 転がり終わると、ただの数に戻る
   await expect(page.locator(".me-so-far[data-rolling]")).toHaveCount(0, { timeout: 5000 });
+});
+
+/** 場面の上をそのまま押す（場面の中は動き続けるので、止まるのを待たずに指で押すのと同じに） */
+async function tap(page: Page, scene: Locator) {
+  const box = (await scene.boundingBox())!;
+  await page.mouse.click(box.x + box.width / 2, box.y + 40);
+}
+
+async function openStory(page: Page) {
+  const moment = page.locator(".ribbon-moment");
+  if (await moment.isVisible().catch(() => false)) await moment.click();
+  await page.getByRole("region", { name: "これまで" }).getByRole("button").click();
+  const story = page.getByRole("dialog", { name: "これまで" });
+  await expect(story).toBeVisible();
+  return story;
+}
+
+test("帯を押すとインフォグラフィックが開き、押すたびに場面が1から6へ進み、下へなでると閉じる", async ({ page }) => {
+  await page.goto("/");
+  await switchPerson(page, "川村 陽菜（理科・1年副担任）");
+  await page.goto("/me");
+  const story = await openStory(page);
+  const scene = story.locator("[data-scene]");
+  await expect(scene).toHaveAttribute("data-scene", "1");
+  await page.waitForTimeout(400);
+  await page.screenshot({ path: test.info().outputPath("so-far-1.png") });
+  // 描き終わりを撮る。場面の長さ（②2.8s ③2.0s ④2.5s ⑤2.5s）より短く待ち、押して次へ
+  const settle: Record<string, number> = { "2": 2200, "3": 1300, "4": 1800, "5": 1800, "6": 800 };
+  for (const next of ["2", "3", "4", "5", "6"]) {
+    await tap(page, scene);
+    await expect(scene).toHaveAttribute("data-scene", next);
+    await page.waitForTimeout(settle[next]);
+    await page.screenshot({ path: test.info().outputPath(`so-far-${next}.png`) });
+  }
+  // 終わりは2つだけ
+  await expect(story.getByRole("link", { name: "ふりかえりを読む" })).toBeVisible();
+  await expect(story.getByRole("button", { name: "閉じる", exact: true })).toBeVisible();
+  // 順位や連続の言葉は出さない
+  await expect(story.getByText(/連続|順位|位$/)).toHaveCount(0);
+
+  // 取っ手を下へなでおろすと閉じる
+  const grip = story.locator(".bottom-sheet-grip");
+  const box = (await grip.boundingBox())!;
+  const x = box.x + box.width / 2;
+  const y = box.y + box.height / 2;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x, y + 60, { steps: 4 });
+  await page.mouse.move(x, y + 160, { steps: 4 });
+  await page.mouse.up();
+  await expect(story).toBeHidden();
+});
+
+test("押さなくても場面は進み、最後で止まる", async ({ page }) => {
+  await page.goto("/");
+  await switchPerson(page, "川村 陽菜（理科・1年副担任）");
+  await page.goto("/me");
+  const story = await openStory(page);
+  await expect(story.locator("[data-scene]")).toHaveAttribute("data-scene", "3", { timeout: 6000 });
+  await expect(story.locator("[data-scene]")).toHaveAttribute("data-scene", "6", { timeout: 14_000 });
+  await expect(story.getByRole("link", { name: "ふりかえりを読む" })).toBeVisible();
+});
+
+test("まだ何もない人は「はじまりの日」の場面になり、「まだ0」や「なし」は出ない", async ({ page }) => {
+  await page.goto("/");
+  await switchPerson(page, "藤本 恵（教頭）");
+  await page.goto("/me");
+  const story = await openStory(page);
+  const scene = story.locator("[data-scene]");
+  await tap(page, scene);
+  await expect(scene).toHaveAttribute("data-scene", "start");
+  await expect(story).toContainText("今日の一言が、最初の葉になる");
+  await page.waitForTimeout(800);
+  await page.screenshot({ path: test.info().outputPath("so-far-empty.png") });
+  await tap(page, scene);
+  await expect(scene).toHaveAttribute("data-scene", "6");
+  await expect(story.getByText(/まだ0|なし|連続|順位/)).toHaveCount(0);
+});
+
+// 見た目は1つになったので、案の「モダン」はパートナーを隠したとき（報酬を出さないとき）にあたる
+test("パートナーを隠しているときは卵や枝の絵を描かず、葉の数を文字で出す", async ({ browser }) => {
+  const context = await browser.newContext({ baseURL: test.info().project.use.baseURL });
+  await context.addCookies([...PROMISE_SEEN, { name: "koekata_avatar", value: "hide", domain: "127.0.0.1", path: "/" }]);
+  const page = await context.newPage();
+  await page.goto("/me");
+  const story = await openStory(page);
+  const scene = story.locator("[data-scene]");
+  for (const next of ["2", "3", "4", "5"]) {
+    await tap(page, scene);
+    await expect(scene).toHaveAttribute("data-scene", next);
+    await expect(story.locator("svg")).toHaveCount(0);
+    if (next === "5") await expect(story).toContainText(/葉 \d+枚/);
+  }
+  await context.close();
 });

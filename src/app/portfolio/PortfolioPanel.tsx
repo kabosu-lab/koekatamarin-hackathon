@@ -15,7 +15,10 @@ async function postJson(url: string, body: unknown) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-  return { ok: response.ok, data: (await response.json().catch(() => ({}))) as Record<string, unknown> };
+  return {
+    ok: response.ok,
+    data: (await response.json().catch(() => ({}))) as Record<string, unknown>,
+  };
 }
 
 const errorOf = (data: Record<string, unknown>, fallback: string) => (typeof data.error === "string" ? data.error : fallback);
@@ -95,7 +98,8 @@ export function PortfolioPanel({ initial, channels, recipients, viewerName, noun
   }
 
   async function saveReflection() {
-    if (await act({ action: "save-reflection", text: reflectionDraft }, "残せませんでした。もう一度押してください。")) setReflectionDraft(null);
+    if (await act({ action: "save-reflection", text: reflectionDraft }, "残せませんでした。もう一度押してください。"))
+      setReflectionDraft(null);
   }
 
   async function removeEntry(entry: PortfolioEntry) {
@@ -141,7 +145,12 @@ export function PortfolioPanel({ initial, channels, recipients, viewerName, noun
     setBusy(true);
     setNotice("");
     try {
-      const { ok, data } = await postJson("/api/publish", { text: draft, channelId, kind: "report", scope });
+      const { ok, data } = await postJson("/api/publish", {
+        text: draft,
+        channelId,
+        kind: "report",
+        scope,
+      });
       if (!ok) {
         setNotice(errorOf(data, "まだ送っていません。もう一度押してください。"));
         return;
@@ -163,7 +172,9 @@ export function PortfolioPanel({ initial, channels, recipients, viewerName, noun
     setBusy(true);
     setNotice("");
     try {
-      const { ok, data } = await postJson("/api/publish/undo", { postId: sentPostId });
+      const { ok, data } = await postJson("/api/publish/undo", {
+        postId: sentPostId,
+      });
       if (ok) {
         setSentPostId(null);
         setNotice("取り消しました。");
@@ -201,7 +212,12 @@ export function PortfolioPanel({ initial, channels, recipients, viewerName, noun
           </>
         ) : (
           <>
-            <button type="button" className={portfolio.reflection ? "secondary" : undefined} disabled={busy} onClick={() => void writeReflection()}>
+            <button
+              type="button"
+              className={portfolio.reflection ? "secondary" : undefined}
+              disabled={busy}
+              onClick={() => void writeReflection()}
+            >
               {portfolio.reflection ? "書き直してもらう" : "パートナーにふりかえりを書いてもらう"}
             </button>
             {portfolio.reflection && (
@@ -217,7 +233,8 @@ export function PortfolioPanel({ initial, channels, recipients, viewerName, noun
           </>
         )}
         <p className="muted">
-          成績や評価ではありません。材料は{noun}、投稿、もらったありがとう、足したもので、パートナーとの話そのものは渡しません。押して残すまで保存しません。
+          成績や評価ではありません。材料は{noun}
+          、投稿、もらったありがとう、足したもので、パートナーとの話そのものは渡しません。押して残すまで保存しません。
         </p>
       </section>
 
@@ -275,7 +292,9 @@ export function PortfolioPanel({ initial, channels, recipients, viewerName, noun
                     type="button"
                     className="secondary"
                     disabled={busy}
-                    onClick={() => void act({ action: "add", kind: entry.kind, ref: entry.ref }, "足せませんでした。もう一度押してください。")}
+                    onClick={() =>
+                      void act({ action: "add", kind: entry.kind, ref: entry.ref }, "足せませんでした。もう一度押してください。")
+                    }
                   >
                     足す
                   </button>
@@ -312,7 +331,11 @@ export function PortfolioPanel({ initial, channels, recipients, viewerName, noun
             )}
             {shareableEntries.map((entry) => (
               <label className="daily-item" key={keyOf(entry)}>
-                <input type="checkbox" checked={picks.includes(keyOf(entry))} onChange={(event) => togglePick(keyOf(entry), event.target.checked)} />
+                <input
+                  type="checkbox"
+                  checked={picks.includes(keyOf(entry))}
+                  onChange={(event) => togglePick(keyOf(entry), event.target.checked)}
+                />
                 <span>
                   {entry.label}：{entry.text}
                 </span>
