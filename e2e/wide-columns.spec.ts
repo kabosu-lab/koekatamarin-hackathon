@@ -156,11 +156,24 @@ test("iPhone の横（844×390）では「縦にして使ってね」の絵が�
 });
 
 test("動きを減らす設定では、縦にしての絵は回らない", async ({ browser }) => {
-  const context = await browser.newContext({ viewport: { width: 844, height: 390 }, reducedMotion: "reduce" });
+  const context = await browser.newContext({ viewport: { width: 844, height: 390 }, hasTouch: true, isMobile: true, reducedMotion: "reduce" });
   const page = await context.newPage();
   await page.goto("/");
   await expect(page.getByRole("status", { name: "縦にして使ってね" })).toBeVisible();
   expect(await page.locator(".rotate-hint-phone").evaluate((element) => getComputedStyle(element).animationName)).toBe("none");
+  await context.close();
+});
+
+test("パソコンの低いウィンドウ（1280×560、マウス）では「縦にして」を出さず、1画面のまま使える", async ({ browser }) => {
+  const context = await browser.newContext({ viewport: { width: 1280, height: 560 }, hasTouch: false, isMobile: false });
+  const page = await context.newPage();
+  await page.goto("/inbox");
+  await expect(page).toHaveURL(/\/inbox$/);
+  await expect(page.getByRole("heading", { name: "受信箱", level: 1 })).toBeVisible();
+  await expect(page.getByRole("status", { name: "縦にして使ってね" })).toBeHidden();
+  await page.goto("/");
+  await expect(page.locator("iframe")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "押し続けて話す" })).toBeVisible();
   await context.close();
 });
 
