@@ -12,6 +12,7 @@ import { TRIAL_PROMISE_SHORT } from "@/lib/trial";
 import { useKeepsWords, useTrial } from "./TrialContext";
 import { HeardLine } from "./HeardLine";
 import { PartnerGreeting, usePartnerInvite } from "./PartnerGreeting";
+import { PartnerBackdrop } from "./PartnerBackdrop";
 import { usePartnerTap } from "./partner-tap";
 import { inviteLine, nextPartnerLine, partnerHour, type PartnerLine } from "@/lib/partner-lines";
 import { useRouter } from "next/navigation";
@@ -1108,6 +1109,7 @@ export function Talk({
           {composeView}
         </BottomSheet>
         <section className="lcd" aria-label="パートナーの画面">
+          <PartnerBackdrop owner={viewerId} role={viewer.role} onRare={(prefix) => setLine((current) => ({ ...current, text: prefix + current.text }))} />
           <WheelCarousel
             ref={carouselRef}
             items={WHEEL_CHIPS}

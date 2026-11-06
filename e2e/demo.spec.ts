@@ -116,6 +116,8 @@ test("先生の一日：話しかける、返す、パス、サンクス、日�
   await box.click();
   await expect(box).toBeChecked();
   await shot(page, "07-日報");
+  await page.getByRole("button", { name: /^藤本先生に届ける（\d+件）$/ }).click();
+  await expect(page).toHaveURL(/\/me$/);
 
   // 一言が返る
   await page.goto("/");
@@ -142,6 +144,8 @@ test("先生の一日：話しかける、返す、パス、サンクス、日�
   const diary = page.getByRole("checkbox", { name: /過去問が半分解けた/ });
   await diary.click();
   await expect(diary).toBeChecked();
+  await page.getByRole("button", { name: /先生に届ける（\d+件）$/ }).click();
+  await expect(page).toHaveURL(/\/me$/);
 
   await page.goto("/");
   await switchPerson(page, TEACHER);

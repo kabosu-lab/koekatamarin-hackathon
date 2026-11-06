@@ -32,6 +32,7 @@ import { GiftEggs } from "./GiftEggs";
 import { listCompanions, listGiftEggs, syncGiftEggs } from "@/lib/gift-eggs";
 import { RibbonMoment } from "../RibbonMoment";
 import { Ribbons } from "./Ribbons";
+import { BackdropCollection } from "./BackdropCollection";
 import { listNewRibbons, listTrophyShelves, syncRibbonsOnOpen } from "@/lib/ribbons";
 import { showsRewards } from "@/lib/rewards-view";
 import { ArtRefresher, AvatarFromPhoto, AvatarQuiz, MemoryList, ProfileEditor, ThanksForm } from "./MeActions";
@@ -207,6 +208,7 @@ export default async function MePage({ searchParams }: { searchParams: Promise<{
               <h2>コレクション</h2>
               <GiftEggs key={`${viewer.id}-eggs`} eggs={eggs} companions={listCompanions(db, viewer.id)} />
               <Ribbons key={`${viewer.id}-ribbons`} shelves={listTrophyShelves(db, viewer.id)} />
+              <BackdropCollection owner={viewer.id} />
             </section>
           )}
         </>

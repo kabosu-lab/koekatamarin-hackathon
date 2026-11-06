@@ -163,8 +163,13 @@ export function listTodayCards(
     if (first.length >= FIRST_RANDOM) break;
     if (!first.some((p) => p.authorId === post.authorId)) first.push(post);
   }
-  const rest = shuffled.filter((post) => !first.includes(post));
   const weight = (id: string) => related.get(id)?.weight ?? 0;
+  // 同じ人の中では、関係の深い投稿（できた投稿など）を残す
+  for (let i = 0; i < first.length; i += 1) {
+    const best = shuffled.filter((post) => post.authorId === first[i].authorId).reduce((a, b) => (weight(b.id) > weight(a.id) ? b : a), first[i]);
+    first[i] = best;
+  }
+  const rest = shuffled.filter((post) => !first.includes(post));
   const sortedRest = rest.map((post, index) => ({ post, index })).sort((a, b) => weight(b.post.id) - weight(a.post.id) || a.index - b.index).map(({ post }) => post);
   const usedAuthors = new Set(first.map((post) => post.authorId));
   const ordered = [...first];
