@@ -155,3 +155,24 @@ test("届いた日報と日記は受信箱の中の段にまとまり、投稿�
   await report.getByRole("button", { name: "一言を送る" }).click();
   await expect(report.locator(".response-card")).toContainText("よく見直しましたね");
 });
+
+// 0-2q(5)：受信箱に「解決・つないだ」の数は出さず（「これまで」の帯にある）、届いた返事の名前を折らない。広い画面でも1列
+for (const viewport of [
+  { width: 390, height: 844 },
+  { width: 1180, height: 820 },
+]) {
+  test(`受信箱は数の行を出さず、返事の名前を折らない（${viewport.width}×${viewport.height}）`, async ({ page }) => {
+    await page.setViewportSize(viewport);
+    await page.goto("/");
+    await switchPerson(page, "青木 ひより（2年）");
+    await page.goto("/inbox");
+    await expect(page.getByRole("heading", { name: "受信箱", level: 1 })).toBeVisible();
+    await expect(page.getByText(/解決 \d+・つないだ \d+/)).toHaveCount(0);
+    for (const name of await page.locator(".inbox-replies a > strong").all()) {
+      const lineHeight = await name.evaluate((element) => parseFloat(getComputedStyle(element).lineHeight) || 24);
+      expect((await name.boundingBox())!.height).toBeLessThan(lineHeight * 1.6);
+    }
+    // 中身は1列
+    await expect(page.locator("main.page-shell")).toHaveCSS("flex-direction", "column");
+  });
+}

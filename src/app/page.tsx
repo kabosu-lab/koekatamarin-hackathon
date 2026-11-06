@@ -13,7 +13,7 @@ import { listReplyNotices } from "@/lib/reply-notices";
 import { RibbonMoment } from "./RibbonMoment";
 import { isNoticeHours } from "@/lib/inbox";
 import { syncGiftEggs } from "@/lib/gift-eggs";
-import { listNewRibbons, syncRibbons } from "@/lib/ribbons";
+import { listNewRibbons, syncRibbonsOnOpen } from "@/lib/ribbons";
 import { showsRewards } from "@/lib/rewards-view";
 import { Talk } from "./Talk";
 import { WidePanel } from "./WidePanels";
@@ -41,7 +41,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
   const rewards = showsRewards(appearance);
   const avatar = getAvatar(db, viewer.id);
   const look = lumpLookOf(db, viewer.id);
-  syncRibbons(db, viewer.id, new Date());
+  syncRibbonsOnOpen(db, viewer.id, new Date());
   syncGiftEggs(db, viewer.id, new Date());
   syncGiftEggs(db, viewer.id, new Date());
   const question = goalQuestion(db, viewer.id, new Date()) ?? dailyQuestion(new Date());

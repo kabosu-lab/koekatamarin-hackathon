@@ -57,6 +57,7 @@ export default async function MinnaPage({ searchParams }: { searchParams: Promis
   const hasAlerts = !isTrialMode() && viewer.role !== "student" && (viewer.id === counselorId || listAlertsFor(db, viewer.id).length > 0);
   const grown = leavesThisWeek(db, now);
   const destination = getDestination(db);
+  const teamsLink = teamsUrl();
   const channels = destination.listChannels(viewer.id);
   const feed = recentFeed(channels, (channelId) => destination.listPosts(viewer.id, channelId), FEED_LIMIT);
 
@@ -165,11 +166,13 @@ export default async function MinnaPage({ searchParams }: { searchParams: Promis
                   知恵
                 </span>
               </Link>
-              {/* アプリの中の校内チャネルの画面ではなく、本物の Teams を開く */}
-              <a className="minna-dock-item" href={teamsUrl()} target="_blank" rel="noopener noreferrer" aria-label="Teams を開く">
-                <Icon name="chat" />
-                <span>Teams</span>
-              </a>
+              {/* アプリの中の校内チャネルの画面ではなく、本物の Teams を開く。つないでいないときは置かない（0-2q(6)） */}
+              {teamsLink && (
+                <a className="minna-dock-item" href={teamsLink} target="_blank" rel="noopener noreferrer" aria-label="Teams を開く">
+                  <Icon name="chat" />
+                  <span>Teams</span>
+                </a>
+              )}
             </nav>
           }
         >

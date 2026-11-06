@@ -2,7 +2,7 @@ import type { DatabaseSync } from "node:sqlite";
 import { beforeEach, describe, expect, it } from "vitest";
 import { openDatabase } from "./db";
 import { activeEvents, EVENTS, isInEvent } from "./events";
-import { handleRibbon, listNewRibbons, listPublicRibbons, listRibbons, syncRibbons } from "./ribbons";
+import { handleRibbon, listNewRibbons, listPublicRibbons, listRibbons, syncRibbons, syncRibbonsOnOpen } from "./ribbons";
 import { seedDatabase } from "./seed";
 
 const NOW = new Date("2026-11-04T03:00:00Z");
@@ -60,6 +60,26 @@ describe("リボン", () => {
     expect(listNewRibbons(db, "noda").length).toBeGreaterThan(0);
     handleRibbon(db, "noda", { action: "seen" }, NOW);
     expect(listNewRibbons(db, "noda")).toEqual([]);
+  });
+});
+
+describe("開いた直後の知らせ（0-2q(1)）", () => {
+  it("初めて開いたとき、ダミーの投稿でもう満たしていた分は記録だけして知らせない", () => {
+    syncRibbonsOnOpen(db, "aoki", NOW);
+    expect(ids("aoki")).toContain("first-post");
+    expect(listNewRibbons(db, "aoki")).toEqual([]);
+    // 開き直しても出ない
+    syncRibbonsOnOpen(db, "aoki", NOW);
+    expect(listNewRibbons(db, "aoki")).toEqual([]);
+  });
+
+  it("開いたあとに本人がしたことで満たしたものは知らせる", () => {
+    db.prepare("DELETE FROM posts WHERE author_id = 'nakamura'").run();
+    syncRibbonsOnOpen(db, "nakamura", NOW);
+    expect(ids("nakamura")).not.toContain("first-post");
+    db.prepare("INSERT INTO posts (id, channel_id, author_id, kind, body, created_at) VALUES ('post-new-1', 'study', 'nakamura', 'effort', '今日の投稿', ?)").run(NOW.toISOString());
+    syncRibbonsOnOpen(db, "nakamura", NOW);
+    expect(listNewRibbons(db, "nakamura").map((ribbon) => ribbon.id)).toContain("first-post");
   });
 });
 

@@ -1,3 +1,4 @@
+import { type TeamsMode, teamsMode } from "@/lib/destination/teams-bridge";
 import { type GraphConfig, readGraphConfig } from "@/lib/graph/auth";
 
 /** つながりの設定がないときに開く、Teams の入口 */
@@ -17,6 +18,13 @@ export function teamsChannelUrl(config: Pick<GraphConfig, "tenant" | "team" | "c
   return `${TEAMS_HOME}l/channel/${encodeURIComponent(target.channel)}/${encodeURIComponent("校内チャネル")}?${query}`;
 }
 
-export function teamsUrl(): string {
-  return teamsChannelUrl(readGraphConfig());
+/**
+ * 下の帯に「Teams」を置くときの開く先。Teams につないでいないとき（台本モードで設定がない、Teams オフ）は null で、帯から外す（0-2f(4)・0-2q(6)）。
+ */
+export function teamsDockUrl(mode: TeamsMode, config: Parameters<typeof teamsChannelUrl>[0]): string | null {
+  return mode === "off" ? null : teamsChannelUrl(config);
+}
+
+export function teamsUrl(): string | null {
+  return teamsDockUrl(teamsMode(), readGraphConfig());
 }

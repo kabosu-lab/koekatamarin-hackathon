@@ -293,4 +293,39 @@ test.describe("見た目を選んでいない生徒", () => {
     await expect(page.locator(".feedback-fab")).toHaveAttribute("data-bounce", "true");
     await expect(page.getByRole("button", { name: "感想を送る" })).toBeInViewport({ ratio: 1 });
   });
+
+  test("0-2q：注意カードの間は、後ろで吹き出しも実績解除の知らせも出さず、知らせは感想のアイコンに重ならない", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/access");
+    await page.getByLabel("合言葉").fill(CODE);
+    await page.getByRole("button", { name: "入る" }).click();
+    const card = page.getByRole("dialog", { name: "試用版について" });
+    await expect(card).toBeVisible();
+    // カードの後ろでは、問いかけの吹き出しを描かず、知らせも待たせる
+    await page.waitForTimeout(1500);
+    await expect(page.locator(".partner-greeting")).toHaveAttribute("data-waiting", "true");
+    await expect(page.locator(".partner-greeting .partner-bubble")).toBeHidden();
+    await expect(page.locator(".trophy-toast")).toHaveCount(0);
+    await card.getByRole("button", { name: "わかった" }).click();
+    // カードが消えてから、吹き出しが出る
+    await expect(page.locator(".partner-greeting .partner-bubble")).toBeVisible();
+    await expect(page.locator(".partner-greeting")).not.toHaveAttribute("data-waiting", "true");
+
+    // 知らせの置き場（trophy-toast.css）は、右上の感想のアイコンの下。同じ形を置いて重ならないことを確かめる
+    const overlap = await page.evaluate(() => {
+      const layer = document.createElement("div");
+      layer.className = "trophy-toast-layer";
+      layer.innerHTML =
+        '<a class="trophy-toast"><span class="trophy-toast-art"></span><span class="trophy-toast-text"><span class="trophy-toast-title">実績解除！ パートナーのほうが緊張した</span></span></a>';
+      document.body.append(layer);
+      // 出てくる動きの途中ではなく、止まった場所で測る
+      const element = layer.querySelector<HTMLElement>(".trophy-toast")!;
+      element.style.animation = "none";
+      const toast = element.getBoundingClientRect();
+      const fab = document.querySelector(".feedback-fab")!.getBoundingClientRect();
+      layer.remove();
+      return toast.left < fab.right && fab.left < toast.right && toast.top < fab.bottom && fab.top < toast.bottom;
+    });
+    expect(overlap).toBe(false);
+  });
 });

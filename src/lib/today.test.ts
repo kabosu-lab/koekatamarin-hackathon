@@ -30,6 +30,9 @@ const STUDY = "post-study-1"; // 青木さんの投稿
 let db: DatabaseSync;
 let teams: PostDestination;
 
+/** 人ごとに分ける前の、その人のカードに出せる投稿（人気順は人で分けない） */
+const candidatesSeen = (viewer: string) => listPopularCards(teams, viewer).map((c) => c.postId);
+
 beforeEach(() => {
   db = openDatabase(":memory:");
   seedDatabase(db);
@@ -47,7 +50,25 @@ describe("今日のカード", () => {
   it("生徒のカードに職員室の投稿は出ない", () => {
     expect(listTodayCards(teams, "aoki", NOW).map((c) => c.postId)).not.toContain(STAFF);
     expect(listPopularCards(teams, "aoki").map((c) => c.postId)).not.toContain(STAFF);
-    expect(listTodayCards(teams, "saeki", NOW).map((c) => c.postId)).toContain(STAFF);
+    // 人ごとに1枚なので、職員室の投稿の人（川村）のほかの投稿を外して確かめる
+    const others = teams.listChannels("saeki").flatMap((channel) => teams.listPosts("saeki", channel.id));
+    const staffOnly = new Set(others.filter((p) => p.authorId !== "kawamura").map((p) => p.authorId));
+    const kawamuraCard = listTodayCards(teams, "saeki", NOW, staffOnly).find((c) => c.authorId === "kawamura");
+    expect(kawamuraCard).toBeDefined();
+    expect(candidatesSeen("saeki")).toContain(STAFF);
+  });
+
+  it("0-2q(3)：同じ人のカードは1枚だけ（今日の3人に同じ人が2回出ない）", () => {
+    for (const viewer of ["aoki", "saeki", "noda", "kawamura", "ogawara"]) {
+      for (const now of [NOW, NEXT_DAY]) {
+        const authors = listTodayCards(teams, viewer, now).map((c) => c.authorId);
+        expect(new Set(authors).size).toBe(authors.length);
+      }
+    }
+    teams.createPost("noda", "making", "二つ目の投稿", {});
+    teams.createPost("noda", "making", "三つ目の投稿", {});
+    const authors = listTodayCards(teams, "aoki", NOW).map((c) => c.authorId);
+    expect(authors.filter((a) => a === "noda").length).toBeLessThanOrEqual(1);
   });
 
   it("同じ日は同じ順で、日が変わると変わり、人によっても変わる", () => {

@@ -126,3 +126,33 @@ test("パートナーを隠しているときは卵や枝の絵を描かず、�
   }
   await context.close();
 });
+
+test("0-2q(7)：積み上がりで、0 の項目に縦長の薄い柱を出さない", async ({ page }) => {
+  await page.goto("/");
+  await switchPerson(page, "青木 ひより（2年）");
+  await page.goto("/me");
+  const story = await openStory(page);
+  const scene = story.locator("[data-scene]");
+  await tap(page, scene);
+  await expect(scene).toHaveAttribute("data-scene", "2");
+  for (const bar of await story.locator(".so-far-bar[data-helped]").all()) {
+    await expect(bar).toHaveCSS("background-image", "none");
+    await expect(bar).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+  }
+});
+
+test("0-2q(9)：iPad 横の左の欄でも「これまで」の帯は2段に収まり、縦長に折れない", async ({ page }) => {
+  await page.setViewportSize({ width: 1180, height: 820 });
+  await page.goto("/");
+  const panel = page.frameLocator('iframe[title="履歴と設定"]');
+  const band = panel.getByRole("region", { name: "これまで" });
+  await expect(band).toBeVisible();
+  const rows = band.locator(".so-far-row");
+  await expect(rows).toHaveCount(2);
+  for (const row of await rows.all()) {
+    const items = await row.locator(".so-far-item").all();
+    const tops = await Promise.all(items.map(async (item) => Math.round((await item.boundingBox())!.y)));
+    // 1段の3つは同じ高さに並ぶ
+    expect(Math.max(...tops) - Math.min(...tops)).toBeLessThanOrEqual(2);
+  }
+});
