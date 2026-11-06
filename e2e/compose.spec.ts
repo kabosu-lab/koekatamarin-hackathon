@@ -178,7 +178,7 @@ test("人物を切り替えると、前の人の会話は残らない", async ({
 });
 
 test("下書きを作れないときも、話した言葉は残る", async ({ page }) => {
-  await page.route("**/api/draft", (route) => route.fulfill({ status: 503, json: { error: "x" } }));
+  await page.route("**/api/draft/stream", (route) => route.fulfill({ status: 503, json: { error: "x" } }));
   await page.goto("/");
   await say(page, "大事な話");
   await page.getByRole("button", { name: "とどける" }).click();

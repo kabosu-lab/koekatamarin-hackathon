@@ -117,3 +117,75 @@
   font-weight: 700;
   line-height: 1.5;
 }
+
+/* 0-2l：下書きは流れてくるそばから書かれていく。直せる欄と同じ形の中で、カーソルが点滅する */
+.compose-sheet .compose-writing {
+  min-height: 3.2em;
+  margin: 0;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid var(--input-line);
+  border-radius: 0.9rem;
+  background: var(--surface);
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+html[data-theme="modern"] .compose-sheet .compose-writing {
+  border-radius: 0.45rem;
+}
+
+.compose-caret {
+  display: inline-block;
+  width: 2px;
+  height: 1.1em;
+  margin-left: 1px;
+  vertical-align: text-bottom;
+  background: var(--accent);
+  animation: compose-caret-blink 1s steps(1, end) infinite;
+}
+
+@keyframes compose-caret-blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+.compose-sheet .compose-slow {
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.compose-sheet .perception.waiting {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+/* 書き終わったら、パートナーの一言と送り先・範囲が順に現れる */
+.compose-sheet .perception,
+.compose-sheet .compose-chip-field,
+.compose-sheet .compose-audience {
+  animation: compose-rise 220ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+.compose-sheet .compose-chip-field + .compose-chip-field {
+  animation-delay: 60ms;
+}
+
+@keyframes compose-rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .compose-caret {
+    animation: none;
+  }
+
+  .compose-sheet .perception,
+  .compose-sheet .compose-chip-field,
+  .compose-sheet .compose-audience {
+    animation: none;
+  }
+}

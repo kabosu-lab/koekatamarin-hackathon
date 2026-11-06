@@ -57,23 +57,83 @@ test("考え中は、アイコンの横の「…」の吹き出しになる", as
   await expect(waiting).toHaveCount(0);
 });
 
-test("0-1n：下書きを待つ間は、下書きの形が光り、とどけるの縁が回り、3秒を超えたら何をしているかを出す", async ({ page }) => {
-  await page.route("**/api/draft", async (route) => {
+test("0-2l：とどけるを押すとすぐシートが開き、本文はカーソルの点滅とともに書かれ、書き終わるまで送れない", async ({ page }) => {
+  await page.route("**/api/draft/stream", async (route) => {
     await new Promise((done) => setTimeout(done, 3600));
     await route.continue();
   });
   await page.goto("/");
   const input = page.getByLabel("パートナーに書く");
-  await input.fill("今日の授業、急に静かになった瞬間があって");
+  const words = `今日の授業、急に静かになった瞬間があって ${test.info().testId}`;
+  await input.fill(words);
   await input.press("Enter");
   await expect(page.getByRole("log").locator(".bubble.assistant:not(.waiting)")).toHaveCount(1);
-  const deliver = page.getByRole("button", { name: /とどける/ });
-  await deliver.click();
-  const skeleton = page.locator(".draft-skeleton");
-  await expect(skeleton).toBeVisible();
-  await expect(page.getByRole("button", { name: /作っています/ })).toHaveAttribute("data-busy", "true");
-  await expect(skeleton).toContainText("下書きを作っています", { timeout: 5000 });
-  await expect(page.getByLabel("投稿の文章")).toBeVisible({ timeout: 15000 });
+  await page.getByRole("button", { name: /とどける/ }).click();
+  // 待たずにシートが出て、見出しと Teams での見え方の枠（名前）が先に見える
+  const sheet = page.getByRole("dialog", { name: "こんな言葉でどうかな？" });
+  await expect(sheet).toBeVisible({ timeout: 1000 });
+  await expect(sheet.locator(".preview-author")).toContainText("佐伯 みどり");
+  await expect(sheet.locator(".compose-caret")).toBeVisible();
+  await expect(sheet.getByRole("button", { name: "本人として送る" })).toBeDisabled();
+  // 会話の中の骨組みと「作っています」はもう出さない
+  await expect(page.locator(".draft-skeleton")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /作っています/ })).toHaveCount(0);
+  // 3秒を超えても書き始めないときは、何をしているかを一言
+  await expect(sheet.locator(".compose-slow")).toContainText("下書きを作っています", { timeout: 5000 });
+  // 書き終わると直せる欄になり、受け取られ方が届いたら送れる
+  await expect(page.getByLabel("投稿の文章")).toHaveValue(words, { timeout: 15000 });
+  await expect(sheet.locator(".compose-caret")).toHaveCount(0);
+  await expect(sheet.getByRole("button", { name: "本人として送る" })).toBeEnabled();
+});
+
+test("0-2l：本文は一度に出ず、少しずつ書かれていく", async ({ page }) => {
+  await page.goto("/");
+  const input = page.getByLabel("パートナーに書く");
+  const words = `少しずつ書かれていく下書きを確かめるための、すこし長めの話です ${test.info().testId}`;
+  await input.fill(words);
+  await input.press("Enter");
+  await expect(page.getByRole("log").locator(".bubble.assistant:not(.waiting)")).toHaveCount(1);
+  await page.getByRole("button", { name: /とどける/ }).click();
+  const writing = page.locator(".compose-writing");
+  // 書いている途中の長さを、何度か見る。全部そろう前の途中の長さが見えれば、少しずつ書かれている
+  const seen = new Set<number>();
+  await expect
+    .poll(async () => {
+      const text = (await writing.textContent().catch(() => null)) ?? "";
+      if (text.length > 0 && text.length < words.length) seen.add(text.length);
+      return seen.size;
+    }, { intervals: [20], timeout: 10_000 })
+    .toBeGreaterThan(1);
+  await expect(page.getByLabel("投稿の文章")).toHaveValue(words);
+});
+
+test("0-2l：本人として送るは押した瞬間にシートを閉じて飛ばし、送信に失敗したら下書きを残してやわらかく知らせる", async ({ page }) => {
+  let release: () => void = () => {};
+  const held = new Promise<void>((done) => (release = done));
+  await page.route("**/api/publish", async (route) => {
+    await held;
+    await route.fulfill({ status: 503, json: { error: "x" } });
+  });
+  await page.goto("/");
+  const input = page.getByLabel("パートナーに書く");
+  const words = `失敗しても残る下書き ${test.info().testId}`;
+  await input.fill(words);
+  await input.press("Enter");
+  await expect(page.getByRole("log").locator(".bubble.assistant:not(.waiting)")).toHaveCount(1);
+  await page.getByRole("button", { name: /とどける/ }).click();
+  await expect(page.getByLabel("投稿の文章")).toHaveValue(words);
+  await page.getByRole("button", { name: "本人として送る" }).click();
+  // 送信の結果を待たずに、シートが閉じて言葉が飛ぶ
+  await expect(page.getByRole("dialog", { name: "こんな言葉でどうかな？" })).toBeHidden({ timeout: 1000 });
+  await expect(page.locator(".send-burst")).toHaveCount(1, { timeout: 1000 });
+  release();
+  await expect(page.locator(".notice")).toContainText("下書きは残してあります");
+  // とどけるで開き直すと、同じ言葉で、もう一度送れる
+  await page.getByRole("button", { name: /とどける/ }).click();
+  await expect(page.getByLabel("投稿の文章")).toHaveValue(words);
+  await page.unroute("**/api/publish");
+  await page.getByRole("button", { name: "本人として送る" }).click();
+  await expect(page.getByRole("link", { name: "校内チャネルで見る" })).toBeVisible();
 });
 
 test("0-1l：新しく話すと、前の話は話の履歴に残り、大きなパートナーに戻る", async ({ page }) => {

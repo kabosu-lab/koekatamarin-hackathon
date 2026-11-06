@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { type FormEvent, Fragment, type KeyboardEvent, useEffect, useRef, useState } from "react";
-import type { Draft, Review } from "@/lib/claude/compose";
+import type { Review } from "@/lib/claude/compose";
+import type { DraftStreamEvent } from "@/lib/compose-request";
 import type { ChatMessage } from "@/lib/claude/types";
 import type { ChannelView, PersonView } from "@/lib/destination/types";
 import type { KnowledgeResult } from "@/lib/knowledge";
@@ -20,7 +21,7 @@ import { isCancelPoint } from "@/lib/wheel-carousel";
 import { BottomSheet } from "./BottomSheet";
 import { PartnerIcon } from "./PartnerIcon";
 import { KnowledgeResults } from "./chie/KnowledgeResults";
-import { Compose, type ComposeStart } from "./Compose";
+import { Compose, type ComposeSend, type ComposeStart } from "./Compose";
 import { ConnectCard, type ConnectSuggestion } from "./ConnectCard";
 import { SafetyCard, type SafetyNotice } from "./SafetyCard";
 import { AttachmentPreview } from "./AttachmentPreview";
@@ -160,16 +161,6 @@ export function Talk({
   // シートを閉じても下書き（composing）は残し、とどけるでもう一度開くと続きから
   const [sheetOpen, setSheetOpen] = useState(false);
   const [preparing, setPreparing] = useState(false);
-  // 0-1n：3秒を超えて待たせたら、何をしているかを一言見せる
-  const [preparingSlow, setPreparingSlow] = useState(false);
-  useEffect(() => {
-    if (!preparing) {
-      setPreparingSlow(false);
-      return;
-    }
-    const timer = setTimeout(() => setPreparingSlow(true), 3000);
-    return () => clearTimeout(timer);
-  }, [preparing]);
   const [safety, setSafety] = useState<SafetyNotice | null>(null);
   const [suggestion, setSuggestion] = useState<ConnectSuggestion | null>(null);
   const [burst, setBurst] = useState<string | null>(null);
@@ -390,36 +381,147 @@ export function Talk({
     return response?.ok === true;
   }
 
+  /** 下書きの流れの世代。取り消しや作り直しのあと、古い流れが新しい下書きに混ざらないようにする */
+  const composeRun = useRef(0);
+  const [composeKey, setComposeKey] = useState(0);
+
+  function stopCompose() {
+    composeRun.current += 1;
+    setPreparing(false);
+  }
+
+  // 0-2l：押した瞬間にシートを開き、見出しと Teams の見え方を先に出す。本文は流れてくるそばから書く
   async function startCompose(asked?: { id: string; name: string }, goal = goalForPost) {
+    const run = ++composeRun.current;
+    const live = () => composeRun.current === run;
     setPreparing(true);
     setNotice("");
     setSentTo(null);
+    setComposeKey((key) => key + 1);
+    setComposing({
+      draft: { ready: false, text: "", channelId: "", kind: "report", researchedWithAi: false },
+      review: null,
+      writing: true,
+      channels: [],
+      people: [],
+      asked,
+      goalId: goal?.id,
+      attachment: attachment ? { ...attachment, notices: [] } : undefined,
+    });
+    setSheetOpen(true);
+    const update = (change: (current: ComposeStart) => ComposeStart) => {
+      if (live()) setComposing((current) => (current ? change(current) : current));
+    };
+    const fail = (message: string) => {
+      if (!live()) return;
+      stopCompose();
+      setSheetOpen(false);
+      setComposing(null);
+      setNotice(message);
+    };
+    let drafted = false;
     try {
-      const response = await fetch("/api/draft", {
+      const response = await fetch("/api/draft/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ history: messages.slice(-MAX_HISTORY), askedPersonId: asked?.id, attachmentId: attachment?.id }),
       });
-      if (!response.ok) throw new Error(`status ${response.status}`);
-      const { draft, review, channels, people, attachment: checked } = (await response.json()) as {
-        draft: Draft;
-        review: Review | null;
-        channels: ChannelView[];
-        people: PersonView[];
-        attachment?: ComposeStart["attachment"];
+      if (!response.ok || !response.body) throw new Error(`status ${response.status}`);
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      const handle = (event: DraftStreamEvent) => {
+        if (event.type === "start") {
+          update((current) => ({ ...current, channels: event.channels, people: event.people, attachment: event.attachment ?? current.attachment }));
+        } else if (event.type === "channel") {
+          update((current) => ({ ...current, draft: { ...current.draft, channelId: event.channelId } }));
+        } else if (event.type === "delta") {
+          update((current) => ({ ...current, draft: { ...current.draft, text: current.draft.text + event.text } }));
+        } else if (event.type === "draft") {
+          drafted = true;
+          if (!event.draft.ready) {
+            fail("まだ投稿にできるお話がなさそう。もう少し聞かせてください。");
+            return;
+          }
+          if (live()) setSuggestion(null);
+          update((current) => ({
+            ...current,
+            draft: event.draft,
+            writing: false,
+            attachment: current.attachment && event.notices ? { ...current.attachment, notices: event.notices } : current.attachment,
+          }));
+        } else if (event.type === "review") {
+          update((current) => ({ ...current, review: event.review }));
+        } else {
+          fail("下書きを作れませんでした。もう一度押してください。");
+        }
       };
-      if (!draft.ready || !review) {
-        setNotice("まだ投稿にできるお話がなさそう。もう少し聞かせてください。");
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (!live()) {
+          void reader.cancel().catch(() => {});
+          return;
+        }
+        if (value) buffer += decoder.decode(value, { stream: true });
+        let end: number;
+        while ((end = buffer.indexOf("\n")) >= 0) {
+          const line = buffer.slice(0, end).trim();
+          buffer = buffer.slice(end + 1);
+          if (line) handle(JSON.parse(line) as DraftStreamEvent);
+        }
+        if (done) break;
+      }
+      if (!drafted) throw new Error("stream ended");
+    } catch {
+      fail("下書きを作れませんでした。もう一度押してください。");
+    } finally {
+      if (live()) setPreparing(false);
+    }
+  }
+
+  // 0-2l(2)：「本人として送る」は押した瞬間に送ったあとの動きを始め、送信は裏で進める。失敗したときだけ、あとから知らせる
+  function sendInBackground(start: ComposeStart, { channel, words, isPublic, review, body }: ComposeSend) {
+    stopCompose();
+    setSheetOpen(false);
+    setComposing(null);
+    setSentTo(null);
+    setNotice("");
+    setDeliveredAt(messages.length);
+    // 届けたら、光の段もポンの段も最初に戻す
+    levelRef.current = 0;
+    setLevel(0);
+    popStep.current = 0;
+    setBurst(words);
+    playSendSound(words);
+    void (async () => {
+      const response = await fetch("/api/publish", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      }).catch(() => null);
+      const data = ((await response?.json().catch(() => null)) ?? {}) as { postId?: string; teams?: TeamsDelivery; error?: string; review?: Review };
+      if (response?.ok && typeof data.postId === "string") {
+        setSentTo({ channel, postId: data.postId, isPublic, teams: data.teams });
+        setGoalForPost(null);
+        setAttachment(null);
         return;
       }
-      setSuggestion(null);
-      setComposing({ draft, review, channels, people, asked, attachment: checked, goalId: goal?.id });
-      setSheetOpen(true);
-    } catch {
-      setNotice("下書きを作れませんでした。もう一度押してください。");
-    } finally {
-      setPreparing(false);
-    }
+      // 下書きは、本人が直した言葉と送り先のまま残す。とどけるで開き直して、もう一度送れる
+      setComposeKey((key) => key + 1);
+      setComposing({
+        ...start,
+        writing: false,
+        draft: { ...start.draft, text: words, channelId: channel.id },
+        review: response?.status === 422 && data.review ? data.review : review,
+      });
+      setNotice(
+        response?.status === 422
+          ? "この内容は送れませんでした。とどけるから開いて、言い方を一緒に考えましょう。"
+          : response?.status === 400 && data.error
+            ? `まだ届いていません。${data.error} 下書きは残してあります。`
+            : "まだ届いていません。下書きは残してあります。とどけるから、もう一度送ってください。",
+      );
+    })();
   }
 
   // 押したときだけ探す。話した言葉はこの呼び出しの中だけで使い、保存しない
@@ -602,13 +704,17 @@ export function Talk({
   const closeSheet = () => setSheetOpen(false);
   const composeView = composing && (
     <Compose
+      key={composeKey}
       {...composing}
       viewer={viewer}
       onCancel={() => {
+        stopCompose();
         setSheetOpen(false);
         setComposing(null);
       }}
+      onSendStart={(send) => sendInBackground(composing, send)}
       onReplaceAttachment={() => {
+        stopCompose();
         setSheetOpen(false);
         void removeAttachment();
         setComposing(null);
@@ -956,6 +1062,7 @@ export function Talk({
                   popStep.current = 0;
                   setSentTo(null);
                   setSuggestion(null);
+                  stopCompose();
                   setComposing(null);
                   setSheetOpen(false);
                   setReturning(true);
@@ -981,16 +1088,6 @@ export function Talk({
               </section>
             )}
             {chatList}
-            {preparing && (
-              // 0-1n：下書きができるまで、出る場所に下書きカードの形を出し、光の帯を流す
-              <div className="draft-skeleton" role="status">
-                <span className="visually-hidden">下書きを作っています</span>
-                <i aria-hidden="true" />
-                <i aria-hidden="true" />
-                <i aria-hidden="true" />
-                {preparingSlow && <small>話したことから、投稿の下書きを作っています…</small>}
-              </div>
-            )}
             {cards}
             {canCompose && !safety && (
               <button type="button" className="remember find-knowledge" disabled={sending || finding} onClick={() => void findKnowledge()}>
@@ -1102,8 +1199,7 @@ export function Talk({
             data-mode={hasTyped ? "send" : "deliver"}
             data-ready={readyToDeliver}
             data-level={readyToDeliver ? level || 1 : undefined}
-            disabled={listening || sending || preparing || (!hasTyped && !canCompose)}
-            data-busy={preparing}
+            disabled={listening || sending || (!hasTyped && !canCompose)}
             onClick={() => {
               if (hasTyped) void send(draft);
               else if (composing) setSheetOpen(true);
@@ -1113,7 +1209,7 @@ export function Talk({
             <span className="device-side-face">
               <Icon name="send" />
             </span>
-            {hasTyped ? "パートナーへ送る" : preparing ? "作っています" : "とどける"}
+            {hasTyped ? "パートナーへ送る" : "とどける"}
             {readyToDeliver && <small className="ready-note">{level >= 3 ? "もう投稿にできる" : "言葉になりそう"}</small>}
           </button>
         </div>
