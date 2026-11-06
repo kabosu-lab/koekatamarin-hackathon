@@ -16,14 +16,13 @@ test("話したことが日報の項目になり、チェックした項目だ�
   await page.getByRole("link", { name: "履歴と設定" }).click();
   await page.getByRole("link", { name: "記録" }).click();
   await page.getByRole("link", { name: "今日の日報" }).click();
-  await page.getByRole("button", { name: "今日の日報を作る" }).click();
 
   const item = page.getByRole("checkbox", { name: shared });
   await expect(item).not.toBeChecked();
 
   await page.goto("/");
   await switchPerson(page, "藤本 恵（教頭）");
-  await page.goto("/daily/received");
+  await page.goto("/inbox");
   await expect(page.getByText(shared)).toHaveCount(0);
 
   await page.goto("/");
@@ -34,7 +33,7 @@ test("話したことが日報の項目になり、チェックした項目だ�
 
   await page.goto("/");
   await switchPerson(page, "藤本 恵（教頭）");
-  await page.goto("/daily/received");
+  await page.goto("/inbox");
   const report = page.getByRole("article", { name: "川村 陽菜さんから" });
   await expect(report).toContainText(shared);
   await report.getByLabel("一言かえす").fill("よく見ていますね");
@@ -54,18 +53,17 @@ test("生徒の日記は担任にだけ届く", async ({ page }) => {
   await say(page, words);
   await page.goto("/daily");
   await expect(page.getByRole("heading", { name: "今日の日記" })).toBeVisible();
-  await page.getByRole("button", { name: "今日の日記を作る" }).click();
   await page.getByRole("checkbox", { name: words }).click();
   await expect(page.getByRole("checkbox", { name: words })).toBeChecked();
 
   await page.goto("/");
   await switchPerson(page, "藤本 恵（教頭）");
-  await page.goto("/daily/received");
+  await page.goto("/inbox");
   await expect(page.getByText(words)).toHaveCount(0);
 
   await page.goto("/");
   await switchPerson(page, "川村 陽菜（理科・1年副担任）");
-  await page.goto("/daily/received");
+  await page.goto("/inbox");
   await expect(page.getByRole("article", { name: "中村 結衣さんから" })).toContainText(words);
 });
 
@@ -80,12 +78,42 @@ test("画面を行き来してもパートナーとの話は消えない", async
   await expect(page.getByRole("log").locator(".bubble.user")).toContainText(words);
 });
 
-test("材料がないときは作らず、そのことを伝える", async ({ page }) => {
+test("材料がないときは作らず、そのことを伝える。作るボタンも係のボタンもない", async ({ page }) => {
   await page.goto("/");
   await switchPerson(page, "白石 文（養護・相談室）");
   await page.goto("/daily");
-  await page.getByRole("button", { name: "今日の日報を作る" }).click();
-  await expect(page.locator(".notice")).toContainText("やり取りがまだない");
+  await expect(page.getByText("今日はまだまとめるものがありません。話したり、届けたりすると、ここにたまります。")).toBeVisible();
+  await expect(page.getByRole("button", { name: /作る|作り直す|係に頼む/ })).toHaveCount(0);
+});
+
+test("開くだけでまとまり、増えていなければ二度目は呼ばない。言葉を直すと残る", async ({ page }) => {
+  const words = `廊下で声をかけた ${test.info().testId}`;
+  await page.goto("/");
+  await switchPerson(page, "大河原 誠（英語・学年主任）");
+  await say(page, words);
+
+  const syncs: boolean[] = [];
+  page.on("response", async (response) => {
+    if (!response.url().endsWith("/api/daily") || response.request().method() !== "POST") return;
+    const body = response.request().postDataJSON() as { action?: string };
+    if (body.action !== "sync") return;
+    const data = (await response.json().catch(() => ({}))) as { called?: boolean };
+    syncs.push(Boolean(data.called));
+  });
+
+  await page.goto("/daily");
+  await expect(page.getByRole("checkbox", { name: words })).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole("checkbox", { name: words })).toBeVisible();
+  await expect.poll(() => syncs).toEqual([true, false]);
+
+  await page.getByRole("button", { name: "言葉を直す" }).click();
+  const fixed = `声をかけたら笑ってくれた ${test.info().testId}`;
+  await page.getByRole("textbox", { name: /項目を直す/ }).last().fill(fixed);
+  await page.getByRole("button", { name: "直し終わる" }).click();
+  await expect(page.getByRole("checkbox", { name: fixed })).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole("checkbox", { name: fixed })).toBeVisible();
 });
 
 test("チェックは1つずつ確定し、処理中は押せない。失敗したら元のまま伝える", async ({ page }) => {
@@ -94,7 +122,6 @@ test("チェックは1つずつ確定し、処理中は押せない。失敗し�
   await switchPerson(page, "野田 翔（情報・ものづくり部顧問）");
   await say(page, words);
   await page.goto("/daily");
-  await page.getByRole("button", { name: "今日の日報を作る" }).click();
   const box = page.getByRole("checkbox", { name: words });
   await expect(box).not.toBeChecked();
 
@@ -120,15 +147,15 @@ test("チェックと文章は同じ行に並ぶ", async ({ page }) => {
   await switchPerson(page, "大河原 誠（英語・学年主任）");
   await say(page, `並びの確認 ${test.info().testId}`);
   await page.goto("/daily");
-  await page.getByRole("button", { name: "今日の日報を作る" }).click();
   const label = page.locator("label.daily-item").first();
+  await expect(label).toBeVisible();
   const box = await label.locator("input").boundingBox();
   const text = await label.locator("span").boundingBox();
   expect(box && text && box.x + box.width <= text.x).toBe(true);
   expect(box && text && box.y < text.y + text.height).toBe(true);
 });
 
-test("夕方のまとめを係に頼むと、どう作ったかが分かり、チェックは付いていない", async ({ page }) => {
+test("届けたやり取りも開くだけでまとまり、係に頼むボタンはなく、チェックは付いていない", async ({ page }) => {
   const words = `朝練の話 ${test.info().testId}`;
   await page.goto("/");
   await switchPerson(page, "木下 蓮（3年・ものづくり部）");
@@ -138,8 +165,7 @@ test("夕方のまとめを係に頼むと、どう作ったかが分かり、�
   await expect(page.locator(".sent")).toBeVisible();
 
   await page.goto("/daily");
-  await page.getByRole("button", { name: "夕方のまとめを係に頼む" }).click();
-  await expect(page.getByText("クラウドの係は使っていません")).toBeVisible();
+  await expect(page.getByRole("button", { name: "夕方のまとめを係に頼む" })).toHaveCount(0);
   const boxes = page.getByRole("checkbox");
   await expect(boxes.first()).toBeVisible();
   await expect(page.getByRole("checkbox", { checked: true })).toHaveCount(0);

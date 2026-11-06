@@ -10,7 +10,9 @@ import { listKohoRequests } from "@/lib/koho";
 import { listRecentReplies } from "@/lib/reply-notices";
 import { agreeKoho, declineKoho } from "../koho/actions";
 import { KnowledgeTasks } from "../chie/KnowledgeTasks";
+import { listReceived } from "@/lib/daily";
 import { InboxCard } from "./InboxCard";
+import { ReceivedReports } from "./ReceivedReports";
 
 import { PageShell } from "@/app/ui/PageShell";
 export const metadata: Metadata = { title: "受信箱｜こえかた" };
@@ -69,6 +71,8 @@ export default async function InboxPage() {
           </ul>
         </section>
       )}
+
+      <ReceivedReports reports={listReceived(db, viewer.id)} />
 
       <KnowledgeTasks tasks={listKnowledgeTasks(db, viewer.id)} />
 
