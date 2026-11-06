@@ -120,7 +120,8 @@ body:has(.retro-home) > :is(.bottom-nav, .demo-switcher) {
 }
 
 @media (orientation: landscape) and (max-height: 599px) {
-  html:not([data-embed]) .rotate-hint {
+  /* キーボードで画面が低くなったときは出さない（打っている途中に重ねない） */
+  html:not([data-embed]):not([data-keyboard="open"]) .rotate-hint {
     position: fixed;
     inset: 0;
     z-index: 1000;
@@ -135,7 +136,7 @@ body:has(.retro-home) > :is(.bottom-nav, .demo-switcher) {
     visibility: visible;
   }
 
-  html:not([data-embed]) .rotate-hint p {
+  html:not([data-embed]):not([data-keyboard="open"]) .rotate-hint p {
     margin: 0;
   }
 
@@ -2039,4 +2040,9 @@ html[data-theme="retro"] .talk .device-mic {
 
 .home .switcher select {
   flex: 1 1 10rem;
+}
+
+/* 0-2y：最初の注意カードは外側に1回だけ出す。横向きの3列の左右の列（iframe）の中には出さない */
+html[data-embed] .first-card-backdrop {
+  display: none;
 }
