@@ -253,12 +253,17 @@ test("0-2a：話す前は、パートナーを触るたびに一言が替わり�
   await page.context().clearCookies({ name: "koekata_avatar" });
   // 新着がある人（最初の人にはお願いが届いている）は、最初の一言が知らせになり、押すとその画面へ行く（0-2v）。
   // お願いの届かない人で、受信箱・ありがとう・コレクションを開いて新着をなくしてから見る
-  await page.context().addCookies([{ name: "koekata_person", value: "ogawara", domain: "127.0.0.1", path: "/" }]);
-  await page.goto("/inbox");
-  await page.goto("/me?open=thanks");
-  await page.goto("/me?open=partner");
-  await page.goto("/");
+  // ほかのテストがお願いを送ると、その人には新着が残る。新着のない人が見つかるまで替える
   const partner = page.getByRole("button", { name: "パートナー。触ると次の一言" });
+  for (const person of ["ogawara", "shiraishi", "kinoshita", "fujimoto", "kawamura", "noda"]) {
+    await page.context().addCookies([{ name: "koekata_person", value: person, domain: "127.0.0.1", path: "/" }]);
+    await page.goto("/inbox");
+    await page.goto("/me?open=thanks");
+    await page.goto("/me?open=partner");
+    await page.goto("/");
+    await page.locator(".device-mic").waitFor();
+    if (await partner.isVisible()) break;
+  }
   await expect(partner).toBeVisible();
   const bubble = page.locator(".lcd-companion");
   await page.waitForTimeout(1500);

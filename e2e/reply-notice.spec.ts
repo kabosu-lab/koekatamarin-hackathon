@@ -121,5 +121,6 @@ test("今日の3人をまだ見ていない日は、ホイールのチップに�
   await expect(page.getByRole("dialog", { name: /今日/ })).toBeVisible();
   await page.goto("/");
   await expect(page.locator(".device-mic")).toBeVisible();
-  await expect(page.locator(".wheel-carousel-slot .chip-badge")).toHaveCount(0);
+  // 今日の3人のチップの数だけを見る（受信箱の数は、ほかのテストの返事で付くことがある）
+  await expect(page.locator(".wheel-carousel-slot").filter({ hasText: "今日の3人" }).locator(".chip-badge")).toHaveCount(0);
 });
