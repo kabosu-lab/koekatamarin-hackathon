@@ -22,7 +22,7 @@ describe("調べもの（Web 検索）", () => {
     const { api, create } = stubApi(ok);
     await createAnthropicClaude(api, options()).complete(converseRequest);
     const tools = create.mock.calls[0][0].tools;
-    expect(tools).toEqual([expect.objectContaining({ type: "web_search_20260209", name: "web_search", max_uses: 2 })]);
+    expect(tools).toEqual([expect.objectContaining({ type: "web_search_20250305", name: "web_search", max_uses: 2 })]);
   });
 
   it("会話以外の呼び出しや、JSON で返させる呼び出しには渡さない", async () => {
@@ -65,6 +65,19 @@ describe("調べもの（Web 検索）", () => {
       `例のページによると、こうらしいよ。たぶんね。\n${sourceMark("例のページ", "https://example.com/a")}\n${sourceMark("https://example.org/b", "https://example.org/b")}`,
     );
     expect(sourceMark("a|b]]c", "https://example.com")).toBe("[[出典:a b  c|https://example.com]]");
+  });
+
+  it("調べたのに引用がなければ、最後の検索の上から2つを出典にする。調べていなければ何も足さない", () => {
+    const result = (url: string) => ({ type: "web_search_result", url, title: `題 ${url}`, encrypted_content: "", page_age: null });
+    const text = textWithSources([
+      { type: "web_search_tool_result", content: [result("https://old.example")] },
+      { type: "web_search_tool_result", content: [result("https://a.example"), result("https://b.example"), result("https://c.example")] },
+      { type: "text", text: "こうみたい。", citations: null },
+    ] as never);
+    expect(text).toBe(`こうみたい。\n${sourceMark("題 https://a.example", "https://a.example")}\n${sourceMark("題 https://b.example", "https://b.example")}`);
+    expect(textWithSources([{ type: "text", text: "やあ", citations: null }] as never)).toBe("やあ");
+    // 検索の失敗（中身が配列でない）は出典にしない
+    expect(textWithSources([{ type: "web_search_tool_result", content: { type: "web_search_tool_result_error", error_code: "unavailable" } }, { type: "text", text: "調べられなかった", citations: null }] as never)).toBe("調べられなかった");
   });
 
   it("調べものが途中で止まったら、言葉を足さずに続けさせる", async () => {

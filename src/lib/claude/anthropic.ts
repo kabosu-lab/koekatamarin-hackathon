@@ -41,9 +41,11 @@ function webSearchTools(request: ClaudeRequest, options: WebSearchOptions): Anth
   if (!options.enabled || request.task !== "converse" || request.jsonSchema) return undefined;
   // 上限は、道具を渡す回数で数える（実際に調べたかどうかは返事が来るまで分からないため、多めに数える）
   if (!takeCall(options.now(), options.perHour, options.log)) return undefined;
+  // 新しい web_search_20260209 は中で絞り込みのコードを動かすため遅く、返事に出典（citations）が付かない。
+  // 声の会話で待たせず、出典を必ず返したいので、基本の版を使う
   return [
     {
-      type: "web_search_20260209",
+      type: "web_search_20250305",
       name: "web_search",
       max_uses: WEB_SEARCH_MAX_USES,
       user_location: { type: "approximate", country: "JP", timezone: "Asia/Tokyo" },
@@ -64,6 +66,9 @@ function withAttachment(messages: ChatMessage[], attachment?: ClaudeAttachment):
   );
 }
 
+/** 引用がないときに、検索結果の上から出典として出す数 */
+const FALLBACK_SOURCES = 2;
+
 /** 返事の文章と、調べものの出典。出典は同じ URL を1つにまとめ、返事の最後に印として付ける */
 export function textWithSources(content: Anthropic.Beta.BetaContentBlock[]): string {
   const text = content.flatMap((block) => (block.type === "text" ? [block.text] : [])).join("");
@@ -74,6 +79,13 @@ export function textWithSources(content: Anthropic.Beta.BetaContentBlock[]): str
       if (citation.type === "web_search_result_location" && !sources.has(citation.url)) {
         sources.set(citation.url, citation.title ?? citation.url);
       }
+    }
+  }
+  // 調べたのに引用が付かなかったときは、最後の検索の上位を出典として示す（本人が確かめられるように）
+  if (sources.size === 0) {
+    const results = content.filter((block) => block.type === "web_search_tool_result").at(-1);
+    if (results && Array.isArray(results.content)) {
+      for (const result of results.content.slice(0, FALLBACK_SOURCES)) sources.set(result.url, result.title || result.url);
     }
   }
   if (sources.size === 0) return text;
