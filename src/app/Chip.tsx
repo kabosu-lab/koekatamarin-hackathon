@@ -9,6 +9,8 @@ export type ChipItem = {
   /** こえかたの中で決めた短い記号（例：M-01） */
   code: string;
   icon: IconName;
+  /** 何ができるか、どこへ行くかを一文で（0-2o(2)：ホイールで選んでいる間、チップの下に出す） */
+  description?: string;
 };
 
 /**

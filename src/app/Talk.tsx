@@ -57,15 +57,17 @@ const LISTEN_SILENCE_LIMIT_MS = 10 * 60 * 1000;
  * 同じ入口を2か所に置かない決まりに合わせ、ここに並べるのは画面の行き先だけ。
  */
 const WHEEL_CHIPS: (ChipItem & { href: string })[] = [
-  { id: "minna", label: "みんな", code: "M-01", icon: "people", href: "/minna" },
-  { id: "today", label: "今日の3人", code: "T-03", icon: "heart", href: "/today" },
-  { id: "inbox", label: "受信箱", code: "I-02", icon: "inbox", href: "/inbox" },
-  { id: "room", label: "自習室（一緒に勉強する）", code: "S-04", icon: "book", href: "/study/room" },
-  { id: "chie", label: "校内の知恵", code: "K-05", icon: "idea", href: "/chie" },
-  { id: "goals", label: "頑張りたいこと", code: "G-06", icon: "flag", href: "/me?open=goals" },
-  { id: "daily", label: "日報・日記", code: "D-07", icon: "note", href: "/me?open=daily" },
-  { id: "lookback", label: "ふりかえり", code: "L-08", icon: "clock", href: "/me?open=lookback" },
-  { id: "settings", label: "設定", code: "C-09", icon: "settings", href: "/me?open=settings" },
+  // 0-2o(4)：出したとき最初に真ん中にいるのはホーム。選ぶと話す画面のまま閉じる
+  { id: "home", label: "ホーム", code: "H-00", icon: "talk", href: "/", description: "話す画面のまま、ホイールを閉じます" },
+  { id: "minna", label: "みんな", code: "M-01", icon: "people", href: "/minna", description: "みんなの投稿を見て、応援や返事を送れます" },
+  { id: "today", label: "今日の3人", code: "T-03", icon: "heart", href: "/today", description: "今日話してみるとよさそうな3人を、パートナーが選びます" },
+  { id: "inbox", label: "受信箱", code: "I-02", icon: "inbox", href: "/inbox", description: "あなたに届いた返事を読めます" },
+  { id: "room", label: "自習室（一緒に勉強する）", code: "S-04", icon: "book", href: "/study/room", description: "みんなと一緒に勉強する部屋に入ります" },
+  { id: "chie", label: "校内の知恵", code: "K-05", icon: "idea", href: "/chie", description: "校内で広がっている知恵を探せます" },
+  { id: "goals", label: "頑張りたいこと", code: "G-06", icon: "flag", href: "/me?open=goals", description: "頑張りたいことを書いて、みんなに言っておけます" },
+  { id: "daily", label: "日報・日記", code: "D-07", icon: "note", href: "/me?open=daily", description: "今日のことを書き残せます" },
+  { id: "lookback", label: "ふりかえり", code: "L-08", icon: "clock", href: "/me?open=lookback", description: "これまでの話や投稿をふりかえります" },
+  { id: "settings", label: "設定", code: "C-09", icon: "settings", href: "/me?open=settings", description: "見た目やパートナーなどの設定を変えます" },
 ];
 const MAX_HISTORY = 40;
 /** 話の途中で声をかけないよう、少なくとも2往復してから確かめる */
@@ -1077,7 +1079,7 @@ export function Talk({
             items={WHEEL_CHIPS}
             onOpen={(item) => {
               const chip = WHEEL_CHIPS.find((candidate) => candidate.id === item.id);
-              if (chip) router.push(chip.href);
+              if (chip && chip.id !== "home") router.push(chip.href);
             }}
           />
           <ReplyToast initial={notices} paused={listening} pollMs={noticePollMs} />

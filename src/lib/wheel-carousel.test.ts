@@ -25,20 +25,20 @@ describe("wrapIndex", () => {
 });
 
 describe("layoutOf", () => {
-  it("真ん中は大きく明るく、光る", () => {
+  it("真ん中はほかよりはっきり大きく明るく、光る", () => {
     const c = layoutOf(0);
-    expect(c).toMatchObject({ x: 0, y: 0, scale: 1, opacity: 1, center: true });
+    expect(c).toMatchObject({ x: 0, y: 0, scale: 1.16, opacity: 1, center: true });
   });
   it("隣は小さく少し暗く、その外はさらに小さい", () => {
     const right = layoutOf(1);
     expect(right.x).toBe(96);
-    expect(right.scale).toBeCloseTo(0.78);
-    expect(right.opacity).toBeCloseTo(0.7);
+    expect(right.scale).toBeCloseTo(0.72);
+    expect(right.opacity).toBeCloseTo(0.55);
     expect(right.center).toBe(false);
     const far = layoutOf(-2);
     expect(far.x).toBe(-192);
-    expect(far.scale).toBeCloseTo(0.56);
-    expect(far.opacity).toBeCloseTo(0.4);
+    expect(far.scale).toBeCloseTo(0.58);
+    expect(far.opacity).toBeCloseTo(0.35);
     expect(far.y).toBe(40);
   });
   it("左右は対称で、弧に沿って傾く", () => {
