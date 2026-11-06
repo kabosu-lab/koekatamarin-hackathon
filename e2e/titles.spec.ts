@@ -23,7 +23,7 @@ test("ありがとうに肩書きを添えて贈り、受け取って選ぶと�
 
   await page.goto("/");
   await switchPerson(page, recipient);
-  await page.goto("/me?open=profile");
+  await page.goto("/me?open=settings");
   const collection = page.getByRole("region", { name: "もらった肩書き" });
   const item = collection.getByRole("listitem").filter({ hasText: title });
   await expect(item).toContainText("佐伯 みどりさんから");

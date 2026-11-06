@@ -2,30 +2,36 @@ import { expect, test } from "@playwright/test";
 import { switchPerson } from "./helpers";
 
 // ダミーの日記と投稿は 2026 年度 2 学期にあるので、学期を指定して開く。実行した日で結果が変わらないように
-const PAGE = "/portfolio?term=2026-2";
+const PAGE = "/me?open=lookback&term=2026-2";
 
-test("ポートフォリオは本人だけに見え、選んで確かめたときだけ Teams に届く", async ({ page }) => {
+test("ふりかえり（前のポートフォリオ）は本人だけに見え、選んで確かめたときだけ Teams に届く", async ({ page }) => {
   await page.goto("/");
   await switchPerson(page, "青木 ひより（2年）");
-  await page.goto("/me?open=records");
-  await expect(page.getByRole("link", { name: "ポートフォリオ" }).first()).toBeVisible();
-  await page.goto(PAGE);
+  // 入口は履歴と設定の「ふりかえり」のタイル。前の /portfolio のリンクで来ても同じ所へ着く
+  await page.goto("/me");
+  await page.getByRole("navigation", { name: "履歴と設定の項目" }).getByRole("link", { name: "ふりかえり" }).click();
+  await expect(page.getByRole("heading", { name: "ふりかえり", level: 1 })).toBeVisible();
+  await page.goto("/portfolio?term=2026-2");
+  await expect(page).toHaveURL(/\/me\?open=lookback&term=2026-2$/);
 
-  await expect(page.getByRole("heading", { name: "ポートフォリオ", level: 1 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "ふりかえり", level: 1 })).toBeVisible();
   await expect(page.getByText("あなただけに見えます")).toBeVisible();
 
   // 日記はたまっていて、初めは何も足されていない
   const days = page.getByRole("region", { name: "たまった日記" });
   await days.locator("summary", { hasText: "2026-09-25" }).click();
   await expect(days).toContainText("ITパスポート");
-  await expect(page.getByRole("region", { name: "足したもの" })).toContainText("残したいものを選べます");
+  const added = page.getByRole("region", { name: "残したもの" });
+  await expect(added).toContainText("残したいものを選べます");
 
-  // 本人が選んで足す
-  const candidates = page.getByRole("region", { name: "足せるもの" });
+  // 本人が「足す」のボトムシートから選んで足す
+  await added.getByRole("button", { name: "足す", exact: true }).click();
+  const candidates = page.getByRole("dialog", { name: "足せるもの" });
   await candidates.locator("summary", { hasText: "あなたの投稿" }).click();
   await candidates.locator(".portfolio-entry").first().getByRole("button", { name: "足す" }).click();
-  const added = page.getByRole("region", { name: "足したもの" });
   await expect(added.getByRole("button", { name: "外す" })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(candidates).toBeHidden();
 
   // ふりかえりは本人が押すまで残らない
   const reflection = page.getByRole("region", { name: "この学期のふりかえり" });
@@ -38,7 +44,7 @@ test("ポートフォリオは本人だけに見え、選んで確かめたと�
 
   await reflection.getByRole("button", { name: "パートナーにふりかえりを書いてもらう" }).click();
   await reflection.getByRole("textbox").fill("青木のこの学期のふりかえり");
-  await reflection.getByRole("button", { name: "ポートフォリオに残す" }).click();
+  await reflection.getByRole("button", { name: "残す", exact: true }).click();
   await expect(reflection.getByText("青木のこの学期のふりかえり")).toBeVisible();
   await page.reload();
   await expect(reflection.getByText("青木のこの学期のふりかえり")).toBeVisible();

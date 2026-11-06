@@ -35,16 +35,23 @@ import { showsRewards } from "@/lib/rewards-view";
 import { ArtRefresher, AvatarFromPhoto, AvatarQuiz, MemoryList, ProfileEditor, ThanksForm } from "./MeActions";
 
 import { DeviceFrame } from "../DeviceFrame";
-import { LogView } from "../log/LogView";
+import { type MeTileKey, resolveOpenKey } from "./tiles";
+import { Reflection } from "./Reflection";
+import { SoFar } from "./SoFar";
+import { getSoFar } from "@/lib/so-far";
 import { PersonSwitcher } from "../PersonSwitcher";
 import { selectablePeople } from "@/lib/people";
 import { isTrialMode, onlyStudentsSelectable } from "@/lib/trial";
 import { TrialTools } from "../TrialNotice";
+import { DailyPanel } from "../daily/DailyPanel";
+import { getReport, japanDate } from "@/lib/daily";
+import { recipientsOf } from "@/lib/recipients";
+import "./me.css";
 export const metadata: Metadata = { title: "履歴と設定｜こえかた" };
 export const dynamic = "force-dynamic";
 
-export default async function MePage({ searchParams }: { searchParams: Promise<{ open?: string | string[] }> }) {
-  const { open: requested } = await searchParams;
+export default async function MePage({ searchParams }: { searchParams: Promise<{ open?: string | string[]; term?: string | string[] }> }) {
+  const { open: requested, term: requestedTerm } = await searchParams;
   const { viewer, people } = await getViewer();
   const store = await cookies();
   const appearance = readAppearance((name) => store.get(name)?.value);
@@ -58,31 +65,91 @@ export default async function MePage({ searchParams }: { searchParams: Promise<{
   const evolution = pendingEvolution(db, viewer.id);
   const avatar = getAvatar(db, viewer.id);
   const counts = countContributions(db, viewer.id);
-  const { public_profile: profile } = db.prepare("SELECT public_profile FROM people WHERE id = ?").get(viewer.id) as {
-    public_profile: string;
-  };
-  const thanks = listThanks(db, viewer.id);
-  const others = people.filter((p) => p.id !== viewer.id).map(({ id, name, label }) => ({ id, name, label }));
-
   const goals = listGoals(db, viewer.id);
   const firstGoal = goals.find((goal) => goal.status === "active");
   const eggs = rewards ? listGiftEggs(db, viewer.id) : [];
   const trial = isTrialMode();
+  const noun = viewer.role === "student" ? "日記" : "日報";
+  const now = new Date();
+  const openKey = resolveOpenKey(typeof requested === "string" ? requested : undefined);
 
-  // 0-1e：真ん中は、iPhone のホーム画面のようなタイル。押すと中身が開き、「‹ 履歴と設定」で戻る
-  const tiles: { key: string; label: string; icon: IconName; badge?: string; content: ReactNode }[] = [
+  // 0-2b：タイルは6枚（3列×2段）。受信箱は「みんな」とホイール、話の履歴は「話す」の会話に任せる
+  const tiles: {
+    key: MeTileKey;
+    label: string;
+    icon: IconName;
+    badge?: string;
+    content: () => ReactNode;
+  }[] = [
+    {
+      key: "daily",
+      label: noun,
+      icon: "note",
+      content: () => (
+        <DailyPanel
+          key={`${viewer.id}-daily`}
+          initialReport={getReport(db, viewer.id, japanDate(now))}
+          recipients={recipientsOf(db, viewer.id)}
+          viewerName={viewer.name}
+          noun={noun}
+        />
+      ),
+    },
+    {
+      key: "lookback",
+      label: "ふりかえり",
+      icon: "clock",
+      content: () => (
+        <Reflection
+          db={db}
+          viewer={viewer}
+          now={now}
+          rewards={rewards}
+          trial={trial}
+          noun={noun}
+          requested={typeof requestedTerm === "string" ? requestedTerm : undefined}
+        />
+      ),
+    },
     {
       key: "goals",
       label: "頑張りたいこと",
       icon: "flag",
-      content: <GoalsPanel key={`${viewer.id}-goals`} initial={goals} initialNudge={getNudge(db, viewer.id)} />,
+      content: () => <GoalsPanel key={`${viewer.id}-goals`} initial={goals} initialNudge={getNudge(db, viewer.id)} />,
     },
     {
+      key: "thanks",
+      label: "ありがとう",
+      icon: "thanks",
+      content: () => {
+        const thanks = listThanks(db, viewer.id);
+        const others = people.filter((p) => p.id !== viewer.id).map(({ id, name, label }) => ({ id, name, label }));
+        return (
+          <>
+            <ThanksForm key={`${viewer.id}-thanks`} people={others} />
+            <section className="card" aria-label="もらったありがとう">
+              <h2>もらったありがとう</h2>
+              {thanks.length === 0 ? (
+                <p className="muted">これから届きます。</p>
+              ) : (
+                thanks.map((card) => (
+                  <p className="thanks-card" key={card.id}>
+                    <strong>{card.fromName}さん</strong>：{card.message}
+                  </p>
+                ))
+              )}
+            </section>
+          </>
+        );
+      },
+    },
+    {
+      // パートナーと、コレクション（卵、トロフィー）。どちらも報酬なので1つに
       key: "partner",
       label: "パートナー",
       icon: "me",
-      badge: rewards && evolution !== null ? "!" : undefined,
-      content: (
+      badge: eggs.length > 0 ? String(eggs.length) : rewards && evolution !== null ? "!" : undefined,
+      content: () => (
         <>
           {rewards && (
             <section className="card partner" aria-label="パートナー">
@@ -103,154 +170,100 @@ export default async function MePage({ searchParams }: { searchParams: Promise<{
               </button>
             </form>
           )}
-          {appearance.theme !== "modern" && appearance.avatar === "hide" && <p className="muted">パートナーは隠しています。裏で育っています。</p>}
+          {appearance.theme !== "modern" && appearance.avatar === "hide" && (
+            <p className="muted">パートナーは隠しています。裏で育っています。</p>
+          )}
           {evolution !== null && rewards && <EvolutionCard key={evolution} />}
-          <Link className="me-sub-link" href="/yousu">ようす（パートナーの姿と、これまでの数）</Link>
+          {/* 案に置き場所がないので、ようすは今のままパートナーの中に置く */}
+          <Link className="me-sub-link" href="/yousu">
+            ようす（パートナーの姿と、これまでの数）
+          </Link>
           {rewards && photoState.status === "pending" && <ArtRefresher />}
-          {rewards && photoState.canUsePhoto && <AvatarFromPhoto label={photos.label} failed={photoState.status === "failed"} eggImage={`/api/avatar/art/${roomToken(db, viewer.id)}/egg`} />}
+          {rewards && photoState.canUsePhoto && (
+            <AvatarFromPhoto
+              label={photos.label}
+              failed={photoState.status === "failed"}
+              eggImage={`/api/avatar/art/${roomToken(db, viewer.id)}/egg`}
+            />
+          )}
           {rewards && !avatar.family && (
             <AvatarQuiz
-              kindQuestion={{ question: KIND_QUESTION.question, options: KIND_QUESTION.options }}
-              styleQuestion={{ question: STYLE_QUESTION.question, options: STYLE_QUESTION.options }}
+              kindQuestion={{
+                question: KIND_QUESTION.question,
+                options: KIND_QUESTION.options,
+              }}
+              styleQuestion={{
+                question: STYLE_QUESTION.question,
+                options: STYLE_QUESTION.options,
+              }}
             />
+          )}
+          {rewards && (
+            <section className="me-collection" aria-label="コレクション">
+              <h2>コレクション</h2>
+              <GiftEggs key={`${viewer.id}-eggs`} eggs={eggs} companions={listCompanions(db, viewer.id)} />
+              <Ribbons key={`${viewer.id}-ribbons`} shelves={listTrophyShelves(db, viewer.id)} />
+            </section>
           )}
         </>
       ),
     },
     {
-      key: "talk",
-      label: "話の履歴",
-      icon: "chat",
-      content: (
-        <section className="card retro-log" aria-label="パートナーとの話">
-          <h2>パートナーとの話</h2>
-          <p className="muted">この話はあなただけのものです。タブを閉じると消えます。</p>
-          <LogView viewerName={viewer.name} />
-        </section>
-      ),
-    },
-    {
-      key: "records",
-      label: "記録",
-      icon: "note",
-      content: (
-        <>
-          <div className="hub-links">
-            <Link href="/daily"><Icon name="note" />{viewer.role === "student" ? "今日の日記" : "今日の日報"}</Link>
-            {viewer.role !== "student" && <Link href="/daily/received"><Icon name="inbox" />届いた日報と日記</Link>}
-            <Link href="/lookback"><Icon name="clock" />ふりかえり</Link>
-            <Link href="/portfolio"><Icon name="note" />ポートフォリオ</Link>
-            <Link href="/inbox"><Icon name="inbox" />受信箱</Link>
-          </div>
-          <section className="card" aria-label="これまで">
-            <h2>これまで</h2>
-            <p className="counts">
-              <span>投稿 {counts.posts}</span>
-              <span>コメント {counts.comments}</span>
-              <span>応援 {counts.cheers}</span>
-              <span>解決 {counts.goals}</span>
-              <span>つないだ {counts.assists}</span>
-            </p>
-          </section>
-        </>
-      ),
-    },
-    {
-      key: "thanks",
-      label: "ありがとう",
-      icon: "thanks",
-      content: (
-        <>
-          <ThanksForm key={`${viewer.id}-thanks`} people={others} />
-          <section className="card" aria-label="もらったありがとう">
-            <h2>もらったありがとう</h2>
-            {thanks.length === 0 ? (
-              <p className="muted">これから届きます。</p>
-            ) : (
-              thanks.map((card) => (
-                <p className="thanks-card" key={card.id}>
-                  <strong>{card.fromName}さん</strong>：{card.message}
-                </p>
-              ))
-            )}
-          </section>
-        </>
-      ),
-    },
-    ...(rewards
-      ? [
-          {
-            key: "collect",
-            label: "集める",
-            icon: "gift" as const,
-            badge: eggs.length > 0 ? String(eggs.length) : undefined,
-            content: (
-              <>
-                <GiftEggs key={`${viewer.id}-eggs`} eggs={eggs} companions={listCompanions(db, viewer.id)} />
-                <Ribbons key={`${viewer.id}-ribbons`} shelves={listTrophyShelves(db, viewer.id)} />
-              </>
-            ),
-          },
-        ]
-      : []),
-    {
-      key: "profile",
-      label: "プロフィール",
-      icon: "star",
-      content: (
-        <>
-          <p className="me-name">
-            {viewer.name} <PersonTitle title={wornTitle(db, viewer.id)} />
-          </p>
-          <TitleCollection key={`${viewer.id}-titles`} initial={listTitles(db, viewer.id)} />
-          <section className="card" aria-label="プロフィール">
-            <h2>プロフィール</h2>
-            <p data-testid="profile-text">{profile || "まだ載せていません。"}</p>
-            <ProfileEditor key={viewer.id} initialDraft={getDraft(db, viewer.id)} hasProfile={profile !== ""} />
-          </section>
-        </>
-      ),
-    },
-    {
+      // プロフィール → 見た目 → 覚えていること → 隠している人 → 使う人 → 試用版
       key: "settings",
       label: "設定",
       icon: "settings",
-      content: (
-        <>
-          <section className="card appearance" aria-label="見た目">
-            <h2>見た目</h2>
-            {APPEARANCE_OPTIONS.filter((group) => group.name !== "theme" && group.name !== "sound").filter((group) => group.name !== "avatar" || appearance.theme !== "modern").map((group) => (
-              <form action={setAppearance} key={group.name}>
-                <input type="hidden" name="name" value={group.name} />
-                <p className="muted">{group.label}</p>
-                <div className="row">
-                  {group.options.map((option) => (
-                    <button
-                      key={option.value}
-                      type="submit"
-                      name="value"
-                      value={option.value}
-                      className="secondary"
-                      aria-pressed={appearance[group.name] === option.value}
-                    >
-                      {option.label}
-                    </button>
-                  ))}
-                </div>
-              </form>
-            ))}
-            {appearance.sound === "on" && <SoundTest />}
-          </section>
-          <MemoryList key={`${viewer.id}-memory`} initial={listMemories(db, getDestination(db), viewer.id)} />
-          <HiddenPeople key={`${viewer.id}-hidden`} initial={listHiddenPeople(db, viewer.id)} />
-          <PersonSwitcher viewerId={viewer.id} people={selectablePeople(people, onlyStudentsSelectable())} />
-        </>
-      ),
+      content: () => {
+        const { public_profile: profile } = db.prepare("SELECT public_profile FROM people WHERE id = ?").get(viewer.id) as {
+          public_profile: string;
+        };
+        return (
+          <>
+            <p className="me-name">
+              {viewer.name} <PersonTitle title={wornTitle(db, viewer.id)} />
+            </p>
+            <TitleCollection key={`${viewer.id}-titles`} initial={listTitles(db, viewer.id)} />
+            <section className="card" aria-label="プロフィール">
+              <h2>プロフィール</h2>
+              <p data-testid="profile-text">{profile || "まだ載せていません。"}</p>
+              <ProfileEditor key={viewer.id} initialDraft={getDraft(db, viewer.id)} hasProfile={profile !== ""} />
+            </section>
+            <section className="card appearance" aria-label="見た目">
+              <h2>見た目</h2>
+              {APPEARANCE_OPTIONS.filter((group) => group.name !== "theme" && group.name !== "sound")
+                .filter((group) => group.name !== "avatar" || appearance.theme !== "modern")
+                .map((group) => (
+                  <form action={setAppearance} key={group.name}>
+                    <input type="hidden" name="name" value={group.name} />
+                    <p className="muted">{group.label}</p>
+                    <div className="row">
+                      {group.options.map((option) => (
+                        <button
+                          key={option.value}
+                          type="submit"
+                          name="value"
+                          value={option.value}
+                          className="secondary"
+                          aria-pressed={appearance[group.name] === option.value}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+                  </form>
+                ))}
+              {appearance.sound === "on" && <SoundTest />}
+            </section>
+            <MemoryList key={`${viewer.id}-memory`} initial={listMemories(db, getDestination(db), viewer.id)} />
+            <HiddenPeople key={`${viewer.id}-hidden`} initial={listHiddenPeople(db, viewer.id)} />
+            <PersonSwitcher viewerId={viewer.id} people={selectablePeople(people, onlyStudentsSelectable())} />
+            {/* 試用のときだけ、注意の読み直しと感想の入口 */}
+            {trial && <TrialTools />}
+          </>
+        );
+      },
     },
-    // 試用のときだけ、注意の読み直しと感想の入口
-    ...(trial ? [{ key: "trial", label: "試用版", icon: "shield" as const, content: <TrialTools /> }] : []),
   ];
-  const openKey = typeof requested === "string" ? requested : undefined;
   const opened = tiles.find((tile) => tile.key === openKey);
 
   return (
@@ -258,8 +271,8 @@ export default async function MePage({ searchParams }: { searchParams: Promise<{
       label="履歴と設定"
       dot={0}
       screen={
-        // 上の窓は、パートナーと、いま頑張っていること（名前は本人が知っているので出さない）
-        <div className="me-screen">
+        // 上の窓は、パートナーと、いま頑張っていること。押すと「頑張りたいこと」が開く
+        <Link className="me-screen" href="/me?open=goals">
           {rewards && avatar.family && (
             // パートナーはコードで描いた絵（声のかたまりか、育った動物）
             // eslint-disable-next-line @next/next/no-img-element
@@ -267,9 +280,9 @@ export default async function MePage({ searchParams }: { searchParams: Promise<{
           )}
           <div>
             <small>いま頑張っていること</small>
-            <strong>{firstGoal?.text ?? "まだありません"}</strong>
+            <strong>{firstGoal?.text ?? "話してくれたら、ここに残すよ"}</strong>
           </div>
-        </div>
+        </Link>
       }
     >
       <main className="home" data-me={opened ? opened.key : "tiles"}>
@@ -281,7 +294,7 @@ export default async function MePage({ searchParams }: { searchParams: Promise<{
               </Link>
               <h1>{opened.label}</h1>
             </header>
-            {opened.content}
+            {opened.content()}
           </>
         ) : (
           <>
@@ -297,6 +310,20 @@ export default async function MePage({ searchParams }: { searchParams: Promise<{
                 </Link>
               ))}
             </nav>
+            <SoFar
+              key={viewer.id}
+              personId={viewer.id}
+              counts={{
+                posts: counts.posts,
+                comments: counts.comments,
+                cheers: counts.cheers,
+                goals: counts.goals,
+                assists: counts.assists,
+                thanks: counts.thanksReceived,
+              }}
+              story={getSoFar(db, viewer.id, now)}
+              rewards={rewards}
+            />
           </>
         )}
         {rewards && <RibbonMoment key={`${viewer.id}-moment`} ribbons={listNewRibbons(db, viewer.id)} />}

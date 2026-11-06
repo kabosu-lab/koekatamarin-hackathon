@@ -49,7 +49,7 @@ test("サンクスカードが相手に届き、他の人には見えない", as
 test("プロフィールの下書きを確かめ、1回だけ直して載せ、いつでも消せる", async ({ page }) => {
   await page.goto("/");
   await switchPerson(page, "藤本 恵（教頭）");
-  await page.goto("/me?open=profile");
+  await page.goto("/me?open=settings");
 
   await page.getByRole("button", { name: "プロフィールを更新する" }).click();
   const draft = page.getByRole("group", { name: "プロフィールの下書き" });
@@ -201,7 +201,7 @@ test("トロフィーが届いて棚に並び、公開を選ぶとプロフィ�
   const page = await (await browser.newContext()).newPage();
   await page.goto("/");
   await switchPerson(page, "大河原 誠（英語・学年主任）");
-  await page.goto("/me?open=collect");
+  await page.goto("/me?open=partner");
   const trophies = page.getByRole("region", { name: "トロフィー" });
   // 棚：もらったものは杯になり、残りは影で見える。数や割合は出さない
   await expect(trophies.locator('[data-slot="first-answer"][data-earned="true"]')).toBeVisible();
@@ -228,7 +228,7 @@ test("取っていない隠しトロフィーは、名前も条件も画面に�
   const page = await (await browser.newContext()).newPage();
   await page.goto("/");
   await switchPerson(page, "大河原 誠（英語・学年主任）");
-  const response = await page.goto("/me?open=collect");
+  const response = await page.goto("/me?open=partner");
   const html = (await response?.text()) ?? "";
   for (const secret of ["言い直しの勇者", "角が取れました", "言い換えの提案を受け入れて"]) expect(html).not.toContain(secret);
   const trophies = page.getByRole("region", { name: "トロフィー" });
@@ -243,7 +243,7 @@ test("贈り物の卵を開け、生まれたパートナーを選べる", async
   await switchPerson(page, "野田 翔（情報・ものづくり部顧問）");
   await page.goto("/minna");
   await expect(page.getByRole("link", { name: "贈り物の卵が届いています" })).toBeVisible();
-  await page.goto("/me?open=collect");
+  await page.goto("/me?open=partner");
   const section = page.getByRole("region", { name: "贈り物の卵" });
   await section.getByRole("button", { name: "開ける" }).first().click();
   const stage = page.getByRole("dialog", { name: "贈り物の卵" });
@@ -259,7 +259,7 @@ test("まだ取っていない棚にも、影と条件が見える", async ({ br
   const page = await (await browser.newContext()).newPage();
   await page.goto("/");
   await switchPerson(page, "木下 蓮（3年・ものづくり部）");
-  await page.goto("/me?open=collect");
+  await page.goto("/me?open=partner");
   const trophies = page.getByRole("region", { name: "トロフィー" });
   const shelf = trophies.locator(".trophy-shelf").filter({ hasText: "頑張りをたたえる" });
   for (const name of ["有言実行", "逃げなかった人", "帰ってきた人"]) await expect(shelf.getByRole("button", { name })).toBeVisible();
@@ -273,7 +273,7 @@ test("レトロでは、棚と届いた瞬間のトロフィーが液晶の色�
   await page.goto("/");
   await switchPerson(page, "大河原 誠（英語・学年主任）");
   await page.context().addCookies([{ name: "koekata_theme", value: "retro", domain: "127.0.0.1", path: "/" }]);
-  await page.goto("/me?open=collect");
+  await page.goto("/me?open=partner");
   await expect(page.locator("html")).toHaveAttribute("data-theme", "retro");
   await expect(page.locator(".trophy-cup-body").first()).toBeVisible();
   // 届いた瞬間はいつ出るか決まらないので、同じ部品を置いて色を見る
@@ -315,7 +315,7 @@ for (const width of [768, 1280]) {
     const page = await (await browser.newContext({ viewport: { width, height: 900 } })).newPage();
     await page.goto("/");
     await switchPerson(page, "野田 翔（情報・ものづくり部顧問）");
-    await page.goto("/me?open=collect");
+    await page.goto("/me?open=partner");
     await expect(page.getByRole("region", { name: "トロフィー" })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0);
     await page.context().close();
@@ -331,16 +331,14 @@ test("パートナーを隠すと報酬も出ないが、見せると裏で集�
   await expect(page.getByRole("button", { name: "隠す", exact: true })).toHaveAttribute("aria-pressed", "true");
   await page.goto("/me?open=partner");
   await expect(page.getByText("パートナーは隠しています")).toBeVisible();
-  // 集めるのタイルも出ない
-  await page.goto("/me");
-  await expect(page.getByRole("link", { name: "集める" })).toHaveCount(0);
-  await page.goto("/me?open=collect");
+  // コレクション（卵とトロフィー）も出ない
+  await expect(page.getByRole("region", { name: "コレクション" })).toHaveCount(0);
   await expect(page.getByRole("region", { name: "トロフィー" })).toHaveCount(0);
   await expect(page.getByRole("region", { name: "贈り物の卵" })).toHaveCount(0);
   await page.goto("/me?open=settings");
   await page.getByRole("button", { name: "表示する", exact: true }).click();
   await expect(page.getByRole("button", { name: "表示する", exact: true })).toHaveAttribute("aria-pressed", "true");
-  await page.goto("/me?open=collect");
+  await page.goto("/me?open=partner");
   await expect(page.getByRole("region", { name: "トロフィー" })).toBeVisible();
   await page.context().close();
 });

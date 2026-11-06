@@ -65,7 +65,7 @@ test("みんなと、履歴と設定は同じ本体で、ホイールを置か�
   await expect(page.getByRole("navigation", { name: "みんなの入口" }).getByRole("link", { name: /受信箱/ })).toBeVisible();
 });
 
-// 0-1e：履歴と設定の項目は、どの幅でもスクロールなしで全部見えて、押すと開き、戻れる
+// 0-1e・0-2b：履歴と設定の項目は、どの幅でもスクロールなしで全部見えて、押すと開き、戻れる
 for (const viewport of [
   { width: 390, height: 664 },
   { width: 820, height: 1180 },
@@ -78,8 +78,10 @@ for (const viewport of [
     const toast = page.locator(".trophy-toast");
     if (await toast.isVisible().catch(() => false)) await page.keyboard.press("Escape");
     const tiles = page.getByRole("navigation", { name: "履歴と設定の項目" }).getByRole("link");
-    expect(await tiles.count()).toBeGreaterThanOrEqual(8);
+    // 0-2b：6枚（3列×2段）と、その下の「これまで」の帯
+    await expect(tiles).toHaveCount(6);
     for (const tile of await tiles.all()) await expect(tile).toBeInViewport({ ratio: 1 });
+    await expect(page.getByRole("region", { name: "これまで" })).toBeInViewport({ ratio: 1 });
     await tiles.filter({ hasText: "頑張りたいこと" }).click();
     await expect(page.getByRole("region", { name: "頑張りたいこと" })).toBeVisible();
     await page.getByRole("link", { name: "‹ 履歴と設定" }).click();

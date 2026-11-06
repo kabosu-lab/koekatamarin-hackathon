@@ -48,3 +48,24 @@
   font-size: 14px;
   overflow-wrap: anywhere;
 }
+
+/* 0-2b：残したものの見出しと「足す」を1行に。たまった日報・日記はその中の1段 */
+.portfolio-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.portfolio-head h2 {
+  margin: 0;
+}
+
+.portfolio-days {
+  margin-top: 12px;
+}
+
+.portfolio-days h3 {
+  margin: 0 0 4px;
+  font-size: 1rem;
+}

@@ -26,7 +26,7 @@ const SUB_SCREENS = [
   "/daily",
   "/daily/received",
   "/lookback",
-  "/portfolio",
+  // /portfolio は「ふりかえり」のタイル（/me?open=lookback）へ送る（0-2b）
   "/people/noda",
   "/soudan",
   "/yousu",
@@ -100,5 +100,41 @@ for (const viewport of VIEWPORTS) {
         expect(clamped, path).toEqual([]);
       }
     });
+  });
+}
+
+/** 0-2b：履歴と設定は、窓・6枚のタイル・「これまで」の帯・点が、スクロールなしで全部見える */
+const FIT_VIEWPORTS = [
+  { name: "iPhone", width: 390, height: 844 },
+  { name: "iPad縦", width: 768, height: 1024 },
+  { name: "iPad横", width: 1024, height: 768 },
+  { name: "iPad縦（大）", width: 820, height: 1180 },
+  { name: "iPad横（大）", width: 1180, height: 820 },
+] as const;
+
+for (const viewport of FIT_VIEWPORTS) {
+  test(`履歴と設定は ${viewport.name}（${viewport.width}×${viewport.height}）でスクロールなしにタイル6枚と帯が見える`, async ({ page }) => {
+    await page.setViewportSize({ width: viewport.width, height: viewport.height });
+    await page.goto("/me");
+    await closeMoments(page);
+    await expect(page.locator(".me-tiles a")).toHaveCount(6);
+    const fit = await page.evaluate(() => {
+      const body = document.querySelector(".device-body");
+      const bottomOf = (selector: string) =>
+        Math.max(...[...document.querySelectorAll(selector)].map((el) => el.getBoundingClientRect().bottom));
+      return {
+        page: (document.scrollingElement?.scrollHeight ?? 0) - innerHeight,
+        inner: body ? body.scrollHeight - body.clientHeight : 0,
+        tiles: bottomOf(".me-tiles a") - innerHeight,
+        band: bottomOf(".me-so-far") - innerHeight,
+        dots: bottomOf(".swipe-mark") - innerHeight,
+      };
+    });
+    expect(fit.page, "ページ").toBeLessThanOrEqual(0);
+    expect(fit.inner, "中身の入れ物").toBeLessThanOrEqual(1);
+    expect(fit.tiles, "タイル").toBeLessThanOrEqual(0);
+    expect(fit.band, "帯").toBeLessThanOrEqual(0);
+    expect(fit.dots, "点").toBeLessThanOrEqual(0);
+    await page.screenshot({ path: test.info().outputPath(`fit-${viewport.width}x${viewport.height}-me.png`), animations: "disabled" });
   });
 }

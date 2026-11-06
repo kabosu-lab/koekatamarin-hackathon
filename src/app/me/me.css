@@ -1,0 +1,21 @@
+/*
+ * 0-2b：履歴と設定。タイルは6枚（3列×2段）、その下に「これまで」の帯。
+ * 窓＋タイル＋帯＋点が、iPhone でも iPad でもスクロールなしで収まる。
+ * retro.css の .me-tiles などは触らず、ここで上書きする。
+ */
+
+/* 窓は押すと「頑張りたいこと」が開く */
+a.me-screen {
+  color: inherit;
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+a.me-screen:active {
+  opacity: 0.8;
+}
+
+/* 「これまで」の帯 */
+.me-so-far {
+  margin: 0;
+}

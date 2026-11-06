@@ -29,7 +29,7 @@ export function periodStart(period: LookbackPeriod, now: Date): string {
   return new Date(`${start}T00:00:00+09:00`).toISOString();
 }
 
-/** 本人のものだけを集める。チェックの有無にかかわらず、自分の日報は自分で読める。 */
+/** 本人のものだけを取り出す。チェックの有無にかかわらず、自分の日報は自分で読める。 */
 export function collectMaterial(db: DatabaseSync, personId: string, since: string, until?: string): string[] {
   type Row = { text: string; at: string };
   const rows = (prefix: string, sql: string) =>
