@@ -194,7 +194,4 @@ html[data-embed] :is(.feedback-fab, .feedback-thanks) {
   font-weight: 700;
 }
 
-/* 試用で感想のアイコンが出ているときだけ、本体の上をあけてアイコンの置き場にする（窓やリンクにかぶらない） */
-html:not([data-embed]) body:has(.feedback-fab) :is(.retro-home, .page-shell, .minna-frame) {
-  padding-top: max(52px, calc(env(safe-area-inset-top, 0px) + 48px));
-}
+/* 0-2r：感想のアイコンのために上をあけない。アイコンは右上に重ねるだけで、あってもなくても配置は同じ */

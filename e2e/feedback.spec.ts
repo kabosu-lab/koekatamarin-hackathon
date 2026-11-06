@@ -5,7 +5,6 @@ const PORT = Number(process.env.KOEKATA_E2E_PORT ?? 3100);
 const TRIAL = `http://127.0.0.1:${PORT + 1}`;
 const CODE = "test-code";
 /** 端末の枠は上と左右に少ししか余白がないので、アイコンは右上の角にまたがる。窓に入り込んでよいのは、横・縦ともこの px まで（Pixel 7 の幅で実測 横 32・縦 34。枠の黒い縁 約 8px を含む） */
-const LCD_BITE = 36;
 
 test("本番（合言葉なし）では、感想の入口も受け取りもない", async ({ page }) => {
   for (const path of ["/", "/minna", "/me"]) {
@@ -27,11 +26,7 @@ test.describe("試用版", () => {
     await page.getByRole("dialog", { name: "試用版について" }).getByRole("button", { name: "わかった" }).click();
   }
 
-  function overlaps(a: { x: number; y: number; width: number; height: number }, b: { x: number; y: number; width: number; height: number }) {
-    return a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
-  }
-
-  test("どの画面でも右上に小さく浮かび、ほかの部品にかぶらない。埋め込みには出さない", async ({ page }) => {
+  test("どの画面でも右上に小さく浮かび、窓をずらさない。埋め込みには出さない", async ({ page }) => {
     await enter(page);
     const fab = page.getByRole("button", { name: "感想を送る" });
     for (const path of ["/", "/minna", "/me", "/inbox"]) {
@@ -42,29 +37,13 @@ test.describe("試用版", () => {
       // 右上のすみ
       expect(box.x + box.width, path).toBeGreaterThan(viewport.width - 60);
       expect(box.y, path).toBeLessThan(60);
-      // 窓（端末の枠）には、右上の角にまたがるだけ。食い込みは枠の縁を含めて角の小さな範囲
-      const frame = page.locator(".lcd:visible").first();
-      const lcd = (await frame.count()) > 0 ? await frame.boundingBox() : null;
-      if (lcd) {
-        const right = lcd.x + lcd.width;
-        expect(box.x + box.width, path).toBeGreaterThan(right);
-        expect(box.y, path).toBeLessThan(lcd.y);
-        expect(right - box.x, path).toBeLessThanOrEqual(LCD_BITE);
-        expect(box.y + box.height - lcd.y, path).toBeLessThanOrEqual(LCD_BITE);
-      }
-      // 押せるものと重ならない（ホイール・下の帯・ほかのボタンや欄）
-      const others = await page
-        .locator("button:visible, a:visible, input:visible, textarea:visible, .device-controls:visible")
-        .evaluateAll((elements) =>
-          elements
-            .filter((element) => !element.closest(".feedback-fab, .bottom-sheet, .first-card-backdrop"))
-            .map((element) => {
-              const rect = element.getBoundingClientRect();
-              return { name: `${element.tagName}.${element.className}`, x: rect.x, y: rect.y, width: rect.width, height: rect.height };
-            })
-            .filter((rect) => rect.width > 0 && rect.height > 0),
-        );
-      for (const other of others) expect(overlaps(box, other), `${path} ${other.name}`).toBe(false);
+      // 0-2r：アイコンのために窓をずらさない。アイコンを消しても、本体の位置は同じ
+      const body = page.locator(".retro-home:visible, .page-shell:visible, .minna-frame:visible").first();
+      const before = (await body.boundingBox())!;
+      await fab.evaluate((element) => ((element as HTMLElement).style.display = "none"));
+      const after = (await body.boundingBox())!;
+      expect(after.y, path).toBe(before.y);
+      expect(after.height, path).toBe(before.height);
     }
     // 広い画面の横に並ぶ画面（埋め込み）には出さない
     await page.evaluate(() => (document.documentElement.dataset.embed = "true"));
