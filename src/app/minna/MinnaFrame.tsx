@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { bloomLine, bloomProgress, SAKURA_STORY, type Season, type TimeOfDay } from "@/lib/sakura";
+import { EventPopup, MegaphoneButton, type MegaphoneEvent } from "./EventMegaphone";
 import { SakuraScene } from "./SakuraScene";
+import { useToday } from "./TodayModal";
 
 /** 縮んだ帯の高さ（設計書 §2-2：48px） */
 const BAND = 48;
@@ -11,8 +13,9 @@ const BAND = 48;
 const reducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 /**
- * 「みんな」の外枠（0-1k）。ページ全体が1つのスクロールで、桜は開いた直後は大きく、
- * スクロールすると細い帯に縮んで上に残る。帯の下にチャネルの札。iPad 横・PC は左に桜、右に投稿の2列。
+ * 「みんな」の外枠（0-1k・0-1y）。ページ全体が1つのスクロールで、桜は開いた直後は大きく、
+ * スクロールすると細い帯に縮んで上に残る。帯の下にチャネルの札、その下に投稿。入口はいちばん下のアイコンの帯（0-2f）。
+ * iPad 横・PC は左に桜、右に投稿の2列。イベントは桜の木のそばのメガホンから知らせる。
  * 話すボタンとホイールは置かない。左右スワイプと下の点で「話す」へ戻れる。
  */
 export function MinnaFrame({
@@ -25,8 +28,10 @@ export function MinnaFrame({
   message,
   petals,
   fastForward,
-  entrances,
+  extras,
   chips,
+  dock,
+  events,
   children,
 }: {
   title: string;
@@ -39,15 +44,25 @@ export function MinnaFrame({
   message: string;
   petals: number;
   fastForward: boolean;
-  /** 札の列の右端に置く入口（今日の3人、受信箱） */
-  entrances: ReactNode;
+  /** 札の列の端に小さく置く、必要なときだけの入口（相談室への知らせ・広報・卵） */
+  extras: ReactNode;
   chips: ReactNode;
+  /** いちばん下に固定するアイコンの帯（今日の3人・受信箱・自習室・校内の知恵・Teams） */
+  dock: ReactNode;
+  /** 今のイベント。ないときはメガホンを置かない */
+  events: readonly MegaphoneEvent[];
   children: ReactNode;
 }) {
   const scroller = useRef<HTMLElement>(null);
   const stage = useRef<HTMLDivElement>(null);
   const [shown, setShown] = useState(leaves);
   const [shrunk, setShrunk] = useState(false);
+  const [eventOpen, setEventOpen] = useState(false);
+  const closeEvent = useCallback(() => setEventOpen(false), []);
+  const openEvent = useCallback(() => setEventOpen(true), []);
+  // 今日の3人のモーダルが出ている間は、春の見通しを重ねて出さない（閉じたあとに出る）
+  const { open: todayOpen } = useToday();
+  const hasEvent = events.length > 0;
 
   // 縮み：スクロール位置から p を1回だけ計算し、CSS の変数 --p を書くだけ（transform と opacity は CSS 側）
   useEffect(() => {
@@ -115,10 +130,11 @@ export function MinnaFrame({
             leaves={leaves}
             petals={petals}
             watchLeaves
-            autoExplain
+            autoExplain={!todayOpen}
             fastForward={fastForward}
             onCount={onCount}
           >
+            {hasEvent && <MegaphoneButton place="scene" hidden={shrunk} onOpen={openEvent} />}
             <header className="minna-title">
               <h1>{title}</h1>
               <p>{subtitle}</p>
@@ -151,18 +167,21 @@ export function MinnaFrame({
               aria-label="桜を大きく開く"
               tabIndex={shrunk ? 0 : -1}
               aria-hidden={!shrunk}
+              data-event={hasEvent ? "" : undefined}
               onClick={openSakura}
             >
               <span aria-hidden="true">🌸</span> 葉{shown}枚・{bloomLine(shown).replace(" ", "")}
             </button>
-            <div className="minna-chip-row">
-              {chips}
-              {entrances}
-            </div>
+            {hasEvent && <MegaphoneButton place="band" hidden={!shrunk} onOpen={openEvent} />}
+          </div>
+          <div className="minna-chip-row">
+            {chips}
+            {extras}
           </div>
           <div className="minna-posts">{children}</div>
         </div>
       </section>
+      {dock}
       <nav className="swipe-mark" aria-label="画面の切り替え">
         {/* 3枚は輪になっている。端の先は反対の端へ */}
         <Link href="/">‹ 話す</Link>
@@ -173,6 +192,7 @@ export function MinnaFrame({
         </span>
         <Link href="/me">履歴と設定 ›</Link>
       </nav>
+      {eventOpen && <EventPopup events={events} onClose={closeEvent} />}
     </main>
   );
 }

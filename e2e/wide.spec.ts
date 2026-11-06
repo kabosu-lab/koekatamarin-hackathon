@@ -1,5 +1,10 @@
 import { expect, test } from "@playwright/test";
 
+// 今日の3人のモーダル（その日はじめての「みんな」で出る）は、出したことにしておく。モーダルは e2e/minna.spec.ts で確かめる
+test.beforeEach(async ({ context }) => {
+  await context.addCookies([{ name: "koekata_today_seen", value: "1", domain: "127.0.0.1", path: "/" }]);
+});
+
 const PAGES = ["/", "/minna", "/me", "/today", "/chie", "/inbox", "/teams", "/study", "/study/room", "/daily", "/lookback"];
 
 async function noOverflow(page: import("@playwright/test").Page, path: string) {
@@ -61,7 +66,8 @@ test("みんなと、履歴と設定は同じ本体で、ホイールを置か�
     await expect(page.getByRole("navigation", { name: "画面の切り替え" }).getByRole("link", { name: /話す/ })).toBeVisible();
   }
   await page.goto("/minna");
-  await expect(page.getByRole("navigation", { name: "みんなの入口" }).getByRole("link", { name: "今日の3人" })).toBeVisible();
+  // 0-1x：今日の3人はモーダルで開く
+  await expect(page.getByRole("navigation", { name: "みんなの入口" }).getByRole("button", { name: "今日の3人" })).toBeVisible();
   await expect(page.getByRole("navigation", { name: "みんなの入口" }).getByRole("link", { name: /受信箱/ })).toBeVisible();
 });
 
@@ -86,13 +92,15 @@ for (const viewport of [
   });
 }
 
-test("みんなの一番上に校内の桜があり、すぐ下に受信箱、自習室の入口もある", async ({ page }) => {
+test("みんなの一番上に校内の桜があり、すぐ下の入口の列に受信箱と自習室がある", async ({ page }) => {
   await page.goto("/minna");
   const sakura = await page.getByRole("link", { name: "校内の桜" }).boundingBox();
-  const inbox = await page.getByRole("navigation", { name: "届いているもの" }).boundingBox();
-  expect(sakura!.y).toBeLessThan(inbox!.y);
+  const entrances = page.getByRole("navigation", { name: "みんなの入口" });
+  const row = await entrances.boundingBox();
+  expect(sakura!.y).toBeLessThan(row!.y);
   await expect(page.getByRole("link", { name: "校内の桜" })).toContainText("今週");
-  await expect(page.getByRole("link", { name: "自習室" })).toBeVisible();
+  await expect(entrances.getByRole("link", { name: /受信箱/ })).toBeVisible();
+  await expect(entrances.getByRole("link", { name: /自習室/ })).toBeVisible();
   await page.getByRole("link", { name: "校内の桜" }).click();
   await expect(page.getByRole("heading", { name: "校内の桜" })).toBeVisible();
 });

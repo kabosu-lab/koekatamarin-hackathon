@@ -345,15 +345,27 @@ test("パートナーを隠すと報酬も出ないが、見せると裏で集�
   await page.context().close();
 });
 
-test("期間中はイベントが桜の画面に出て、パートナーを隠すと出ない", async ({ browser }) => {
-  const page = await (await browser.newContext()).newPage();
+test("期間中はイベントが桜の画面のメガホンから出て、パートナーを隠すと出ない", async ({ browser }) => {
+  const context = await browser.newContext();
+  // 今日の3人のモーダルは、出したことにしておく（e2e/minna.spec.ts で確かめる）
+  await context.addCookies([{ name: "koekata_today_seen", value: "1", domain: "127.0.0.1", path: "/" }]);
+  const page = await context.newPage();
   await page.goto("/minna");
-  await expect(page.getByRole("region", { name: "期間限定のイベント" }).first()).toBeVisible();
-  await expect(page.getByText("テスト前の応援週間", { exact: true })).toBeVisible();
+  // はじめての春の見通しは閉じておく
+  await page.getByRole("note", { name: "春の見通し" }).getByRole("button", { name: "閉じる" }).click();
+  // 0-1y(4)：桜の木のそばの小さなメガホンを押すと、イベントのカードが出る
+  const megaphone = page.getByRole("button", { name: "期間限定のイベントのお知らせ" });
+  const card = page.getByRole("dialog", { name: "期間限定のイベント" });
+  await expect(async () => {
+    await megaphone.click();
+    await expect(card).toBeVisible({ timeout: 1000 });
+  }).toPass();
+  await expect(card.getByText("テスト前の応援週間", { exact: true })).toBeVisible();
   await page.goto("/me?open=settings");
   await page.getByRole("button", { name: "隠す", exact: true }).click();
   await expect(page.getByRole("button", { name: "隠す", exact: true })).toHaveAttribute("aria-pressed", "true");
   await page.goto("/minna");
-  await expect(page.getByRole("region", { name: "期間限定のイベント" })).toHaveCount(0);
+  await expect(page.getByRole("region", { name: "みんな" })).toBeVisible();
+  await expect(megaphone).toHaveCount(0);
   await page.context().close();
 });

@@ -2,6 +2,26 @@ import { expect, test } from "@playwright/test";
 
 // 0-1j：校内の桜の意味が、見ただけで伝わる
 
+const TODAY_SEEN = { name: "koekata_today_seen", value: "1", domain: "127.0.0.1", path: "/" };
+
+// 今日の3人のモーダル（その日はじめての「みんな」で出る）は、出したことにしておく
+test.beforeEach(async ({ context }) => {
+  await context.addCookies([TODAY_SEEN]);
+});
+
+test("今日の3人のモーダルが出ている間は春の見通しを重ねず、閉じたあとに出る", async ({ page, context }) => {
+  await context.clearCookies({ name: TODAY_SEEN.name });
+  await page.goto("/minna");
+  const modal = page.getByRole("dialog", { name: "今日の3人" });
+  await expect(modal).toBeVisible();
+  await page.waitForTimeout(300);
+  const note = page.getByRole("note", { name: "春の見通し" });
+  await expect(note).toHaveCount(0);
+  await modal.getByRole("button", { name: "みんなを見る" }).click();
+  await expect(modal).toHaveCount(0);
+  await expect(note).toBeVisible();
+});
+
 test("みんなの桜の窓に、一行の説明と満開までの進みがあり、はじめては春の見通しが1回だけ出る", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/minna");
