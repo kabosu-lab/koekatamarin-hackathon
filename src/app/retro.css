@@ -1709,3 +1709,37 @@ html[data-theme="retro"] .talk.device .new-talk {
   padding-top: 12px;
   border-top: 1px dashed rgb(31 41 51 / 20%);
 }
+
+/* 0-2a：吹き出しの下のパートナーは、窓の残りの高さいっぱいに描く（3D は窓の大きさに合わせて測り直す） */
+.lcd-companion .partner-greeting {
+  flex: 1 1 auto;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+.lcd-companion .partner-tap {
+  flex: 1 1 auto;
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  min-height: 0;
+}
+
+.lcd-companion .partner-tap > :is(.dolphin, .voice-lump, [role="img"]) {
+  height: 100%;
+  max-width: 100%;
+}
+
+/* 話す画面のボタンの塗りを、パートナーには付けない */
+html[data-theme="retro"] .talk .partner-tap,
+html[data-theme="retro"] .talk .partner-tap:hover,
+html[data-theme="retro"] .talk .partner-tap:active {
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  color: inherit;
+}
