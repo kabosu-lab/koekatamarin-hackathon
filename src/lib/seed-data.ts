@@ -60,7 +60,7 @@ export const people: SeedPerson[] = [
     id: "kawamura",
     name: "川村 陽菜",
     role: "teacher",
-    label: "理科・1年副担任",
+    label: "理科・1年副担任・生徒指導",
     publicProfile: "教員になって2年目。実験の準備は得意ですが、クラス運営は勉強中です。",
   },
   {

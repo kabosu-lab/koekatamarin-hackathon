@@ -101,7 +101,7 @@ test("スマホ幅で横にはみ出さない", async ({ page }) => {
 test("Teams の写真（ダミー）からパートナーを作れて、写真のない人には出ない", async ({ browser }) => {
   const page = await (await browser.newContext()).newPage();
   await page.goto("/");
-  await switchPerson(page, "川村 陽菜（理科・1年副担任）");
+  await switchPerson(page, "川村 陽菜（理科・1年副担任・生徒指導）");
   await page.goto("/me?open=partner");
   const section = page.getByRole("region", { name: "写真からパートナーを作る" });
   await expect(section).toContainText("保存しません");

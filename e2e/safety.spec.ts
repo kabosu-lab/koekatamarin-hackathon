@@ -40,10 +40,10 @@ test("心配な話は要点だけ相談室に届き、本人が選んだ先生�
   await expect(page.getByText("秘密の言葉")).toHaveCount(0);
 
   await page.goto("/");
-  await switchPerson(page, "川村 陽菜（理科・1年副担任）");
+  await switchPerson(page, "川村 陽菜（理科・1年副担任・生徒指導）");
   await page.goto("/minna");
   await expect(page.getByRole("link", { name: "相談室への知らせを見る" })).toHaveCount(0);
-  await switchTo2(page, "川村 陽菜（理科・1年副担任）");
+  await switchTo2(page, "川村 陽菜（理科・1年副担任・生徒指導）");
   await expect(page.getByRole("article", { name: "木下 蓮さんについての知らせ" })).toHaveCount(0);
   await switchTo2(page, "大河原 誠（英語・学年主任）");
   await expect(page.getByRole("article", { name: "木下 蓮さんについての知らせ" })).toBeVisible();

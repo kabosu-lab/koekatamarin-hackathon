@@ -10,7 +10,7 @@ async function say(page: Page, text: string) {
 test("話したことが日報の項目になり、チェックした項目だけが管理職に届き、一言が返る", async ({ page }) => {
   const shared = `作文を褒めた ${test.info().testId}`;
   await page.goto("/");
-  await switchPerson(page, "川村 陽菜（理科・1年副担任）");
+  await switchPerson(page, "川村 陽菜（理科・1年副担任・生徒指導）");
   await say(page, shared);
 
   await page.getByRole("link", { name: "履歴と設定" }).click();
@@ -26,7 +26,7 @@ test("話したことが日報の項目になり、チェックした項目だ�
   await expect(page.getByText(shared)).toHaveCount(0);
 
   await page.goto("/");
-  await switchPerson(page, "川村 陽菜（理科・1年副担任）");
+  await switchPerson(page, "川村 陽菜（理科・1年副担任・生徒指導）");
   await page.goto("/daily");
   await page.getByRole("checkbox", { name: shared }).click();
   await expect(page.getByRole("checkbox", { name: shared })).toBeChecked();
@@ -41,7 +41,7 @@ test("話したことが日報の項目になり、チェックした項目だ�
   await expect(report.locator(".response-card")).toContainText("よく見ていますね");
 
   await page.goto("/");
-  await switchPerson(page, "川村 陽菜（理科・1年副担任）");
+  await switchPerson(page, "川村 陽菜（理科・1年副担任・生徒指導）");
   await page.goto("/daily");
   await expect(page.getByRole("region", { name: "届いた一言" })).toContainText("藤本 恵先生");
 });
@@ -62,7 +62,7 @@ test("生徒の日記は担任にだけ届く", async ({ page }) => {
   await expect(page.getByText(words)).toHaveCount(0);
 
   await page.goto("/");
-  await switchPerson(page, "川村 陽菜（理科・1年副担任）");
+  await switchPerson(page, "川村 陽菜（理科・1年副担任・生徒指導）");
   await page.goto("/inbox");
   await expect(page.getByRole("article", { name: "中村 結衣さんから" })).toContainText(words);
 });

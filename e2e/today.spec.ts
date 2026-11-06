@@ -39,7 +39,7 @@ test("カードで見ると、投稿した本人に誰が見たか伝わり、�
   const { postId } = (await response.json()) as { postId: string };
 
   await page.goto("/");
-  await switchPerson(page, "川村 陽菜（理科・1年副担任）");
+  await switchPerson(page, "川村 陽菜（理科・1年副担任・生徒指導）");
   expect((await page.request.post("/api/today/seen", { data: { postId } })).ok()).toBe(true);
 
   await page.goto("/");

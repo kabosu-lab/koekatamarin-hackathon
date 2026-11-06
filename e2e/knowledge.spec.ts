@@ -145,7 +145,7 @@ test("名前と言葉を外すと、作った人が直すまで広がらない",
   await page.goto("/chie");
   await expect(page.getByRole("link", { name: "文化祭の動画を早く作る" })).toHaveCount(0);
 
-  await become(page, "川村 陽菜（理科・1年副担任）");
+  await become(page, "川村 陽菜（理科・1年副担任・生徒指導）");
   await page.goto(url);
   await expect(page.getByText("外してほしいという人がいます")).toBeVisible();
   await page.getByRole("textbox", { name: "本文" }).fill("撮る前に、30秒の場面を紙に6枚書くと撮り直しが減る（野田先生）。");

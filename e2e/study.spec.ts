@@ -27,7 +27,7 @@ test("25分のタイマーが終わると問いかけが出て、本人が選べ
   const words = `今日は過去問を解いた ${test.info().testId}`;
   await page.clock.install();
   await page.goto("/");
-  await switchPerson(page, "川村 陽菜（理科・1年副担任）");
+  await switchPerson(page, "川村 陽菜（理科・1年副担任・生徒指導）");
   await page.goto("/study/room");
 
   const start = page.getByRole("button", { name: /25分/ });
