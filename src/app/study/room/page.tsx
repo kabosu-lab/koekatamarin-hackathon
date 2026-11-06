@@ -11,6 +11,12 @@ import { RoomHint } from "./RoomHint";
 import { RoomMusic } from "./RoomMusic";
 import { RoomScene } from "./RoomScene";
 import { ROOM_SEATS, roomMoment, roomPeople } from "./scene";
+import { isTrialMode } from "@/lib/trial";
+
+/** ?people= で見せかけの人数を作れるのは、台本モード（動画）とテストのときだけ。試用版と本物の Claude のときは無視する */
+function allowsPeopleOverride(): boolean {
+  return !isTrialMode() && (process.env.KOEKATA_CLAUDE === "scripted" || !process.env.ANTHROPIC_API_KEY);
+}
 import "./room.css";
 
 export const metadata: Metadata = { title: "自習室（一緒に勉強する）｜こえかた" };
@@ -31,7 +37,7 @@ export default async function StudyRoomPage({
   const db = getDatabase();
   const now = new Date();
   ensureDemoCompanions(db, now);
-  const presence = roomPeople(getPresence(db, now), people);
+  const presence = roomPeople(getPresence(db, now), allowsPeopleOverride() ? people : undefined);
   const moment = roomMoment(now, requested);
   const more = presence.tokens.length - Math.min(presence.tokens.length, ROOM_SEATS);
 

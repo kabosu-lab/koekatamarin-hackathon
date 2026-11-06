@@ -28,12 +28,12 @@ export const RARE_LABELS: Record<BackdropRare, string> = {
   festival: "文化祭の飾り",
 };
 
-/** レアが出たときの一言。生徒には気さくに、先生にはです・ます調で */
+/** レアが出たときの一言。生徒には気さくに、先生にはです・ます調で。問いかけにせず言い切る（吹き出しの問いは1つだけ。0-1r） */
 const RARE_LINES: Record<BackdropRare, { student: string; teacher: string }> = {
   sakura: { student: "今日は桜吹雪だよ。きれいだね", teacher: "今日は桜吹雪が舞っています" },
   snow: { student: "雪が降ってきたよ。あったかくしてね", teacher: "雪が降ってきました。あたたかくしてくださいね" },
   rainbow: { student: "今日は虹が出てるよ", teacher: "今日は虹が出ています" },
-  "shooting-star": { student: "あ、流れ星！ 何かお願いした？", teacher: "流れ星が見えました。何かお願いしましたか" },
+  "shooting-star": { student: "流れ星が出てるよ", teacher: "流れ星が見えました" },
   festival: { student: "文化祭の飾りが出てるよ。わくわくするね", teacher: "文化祭の飾りが出ています" },
 };
 

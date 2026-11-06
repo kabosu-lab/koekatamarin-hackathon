@@ -102,12 +102,12 @@ class RoomPlayer {
 /**
  * 部屋に流れる曲。全員が同じ曲の同じ位置を聴く。音は初めから流す（0-1v）。
  * 音がもう起きていれば開いたときから、まだなら画面のどこかを最初に触ったときから流れる（sound.ts がそのタップで音を起こす）。
- * 自分の耳だけ止める小さなボタンを残す。音を切るのは端末の消音や音量で。
+ * 止めるボタンは置かない（0-1v：アプリに消音は置かない）。音を切るのは端末の消音や音量で。
  */
 export function RoomMusic({ initial }: { initial: Music }) {
   const [music, setMusic] = useState(initial);
-  /** 自分の耳で聴くか（止めるボタンで切り替える） */
-  const [listening, setListening] = useState(true);
+  /** いつも聴く（止めるボタンは置かない） */
+  const listening = true;
   /** 音が起きて、曲を鳴らせるか */
   const [awake, setAwake] = useState(false);
   const [preparing, setPreparing] = useState(false);
@@ -204,10 +204,6 @@ export function RoomMusic({ initial }: { initial: Music }) {
           <strong className="room-music-name">{music.name}</strong>
           {music.canChange && <span className="room-music-turn" aria-hidden="true">⟳</span>}
           <span className="visually-hidden">{music.canChange ? "曲を変える" : "少し待つと変えられます"}</span>
-        </button>
-        <button type="button" className="room-chip room-music-play" onClick={() => setListening((value) => !value)}>
-          <span aria-hidden="true">{listening ? "🔊" : "🔇"}</span>
-          <span className="visually-hidden">{listening ? "音を止める" : "音を流す"}</span>
         </button>
       </div>
       <span className="visually-hidden">いま {music.listening} 人が一緒に聴いています</span>

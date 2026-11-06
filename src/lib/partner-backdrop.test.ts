@@ -72,7 +72,10 @@ describe("パートナーの窓の背景（0-2x）", () => {
     expect(rareLine("rainbow", "teacher")).toMatch(/ます$/);
     expect(rareLine("snow", undefined)).toMatch(/ね$/);
     expect(rarePrefix("rainbow", "student")).toBe("今日は虹が出てるよ。");
-    expect(rarePrefix("shooting-star", "student")).toBe("あ、流れ星！ 何かお願いした？");
+    expect(rarePrefix("shooting-star", "student")).toBe("流れ星が出てるよ。");
+    // 一言は問いかけにしない（吹き出しの問いは1つだけ）
+    for (const rare of ["sakura", "snow", "rainbow", "shooting-star", "festival"] as const)
+      for (const role of ["student", "teacher"]) expect(rareLine(rare, role)).not.toMatch(/[？?]|か$/);
   });
 
   it("見たレアはコレクションに1つずつ、初めての日で残る", () => {

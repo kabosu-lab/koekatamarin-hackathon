@@ -32,8 +32,8 @@ test("自習室の曲は初めから流れ（音がまだ起きていなけれ�
   await expect(music).toContainText("いまの曲");
   await expect(music).toContainText(/いま \d+ 人が一緒に聴いています/);
   // 「音を出す」を押さなくても流す。音はアプリで1つだけ作る
-  await expect(music.getByRole("button", { name: "音を止める" })).toBeVisible();
-  await expect(music.getByRole("button", { name: "音を出す" })).toHaveCount(0);
+  // 消音のボタンは置かない（0-1v）
+  await expect(music.getByRole("button", { name: /音を止める|音を流す|音を出す/ })).toHaveCount(0);
   await expect.poll(() => page.evaluate(() => (window as unknown as Counted).audioMade)).toBe(1);
   // 端末によっては最初のタップまで音が起きない。ボタンでないところを触れば流れはじめる
   await page.getByRole("heading", { name: "自習室" }).click();
@@ -42,11 +42,6 @@ test("自習室の曲は初めから流れ（音がまだ起きていなけれ�
   await expect(music).not.toContainText("音の設定");
   expect(await page.evaluate(() => (window as unknown as Counted).audioMade)).toBe(1);
 
-  // 自分の耳だけ止めて、また流せる
-  await music.getByRole("button", { name: "音を止める" }).click();
-  await music.getByRole("button", { name: "音を流す" }).click();
-  await expect.poll(() => page.evaluate(() => (window as unknown as Counted).loopsStarted)).toBe(2);
-  await expect(music.getByRole("button", { name: "音を止める" })).toBeVisible();
   expect(media).toEqual([]);
   expect(errors).toEqual([]);
 });
