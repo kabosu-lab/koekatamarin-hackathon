@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createScriptedClaude } from "./claude/scripted";
 import type { ClaudeClient } from "./claude/types";
-import { handleDraft, handlePublish, handleReview } from "./compose-request";
+import { readPartialString } from "./claude/compose";
+import { type DraftStreamEvent, handleDraft, handlePublish, handleReview, prepareDraftStream } from "./compose-request";
 import { openDatabase } from "./db";
 import { createDummyTeams } from "./destination/dummy-teams";
 import type { PostDestination } from "./destination/types";
@@ -70,6 +71,61 @@ describe("handleDraft", () => {
 
   it("空の履歴は受け付けない", async () => {
     expect((await handleDraft(scripted, teams, "aoki", { history: [] })).status).toBe(400);
+  });
+});
+
+describe("prepareDraftStream（0-2l）", () => {
+  async function collect(claude: ClaudeClient, input: unknown) {
+    const prepared = prepareDraftStream(claude, teams, "aoki", input);
+    if (prepared.status !== 200) return { status: prepared.status, events: [] as DraftStreamEvent[] };
+    const events: DraftStreamEvent[] = [];
+    await prepared.run((event) => events.push(event));
+    return { status: 200, events };
+  }
+
+  it("送り先を先に、本文を少しずつ、最後に下書きと受け取られ方を流す", async () => {
+    const { events } = await collect(scripted, { history: [{ role: "user", content: "過去問を20問解いた" }] });
+    expect(events[0].type).toBe("start");
+    const deltas = events.filter((event) => event.type === "delta");
+    expect(deltas.length).toBeGreaterThan(1);
+    expect(deltas.map((event) => (event.type === "delta" ? event.text : "")).join("")).toBe("過去問を20問解いた");
+    const types = events.map((event) => event.type);
+    expect(types.indexOf("channel")).toBeLessThan(types.indexOf("delta"));
+    expect(types.slice(-2)).toEqual(["draft", "review"]);
+  });
+
+  it("本物の Claude が流すときは、書きかけの JSON から本文だけを取り出す", async () => {
+    const json = JSON.stringify({ ready: true, channelId: "study", kind: "report", researchedWithAi: false, announcement: false, text: "改行も\n\"引用\"も" });
+    const claude: ClaudeClient = {
+      mode: "real",
+      complete: scripted.complete,
+      stream: async (request, onText) => {
+        if (request.task !== "draft") throw new Error("下書きだけを流す");
+        for (let i = 0; i < json.length; i += 5) onText(json.slice(i, i + 5));
+        return { text: json, refused: false };
+      },
+    };
+    const { events } = await collect(claude, { history: [{ role: "user", content: "x" }] });
+    const body = events.flatMap((event) => (event.type === "delta" ? [event.text] : [])).join("");
+    expect(body).toBe("改行も\n\"引用\"も");
+    expect(events.find((event) => event.type === "channel")).toEqual({ type: "channel", channelId: "study" });
+  });
+
+  it("確かめで止まるものは流さず、Claude の失敗は error として流す", async () => {
+    expect((await collect(scripted, { history: [] })).status).toBe(400);
+    const log = quietLog();
+    const { events } = await collect(answering("壊れた答え"), { history: [{ role: "user", content: "x" }] });
+    expect(events.at(-1)?.type).toBe("error");
+    log.mockRestore();
+  });
+});
+
+describe("readPartialString", () => {
+  it("書きかけの文字列を、読めたところまで返す", () => {
+    expect(readPartialString('{"ready":true,"te', "text")).toBeNull();
+    expect(readPartialString('{"text":"あい\\', "text")).toEqual({ value: "あい", done: false });
+    expect(readPartialString('{"text":"あい\\nう\\u00', "text")).toEqual({ value: "あい\nう", done: false });
+    expect(readPartialString('{"text":"\\u3042\\"x\\"","k":1}', "text")).toEqual({ value: 'あ"x"', done: true });
   });
 });
 

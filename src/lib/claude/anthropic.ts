@@ -144,5 +144,33 @@ export function createAnthropicClaude(api: MessagesApi, webSearch: WebSearchOpti
 
       return { text: textWithSources(content), refused: false };
     },
+    // 0-2l：下書きの本文を流しながら見せるための呼び出し。調べものの道具は渡さない（JSON で返させる呼び出しだけで使う）
+    async stream(request, onText) {
+      const { system, messages, maxTokens, jsonSchema, attachment } = request;
+      const events = await api.create({
+        model: MODEL,
+        max_tokens: maxTokens,
+        system,
+        messages: withAttachment(messages, attachment),
+        stream: true,
+        output_config: {
+          effort: "medium",
+          ...(jsonSchema ? { format: { type: "json_schema" as const, schema: jsonSchema } } : {}),
+        },
+        betas: ["server-side-fallback-2026-07-01"],
+        fallbacks: "default",
+      });
+      let text = "";
+      let refused = false;
+      for await (const event of events) {
+        if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
+          text += event.delta.text;
+          onText(event.delta.text);
+        } else if (event.type === "message_delta" && event.delta.stop_reason === "refusal") {
+          refused = true;
+        }
+      }
+      return refused ? { text: "", refused: true } : { text, refused: false };
+    },
   };
 }

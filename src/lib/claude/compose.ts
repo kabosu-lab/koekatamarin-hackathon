@@ -124,6 +124,21 @@ function parseJson(text: string, refused: boolean): Record<string, unknown> {
   throw new ComposeError("Claude の答えを読めませんでした");
 }
 
+function draftRequest(history: ChatMessage[], channels: DraftChannel[], askedName?: string): ClaudeRequest {
+  const transcript = history
+    .map((m) => `${m.role === "user" ? "本人" : "パートナー"}：${m.content}`)
+    .join("\n");
+  const asking = askedName ? `\n\nこの投稿は、${askedName}さんに聞いてみるためのものです。` : "";
+  const channelList = channels.map((c) => `- ${c.id}：${c.name}（${c.description}）`).join("\n");
+  return {
+    task: "draft",
+    system: draftSystemPrompt,
+    messages: [{ role: "user", content: `チャネル:\n${channelList}${asking}\n\n<会話>\n${transcript}\n</会話>` }],
+    maxTokens: MAX_TOKENS,
+    jsonSchema: draftSchema(channels),
+  };
+}
+
 /** 会話を、本人の投稿の下書きにする。 */
 export async function draftPost(
   claude: ClaudeClient,
@@ -131,20 +146,61 @@ export async function draftPost(
   channels: DraftChannel[],
   askedName?: string,
 ): Promise<Draft> {
-  const transcript = history
-    .map((m) => `${m.role === "user" ? "本人" : "パートナー"}：${m.content}`)
-    .join("\n");
-  const asking = askedName ? `\n\nこの投稿は、${askedName}さんに聞いてみるためのものです。` : "";
-  const channelList = channels.map((c) => `- ${c.id}：${c.name}（${c.description}）`).join("\n");
+  const { text, refused } = await claude.complete(draftRequest(history, channels, askedName));
+  return toDraft(text, refused, channels);
+}
 
-  const { text, refused } = await claude.complete({
-    task: "draft",
-    system: draftSystemPrompt,
-    messages: [{ role: "user", content: `チャネル:\n${channelList}${asking}\n\n<会話>\n${transcript}\n</会話>` }],
-    maxTokens: MAX_TOKENS,
-    jsonSchema: draftSchema(channels),
+export type DraftProgress = {
+  /** 本文の続き（できたところから少しずつ） */
+  text(chunk: string): void;
+  /** 本文より先に決まった送り先のチャネル */
+  channel?(channelId: string): void;
+};
+
+/**
+ * 0-2l：下書きを、本文を流しながら作る。本文の続きは progress.text に少しずつ渡す。
+ * 流せない Claude（台本など）のときは、できた本文を決まった速さで少しずつ渡す。
+ */
+export async function streamDraft(
+  claude: ClaudeClient,
+  history: ChatMessage[],
+  channels: DraftChannel[],
+  progress: DraftProgress,
+  askedName?: string,
+): Promise<Draft> {
+  const request = draftRequest(history, channels, askedName);
+  if (!claude.stream) {
+    const { text, refused } = await claude.complete(request);
+    const draft = toDraft(text, refused, channels);
+    if (draft.ready) {
+      progress.channel?.(draft.channelId);
+      await dripText(draft.text, progress.text);
+    }
+    return draft;
+  }
+  let json = "";
+  let shown = 0;
+  let channelSent = false;
+  const { text, refused } = await claude.stream(request, (chunk) => {
+    json += chunk;
+    if (!channelSent) {
+      const channel = readPartialString(json, "channelId");
+      if (channel?.done && channels.some((c) => c.id === channel.value)) {
+        channelSent = true;
+        progress.channel?.(channel.value);
+      }
+    }
+    // 先頭の空白は、あとで切り落とすので見せない
+    const body = readPartialString(json, "text")?.value.trimStart() ?? "";
+    if (body.length > shown) {
+      progress.text(body.slice(shown));
+      shown = body.length;
+    }
   });
+  return toDraft(text, refused, channels);
+}
 
+function toDraft(text: string, refused: boolean, channels: DraftChannel[]): Draft {
   const draft = parseJson(text, refused);
   const channel = channels.find((c) => c.id === draft.channelId);
   const kind = POST_KINDS.find((k) => k === draft.kind);
