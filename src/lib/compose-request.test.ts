@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createScriptedClaude } from "./claude/scripted";
 import type { ClaudeClient } from "./claude/types";
-import { readPartialString } from "./claude/compose";
+import { readPartialString, TooLongError } from "./claude/compose";
 import { type DraftStreamEvent, handleDraft, handlePublish, handleReview, prepareDraftStream } from "./compose-request";
 import { openDatabase } from "./db";
 import { createDummyTeams } from "./destination/dummy-teams";
@@ -117,6 +117,61 @@ describe("prepareDraftStream（0-2l）", () => {
     const { events } = await collect(answering("壊れた答え"), { history: [{ role: "user", content: "x" }] });
     expect(events.at(-1)?.type).toBe("error");
     log.mockRestore();
+  });
+});
+
+describe("prepareDraftStream の中断と失敗（0-2l の見直し）", () => {
+  const history = { history: [{ role: "user", content: "過去問を20問解いた" }] };
+
+  it("止められたら、受け取られ方の確かめをせず、残りを流さない", async () => {
+    const complete = vi.fn(scripted.complete);
+    const prepared = prepareDraftStream({ mode: "scripted", complete }, teams, "aoki", history);
+    if (prepared.status !== 200) throw new Error("流れるはず");
+    const stop = new AbortController();
+    const events: DraftStreamEvent[] = [];
+    await prepared.run((event) => {
+      events.push(event);
+      if (event.type === "delta") stop.abort();
+    }, stop.signal);
+    expect(events.filter((event) => event.type === "delta")).toHaveLength(1);
+    expect(events.some((event) => event.type === "draft" || event.type === "review")).toBe(false);
+    expect(complete.mock.calls.map(([request]) => request.task)).toEqual(["draft"]);
+  });
+
+  it("本文のあとで確かめに失敗しても、下書きは捨てず、確かめ直せるように知らせる", async () => {
+    const log = quietLog();
+    const claude: ClaudeClient = {
+      mode: "real",
+      complete: async (request) => {
+        if (request.task === "review") throw new Error("つながらない");
+        return scripted.complete(request);
+      },
+    };
+    const prepared = prepareDraftStream(claude, teams, "aoki", history);
+    if (prepared.status !== 200) throw new Error("流れるはず");
+    const events: DraftStreamEvent[] = [];
+    await prepared.run((event) => events.push(event));
+    expect(events.some((event) => event.type === "error")).toBe(false);
+    expect(events.find((event) => event.type === "draft")).toBeTruthy();
+    expect(events.at(-1)).toEqual({ type: "review", review: null, failed: true });
+    log.mockRestore();
+  });
+
+  it("上限まで書いても終わらなかったら、長すぎたと分けて知らせる", async () => {
+    const claude: ClaudeClient = {
+      mode: "real",
+      complete: scripted.complete,
+      stream: async () => {
+        throw new TooLongError("長すぎ");
+      },
+    };
+    const prepared = prepareDraftStream(claude, teams, "aoki", history);
+    if (prepared.status !== 200) throw new Error("流れるはず");
+    const events: DraftStreamEvent[] = [];
+    await prepared.run((event) => events.push(event));
+    const last = events.at(-1);
+    expect(last?.type).toBe("error");
+    expect(last?.type === "error" && last.error).toContain("短く");
   });
 });
 

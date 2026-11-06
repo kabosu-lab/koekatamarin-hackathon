@@ -107,7 +107,7 @@ test("0-2l：本文は一度に出ず、少しずつ書かれていく", async (
   await expect(page.getByLabel("投稿の文章")).toHaveValue(words);
 });
 
-test("0-2l：本人として送るは押した瞬間にシートを閉じて飛ばし、送信に失敗したら下書きを残してやわらかく知らせる", async ({ page }) => {
+test("0-2l：本人として送るは押した瞬間にシートを閉じて飛ばし、送信に失敗したら下書き・見える範囲・とどけるの光を戻してやわらかく知らせる", async ({ page }) => {
   let release: () => void = () => {};
   const held = new Promise<void>((done) => (release = done));
   await page.route("**/api/publish", async (route) => {
@@ -116,24 +116,97 @@ test("0-2l：本人として送るは押した瞬間にシートを閉じて飛�
   });
   await page.goto("/");
   const input = page.getByLabel("パートナーに書く");
-  const words = `失敗しても残る下書き ${test.info().testId}`;
+  const id = test.info().testId;
+  // 台本では、何があったか（静かになった）とどうしたか（声を小さく）がそろうと、とどけるが光る
+  await input.fill("今日の授業、急に静かになった瞬間があって");
+  await input.press("Enter");
+  await expect(page.getByRole("log").locator(".bubble.assistant:not(.waiting)")).toHaveCount(1);
+  await input.fill(`声を小さくしたんだ ${id}`);
+  await input.press("Enter");
+  await expect(page.getByRole("log").locator(".bubble.assistant:not(.waiting)")).toHaveCount(2);
+  const deliver = page.getByRole("button", { name: /とどける/ });
+  await expect(deliver).toHaveAttribute("data-ready", "true");
+  await deliver.click();
+  const body = page.getByLabel("投稿の文章");
+  await expect(body).toHaveValue(new RegExp(`声を小さくしたんだ ${id}`));
+  const words = `直した言葉 ${id}`;
+  await body.fill(words);
+  await page.getByRole("button", { name: "受け取られ方を確かめる" }).click();
+  const scope = page.getByRole("radiogroup", { name: "見える範囲" });
+  await scope.getByRole("radio", { name: "自分だけ" }).click();
+  await page.getByRole("button", { name: "本人として送る" }).click();
+  // 送信の結果を待たずに、シートが閉じて言葉が飛ぶ。裏で送っている間は、とどけるを押せない
+  await expect(page.getByRole("dialog", { name: "こんな言葉でどうかな？" })).toBeHidden({ timeout: 1000 });
+  await expect(page.locator(".send-burst")).toHaveCount(1, { timeout: 1000 });
+  await expect(deliver).toBeDisabled();
+  await expect(deliver).toHaveAttribute("data-ready", "false");
+  release();
+  await expect(page.locator(".notice")).toContainText("下書きは残してあります");
+  // 光は元に戻り、とどけるで開き直すと、直した言葉と見える範囲のまま、もう一度送れる
+  await expect(deliver).toHaveAttribute("data-ready", "true");
+  await deliver.click();
+  await expect(body).toHaveValue(words);
+  await expect(page.getByRole("radiogroup", { name: "見える範囲" }).getByRole("radio", { name: "自分だけ" })).toHaveAttribute("aria-checked", "true");
+  await page.unroute("**/api/publish");
+  const sent = page.waitForRequest("**/api/publish");
+  await page.getByRole("button", { name: "本人として送る" }).click();
+  expect((await sent).postDataJSON()).toMatchObject({ text: words, scope: "self" });
+  await expect(page.getByRole("link", { name: "校内チャネルで見る" })).toBeVisible();
+});
+
+test("0-2l：本文のあとで受け取られ方を確かめられなくても、下書きは残り、確かめ直してから送れる", async ({ page }) => {
+  await page.route("**/api/draft/stream", async (route) => {
+    const response = await route.fetch();
+    const lines = (await response.text()).trim().split("\n");
+    lines[lines.length - 1] = JSON.stringify({ type: "review", review: null, failed: true });
+    await route.fulfill({ response, body: `${lines.join("\n")}\n` });
+  });
+  await page.goto("/");
+  const input = page.getByLabel("パートナーに書く");
+  const words = `確かめ直す下書き ${test.info().testId}`;
   await input.fill(words);
   await input.press("Enter");
   await expect(page.getByRole("log").locator(".bubble.assistant:not(.waiting)")).toHaveCount(1);
   await page.getByRole("button", { name: /とどける/ }).click();
   await expect(page.getByLabel("投稿の文章")).toHaveValue(words);
-  await page.getByRole("button", { name: "本人として送る" }).click();
-  // 送信の結果を待たずに、シートが閉じて言葉が飛ぶ
-  await expect(page.getByRole("dialog", { name: "こんな言葉でどうかな？" })).toBeHidden({ timeout: 1000 });
-  await expect(page.locator(".send-burst")).toHaveCount(1, { timeout: 1000 });
-  release();
-  await expect(page.locator(".notice")).toContainText("下書きは残してあります");
-  // とどけるで開き直すと、同じ言葉で、もう一度送れる
-  await page.getByRole("button", { name: /とどける/ }).click();
-  await expect(page.getByLabel("投稿の文章")).toHaveValue(words);
-  await page.unroute("**/api/publish");
-  await page.getByRole("button", { name: "本人として送る" }).click();
-  await expect(page.getByRole("link", { name: "校内チャネルで見る" })).toBeVisible();
+  await expect(page.locator(".compose-review-failed")).toBeVisible();
+  await expect(page.getByRole("button", { name: "本人として送る" })).toBeDisabled();
+  await page.getByRole("button", { name: "受け取られ方を確かめる" }).click();
+  await expect(page.locator(".perception")).toContainText("大丈夫そう");
+  await expect(page.getByRole("button", { name: "本人として送る" })).toBeEnabled();
+});
+
+test("0-2l：長すぎて書き切れなかったときは、短くしてと知らせる。書いている途中で取り消すと何も戻ってこない", async ({ page }) => {
+  let calls = 0;
+  await page.route("**/api/draft/stream", async (route) => {
+    calls += 1;
+    if (calls === 1) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/x-ndjson",
+        body: `${JSON.stringify({ type: "start", channels: [], people: [] })}\n${JSON.stringify({ type: "error", error: "話が長くて、下書きを書き切れませんでした。話を少し短くして、もう一度押してください。" })}\n`,
+      });
+      return;
+    }
+    await route.continue();
+  });
+  await page.goto("/");
+  const input = page.getByLabel("パートナーに書く");
+  await input.fill(`長い話 ${test.info().testId}`);
+  await input.press("Enter");
+  await expect(page.getByRole("log").locator(".bubble.assistant:not(.waiting)")).toHaveCount(1);
+  const deliver = page.getByRole("button", { name: /とどける/ });
+  await deliver.click();
+  await expect(page.locator(".notice")).toContainText("短くして");
+  // 2回目は書いている途中で取り消す。あとから下書きや知らせが戻ってこない
+  await deliver.click();
+  const sheet = page.getByRole("dialog", { name: "こんな言葉でどうかな？" });
+  await expect(sheet.locator(".compose-caret")).toBeVisible();
+  await sheet.getByRole("button", { name: "取り消す" }).click();
+  await expect(sheet).toBeHidden();
+  await page.waitForTimeout(1500);
+  await expect(sheet).toBeHidden();
+  await expect(page.locator(".notice")).toHaveCount(0);
 });
 
 test("0-1l・0-2n：会話の中のアイコンを押すと「新しい話にしますか？」が出て、新しく話すと前の話は履歴に残り、大きなパートナーに戻る", async ({ page }) => {

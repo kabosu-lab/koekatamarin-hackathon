@@ -22,6 +22,8 @@ export function InboxCard({ item, candidates }: { item: InboxItem; candidates: P
   const [done, setDone] = useState<"replied" | "passed" | null>(null);
 
   const [passWords, setPassWords] = useState("");
+  // つなぐ欄の開き具合。送れなかったときは開いたまま戻す
+  const [passOpen, setPassOpen] = useState(false);
   // 送れなかった返信は、確かめた言葉のまま戻す（0-2l(2)）
   const [replyRestore, setReplyRestore] = useState<{ key: number; value: VoiceReplyRestore } | null>(null);
 
@@ -105,7 +107,7 @@ export function InboxCard({ item, candidates }: { item: InboxItem; candidates: P
       )}
 
       {candidates.length > 0 && (
-        <details>
+        <details open={passOpen} onToggle={(event) => setPassOpen(event.currentTarget.open)}>
           <summary>もっと詳しい人につなぐ</summary>
           <div className="pass">
             <label>

@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { createAnthropicClaude, MODEL, type MessagesApi } from "./anthropic";
+import { TooLongError } from "./compose";
 import { converse, splitReady, withSources } from "./converse";
 import { createClaude } from "./index";
 import { companionSystemPrompt, openingLines, READY_MARK, readyMark, refusalReply, trialCompanionSystemPrompt } from "./persona";
@@ -28,6 +29,39 @@ describe("createClaude", () => {
 
   it("テストの指定があれば、キーがあっても料金を使わない", () => {
     expect(createClaude({ ANTHROPIC_API_KEY: "test-key", KOEKATA_CLAUDE: "scripted" }).mode).toBe("scripted");
+  });
+});
+
+describe("createAnthropicClaude の流す呼び出し（0-2l）", () => {
+  function streamApi(stopReason: string) {
+    const events = [
+      { type: "content_block_delta", delta: { type: "text_delta", text: '{"text":"あ' } },
+      { type: "content_block_delta", delta: { type: "text_delta", text: 'い"}' } },
+      { type: "message_delta", delta: { stop_reason: stopReason } },
+    ];
+    const create = vi.fn().mockResolvedValue({
+      async *[Symbol.asyncIterator]() {
+        yield* events;
+      },
+    });
+    return { api: { create } as unknown as MessagesApi, create };
+  }
+  const request = { task: "draft" as const, system: "", messages: [], maxTokens: 10, jsonSchema: {} };
+
+  it("続きを少しずつ渡し、止める合図を SDK に渡す", async () => {
+    const { api, create } = streamApi("end_turn");
+    const chunks: string[] = [];
+    const stop = new AbortController();
+    const result = await createAnthropicClaude(api).stream!(request, (chunk) => chunks.push(chunk), stop.signal);
+    expect(result).toEqual({ text: '{"text":"あい"}', refused: false });
+    expect(chunks).toHaveLength(2);
+    expect(create.mock.calls[0][0]).toMatchObject({ stream: true });
+    expect(create.mock.calls[0][1]).toEqual({ signal: stop.signal });
+  });
+
+  it("上限で止まったら、長すぎたと分けて知らせる", async () => {
+    const { api } = streamApi("max_tokens");
+    await expect(createAnthropicClaude(api).stream!(request, () => {})).rejects.toBeInstanceOf(TooLongError);
   });
 });
 

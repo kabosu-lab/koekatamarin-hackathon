@@ -2,8 +2,9 @@ import { FEEDBACK_MARK, openingLines } from "./persona";
 import type { ClaudeClient } from "./types";
 
 /** 0-2l：できた下書きの本文を、決まった速さで少しずつ渡す（流せない Claude と台本で、書いていく様子を見せる） */
-export async function dripText(text: string, onText: (chunk: string) => void, chars = 2, ms = 30): Promise<void> {
+export async function dripText(text: string, onText: (chunk: string) => void, chars = 2, ms = 30, signal?: AbortSignal): Promise<void> {
   for (let i = 0; i < text.length; i += chars) {
+    if (signal?.aborted) return;
     onText(text.slice(i, i + chars));
     if (i + chars < text.length) await new Promise((done) => setTimeout(done, ms));
   }

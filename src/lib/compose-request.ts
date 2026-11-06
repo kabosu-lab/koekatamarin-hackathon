@@ -8,7 +8,7 @@ import {
   loadPending,
   toClaudeAttachment,
 } from "./attachment";
-import { ComposeError, draftPost, type Draft, type Review, reviewPost, streamDraft } from "./claude/compose";
+import { ComposeError, draftPost, type Draft, type Review, reviewPost, streamDraft, TooLongError } from "./claude/compose";
 import { dripText } from "./claude/scripted";
 import { isMessage, MAX_HISTORY } from "./claude/converse-request";
 import type { ClaudeClient, ChatMessage } from "./claude/types";
@@ -113,12 +113,16 @@ export type DraftStreamEvent =
   | { type: "channel"; channelId: string }
   | { type: "delta"; text: string }
   | { type: "draft"; draft: Draft; notices?: AttachmentNotice[] }
-  | { type: "review"; review: Review | null }
+  /** failed：本文はできたが、受け取られ方を確かめられなかった（下書きは残し、画面で確かめ直す） */
+  | { type: "review"; review: Review | null; failed?: boolean }
   | { type: "error"; error: string };
+
+const TOO_LONG = "話が長くて、下書きを書き切れませんでした。話を少し短くして、もう一度押してください。";
 
 /**
  * 0-2l：下書きを流しながら作る。確かめで止まったときは Failure を返し、流さない。
  * 流れは start（送り先と人）→ channel・delta（本文の続き）→ draft → review の順。失敗は error。
+ * signal で止められたら（画面が閉じた・取り消した）、そこで終え、受け取られ方の確かめと記録はしない。
  */
 export function prepareDraftStream(
   claude: ClaudeClient,
@@ -126,7 +130,7 @@ export function prepareDraftStream(
   viewerId: string,
   input: unknown,
   db?: DatabaseSync,
-): Failure | { status: 200; run(send: (event: DraftStreamEvent) => void): Promise<void> } {
+): Failure | { status: 200; run(send: (event: DraftStreamEvent) => void, signal?: AbortSignal): Promise<void> } {
   let plan: DraftPlan | Failure;
   try {
     plan = planDraft(destination, viewerId, input, db);
@@ -138,20 +142,20 @@ export function prepareDraftStream(
   const { history, channels, people, askedName, stored } = plan;
   return {
     status: 200,
-    async run(send) {
+    async run(send, signal) {
       const attachment = stored ? { id: stored.id, mediaType: stored.media_type, fileName: stored.file_name, notices: [] } : undefined;
       send({ type: "start", channels, people, ...(attachment ? { attachment } : {}) });
+      let draft: Draft;
+      let notices: AttachmentNotice[] | undefined;
       try {
-        let draft: Draft;
-        let notices: AttachmentNotice[] | undefined;
         if (stored) {
           // 添付の下書きは流せないので、できてから決まった速さで少しずつ渡す
           const result = await draftFromAttachment(claude, toClaudeAttachment(stored), history, channels);
           draft = result.draft;
           notices = result.notices;
-          if (draft.ready) {
+          if (draft.ready && !signal?.aborted) {
             send({ type: "channel", channelId: draft.channelId });
-            await dripText(draft.text, (text) => send({ type: "delta", text }));
+            await dripText(draft.text, (text) => send({ type: "delta", text }), undefined, undefined, signal);
           }
         } else {
           draft = await streamDraft(
@@ -160,15 +164,36 @@ export function prepareDraftStream(
             channels,
             { text: (text) => send({ type: "delta", text }), channel: (channelId) => send({ type: "channel", channelId }) },
             askedName,
+            signal,
           );
         }
-        send({ type: "draft", draft, ...(notices ? { notices } : {}) });
-        const review = draft.ready ? await reviewPost(claude, draft.text) : null;
+      } catch (error) {
+        if (signal?.aborted) return;
+        if (error instanceof TooLongError) {
+          send({ type: "error", error: TOO_LONG });
+          return;
+        }
+        logFailure(error);
+        send({ type: "error", error: UNAVAILABLE.body.error });
+        return;
+      }
+      if (signal?.aborted) return;
+      send({ type: "draft", draft, ...(notices ? { notices } : {}) });
+      if (!draft.ready) {
+        noteDraftOutcome(db, viewerId, null);
+        send({ type: "review", review: null });
+        return;
+      }
+      // 本文を見せたあとで確かめに失敗しても、下書きは捨てない
+      try {
+        const review = await reviewPost(claude, draft.text);
+        if (signal?.aborted) return;
         noteDraftOutcome(db, viewerId, review);
         send({ type: "review", review });
       } catch (error) {
+        if (signal?.aborted) return;
         logFailure(error);
-        send({ type: "error", error: UNAVAILABLE.body.error });
+        send({ type: "review", review: null, failed: true });
       }
     },
   };

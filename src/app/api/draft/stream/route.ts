@@ -12,6 +12,9 @@ export async function POST(request: Request) {
   if (prepared.status !== 200) return Response.json(prepared.body, { status: prepared.status });
 
   const encoder = new TextEncoder();
+  // 画面が読むのをやめたら（閉じた・取り消した）、Claude の呼び出しも止める
+  const stop = new AbortController();
+  request.signal.addEventListener("abort", () => stop.abort(), { once: true });
   const body = new ReadableStream<Uint8Array>({
     async start(controller) {
       let open = true;
@@ -22,9 +25,13 @@ export async function POST(request: Request) {
         } catch {
           // 画面が閉じられたら、残りは捨てる
           open = false;
+          stop.abort();
         }
-      });
-      if (open) controller.close();
+      }, stop.signal);
+      if (open && !stop.signal.aborted) controller.close();
+    },
+    cancel() {
+      stop.abort();
     },
   });
   return new Response(body, {

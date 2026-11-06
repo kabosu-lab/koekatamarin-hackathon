@@ -15,6 +15,11 @@ export type ComposeStart = {
   review: Review | null;
   /** 0-2l：本文を流しながら書いている間 true。書き終わるまで送れない */
   writing?: boolean;
+  /** 本文はできたが、受け取られ方を確かめられなかった。確かめ直しのボタンを出す */
+  reviewFailed?: boolean;
+  /** 送れなかった下書きを戻すときの、見える範囲 */
+  scope?: PostScope;
+  scopePersonId?: string;
   channels: ChannelView[];
   people: PersonView[];
   asked?: { id: string; name: string };
@@ -83,6 +88,9 @@ export function Compose({
   goalId,
   attachment,
   writing = false,
+  reviewFailed = false,
+  scope: firstScope,
+  scopePersonId: firstScopePersonId,
   viewer,
   onCancel,
   onReplaceAttachment,
@@ -112,8 +120,8 @@ export function Compose({
     const timer = window.setTimeout(() => setSlow(true), 3000);
     return () => window.clearTimeout(timer);
   }, [waitingFirstWords]);
-  const [scope, setScope] = useState<PostScope>("everyone");
-  const [scopePersonId, setScopePersonId] = useState("");
+  const [scope, setScope] = useState<PostScope>(firstScope ?? "everyone");
+  const [scopePersonId, setScopePersonId] = useState(firstScopePersonId ?? "");
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
   const bodyRef = useRef<HTMLTextAreaElement>(null);
@@ -258,7 +266,7 @@ export function Compose({
 
       {writing ? (
         waitingFirstWords && slow && <small className="compose-slow">話したことから、投稿の下書きを作っています…</small>
-      ) : !review ? (
+      ) : !review && !reviewFailed ? (
         <p className="perception waiting" role="status">
           受け取られ方を確かめています…
         </p>
@@ -281,9 +289,16 @@ export function Compose({
           ))}
         </div>
       ) : (
+        <>
+        {!review && (
+          <p className="perception waiting compose-review-failed" role="status">
+            受け取られ方をまだ確かめられていません。下のボタンで確かめてから送れます。
+          </p>
+        )}
         <button type="button" disabled={busy || text.trim() === ""} onClick={() => void check(text)}>
           受け取られ方を確かめる
         </button>
+        </>
       )}
 
       {!writing && attachment && (
