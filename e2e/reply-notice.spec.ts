@@ -119,6 +119,8 @@ test("今日の3人をまだ見ていない日は、ホイールのチップに�
   await wheel.release();
   await page.goto("/minna");
   await expect(page.getByRole("dialog", { name: /今日/ })).toBeVisible();
+  // 見た印（cookie）は画面が動き出してから付く。付くのを待ってから戻る（重いときに先に移ると数が残る）
+  await expect.poll(async () => (await page.context().cookies()).some((c) => c.name === "koekata_today_seen")).toBe(true);
   await page.goto("/");
   await expect(page.locator(".device-mic")).toBeVisible();
   // 今日の3人のチップの数だけを見る（受信箱の数は、ほかのテストの返事で付くことがある）
