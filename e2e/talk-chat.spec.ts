@@ -136,20 +136,43 @@ test("0-2l：本人として送るは押した瞬間にシートを閉じて飛�
   await expect(page.getByRole("link", { name: "校内チャネルで見る" })).toBeVisible();
 });
 
-test("0-1l：新しく話すと、前の話は話の履歴に残り、大きなパートナーに戻る", async ({ page }) => {
+test("0-1l・0-2n：会話の中のアイコンを押すと「新しい話にしますか？」が出て、新しく話すと前の話は履歴に残り、大きなパートナーに戻る", async ({ page }) => {
   await page.goto("/");
   const input = page.getByLabel("パートナーに書く");
   const words = `前の話 ${test.info().testId}`;
   await input.fill(words);
   await input.press("Enter");
   await expect(page.getByRole("log").locator(".bubble.assistant:not(.waiting)")).toHaveCount(1);
-  await page.getByRole("button", { name: "新しく話す" }).click();
+  // 入口はアイコンの1つだけ。ほかに「新しく話す」のボタンは置かない
+  await expect(page.getByRole("button", { name: "新しく話す" })).toHaveCount(0);
+  const icon = page.getByRole("button", { name: "パートナー。押すと新しい話にできます" });
+  await icon.click();
+  // 佐伯（先生）には、です・ます
+  const ask = page.getByRole("group", { name: "新しい話にしますか？" });
+  await expect(ask).toBeVisible();
+  await expect(icon).toHaveAttribute("aria-expanded", "true");
+  // 外を押せば消える
+  await page.getByRole("log").locator(".bubble.user").first().click();
+  await expect(ask).toHaveCount(0);
+  await icon.click();
+  await ask.getByRole("button", { name: "新しく話す" }).click();
   await expect(page.getByRole("log").locator(".chat-row")).toHaveCount(0);
   await expect(page.locator(".talk.device")).toHaveAttribute("data-talking", "false");
   // 次に話すと、前の話は会話の上に残っていて読める
   await input.fill("次の話");
   await input.press("Enter");
   await expect(page.getByRole("region", { name: "前の話" })).toContainText(words);
+});
+
+test("0-2n：生徒には、くだけた「新しい話にする？」で聞く", async ({ page }) => {
+  await page.context().addCookies([{ name: "koekata_person", value: "aoki", domain: "127.0.0.1", path: "/" }]);
+  await page.goto("/");
+  const input = page.getByLabel("パートナーに書く");
+  await input.fill("ちょっと話したい");
+  await input.press("Enter");
+  await expect(page.getByRole("log").locator(".bubble.assistant:not(.waiting)")).toHaveCount(1);
+  await page.getByRole("button", { name: "パートナー。押すと新しい話にできます" }).click();
+  await expect(page.getByRole("group", { name: "新しい話にする？" })).toBeVisible();
 });
 
 test("0-2a：話す前は、パートナーを触るたびに一言が替わり、弾む", async ({ page }) => {

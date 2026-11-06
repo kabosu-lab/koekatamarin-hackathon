@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import type { InboxItem, PassCandidate } from "@/lib/inbox";
-import { VoiceReply } from "../VoiceReply";
+import { VoiceReply, type VoiceReplyRestore } from "../VoiceReply";
 
 async function postJson(url: string, body: unknown) {
   const response = await fetch(url, {
@@ -22,6 +22,8 @@ export function InboxCard({ item, candidates }: { item: InboxItem; candidates: P
   const [done, setDone] = useState<"replied" | "passed" | null>(null);
 
   const [passWords, setPassWords] = useState("");
+  // 送れなかった返信は、確かめた言葉のまま戻す（0-2l(2)）
+  const [replyRestore, setReplyRestore] = useState<{ key: number; value: VoiceReplyRestore } | null>(null);
 
   /** 相手を選んだら、パートナーが「〇〇さん、どうですか？」の下書きを作る。送るのは本人が確かめてから。 */
   async function choose(personId: string) {
@@ -83,7 +85,17 @@ export function InboxCard({ item, candidates }: { item: InboxItem; candidates: P
         replyUrl="/api/inbox/reply"
         disabled={busy}
         onBusyChange={setBusy}
-        onSent={() => setDone("replied")}
+        key={replyRestore?.key ?? 0}
+        restore={replyRestore?.value}
+        onSent={() => {
+          setNotice("");
+          setDone("replied");
+        }}
+        onFailed={(value, message) => {
+          setReplyRestore((current) => ({ key: (current?.key ?? 0) + 1, value }));
+          setDone(null);
+          setNotice(message);
+        }}
       />
 
       {notice && (
