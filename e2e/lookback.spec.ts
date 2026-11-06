@@ -5,6 +5,7 @@ test("ふりかえりはまず本人にだけ見え、選べば共有できる",
   await page.goto("/");
   await switchPerson(page, "青木 ひより（2年）");
   await page.getByRole("link", { name: "履歴と設定" }).click();
+  await page.getByRole("link", { name: "記録" }).click();
   await page.getByRole("link", { name: "ふりかえり" }).first().click();
 
   await expect(page.getByRole("button", { name: "卒業まで" })).toBeVisible();

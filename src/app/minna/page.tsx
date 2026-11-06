@@ -46,8 +46,6 @@ export default async function MinnaPage() {
     <DeviceFrame
       label="みんな"
       dot={2}
-      left={{ href: "/today", label: "今日の3人", icon: "heart" }}
-      right={{ href: "/inbox", label: "受信箱", icon: "inbox" }}
       screen={
         // 上の窓は、校内の桜。触ると詳しい画面へ
         <Link className="sakura-scene minna-sakura" data-time={timeOfDay(now)} href="/sakura" aria-label="桜の木を大きく見る">
@@ -65,6 +63,18 @@ export default async function MinnaPage() {
           <h1>みんな</h1>
           <p>{schoolName}</p>
         </header>
+
+        {/* 0-1f：前は下の丸ボタンにあった入口。中身のいちばん上に置く */}
+        <nav className="minna-tiles" aria-label="みんなの入口">
+          <Link href="/today">
+            <Icon name="heart" />
+            今日の3人
+          </Link>
+          <Link href="/inbox">
+            <Icon name="inbox" />
+            受信箱{waiting + knowledgeTasks > 0 && <span className="me-tile-badge">{waiting + knowledgeTasks}</span>}
+          </Link>
+        </nav>
 
 
         {feed.length > 0 && (
@@ -114,7 +124,7 @@ export default async function MinnaPage() {
             {knowledgeTasks > 0 && `（知恵の確認が ${knowledgeTasks} 件）`}
           </Link>
           {eggs > 0 && (
-            <Link href="/me">
+            <Link href="/me?open=collect">
               <Icon name="gift" />
               贈り物の卵が届いています
             </Link>

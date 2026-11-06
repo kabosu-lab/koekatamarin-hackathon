@@ -36,8 +36,19 @@ export function trialTeamsSender(): string | null {
   return process.env.KOEKATA_TRIAL_TEAMS_AS?.trim() || null;
 }
 
-export const TRIAL_NOTICE =
-  "試用版です。相談室には届きません。投稿は練習用の Teams に届くことがあります。投稿やパートナーに覚えさせたことは、試している人に見えることがあります。実名や個人情報は入れないでください。本当に困ったことは先生へ。";
+/** 試用で Teams へ送るか。送る人が決まっていて、Teams を止めていないときだけ */
+export function trialSendsToTeams(): boolean {
+  return trialTeamsSender() !== null && process.env.KOEKATA_TEAMS !== "off";
+}
+
+/**
+ * 試用の注意。最初に1回だけ、スクロールなしで全部読めるカードに出す（iPhone の幅で4行まで）。
+ * Teams へ送らない試用（審査員用など）では、Teams のことを書かない。
+ */
+export function trialNotice(): string {
+  const teams = trialSendsToTeams() ? "投稿は練習用の Teams にも届きます。" : "";
+  return `試用版です。名前や個人の情報は書かないでね。書いたことは、試している人どうしで見えます。${teams}相談室には届かないので、本当に困ったことは先生や近くの大人へ。`;
+}
 
 export const TRIAL_PROMISE_FULL =
   "試用なので、ここで話したことは相談室にも先生にも届きません。ただし、投稿やパートナーに覚えさせたことは、試している人に見えることがあります。本当に困ったことは、先生や近くの大人に直接話してください。";

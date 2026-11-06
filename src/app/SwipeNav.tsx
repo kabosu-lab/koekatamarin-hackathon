@@ -47,7 +47,7 @@ export function SwipeNav() {
     const main = page();
     if (!main || (from !== "left" && from !== "right") || reducedMotion()) return;
     const offset = from === "right" ? "28%" : "-28%";
-    main.animate([{ transform: `translateX(${offset})`, opacity: 0.4 }, { transform: "translateX(0)", opacity: 1 }], { duration: IN_MS, easing: EASE });
+    main.animate([{ transform: `translateX(${offset})` }, { transform: "translateX(0)" }], { duration: IN_MS, easing: EASE });
   }, [pathname]);
 
   useEffect(() => {
@@ -56,6 +56,7 @@ export function SwipeNav() {
     let main: HTMLElement | null = null;
 
     const reset = () => {
+      delete document.documentElement.dataset.swiping;
       if (main) {
         main.style.transition = "";
         main.style.transform = "";
@@ -87,14 +88,16 @@ export function SwipeNav() {
         main = page();
         if (!main) return;
         dragging = true;
+        // 動かしている間は、窓の 3D の描画を止める（VoiceLump が見る）。指の動きに GPU を回す
+        document.documentElement.dataset.swiping = "true";
         main.style.willChange = "transform";
         main.style.transition = "none";
       }
       // 指に付いて動く。遠くへ行くほど少し重くする
       const moved = Math.sign(dx) * Math.min(Math.abs(dx), 40 + Math.abs(dx) * 0.85);
       if (main) {
+        // 位置だけを transform で動かす。透明度を毎コマ変えると、iPhone では画面全体の重ね直しが重い（0-1i）
         main.style.transform = `translateX(${moved}px)`;
-        main.style.opacity = String(1 - Math.min(Math.abs(dx) / window.innerWidth, 0.5));
       }
     };
 
@@ -109,12 +112,12 @@ export function SwipeNav() {
         // 届かなければ、元の位置へなめらかに戻す
         if (main && dragging) {
           const back = main;
-          back.style.transition = `transform ${IN_MS}ms ${EASE}, opacity ${IN_MS}ms ${EASE}`;
+          back.style.transition = `transform ${IN_MS}ms ${EASE}`;
           back.style.transform = "translateX(0)";
-          back.style.opacity = "1";
           setTimeout(() => {
             if (main === back) reset();
             else {
+              delete document.documentElement.dataset.swiping;
               back.style.transition = "";
               back.style.willChange = "";
             }

@@ -14,6 +14,7 @@ test("話したことが日報の項目になり、チェックした項目だ�
   await say(page, shared);
 
   await page.getByRole("link", { name: "履歴と設定" }).click();
+  await page.getByRole("link", { name: "記録" }).click();
   await page.getByRole("link", { name: "今日の日報" }).click();
   await page.getByRole("button", { name: "今日の日報を作る" }).click();
 

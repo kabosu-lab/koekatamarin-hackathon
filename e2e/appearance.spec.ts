@@ -4,7 +4,7 @@ import { build } from "esbuild";
 const box = (page: Page) => page.getByRole("button", { name: "押し続けて話す" }).boundingBox();
 
 async function choose(page: Page, label: string) {
-  await page.goto("/me");
+  await page.goto("/me?open=settings");
   await page.getByRole("region", { name: "見た目" }).getByRole("button", { name: label }).click();
   await expect(page.getByRole("region", { name: "見た目" }).getByRole("button", { name: label })).toHaveAttribute(
     "aria-pressed",
@@ -87,7 +87,7 @@ test("送ると言葉が飛び、花びらになって、消える", async ({ pa
 test("音ありでは音を試せて、送っても画面が乱れない", async ({ page }) => {
   const problems: string[] = [];
   page.on("pageerror", (error) => problems.push(error.message));
-  await page.goto("/me");
+  await page.goto("/me?open=settings");
   await page.getByRole("button", { name: "音を試す" }).click();
   await send(page, `音の言葉 ${test.info().testId}`);
   await expect(page.locator(".sent")).toBeVisible();
@@ -111,7 +111,7 @@ test("パートナーが今日のカードと校内チャネルでも見える",
 test("音ありで応援しても、画面が乱れない", async ({ page }) => {
   const problems: string[] = [];
   page.on("pageerror", (error) => problems.push(error.message));
-  await page.goto("/me");
+  await page.goto("/me?open=settings");
   await expect(page.getByRole("button", { name: "音を試す" })).toBeVisible();
   await page.goto("/today");
   const cheer = page.getByRole("button", { name: "応援する" });

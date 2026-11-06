@@ -1,5 +1,6 @@
 import { expect, type Page, test } from "@playwright/test";
 import { switchPerson } from "./helpers";
+import { PROMISE_SEEN } from "./promise-seen";
 
 // SPEC の「デモ（3分）」を最初から最後まで動かす。写真は Git に入らない test-results/ に残す。
 const TEACHER = "佐伯 みどり（国語・2年担任）";
@@ -35,9 +36,13 @@ test("先生の一日：話しかける、返す、パス、サンクス、日�
   test.setTimeout(120_000);
 
   // 朝：ICT が苦手な先生が、スマホに「私は嫌やわ」と話しかける
+  // 初めて使う先生として、最初の約束のカードから始める
+  await page.context().clearCookies({ name: /^koekata_promise_/ });
   await page.goto("/");
+  await page.getByRole("button", { name: "わかった" }).click();
+  // ここから先の人物は、約束を読んだことにする（人を切り替えるたびにカードが出て操作をふさがないように）
+  await page.context().addCookies(PROMISE_SEEN);
   await switchPerson(page, TEACHER);
-  await expect(page.locator(".promise")).toBeVisible();
   await say(page, "私は嫌やわ");
   await expect(page.getByRole("log").locator(".bubble.assistant")).toContainText("無理に使わんでええ");
   await shot(page, "01-話しかける");
@@ -78,7 +83,7 @@ test("先生の一日：話しかける、返す、パス、サンクス、日�
   // 生徒から、サンクスカード
   await page.goto("/");
   await switchPerson(page, MAKER);
-  await page.goto("/me");
+  await page.goto("/me?open=thanks");
   const form = page.getByRole("region", { name: "サンクスカードを送る" });
   await form.getByLabel("送る相手").selectOption({ label: TEACHER });
   await form.getByLabel("ありがとうの言葉").fill("つないでくれて、ありがとうございました");
@@ -88,19 +93,23 @@ test("先生の一日：話しかける、返す、パス、サンクス、日�
   // アシストが付き、ありがとうが届き、パートナーが育つ
   await page.goto("/");
   await switchPerson(page, TEACHER);
-  await page.goto("/me");
+  await page.goto("/me?open=partner");
   const quiz = page.getByRole("region", { name: "最初の問いかけ" });
   if (await quiz.isVisible()) {
     await quiz.getByRole("button", { name: "人物" }).click();
     await quiz.getByRole("button", { name: "じっくり話を聞く" }).click();
     await expect(quiz).toHaveCount(0);
   }
+  // 数は「記録」、もらったありがとうは「ありがとう」のタイルの中
+  await page.goto("/me?open=records");
   await expect(page.getByRole("region", { name: "これまで" })).toContainText(/解決 [1-9]/);
   await expect(page.getByRole("region", { name: "これまで" })).toContainText(/つないだ [1-9]/);
+  await page.goto("/me?open=thanks");
   await expect(page.getByRole("region", { name: "もらったありがとう" })).toContainText("つないでくれて");
   await shot(page, "06-パートナーとありがとう");
 
   // 夕方：日報が届き、チェックを付けて管理職へ
+  await page.goto("/me?open=records");
   await page.getByRole("link", { name: "今日の日報" }).click();
   await page.getByRole("button", { name: "今日の日報を作る" }).click();
   const box = page.getByRole("checkbox", { name: /作文の一言/ });

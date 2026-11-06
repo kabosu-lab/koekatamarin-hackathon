@@ -1,7 +1,8 @@
 import { expect, type Page, test } from "@playwright/test";
+import { PROMISE_SEEN } from "./promise-seen";
 
 // 見た目を選んでいない人が、最初にどう見えるかを確かめる
-test.use({ storageState: { cookies: [], origins: [] } });
+test.use({ storageState: { cookies: PROMISE_SEEN, origins: [] } });
 
 async function asPerson(page: Page, id: string) {
   await page.context().addCookies([{ name: "koekata_person", value: id, domain: "127.0.0.1", path: "/" }]);
@@ -36,7 +37,6 @@ test("生徒はレトロから始まり、液晶のパートナー、入力欄�
 test("書いてパートナーと話し、とどけるで下書きを確かめる。Teams の見え方の中で直接直せる", async ({ page }) => {
   await asPerson(page, "aoki");
   await page.goto("/");
-  await expect(page.locator(".promise")).toContainText("要点だけを相談室の先生に伝えます");
   const words = `部活のことを話したい ${test.info().testId}`;
   await say(page, words);
   await expect(page.getByRole("log").locator(".bubble.assistant").last()).toBeVisible();
@@ -53,7 +53,6 @@ test("書いてパートナーと話し、とどけるで下書きを確かめ�
 test("やり取りは液晶の中だけで動き、ホイールを回すと読み返せる", async ({ page }) => {
   await asPerson(page, "aoki");
   await page.goto("/");
-  await page.getByRole("button", { name: "わかった" }).click();
   for (let i = 0; i < 4; i += 1) {
     await say(page, `長い話 ${i} ${"あ".repeat(120)}`);
     await expect(page.getByRole("log").locator(".bubble.assistant")).toHaveCount(i + 1);

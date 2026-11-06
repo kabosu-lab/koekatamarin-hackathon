@@ -1,5 +1,5 @@
 import { accessCookieHeader, codeMatches } from "@/lib/access";
-import { accessCode, TRIAL_NOTICE } from "@/lib/trial";
+import { accessCode, trialNotice } from "@/lib/trial";
 
 export const dynamic = "force-dynamic";
 
@@ -35,7 +35,7 @@ function page(problem: string | null, status: number, numeric = false) {
     ${problem ? `<p class="problem" role="alert">${problem}</p>` : ""}
     <button type="submit">入る</button>
   </form>
-  <small>${TRIAL_NOTICE}</small>
+  <small>${trialNotice()}</small>
 </main>
 </body>
 </html>`;

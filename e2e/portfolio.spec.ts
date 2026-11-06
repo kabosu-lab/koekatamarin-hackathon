@@ -7,7 +7,7 @@ const PAGE = "/portfolio?term=2026-2";
 test("ポートフォリオは本人だけに見え、選んで確かめたときだけ Teams に届く", async ({ page }) => {
   await page.goto("/");
   await switchPerson(page, "青木 ひより（2年）");
-  await page.goto("/me");
+  await page.goto("/me?open=records");
   await expect(page.getByRole("link", { name: "ポートフォリオ" }).first()).toBeVisible();
   await page.goto(PAGE);
 

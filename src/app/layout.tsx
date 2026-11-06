@@ -5,9 +5,9 @@ import { readAppearance } from "@/lib/appearance";
 import { showsRewards } from "@/lib/rewards-view";
 import { getViewer } from "@/lib/current-person";
 import { selectablePeople } from "@/lib/people";
-import { isTrialMode, keepsSpokenWords, onlyStudentsSelectable, TRIAL_NOTICE } from "@/lib/trial";
+import { isTrialMode, keepsSpokenWords, onlyStudentsSelectable, trialNotice } from "@/lib/trial";
 import { BottomNav } from "./BottomNav";
-import { FeedbackSheet } from "./FeedbackSheet";
+import { TrialNotice } from "./TrialNotice";
 import { PersonSwitcher } from "./PersonSwitcher";
 import { GlobalSwitcher } from "./GlobalSwitcher";
 import { SwipeNav } from "./SwipeNav";
@@ -38,11 +38,8 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   return (
     <html lang="ja" data-theme={theme} data-size={size} data-sound={sound} data-avatar={showsRewards(appearance) ? "show" : "hide"}>
       <body>
-        {trial && (
-          <div className="trial-banner">
-            <span role="note">{TRIAL_NOTICE}</span> <FeedbackSheet />
-          </div>
-        )}
+        {/* 試用版の注意は、操作の前に1回だけカードで出す。消したあとは試用の印を出さない */}
+        {trial && <TrialNotice text={trialNotice()} />}
         <TrialProvider trial={trial} keepsWords={keepsSpokenWords()}>
           {children}
           <GlobalSwitcher>

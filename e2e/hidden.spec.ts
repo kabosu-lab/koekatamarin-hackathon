@@ -31,12 +31,12 @@ test("しばらく出さないは本人にだけ効き、相手には何も見�
   await page.reload();
   await expect(page.locator(".today-card .who strong").filter({ hasText: name })).toHaveCount(0);
 
-  await page.goto("/me");
+  await page.goto("/me?open=settings");
   const list = page.getByRole("region", { name: "しばらく出していない人" });
   await expect(list).toContainText(name);
 
   // 相手の画面には、誰かに隠されたことが出ない
-  await page.goto("/me");
+  await page.goto("/me?open=settings");
   const option = page.getByLabel("使う人").locator("option", { hasText: name });
   await switchPerson(page, (await option.textContent()) ?? "");
   for (const path of ["/me", "/today"]) {
@@ -47,7 +47,7 @@ test("しばらく出さないは本人にだけ効き、相手には何も見�
 
   await page.goto("/");
   await switchPerson(page, "大河原 誠（英語・学年主任）");
-  await page.goto("/me");
+  await page.goto("/me?open=settings");
   await page.getByRole("region", { name: "しばらく出していない人" }).getByRole("button", { name: "また出す" }).click();
   await expect(page.getByRole("region", { name: "しばらく出していない人" })).toHaveCount(0);
 });

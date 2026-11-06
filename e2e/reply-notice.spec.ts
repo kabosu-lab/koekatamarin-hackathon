@@ -1,7 +1,8 @@
 import { expect, type Browser, test } from "@playwright/test";
 import { holdMic } from "./helpers";
+import { PROMISE_SEEN } from "./promise-seen";
 
-test.use({ storageState: { cookies: [], origins: [] } });
+test.use({ storageState: { cookies: PROMISE_SEEN, origins: [] } });
 
 async function open(browser: Browser, personId: string) {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 } });

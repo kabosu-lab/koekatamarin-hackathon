@@ -100,7 +100,15 @@ function start(canvas: HTMLCanvasElement, shape: LumpShape, color: string, state
 
   const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   // 文字を打つ手を重くしないよう、解像度とコマ数を抑える
-  let scale = Math.min(window.devicePixelRatio || 1, 1.5);
+  // スマホ（指で触る端末）は GPU が細いので、等倍まで（0-1i）
+  const coarse = window.matchMedia("(pointer: coarse)").matches;
+  let scale = Math.min(window.devicePixelRatio || 1, coarse ? 1 : 1.5);
+  // 画面の外にあるときは描かない
+  let visible = true;
+  const watcher = new IntersectionObserver(([entry]) => {
+    visible = entry?.isIntersecting ?? true;
+  });
+  watcher.observe(canvas);
   const pose = { t: 0, listen: 0, hop: 0, blink: 0, nextBlink: 2.5 };
   const draw = () => {
     const box = canvas.getBoundingClientRect();
@@ -134,8 +142,8 @@ function start(canvas: HTMLCanvasElement, shape: LumpShape, color: string, state
   let seen = replies.current;
   const tick = (now: number) => {
     frame = requestAnimationFrame(tick);
-    // 隠れているときと文字を打っているときは描かない
-    if (document.hidden || document.activeElement?.tagName === "TEXTAREA") {
+    // 隠れているとき、文字を打っているとき、画面を指で動かしているときは描かない
+    if (!visible || document.hidden || document.activeElement?.tagName === "TEXTAREA" || document.documentElement.dataset.swiping) {
       last = now;
       return;
     }
@@ -164,7 +172,10 @@ function start(canvas: HTMLCanvasElement, shape: LumpShape, color: string, state
     draw();
   };
   frame = requestAnimationFrame(tick);
-  return () => cancelAnimationFrame(frame);
+  return () => {
+    cancelAnimationFrame(frame);
+    watcher.disconnect();
+  };
 }
 
 /** WebGL が使えない端末で出す静止画。 */

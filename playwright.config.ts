@@ -1,6 +1,7 @@
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { defineConfig, devices } from "@playwright/test";
+import { PROMISE_SEEN } from "./e2e/promise-seen";
 
 const PORT = 3100;
 const TRIAL_PORT = 3101;
@@ -30,6 +31,8 @@ export default defineConfig({
           secure: false,
           sameSite: "Lax",
         },
+        // 最初の約束のカードは読んだことにしておく（e2e/promise-seen.ts）
+        ...PROMISE_SEEN,
       ],
       origins: [],
     },

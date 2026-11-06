@@ -10,6 +10,7 @@ async function say(page: Page, text: string) {
 }
 
 test("最初から、命や安全に関わるときは伝えることを本人に見せている", async ({ page }) => {
+  await page.context().clearCookies({ name: /^koekata_promise_/ });
   await page.goto("/");
   await expect(page.locator(".promise")).toContainText("話した言葉ではなく要点だけを相談室の先生に伝えます");
 });
@@ -90,7 +91,7 @@ test("「違うよ」が届かなかったときは、もう一度押せる", as
 test("生徒には知らせの入口がなく、URL を開いても何も見えない", async ({ page }) => {
   await page.goto("/");
   await switchPerson(page, "青木 ひより（2年）");
-  await page.goto("/me");
+  await page.goto("/me?open=settings");
   await expect(page.getByLabel("使う人")).toHaveValue("aoki");
   await page.goto("/minna");
   await expect(page.getByRole("link", { name: "相談室への知らせを見る" })).toHaveCount(0);
@@ -139,9 +140,13 @@ test("返事が作れなくても、相談室に伝えたことは本人に見�
 });
 
 test("最初の約束は、初めはカードで全文を見せ、わかったあとは話す画面に出さない", async ({ page }) => {
+  // ほかのテストでは読んだことにしてあるので、ここだけ初めての人にする
+  await page.context().clearCookies({ name: /^koekata_promise_/ });
   await page.goto("/");
   const promise = page.locator(".promise");
   await expect(promise).toContainText("話した言葉ではなく要点だけを相談室の先生に伝えます");
+  // どの幅でも、カードの文と「わかった」がスクロールなしで全部見える
+  await expect(promise).toBeInViewport({ ratio: 1 });
   await page.getByRole("button", { name: "わかった" }).click();
   await expect(promise).toHaveCount(0);
   await page.reload();

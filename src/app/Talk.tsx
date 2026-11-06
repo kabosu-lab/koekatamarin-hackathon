@@ -7,9 +7,9 @@ import type { ChatMessage } from "@/lib/claude/types";
 import type { ChannelView, PersonView } from "@/lib/destination/types";
 import type { KnowledgeResult } from "@/lib/knowledge";
 import { PROMISE_FULL, PROMISE_SHORT, promiseCookieName } from "@/lib/promise-cookie";
-import { TRIAL_PROMISE_FULL, TRIAL_PROMISE_SHORT } from "@/lib/trial";
+import { TRIAL_PROMISE_SHORT } from "@/lib/trial";
 import { useKeepsWords, useTrial } from "./TrialContext";
-import { useSmoothText } from "./use-smooth-text";
+import { HeardLine } from "./HeardLine";
 import { KnowledgeResults } from "./chie/KnowledgeResults";
 import { Compose, type ComposeStart } from "./Compose";
 import { ConnectCard, type ConnectSuggestion } from "./ConnectCard";
@@ -105,7 +105,6 @@ export function Talk({
   const [expanded, setExpanded] = useState(false);
   const [heard, setHeard] = useState("");
   // 電波が弱くて文字がまとめて届いても、少しずつなめらかに出す
-  const shownHeard = useSmoothText(heard);
   const [sending, setSending] = useState(false);
   const [notice, setNotice] = useState("");
   const [scripted, setScripted] = useState(false);
@@ -120,7 +119,8 @@ export function Talk({
   const [askTarget, setAskTarget] = useState(initialAsk);
   const trial = useTrial();
   const keepsWords = useKeepsWords();
-  const [acknowledged, setAcknowledged] = useState(promiseSeen);
+  // 試用では、試用版の注意のカード（TrialNotice）が最初の1回を受け持つので、ここでは出さない
+  const [acknowledged, setAcknowledged] = useState(promiseSeen || trial);
   const [finding, setFinding] = useState(false);
   const [found, setFound] = useState<KnowledgeResult[] | null>(null);
   const [goalSuggestion, setGoalSuggestion] = useState<string | null>(null);
@@ -137,10 +137,10 @@ export function Talk({
   const endRef = useRef<HTMLDivElement>(null);
 
   const logRef = useRef<HTMLDivElement>(null);
-  const heardRef = useRef<HTMLParagraphElement>(null);
   const pressedAt = useRef<number | null>(null);
   const discardHeard = useRef(false);
   const pressY = useRef<number | null>(null);
+  const pressX = useRef<number | null>(null);
   /** 押したまま上へずらした割合（0〜1）。押していないときは null */
   const [lift, setLift] = useState<number | null>(null);
   // 固定にした指を離したときの押した扱いを、止める操作と取り違えない
@@ -166,11 +166,6 @@ export function Talk({
     }
     endRef.current?.scrollIntoView?.({ block: "end" });
   }, [device, messages, sending, heard, safety, suggestion, goalSuggestion, goalDone, found, notice, sentTo, attachment]);
-
-  // 話している最新の行がいつも見えるよう、増えた分だけ上へ送る
-  useEffect(() => {
-    if (heardRef.current) heardRef.current.scrollTop = heardRef.current.scrollHeight;
-  }, [shownHeard, listening]);
 
   useEffect(() => () => stopRef.current?.(), []);
 
@@ -458,14 +453,16 @@ export function Talk({
     listen();
   }
 
-  /** 押したまま上へ動かしたら固定にする。指を離しても聞き続ける。 */
-  function moveMic(y: number) {
-    if (pressY.current === null || pressedAt.current === null) return;
-    setLift(Math.max(0, Math.min(1, (pressY.current - y) / LOCK_DISTANCE_PX)));
-    if (pressY.current - y < LOCK_DISTANCE_PX) return;
+  /** 押したまま上下左右のどの向きへずらしても固定にする（0-1h）。指を離しても聞き続ける。 */
+  function moveMic(x: number, y: number) {
+    if (pressY.current === null || pressX.current === null || pressedAt.current === null) return;
+    const distance = Math.hypot(x - pressX.current, y - pressY.current);
+    setLift(Math.max(0, Math.min(1, distance / LOCK_DISTANCE_PX)));
+    if (distance < LOCK_DISTANCE_PX) return;
     setLift(null);
     pressedAt.current = null;
     pressY.current = null;
+    pressX.current = null;
     justLocked.current = true;
     lockedTalk.lock();
   }
@@ -675,6 +672,25 @@ export function Talk({
     </>
   );
 
+  // 最初の約束は、窓の中ではなく画面の真ん中のカードで出す。どの幅でもスクロールなしで全部読める
+  const promiseCard = acknowledged ? null : (
+    <div className="first-card-backdrop">
+      <section className="promise promise-card first-card" role="dialog" aria-modal="true" aria-label="最初にお伝えすること">
+        <p>{PROMISE_FULL}</p>
+        <button
+          type="button"
+          autoFocus
+          onClick={() => {
+            rememberPromiseSeen();
+            setAcknowledged(true);
+          }}
+        >
+          わかった
+        </button>
+      </section>
+    </div>
+  );
+
   if (device) {
     return (
       <div
@@ -685,6 +701,7 @@ export function Talk({
         data-expanded={expanded && messages.length > 0}
       >
         {burst && <SendBurst words={burst} avatarImage={avatarImage} onDone={() => setBurst(null)} />}
+        {promiseCard}
         <section
           className="lcd"
           aria-label="パートナーの画面"
@@ -720,20 +737,6 @@ export function Talk({
             </div>
           )}
           <div className="log" role="log" aria-label="パートナーとの会話" ref={logRef} data-noswipe-landscape>
-            {!acknowledged && (
-              <section className="promise promise-card" aria-label="最初にお伝えすること">
-                <p>{trial ? TRIAL_PROMISE_FULL : PROMISE_FULL}</p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    rememberPromiseSeen();
-                    setAcknowledged(true);
-                  }}
-                >
-                  わかった
-                </button>
-              </section>
-            )}
             {acknowledged && messages.length === 0 && !listening && question && <p className="daily-question">{question}</p>}
             {bubbleList}
             {sending && (
@@ -764,16 +767,7 @@ export function Talk({
 
         <form className="device-input" onSubmit={submit}>
           {listening ? (
-            <p className="device-heard" role="status" ref={heardRef}>
-              <span className="listening-label">聞いています…</span>
-              {draft && <span>{draft} </span>}
-              {/* 新しく増えた文字だけが、ぼんやりから固まっていく */}
-              {Array.from(shownHeard).map((character, index) => (
-                <span className="solidify" key={index}>
-                  {character}
-                </span>
-              ))}
-            </p>
+            <HeardLine draft={draft} heard={heard} />
           ) : (
             <textarea
               aria-label="パートナーに書く"
@@ -819,10 +813,11 @@ export function Talk({
               onPointerDown={(event) => {
                 event.currentTarget.setPointerCapture?.(event.pointerId);
                 pressY.current = event.clientY;
+                pressX.current = event.clientX;
                 setLift(0);
                 pressMic();
               }}
-              onPointerMove={(event) => moveMic(event.clientY)}
+              onPointerMove={(event) => moveMic(event.clientX, event.clientY)}
               onPointerUp={releaseMic}
               onPointerCancel={releaseMic}
               onClick={(event) => {
@@ -847,10 +842,10 @@ export function Talk({
               {lockedTalk.locked ? "止めて送る" : listening ? "離すと送る" : "押し続けて話す"}
             </button>
             {listening && lift !== null && !lockedTalk.locked && (
-              // 押している間だけ、上へずらすと固定になることを目で見せる
+              // 押している間だけ、どの向きへずらしても固定になることを目で見せる
               <span className="lock-hint" aria-hidden="true" style={{ "--lift": lift } as React.CSSProperties}>
-                <span className="lock-hint-arrow">↑</span>
-                上へずらすと固定
+                <span className="lock-hint-arrow">↔</span>
+                ずらすと固定
               </span>
             )}
           </ClickWheel>
@@ -890,6 +885,7 @@ export function Talk({
   return (
     <div className="talk" data-viewer={viewer.name}>
       {burst && <SendBurst words={burst} avatarImage={avatarImage} onDone={() => setBurst(null)} />}
+      {promiseCard}
       {avatarImage && (
         <div
           className="speaker"
@@ -900,20 +896,6 @@ export function Talk({
         </div>
       )}
       <div className="log" role="log" aria-label="パートナーとの会話">
-        {!acknowledged && (
-          <section className="promise promise-card" aria-label="最初にお伝えすること">
-            <p>{trial ? TRIAL_PROMISE_FULL : PROMISE_FULL}</p>
-            <button
-              type="button"
-              onClick={() => {
-                rememberPromiseSeen();
-                setAcknowledged(true);
-              }}
-            >
-              わかった
-            </button>
-          </section>
-        )}
         {messages.length === 0 && !listening && (
           <>
             {question && <p className="daily-question">{question}</p>}

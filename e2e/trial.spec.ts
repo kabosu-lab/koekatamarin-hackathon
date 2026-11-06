@@ -2,13 +2,16 @@ import { expect, type Page, test } from "@playwright/test";
 
 // 合言葉つきの試用モード。playwright.config.ts の「試用」から、別のサーバーに向けて動く
 const CODE = "test-code";
-const NOTICE = "試用版です。相談室には届きません。投稿は練習用の Teams に届くことがあります。投稿やパートナーに覚えさせたことは、試している人に見えることがあります。実名や個人情報は入れないでください。本当に困ったことは先生へ。";
+// この試用は Teams へ送る人を決めていないので、Teams のことは書かない
+const NOTICE = "試用版です。名前や個人の情報は書かないでね。書いたことは、試している人どうしで見えます。相談室には届かないので、本当に困ったことは先生や近くの大人へ。";
 
 async function enter(page: Page) {
   await page.goto("/access");
   await page.getByLabel("合言葉").fill(CODE);
   await page.getByRole("button", { name: "入る" }).click();
   await expect(page.locator(".talk")).toBeVisible();
+  // 最初の1回だけ出る注意のカードを閉じる
+  await page.getByRole("dialog", { name: "試用版について" }).getByRole("button", { name: "わかった" }).click();
 }
 
 test("合言葉がなければ、ページも API も止まる", async ({ page, request }) => {
@@ -41,17 +44,36 @@ test("違う合言葉では入れず、正しければ cookie で通る", async 
   expect(cookie?.value).not.toContain(CODE);
 });
 
-test("試用の表示はどの画面にも出て、相談室に届くとは書かない", async ({ page }) => {
-  await enter(page);
-  await expect(page.getByText(NOTICE)).toBeVisible();
-  const promise = page.locator(".promise");
-  await expect(promise).toContainText("相談室にも先生にも届きません");
-  await expect(promise).not.toContainText("要点だけ");
+test("試用の注意は最初に1回だけカードで全部見せ、あとはすみの印から読み直せる", async ({ page }) => {
+  await page.goto("/access");
+  await page.getByLabel("合言葉").fill(CODE);
+  await page.getByRole("button", { name: "入る" }).click();
+  const card = page.getByRole("dialog", { name: "試用版について" });
+  await expect(card).toContainText(NOTICE);
+  // スクロールなしで、文と「わかった」が全部見える
+  await expect(card).toBeInViewport({ ratio: 1 });
+  // 相談室に要点を伝えるという、本番の約束は出さない（試用では届かない）
+  await expect(page.getByText("要点だけ")).toHaveCount(0);
+  await card.getByRole("button", { name: "わかった" }).click();
+  await expect(card).toHaveCount(0);
+  // 上の帯はやめた。注意の文はもう画面に出ない
+  await expect(page.getByText(NOTICE)).toHaveCount(0);
+
+  await page.reload();
+  await expect(card).toHaveCount(0);
+  // 消したあとは、試用の印を出さない（製品版と同じ画面）
+  for (const path of ["/", "/teams", "/minna"]) {
+    await page.goto(path);
+    await expect(page.getByRole("button", { name: "感想を送る" }), path).toHaveCount(0);
+    await expect(page.getByText("試用版"), path).toHaveCount(0);
+  }
   await page.goto("/soudan");
-  await expect(page.getByText(NOTICE)).toBeVisible();
   await expect(page.locator("main")).toContainText("相談室に知らせは届きません");
-  await page.goto("/teams");
-  await expect(page.getByText(NOTICE)).toBeVisible();
+  // 読み直しと感想は「履歴と設定」から
+  await page.goto("/me?open=trial");
+  const tools = page.getByRole("region", { name: "試用版について" });
+  await tools.getByRole("button", { name: "注意を読み直す" }).click();
+  await expect(card).toContainText(NOTICE);
 });
 
 test("命や安全に関わる話では、先生や相談室に届いていないことと窓口を伝える", async ({ page }) => {
@@ -71,7 +93,7 @@ test("命や安全に関わる話では、先生や相談室に届いていな�
 
 test("外の URL から開いても、サーバーの処理と API を拒まない", async ({ page, request }) => {
   await enter(page);
-  await page.goto("/me");
+  await page.goto("/me?open=settings");
   const actionRequest = page.waitForRequest((r) => r.method() === "POST" && Boolean(r.headers()["next-action"]));
   await page.getByLabel("使う人").selectOption({ label: "木下 蓮（3年・ものづくり部）" });
   await page.getByRole("button", { name: "切り替え" }).click();
@@ -110,8 +132,8 @@ test("外の URL から開いたときの入力画面への案内は、Mac の�
 test("選べるのは生徒だけで、最初の人物も生徒になる", async ({ page }) => {
   await enter(page);
   await expect(page.locator('.talk[data-viewer="青木 ひより"]')).toBeVisible();
-  await page.goto("/me");
-  await page.goto("/me");
+  await page.goto("/me?open=settings");
+  await page.goto("/me?open=settings");
   const options = await page.getByLabel("使う人").locator("option").allTextContents();
   expect(options).toEqual(["青木 ひより（2年）", "木下 蓮（3年・ものづくり部）", "中村 結衣（1年・吹奏楽部）"]);
 });
@@ -142,7 +164,7 @@ test("cookie を書き換えても、先生や相談室の人物として画面�
 
 test("サーバーの処理を直接呼んでも、先生には切り替えられない", async ({ page, context }) => {
   await enter(page);
-  await page.goto("/me");
+  await page.goto("/me?open=settings");
   const actionRequest = page.waitForRequest((r) => r.method() === "POST" && Boolean(r.headers()["next-action"]));
   await page.getByLabel("使う人").selectOption({ label: "木下 蓮（3年・ものづくり部）" });
   await page.getByRole("button", { name: "切り替え" }).click();
@@ -183,6 +205,7 @@ test("生徒の試用では、話した言葉をパートナーに覚えさせ�
 
 test("改善点は種類だけでも送れて、ありがとうと出て、続けて送れる", async ({ page }) => {
   await enter(page);
+  await page.goto("/me?open=trial");
   await page.getByRole("button", { name: "感想を送る" }).click();
   const sheet = page.getByRole("dialog", { name: "感想を送る" });
   await expect(sheet).toContainText("名前は書かないでください。ここは相談先ではありません。困っていることは先生に直接話してください。");
@@ -203,6 +226,7 @@ test("改善点は種類だけでも送れて、ありがとうと出て、続�
 
 test("改善点の書きかけは、画面を移っても消えない", async ({ page }) => {
   await enter(page);
+  await page.goto("/me?open=trial");
   await page.getByRole("button", { name: "感想を送る" }).click();
   const sheet = page.getByRole("dialog", { name: "感想を送る" });
   await sheet.getByRole("radio", { name: "こうしたい" }).check();
@@ -210,12 +234,13 @@ test("改善点の書きかけは、画面を移っても消えない", async ({
   await sheet.getByRole("button", { name: "閉じる" }).click();
 
   await page.goto("/teams");
+  await page.goto("/me?open=trial");
   await page.getByRole("button", { name: "感想を送る" }).click();
   await expect(sheet.getByLabel("くわしく")).toHaveValue("書きかけの言葉");
   await expect(sheet.getByRole("radio", { name: "こうしたい" })).toBeChecked();
 });
 
-test("改善点は投稿にも他の画面にも出ず、入口は下のナビにかぶらない", async ({ page }) => {
+test("改善点は投稿にも他の画面にも出ず、入口は履歴と設定にだけある", async ({ page }) => {
   await enter(page);
   const secret = `改善の本文 ${test.info().testId}`;
   const response = await page.request.post("/api/feedback", { data: { kind: "こうしたい", body: secret, path: "/" } });
@@ -224,9 +249,9 @@ test("改善点は投稿にも他の画面にも出ず、入口は下のナビ�
     await page.goto(path);
     await expect(page.getByText(secret), path).toHaveCount(0);
   }
-  const open = await page.getByRole("button", { name: "感想を送る" }).boundingBox();
-  const nav = await page.getByRole("navigation", { name: "画面の切り替え" }).boundingBox();
-  expect(open && nav && open.y + open.height <= nav.y).toBe(true);
+  // 入口は「履歴と設定」の中にだけある
+  await page.goto("/me?open=trial");
+  await expect(page.getByRole("button", { name: "感想を送る" })).toBeVisible();
 });
 
 test("改善点は合言葉がないと送れず、同じ端末の連打を止める", async ({ page, playwright }) => {
@@ -254,9 +279,14 @@ test.describe("見た目を選んでいない生徒", () => {
     await page.getByLabel("合言葉").fill(CODE);
     await page.getByRole("button", { name: "入る" }).click();
     await expect(page.locator(".retro-home")).toBeVisible();
-    await expect(page.getByText(NOTICE)).toBeVisible();
-    await expect(page.getByRole("button", { name: "感想を送る" })).toBeVisible();
-    await expect(page.locator(".promise")).toContainText("相談室にも先生にも届きません");
+    const card = page.getByRole("dialog", { name: "試用版について" });
+    await expect(card).toContainText(NOTICE);
+    await expect(card).toBeInViewport({ ratio: 1 });
+    // 注意は1か所だけ。窓の中に同じ注意を重ねて出さない
+    await expect(page.locator(".promise")).toHaveCount(0);
+    await card.getByRole("button", { name: "わかった" }).click();
+    await expect(page.getByRole("button", { name: "感想を送る" })).toHaveCount(0);
+    await page.goto("/me?open=trial");
     await expect(page.getByRole("button", { name: "感想を送る" })).toBeVisible();
   });
 });

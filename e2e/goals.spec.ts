@@ -17,7 +17,7 @@ test("話の中で提案され、押すと残り、できたら投稿になり�
   await card.getByRole("button", { name: "しておく" }).click();
   await expect(page.locator(".notice")).toContainText("残しました");
 
-  await page.goto("/me");
+  await page.goto("/me?open=goals");
   const panel = page.getByRole("region", { name: "頑張りたいこと" });
   const item = panel.getByRole("listitem").filter({ hasText: "資格の動画" }).first();
   await expect(item).toBeVisible();
@@ -54,7 +54,7 @@ test("頑張りたいことは他の人に見えず、足す、直す、消す�
   const page = await (await browser.newContext()).newPage();
   await page.goto("/");
   await switchPerson(page, NODA);
-  await page.goto("/me");
+  await page.goto("/me?open=goals");
   const panel = page.getByRole("region", { name: "頑張りたいこと" });
   const secret = `内緒の頑張り ${test.info().testId}`.slice(0, 40);
   await panel.getByLabel("頑張りたいことを足す").fill(secret);
@@ -75,7 +75,7 @@ test("頑張りたいことは他の人に見えず、足す、直す、消す�
 
   await page.goto("/");
   await switchPerson(page, NODA);
-  await page.goto("/me");
+  await page.goto("/me?open=goals");
   await panel.getByRole("listitem").filter({ hasText: `${secret}2` }).getByRole("button", { name: "消す" }).click();
   await expect(panel.getByText(secret)).toHaveCount(0);
   await page.context().close();
@@ -85,7 +85,7 @@ test("モダンでも使え、横にはみ出さない", async ({ browser }) => 
   const context = await browser.newContext();
   await context.addCookies([{ name: "koekata_theme", value: "modern", url: "http://127.0.0.1:3100" }]);
   const page = await context.newPage();
-  await page.goto("/me");
+  await page.goto("/me?open=goals");
   await expect(page.getByRole("region", { name: "頑張りたいこと" })).toBeVisible();
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBe(0);

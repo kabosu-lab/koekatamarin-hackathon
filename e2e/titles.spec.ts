@@ -1,13 +1,14 @@
 import { expect, test } from "@playwright/test";
 import { switchPerson } from "./helpers";
+import { PROMISE_SEEN } from "./promise-seen";
 
-test.use({ storageState: { cookies: [], origins: [] } });
+test.use({ storageState: { cookies: PROMISE_SEEN, origins: [] } });
 
 test("ありがとうに肩書きを添えて贈り、受け取って選ぶと、名前の横に出る", async ({ page }) => {
   const title = `師匠${test.info().testId.slice(0, 6)}`;
   await page.goto("/");
   await switchPerson(page, "佐伯 みどり（国語・2年担任）");
-  await page.goto("/me");
+  await page.goto("/me?open=thanks");
   const form = page.getByRole("region", { name: "サンクスカードを送る" });
   const recipient = "中村 結衣（1年・吹奏楽部）";
   await form.getByLabel("送る相手").selectOption({ label: recipient });
@@ -22,7 +23,7 @@ test("ありがとうに肩書きを添えて贈り、受け取って選ぶと�
 
   await page.goto("/");
   await switchPerson(page, recipient);
-  await page.goto("/me");
+  await page.goto("/me?open=profile");
   const collection = page.getByRole("region", { name: "もらった肩書き" });
   const item = collection.getByRole("listitem").filter({ hasText: title });
   await expect(item).toContainText("佐伯 みどりさんから");
@@ -55,7 +56,7 @@ test("受け取るまで、贈られた肩書きは他の人に見えない", as
 });
 
 test("肩書きは自分では作れない（入れる場所がない）", async ({ page }) => {
-  await page.goto("/me");
+  await page.goto("/me?open=thanks");
   const collection = page.getByRole("region", { name: "もらった肩書き" });
   await expect(collection.getByRole("textbox")).toHaveCount(0);
   await expect(page.getByRole("region", { name: "サンクスカードを送る" }).getByLabel("送る相手").locator("option", { hasText: "佐伯 みどり" })).toHaveCount(0);

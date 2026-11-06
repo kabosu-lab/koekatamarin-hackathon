@@ -17,7 +17,7 @@ test("「これを覚えて」と頼んだことだけが一覧に出て、い�
   await page.getByRole("button", { name: "これを覚えて" }).first().click();
   await expect(page.getByRole("button", { name: "覚えました" })).toBeDisabled();
 
-  await page.goto("/me");
+  await page.goto("/me?open=settings");
   const list = page.getByRole("region", { name: "パートナーが覚えていること" });
   await expect(list).toContainText(kept);
   await expect(list).toContainText("公開した言葉");
@@ -25,12 +25,12 @@ test("「これを覚えて」と頼んだことだけが一覧に出て、い�
 
   await page.goto("/");
   await switchPerson(page, "野田 翔（情報・ものづくり部顧問）");
-  await page.goto("/me");
+  await page.goto("/me?open=settings");
   await expect(page.getByText(kept)).toHaveCount(0);
 
   await page.goto("/");
   await switchPerson(page, "大河原 誠（英語・学年主任）");
-  await page.goto("/me");
+  await page.goto("/me?open=settings");
   await list.locator(".memory-item").filter({ hasText: kept }).getByRole("button", { name: "忘れて" }).click();
   await expect(list).not.toContainText(kept);
   await page.reload();

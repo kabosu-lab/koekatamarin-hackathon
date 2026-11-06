@@ -46,32 +46,41 @@ test("iPad の縦向きでは1枚ずつで、欄を並べない", async ({ page 
   await expect(page.getByRole("link", { name: "みんな ›" })).toBeVisible();
 });
 
-test("みんなと、履歴と設定も同じ本体で、ホイールで一覧が動く", async ({ page }) => {
+test("みんなと、履歴と設定は同じ本体で、ホイールを置かず下まで中身に使う", async ({ page }) => {
   for (const [path, label] of [["/minna", "みんな"], ["/me", "履歴と設定"]] as const) {
     await page.goto(path);
     await expect(page.getByRole("region", { name: label })).toBeVisible();
-    await expect(page.locator(".click-wheel")).toBeVisible();
-    await expect(page.locator(".device-mic")).toHaveText(/話す/);
+    // 0-1f：話すボタンとホイールは「話す」画面だけ
+    await expect(page.locator(".click-wheel")).toHaveCount(0);
+    await expect(page.locator(".device-mic")).toHaveCount(0);
+    // 左右の点で「話す」に戻れる
+    await expect(page.getByRole("navigation", { name: "画面の切り替え" }).getByRole("link", { name: /話す/ })).toBeVisible();
   }
-  const win = page.getByRole("region", { name: "履歴と設定" });
-  const wheel = (await page.locator(".click-wheel").boundingBox())!;
-  const cx = wheel.x + wheel.width / 2;
-  const cy = wheel.y + wheel.height / 2;
-  const r = wheel.width * 0.46;
-  // トロフィーが届いた瞬間の全画面の知らせが重なることがあるので、閉じてから回す
-  await expect(async () => {
-    const moment = page.locator(".ribbon-moment");
-    if (await moment.isVisible()) await moment.click();
-    await page.mouse.move(cx + r, cy);
-    await page.mouse.down();
-    for (const degrees of [20, 40, 60, 80, 100]) {
-      const radians = (degrees * Math.PI) / 180;
-      await page.mouse.move(cx + r * Math.cos(radians), cy + r * Math.sin(radians));
-    }
-    await page.mouse.up();
-    expect(await win.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
-  }).toPass({ timeout: 15_000 });
+  await page.goto("/minna");
+  await expect(page.getByRole("navigation", { name: "みんなの入口" }).getByRole("link", { name: "今日の3人" })).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "みんなの入口" }).getByRole("link", { name: /受信箱/ })).toBeVisible();
 });
+
+// 0-1e：履歴と設定の項目は、どの幅でもスクロールなしで全部見えて、押すと開き、戻れる
+for (const viewport of [
+  { width: 390, height: 664 },
+  { width: 820, height: 1180 },
+  { width: 1180, height: 820 },
+]) {
+  test(`履歴と設定のタイルは、スクロールなしで全部見える（${viewport.width}×${viewport.height}）`, async ({ page }) => {
+    await page.setViewportSize(viewport);
+    await page.goto("/me");
+    const moment = page.locator(".ribbon-moment");
+    if (await moment.isVisible().catch(() => false)) await moment.click();
+    const tiles = page.getByRole("navigation", { name: "履歴と設定の項目" }).getByRole("link");
+    expect(await tiles.count()).toBeGreaterThanOrEqual(8);
+    for (const tile of await tiles.all()) await expect(tile).toBeInViewport({ ratio: 1 });
+    await tiles.filter({ hasText: "頑張りたいこと" }).click();
+    await expect(page.getByRole("region", { name: "頑張りたいこと" })).toBeVisible();
+    await page.getByRole("link", { name: "‹ 履歴と設定" }).click();
+    await expect(tiles.first()).toBeVisible();
+  });
+}
 
 test("みんなの一番上に校内の桜があり、すぐ下に受信箱、自習室の入口もある", async ({ page }) => {
   await page.goto("/minna");

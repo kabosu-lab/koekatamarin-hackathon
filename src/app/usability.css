@@ -540,3 +540,51 @@ html body .card {
 .feedback-actions button:disabled {
   opacity: 0.45;
 }
+
+/* 最初に1回だけ出すカード。どの幅でもスクロールなしで全部読める大きさにする */
+.first-card-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgb(20 28 36 / 45%);
+}
+
+.first-card {
+  box-sizing: border-box;
+  width: min(100%, 360px);
+  max-height: calc(100dvh - 32px);
+  margin: 0;
+  padding: 18px 18px 14px;
+  border-radius: 16px;
+  background: #fff;
+  color: #1f2933;
+  box-shadow: 0 16px 40px rgb(0 0 0 / 30%);
+  text-align: left;
+}
+
+.first-card p {
+  margin: 0 0 14px;
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+.first-card button {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  border: 0;
+  border-radius: 12px;
+  background: #1f6f78;
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* 広い画面の横に並ぶ画面（埋め込み）には、印もカードも出さない。真ん中の1つだけに出す */
+html[data-embed] .first-card-backdrop {
+  display: none;
+}

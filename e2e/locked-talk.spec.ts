@@ -66,6 +66,31 @@ async function swipeToLock(page: Page) {
 
 const log = (page: Page) => page.getByRole("log");
 
+// 0-1h：上だけでなく、下・左・右へずらしても固定になる。押している間の左右のずらしで画面は切り替わらない
+for (const [name, dx, dy] of [
+  ["下", 0, 90],
+  ["左", -90, 0],
+  ["右", 90, 0],
+] as const) {
+  test(`押したまま${name}へずらしても固定になり、画面は切り替わらない`, async ({ page }) => {
+    await fakeVoice(page);
+    await page.goto("/");
+    await waitForMic(page);
+    const box = (await page.locator(".device-mic").boundingBox())!;
+    const x = box.x + box.width / 2;
+    const y = box.y + box.height / 2;
+    await page.mouse.move(x, y);
+    await page.mouse.down();
+    await expect(page.locator(".lock-hint")).toContainText("ずらすと固定");
+    await page.mouse.move(x + dx / 2, y + dy / 2, { steps: 3 });
+    await page.mouse.move(x + dx, y + dy, { steps: 3 });
+    await expect(page.getByRole("status").filter({ hasText: "固定中" })).toBeVisible();
+    await page.mouse.up();
+    await expect(page).toHaveURL(/\/$/);
+    await expect(page.getByRole("status").filter({ hasText: "固定中" })).toBeVisible();
+  });
+}
+
 test("押したまま上へ動かすと固定になり、離しても聞き続け、止めるとパートナーへ送る", async ({ page }) => {
   await fakeVoice(page);
   await page.goto("/");
