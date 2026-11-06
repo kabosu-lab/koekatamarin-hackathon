@@ -115,8 +115,8 @@ export function buildTeamsMessage(text: string, targets: MentionTarget[]): Teams
 }
 
 /** こえかたの人 → Teams のユーザー ID（サインインのときの記録の逆引き）。分からなければ null。 */
-export function teamsUserIdOf(personId: string): string | null {
-  for (const [teamsUserId, linkedId] of Object.entries(readLinkedPeople())) if (linkedId === personId) return teamsUserId;
+export function teamsUserIdOf(personId: string, linked: Record<string, string> = readLinkedPeople()): string | null {
+  for (const [teamsUserId, linkedId] of Object.entries(linked)) if (linkedId === personId) return teamsUserId;
   return null;
 }
 
@@ -128,9 +128,9 @@ export function canBeAsked(db: DatabaseSync, personId: string, channelId: string
   return channel.audience === "everyone" || person.role !== "student";
 }
 
-function mentionTarget(db: DatabaseSync, personId: string): MentionTarget | null {
+function mentionTarget(db: DatabaseSync, personId: string, linked: Record<string, string> = readLinkedPeople()): MentionTarget | null {
   const name = personName(db, personId);
-  return name ? { name, teamsUserId: teamsUserIdOf(personId) } : null;
+  return name ? { name, teamsUserId: teamsUserIdOf(personId, linked) } : null;
 }
 
 /** 「聞いてみる」の投稿は、頭で相手をメンションする。本人が本文に @名前 を書いていればそこを使う。 */
@@ -144,16 +144,18 @@ export function askMessage(db: DatabaseSync, text: string, askedPersonId: string
 /** 返事の本文にある「@名前」のうち、その投稿を見られる人だけをメンションにする（回す、0-2g）。 */
 export function replyMessage(db: DatabaseSync, viewerId: string, channelId: string, text: string): TeamsMessageBody {
   const people = db.prepare("SELECT id FROM people ORDER BY length(name) DESC").all() as { id: string }[];
+  const linked = readLinkedPeople();
   const targets = people
     .filter((person) => person.id !== viewerId && canBeAsked(db, person.id, channelId))
-    .map((person) => mentionTarget(db, person.id))
+    .map((person) => mentionTarget(db, person.id, linked))
     .filter((target): target is MentionTarget => target !== null && text.includes(`@${target.name}`));
   return buildTeamsMessage(text, targets);
 }
 
-/** Teams の HTML を文字だけにする。画面には HTML を出さない。 */
+/** Teams の HTML を文字だけにする。画面には HTML を出さない。メンションは「@名前」の見た目で残す（0-2g）。 */
 export function plainText(html: string): string {
   return html
+    .replace(/<at\b[^>]*>([\s\S]*?)<\/at>/gi, "@$1")
     .replace(/<br\s*\/?>/gi, "\n")
     .replace(/<\/p>/gi, "\n")
     .replace(/<[^>]*>/g, "")

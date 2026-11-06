@@ -416,6 +416,10 @@ describe("文字にする", () => {
     expect(plainText("<p>一行目</p><p>二行目<br/>三行目</p>")).toBe("一行目\n二行目\n三行目");
     expect(plainText('<attachment id="x"></attachment>')).toBe("");
   });
+
+  it("メンションは「@名前」の見た目で残す", () => {
+    expect(plainText('<p><at id="0">大河原 誠</at>さん、どうですか？</p>')).toBe("@大河原 誠さん、どうですか？");
+  });
 });
 
 describe("メンション（0-2g）", () => {
@@ -495,34 +499,34 @@ describe("メンション（0-2g）", () => {
 
     it("Teams で直接メンションされた投稿は、メンションされた人の受信箱に入る", async () => {
       await syncFromTeams(db, fakeGraph([mentioned("m1", "佐伯 みどり", '<at id="0">大河原 誠</at> 教えてください', [mentionOf("u-oga", "大河原 誠")])]).fetcher);
-      expect(askedOf("大河原 誠 教えてください")).toBe("ogawara");
+      expect(askedOf("@大河原 誠 教えてください")).toBe("ogawara");
     });
 
     it("返事の中のメンションも受信箱に入り、今のお願いの相手が回したならパスとして残る", async () => {
       const reply = mentioned("r1", "佐伯 みどり", '<at id="0">大河原 誠</at>さん、どうですか？', [mentionOf("u-oga", "大河原 誠")]);
       const post = mentioned("m1", "青木 ひより", '<at id="0">佐伯 みどり</at> 質問です', [mentionOf("u-saeki", "佐伯 みどり")], [reply]);
       await syncFromTeams(db, fakeGraph([post]).fetcher);
-      expect(askedOf("佐伯 みどり 質問です")).toBe("ogawara");
+      expect(askedOf("@佐伯 みどり 質問です")).toBe("ogawara");
       expect(db.prepare("SELECT from_person_id, to_person_id FROM post_passes").all()).toEqual([{ from_person_id: "saeki", to_person_id: "ogawara" }]);
     });
 
     it("メンションを見るのは初めて取り込むときだけ（あとで回したお願いを戻さない）", async () => {
       const graphMessages = [mentioned("m1", "佐伯 みどり", '<at id="0">大河原 誠</at> 一度だけ', [mentionOf("u-oga", "大河原 誠")])];
       await syncFromTeams(db, fakeGraph(graphMessages).fetcher);
-      db.prepare("UPDATE posts SET asked_person_id = 'noda' WHERE body = ?").run("大河原 誠 一度だけ");
+      db.prepare("UPDATE posts SET asked_person_id = 'noda' WHERE body = ?").run("@大河原 誠 一度だけ");
       await syncFromTeams(db, fakeGraph(graphMessages).fetcher);
-      expect(askedOf("大河原 誠 一度だけ")).toBe("noda");
+      expect(askedOf("@大河原 誠 一度だけ")).toBe("noda");
     });
 
     it("生徒は、生徒が見られないチャネルでメンションされても受信箱に入らない", async () => {
       writeFileSync(join(dir, "teams.json"), JSON.stringify({ ...CONFIG, localChannel: "staffroom" }));
       await syncFromTeams(db, fakeGraph([mentioned("m1", "佐伯 みどり", '<at id="0">青木 ひより</at> 職員室の話', [mentionOf("u-aoki", "青木 ひより")])]).fetcher);
-      expect(askedOf("青木 ひより 職員室の話")).toBeNull();
+      expect(askedOf("@青木 ひより 職員室の話")).toBeNull();
     });
 
     it("自分で自分をメンションしても、受信箱には入らない", async () => {
       await syncFromTeams(db, fakeGraph([mentioned("m1", "佐伯 みどり", '<at id="0">佐伯 みどり</at> メモ', [mentionOf("u-saeki", "佐伯 みどり")])]).fetcher);
-      expect(askedOf("佐伯 みどり メモ")).toBeNull();
+      expect(askedOf("@佐伯 みどり メモ")).toBeNull();
     });
 
     it("取り込みでは何も送らない（メンションは本人が送るときだけ）", async () => {
