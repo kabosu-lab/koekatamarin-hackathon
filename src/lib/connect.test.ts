@@ -1,11 +1,15 @@
 import type { DatabaseSync } from "node:sqlite";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createScriptedClaude } from "./claude/scripted";
 import type { ChatMessage, ClaudeClient, ClaudeRequest } from "./claude/types";
 import { handleDraft, handlePublish } from "./compose-request";
 import { buildConnectTargets, buildDirectory, handleConnect, suggestPerson } from "./connect";
 import { openDatabase } from "./db";
 import { createDummyTeams } from "./destination/dummy-teams";
+import { resetTeamsBridge, withTeamsBridge } from "./destination/teams-bridge";
 import type { PostDestination } from "./destination/types";
 import { seedDatabase } from "./seed";
 import { handleTalk } from "./talk-request";
@@ -160,6 +164,58 @@ describe("聞く相手を決めて送る", () => {
     expect((await handlePublish(scripted, teams, "saeki", { ...input, askedPersonId: "nobody" })).status).toBe(400);
     const history = [{ role: "user", content: "相談がある" }];
     expect((await handleDraft(scripted, teams, "saeki", { history, askedPersonId: "nobody" })).status).toBe(400);
+  });
+});
+
+describe("聞いてみるは Teams のメンションで届く（0-2g）", () => {
+  let dir: string;
+  const sent: unknown[] = [];
+
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), "koekata-connect-"));
+    vi.stubEnv("KOEKATA_GRAPH_DIR", dir);
+    vi.stubEnv("KOEKATA_TEAMS", "");
+    writeFileSync(join(dir, "teams.json"), JSON.stringify({ tenant: "example.test", clientId: "dummy", team: "T", channel: "C" }));
+    writeFileSync(join(dir, "teams-token-saeki.json"), JSON.stringify({ accessToken: "t", refreshToken: "r", expiresAt: Date.now() + 3_600_000 }));
+    resetTeamsBridge();
+    sent.length = 0;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: unknown, init?: RequestInit) => {
+        const url = String(input);
+        if (url.endsWith("/me/joinedTeams")) return Response.json({ value: [{ id: "team1", displayName: "T" }] });
+        if (url.endsWith("/channels")) return Response.json({ value: [{ id: "chan1", displayName: "C" }] });
+        if (init?.method === "POST") sent.push(JSON.parse(String(init.body)));
+        return Response.json({ id: "m1" });
+      }),
+    );
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  async function ask(askedPersonId: string) {
+    const bridged = withTeamsBridge(createDummyTeams(db), db);
+    const outcome = await handlePublish(createScriptedClaude(), bridged, "saeki", { text: "音読のコツを教えてください", channelId: "study", askedPersonId });
+    expect(outcome.status).toBe(200);
+    await new Promise((done) => setTimeout(done, 20));
+    return sent.at(-1) as { body: { contentType: string; content: string }; mentions?: { mentioned: { user: { id: string } } }[] };
+  }
+
+  it("Teams の ID が分かる相手は、投稿の頭でメンションする", async () => {
+    writeFileSync(join(dir, "teams-people.json"), JSON.stringify({ "u-oga": "ogawara" }));
+    const message = await ask("ogawara");
+    expect(message.body.contentType).toBe("html");
+    expect(message.body.content.startsWith('<at id="0">大河原 誠</at>さん<br>')).toBe(true);
+    expect(message.mentions?.map((m) => m.mentioned.user.id)).toEqual(["u-oga"]);
+  });
+
+  it("ID が分からない相手は、メンションなしで名前だけ書く", async () => {
+    const message = await ask("ogawara");
+    expect(message).toEqual({ body: { contentType: "text", content: expect.stringMatching(/^大河原 誠さん\n/) } });
   });
 });
 

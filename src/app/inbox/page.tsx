@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getViewer } from "@/lib/current-person";
 import { getDatabase } from "@/lib/db";
 import { getDestination } from "@/lib/destination/current";
+import { syncFromTeamsIfStale } from "@/lib/destination/teams-bridge";
 import { countContributions } from "@/lib/avatar";
 import { listInbox, listPassCandidates } from "@/lib/inbox";
 import { listKnowledgeTasks } from "@/lib/knowledge";
@@ -21,6 +22,8 @@ export const dynamic = "force-dynamic";
 export default async function InboxPage() {
   const { viewer } = await getViewer();
   const db = getDatabase();
+  // Teams で直接メンションされた投稿や返事も、受信箱に入れる（0-2g）
+  await syncFromTeamsIfStale(db);
   const teams = getDestination(db);
   const items = listInbox(db, viewer.id);
   const replies = listRecentReplies(db, viewer.id);
