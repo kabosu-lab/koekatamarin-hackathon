@@ -1,16 +1,11 @@
 /* 実際のアプリを Playwright で操作し、状態ごとの画面を public/app/ に撮る
    ふつうは scripts/recapture.sh から動かす（コミット済みのアプリを台本モードで動かして撮る）
-   声はブラウザの音声認識の代わりに、決めた言葉を少しずつ聞き取ったことにする */
-import { createRequire } from "node:module";
+   声はブラウザの音声認識の代わりに、決めた言葉を少しずつ聞き取ったことにする。見た目は今の1つ（レトロ） */
 import { mkdirSync, writeFileSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
-const require = createRequire(new URL("../../package.json", import.meta.url));
-const { chromium } = require("@playwright/test");
+import { BASE, OUT, REGIONS, PHONE, STORY, chromium, prepare, switchTo, fakeSpeech, pressMic, hearSoFar, releaseMic, waitForReply, typeToPartner, deliver, boxOf } from "./capture-lib.mjs";
 
-const BASE = process.env.APP_URL ?? "http://127.0.0.1:3177";
-const OUT = new URL("../public/app/", import.meta.url).pathname;
 mkdirSync(OUT, { recursive: true });
-const SPOKEN = "作文の書き出し、声に出して読ませてみたら、みんな書けました！";
 const HARSH = "隣のクラスの先生は使えない";
 const REPLY = "それ、次の授業でやってみます！";
 
@@ -20,67 +15,65 @@ function setStoryTime(table, body, hour, minute) {
   if (!path) return;
   const at = new Date(); at.setHours(hour, minute, 0, 0);
   const db = new DatabaseSync(path);
-  try { db.prepare(`UPDATE ${table} SET created_at = ? WHERE body = ?`).run(at.toISOString(), body); } finally { db.close(); }
+  try { db.prepare(`UPDATE ${table} SET created_at = ? WHERE body LIKE ?`).run(at.toISOString(), `%${body}%`); } finally { db.close(); }
 }
 
-/* カメラが寄る場所：画面上の要素の位置を記録する（レイアウトが変わっても追える） */
 const regions = {};
 async function mark(page, shot, key, ...locators) {
-  const size = page.viewportSize(), boxes = (await Promise.all(locators.map(l => l.first().boundingBox()))).filter(Boolean);
-  if (!boxes.length) return;
-  const x = Math.max(0, Math.min(...boxes.map(b => b.x))), y = Math.max(0, Math.min(...boxes.map(b => b.y)));
-  const r = Math.min(size.width, Math.max(...boxes.map(b => b.x + b.width))), u = Math.min(size.height, Math.max(...boxes.map(b => b.y + b.height)));
-  (regions[shot] ??= {})[key] = { x, y, w: r - x, h: u - y };
+  const box = await boxOf(page, ...locators);
+  if (box) (regions[shot] ??= {})[key] = box;
+}
+
+/* スマホのタップで出る灰色の一瞬を映さない */
+function noTapHighlight() {
+  addEventListener("DOMContentLoaded", () => {
+    const style = document.createElement("style");
+    style.textContent = "* { -webkit-tap-highlight-color: transparent; }";
+    document.head.append(style);
+  });
 }
 
 const browser = await chromium.launch({ channel: "chrome" });
 try {
-  const phone = await browser.newContext({ viewport: { width: 412, height: 860 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true, locale: "ja-JP" });
-  await phone.addCookies([{ name: "koekata_theme", value: "pop", url: BASE }]); /* 動画はポップで撮る */
+  const phone = await browser.newContext(PHONE);
+  await prepare(phone, "saeki");
+  await phone.addInitScript(fakeSpeech);
+  await phone.addInitScript(noTapHighlight);
   const p = await phone.newPage();
   const shot = name => p.screenshot({ path: `${OUT}${name}.png` });
-  await p.addInitScript(() => {
-    class FakeRecognition {
-      start() { window.fakeRecognition = this; }
-      stop() {
-        const result = Object.assign([{ transcript: window.fakeSpoken }], { isFinal: true });
-        this.onresult?.({ resultIndex: 0, results: [result] });
-        this.onend?.();
-      }
-      interim(text) {
-        const result = Object.assign([{ transcript: text }], { isFinal: false });
-        this.onresult?.({ resultIndex: 0, results: [result] });
-      }
-    }
-    Object.assign(window, { webkitSpeechRecognition: FakeRecognition, SpeechRecognition: FakeRecognition, fakeSpoken: "" });
-  });
 
-  /* 01 話しかける */
+  /* 01 押し続けて話す */
   await p.goto(`${BASE}/`);
-  await p.getByRole("button", { name: "話しかける" }).waitFor();
+  await p.locator(".device-mic").waitFor();
+  await p.waitForLoadState("networkidle");
   await p.waitForTimeout(400);
   await shot("phone-1-idle");
-  await mark(p, "phone-1-idle", "main", p.locator(".actions"));
-  await p.getByRole("button", { name: "話しかける" }).click();
-  await p.getByText("聞いています…").waitFor();
+  await mark(p, "phone-1-idle", "main", p.locator(".device-controls"));
+  await pressMic(p);
   await shot("phone-2-listening");
-  await mark(p, "phone-2-listening", "main", p.locator(".bubble.listening"));
+  await mark(p, "phone-2-listening", "main", p.locator(".device-input"));
   for (let n = 1; n <= 5; n++) {
-    await p.evaluate(t => window.fakeRecognition.interim(t), SPOKEN.slice(0, Math.ceil(SPOKEN.length * n / 5)));
-    await p.waitForTimeout(80);
+    await hearSoFar(p, STORY[0].slice(0, Math.ceil(STORY[0].length * n / 5)));
+    await p.waitForTimeout(400); /* 言葉が固まっていく動きを待つ */
     await shot(`phone-3-heard-${n}`);
-    await mark(p, `phone-3-heard-${n}`, "main", p.locator(".bubble.listening"));
+    await mark(p, `phone-3-heard-${n}`, "main", p.locator(".device-input"));
   }
-  await p.evaluate(t => { window.fakeSpoken = t; }, SPOKEN);
-  await p.getByRole("button", { name: "話し終わった" }).click();
-  await p.getByRole("log").locator(".bubble.assistant:not(.waiting)").last().waitFor();
-  await p.waitForTimeout(200);
+  await releaseMic(p, STORY[0]);
+  await waitForReply(p, 1);
+  /* 2つ目の言葉で、パートナーが「言葉になりそう」と光らせる */
+  await pressMic(p);
+  await hearSoFar(p, STORY[1]);
+  await p.waitForTimeout(1200); /* 短く触っただけだと、使い方の案内になる */
+  await releaseMic(p, STORY[1]);
+  await waitForReply(p, 2);
+  await p.locator('.device-side[data-ready="true"]').waitFor();
+  await p.waitForTimeout(400);
   await shot("phone-4-replied");
   await mark(p, "phone-4-replied", "main", p.locator(".bubble.user").last(), p.locator(".bubble.assistant").last());
-  await mark(p, "phone-4-replied", "send", p.getByRole("button", { name: "言葉にして送る" }));
+  await mark(p, "phone-4-replied", "send", deliver(p));
 
-  /* 02 言葉にして、本人が送る */
-  await p.getByRole("button", { name: "言葉にして送る" }).click();
+  /* 02 言葉にして、本人が確かめて送る */
+  await deliver(p).click();
   await p.getByLabel("投稿の文章").waitFor();
   await p.getByLabel("送り先のチャネル").selectOption({ label: "職員室" });
   await p.waitForTimeout(300);
@@ -90,26 +83,27 @@ try {
   await p.waitForTimeout(200);
   await shot("phone-6-preview");
   await mark(p, "phone-6-preview", "main", p.locator(".preview"));
-  await p.getByRole("button", { name: "本人として送る" }).scrollIntoViewIfNeeded();
+  const send = p.getByRole("button", { name: "本人として送る" });
+  await send.scrollIntoViewIfNeeded();
   await p.waitForTimeout(150);
   await shot("phone-7-before-send");
-  await mark(p, "phone-7-before-send", "main", p.locator(".preview"), p.getByRole("button", { name: "本人として送る" }));
-  await mark(p, "phone-7-before-send", "send", p.getByRole("button", { name: "本人として送る" }));
-  await p.getByRole("button", { name: "本人として送る" }).click();
+  await mark(p, "phone-7-before-send", "main", p.locator(".preview"), send);
+  await mark(p, "phone-7-before-send", "send", send);
+  await send.click();
   await p.getByRole("link", { name: "校内チャネルで見る" }).waitFor();
-  await p.waitForTimeout(1600); /* 送るときの動きが終わるのを待つ */
+  await p.waitForTimeout(1600);
+  await shot("phone-8-burst"); /* 届いた瞬間の動き */
+  await p.locator(".send-burst").waitFor({ state: "detached", timeout: 15000 }).catch(() => {});
+  await p.waitForTimeout(300);
   await shot("phone-8-sent");
   await mark(p, "phone-8-sent", "main", p.getByRole("link", { name: "校内チャネルで見る" }).locator("xpath=.."));
 
   /* 03 きつい言葉は、受け取られ方を伝えて言い換えを出す */
   const q = await phone.newPage();
   const qshot = name => q.screenshot({ path: `${OUT}${name}.png` });
-  await q.goto(`${BASE}/`);
-  await q.getByRole("button", { name: "文字で書く" }).click();
-  await q.getByLabel("相棒に書く").fill(HARSH);
-  await q.getByRole("button", { name: "相棒に送る" }).click();
-  await q.getByRole("log").locator(".bubble.assistant:not(.waiting)").last().waitFor();
-  await q.getByRole("button", { name: "言葉にして送る" }).click();
+  await switchTo(q, "ogawara");
+  await typeToPartner(q, HARSH);
+  await deliver(q).click();
   await q.locator(".perception").waitFor();
   await q.waitForTimeout(300);
   await q.locator(".perception").scrollIntoViewIfNeeded();
@@ -123,14 +117,8 @@ try {
 
   /* 人につなぐ：煮詰まったときだけ、人を紹介する */
   const c = await phone.newPage();
-  await c.goto(`${BASE}/`);
-  await c.getByRole("button", { name: "文字で書く" }).click();
-  for (const line of ["調べ学習の進め方で悩んでいて", "もう煮詰まってきた"]) {
-    const count = await c.getByRole("log").locator(".bubble.assistant").count();
-    await c.getByLabel("相棒に書く").fill(line);
-    await c.getByRole("button", { name: "相棒に送る" }).click();
-    await c.waitForFunction(n => document.querySelectorAll(".bubble.assistant:not(.waiting)").length > n, count);
-  }
+  await switchTo(c, "fujimoto");
+  for (const line of ["調べ学習の進め方で悩んでいて", "もう煮詰まってきた"]) await typeToPartner(c, line);
   const offer = c.getByRole("region", { name: "人につなぐ提案" });
   await offer.waitFor();
   await offer.evaluate(el => el.scrollIntoView({ block: "center" }));
@@ -139,13 +127,10 @@ try {
   await mark(c, "phone-12-connect", "main", offer);
 
   /* 命や安全に関わるとき：相談室に要点だけ伝え、本人に見せる。話した言葉が映らないよう、知らせの部分へ送る */
-  await q.goto(`${BASE}/`);
-  await q.getByLabel("使う人").selectOption({ label: "木下 蓮（3年・ものづくり部）" });
-  await q.getByRole("button", { name: "切り替え" }).click();
-  await q.waitForLoadState("networkidle");
-  await q.getByRole("button", { name: "文字で書く" }).click();
-  await q.getByLabel("相棒に書く").fill("親に殴られている");
-  await q.getByRole("button", { name: "相棒に送る" }).click();
+  await switchTo(q, "kinoshita");
+  const input = q.getByLabel("パートナーに書く");
+  await input.fill("親に殴られている");
+  await input.press("Enter");
   const card = q.getByRole("region", { name: "相談室に伝えました" });
   await card.waitFor();
   await card.evaluate(el => el.scrollIntoView({ block: "start" }));
@@ -155,9 +140,9 @@ try {
   await mark(q, "phone-11-safety", "lines", card.getByText("今すぐ話せるところ"), card.getByText("0120-061-338"));
 
   /* 04 校内チャネルに届き、同僚から返事が来る */
-  setStoryTime("posts", SPOKEN, 21, 12);
+  setStoryTime("posts", STORY[1], 21, 12);
   const desk = await browser.newContext({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 2, locale: "ja-JP" });
-  await desk.addCookies([{ name: "koekata_theme", value: "pop", url: BASE }]);
+  await prepare(desk, "saeki");
   const d = await desk.newPage();
   await d.goto(`${BASE}/teams?channel=notices`);
   await d.waitForLoadState("networkidle");
@@ -165,15 +150,13 @@ try {
   await mark(d, "teams-notices", "main", d.getByRole("article").nth(0), d.getByRole("article").nth(1));
   await d.goto(`${BASE}/teams?channel=staffroom`);
   await d.waitForLoadState("networkidle");
-  const post = d.getByRole("article").filter({ hasText: SPOKEN.slice(0, 10) }).first();
+  const post = d.getByRole("article").filter({ hasText: STORY[1].slice(0, 8) }).first();
   await post.waitFor();
   await post.scrollIntoViewIfNeeded();
   await d.waitForTimeout(150);
   await d.screenshot({ path: `${OUT}teams-1-posted.png` });
   await mark(d, "teams-1-posted", "main", post);
-  await d.getByLabel("使う人").selectOption({ label: "大河原 誠（英語・学年主任）" });
-  await d.getByRole("button", { name: "切り替え" }).click();
-  await d.waitForLoadState("networkidle");
+  await switchTo(d, "ogawara", "/teams?channel=staffroom");
   await post.waitFor();
   await post.getByLabel("返信").fill(REPLY);
   await post.getByRole("button", { name: "返信", exact: true }).click();
@@ -185,7 +168,16 @@ try {
   await d.waitForTimeout(150);
   await d.screenshot({ path: `${OUT}teams-2-replied.png` });
   await mark(d, "teams-2-replied", "main", post);
-  writeFileSync(new URL("../src/candidates/regions.json", import.meta.url), JSON.stringify(regions, null, 1) + "\n");
+
+  /* 05 返事が、話す画面の窓の上に知らせで届く（出なければ飛ばす。受信箱には残る） */
+  await switchTo(p, "saeki");
+  const toast = p.locator(".lcd").getByText("大河原", { exact: false }).first();
+  if (await toast.waitFor({ timeout: 8000 }).then(() => true, () => false)) {
+    await p.waitForTimeout(300);
+    await shot("phone-13-reply-notice");
+    await mark(p, "phone-13-reply-notice", "main", toast);
+  } else console.log("返事の知らせは画面に出ませんでした（受信箱では見られます）");
+  writeFileSync(REGIONS, JSON.stringify(regions, null, 1) + "\n");
   console.log("撮りました", OUT);
 } finally {
   await browser.close();

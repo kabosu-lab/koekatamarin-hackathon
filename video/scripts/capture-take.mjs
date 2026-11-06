@@ -1,39 +1,24 @@
-/* 話す→相棒が返す→下書き→確かめる→本人が送る を、切らずに1本の映像で撮る（静止画をつながない）
+/* 押し続けて話す→パートナーが返す→光った「とどける」→下書き→確かめる→本人が送る を、切らずに1本の映像で撮る（静止画をつながない）
    ふつうは scripts/recapture.sh から動かす。ブラウザの画面をそのまま記録し、public/app/take.mp4 にする
    カメラが寄る場所と時刻は src/candidates/take.json に残す。時刻はナレーションに合わせた台本どおりに進める */
-import { createRequire } from "node:module";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-const require = createRequire(new URL("../../package.json", import.meta.url));
-const { chromium } = require("@playwright/test");
+import { BASE, OUT as PUB, TAKE, PHONE, STORY, chromium, prepare, fakeSpeech, mic, hearSoFar, releaseMic, waitForReply, deliver } from "./capture-lib.mjs";
 
-const BASE = process.env.APP_URL ?? "http://127.0.0.1:3177";
-const PUB = new URL("../public/app/", import.meta.url).pathname;
-const SPOKEN = "作文の書き出し、声に出して読ませてみたら、みんな書けました！";
 const FPS = 30, END = 36;
 mkdirSync(PUB, { recursive: true });
 const dir = mkdtempSync(join(tmpdir(), "koekata-take-"));
 
 const browser = await chromium.launch({ channel: "chrome" });
 try {
-  const context = await browser.newContext({ viewport: { width: 412, height: 860 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true, locale: "ja-JP" });
-  await context.addCookies([{ name: "koekata_theme", value: "pop", url: BASE }]); /* 動画はポップで撮る */
+  const context = await browser.newContext(PHONE);
+  await prepare(context, "saeki");
+  await context.addInitScript(fakeSpeech);
   const p = await context.newPage();
-  await p.addInitScript(() => {
-    class FakeRecognition {
-      start() { window.fakeRecognition = this; }
-      stop() {
-        this.onresult?.({ resultIndex: 0, results: [Object.assign([{ transcript: window.fakeSpoken }], { isFinal: true })] });
-        this.onend?.();
-      }
-      interim(text) { this.onresult?.({ resultIndex: 0, results: [Object.assign([{ transcript: text }], { isFinal: false })] }); }
-    }
-    Object.assign(window, { webkitSpeechRecognition: FakeRecognition, SpeechRecognition: FakeRecognition, fakeSpoken: "" });
-  });
   await p.goto(`${BASE}/`);
-  const talk = p.getByRole("button", { name: "話しかける" });
+  const talk = mic(p);
   await talk.waitFor();
   await p.waitForLoadState("networkidle");
   /* スマホのタップで出る灰色の一瞬を映さない */
@@ -65,6 +50,21 @@ try {
     taps.push({ at: Math.round(elapsed() * FPS), x: b.x + b.width / 2, y: b.y + b.height / 2 });
     await locator.tap();
   }
+  /* 押し続けて話す：押した場所を記録し、離すまで指を置いたままにする */
+  async function press() {
+    const b = await talk.boundingBox();
+    taps.push({ at: Math.round(elapsed() * FPS), x: b.x + b.width / 2, y: b.y + b.height / 2, hold: true });
+    await talk.hover();
+    await p.mouse.down();
+    await p.getByRole("button", { name: "離すと送る" }).waitFor();
+  }
+  /* 実際に話す速さで、聞き取った言葉が増えていく */
+  async function speak(text, from, seconds) {
+    for (let n = 1; n <= text.length; n++) {
+      await until(from + seconds * n / text.length);
+      await hearSoFar(p, text.slice(0, n));
+    }
+  }
   /* なめらかにスクロールする（瞬間移動しない） */
   const glide = (locator, seconds) => locator.evaluate((el, ms) => new Promise(done => {
     let box = el.parentElement;
@@ -79,30 +79,33 @@ try {
     })(begin);
   }), seconds * 1000);
 
-  await look(0, p.locator(".actions"));
+  await look(0, p.locator(".device-controls"));
   await until(1.5);
-  await tap(talk);
-  await p.getByText("聞いています…").waitFor();
-  /* 聞き取りの吹き出しはこれから広がるので、広がったあとの場所を見る */
-  const bubble = await p.locator(".bubble.listening").boundingBox();
-  keys.push({ at: Math.round(elapsed() * FPS), step: 0, box: { x: 16, y: bubble.y, w: 380, h: 96 } });
-  /* 実際に話す速さで、聞き取った言葉が増えていく */
-  const speakFrom = 3, speakFor = 5.5;
-  for (let n = 1; n <= SPOKEN.length; n++) {
-    await until(speakFrom + speakFor * n / SPOKEN.length);
-    await p.evaluate(t => window.fakeRecognition.interim(t), SPOKEN.slice(0, n));
-  }
-  await until(9.2);
-  await p.evaluate(t => { window.fakeSpoken = t; }, SPOKEN);
-  await tap(p.getByRole("button", { name: "話し終わった" }));
-  await p.getByRole("log").locator(".bubble.assistant:not(.waiting)").last().waitFor();
-  await until(10);
+  await press();
+  await look(0, p.locator(".device-input"));
+  await speak(STORY[0], 2, 4);
+  await until(6.6);
+  await releaseMic(p, STORY[0]);
+  await waitForReply(p, 1);
+  await until(7.2);
   await look(1, p.locator(".bubble.user").last(), p.locator(".bubble.assistant").last());
 
-  await until(14.3);
-  await tap(p.getByRole("button", { name: "言葉にして送る" }));
+  /* 2つ目の言葉で、パートナーが「言葉になりそう」と光らせる */
+  await until(9.6);
+  await press();
+  await look(0, p.locator(".device-input"));
+  await speak(STORY[1], 10, 2.8);
+  await until(13.2);
+  await releaseMic(p, STORY[1]);
+  await waitForReply(p, 2);
+  await p.locator('.device-side[data-ready="true"]').waitFor();
+  await until(13.6);
+  await look(1, p.locator(".bubble.assistant").last(), deliver(p));
+
+  await until(15.5);
+  await tap(deliver(p));
   await p.getByLabel("投稿の文章").waitFor();
-  await until(15.2);
+  await until(16.4);
   await look(1, p.getByLabel("投稿の文章"), p.locator(".perception"));
 
   /* 送り先を選ぶ */
@@ -136,7 +139,7 @@ try {
   const concat = join(dir, "list.txt");
   writeFileSync(concat, list.join("\n"));
   execFileSync("ffmpeg", ["-y", "-loglevel", "error", "-f", "concat", "-safe", "0", "-i", concat, "-vf", `fps=${FPS},scale=1236:2580,format=yuv420p`, "-c:v", "libx264", "-crf", "14", "-preset", "medium", `${PUB}take.mp4`]);
-  writeFileSync(new URL("../src/candidates/take.json", import.meta.url), JSON.stringify({ size: [412, 860], end: END, keys, taps }, null, 1) + "\n");
+  writeFileSync(TAKE, JSON.stringify({ size: [412, 860], end: END, keys, taps }, null, 1) + "\n");
   console.log(`切らずに撮りました ${frames.length}コマ（${(frames.at(-1).t - t0).toFixed(1)}秒）`);
 } finally {
   await browser.close();

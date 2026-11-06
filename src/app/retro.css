@@ -859,15 +859,16 @@ html[data-theme="retro"] .talk .device-input {
 }
 
 /* 0-0t：押している間、上へずらすと固定になることを見せる。ずらすほど上がって濃くなる */
+/* 輪の上の縁に出す。上の入力欄に重ねると、聞き取っている言葉が隠れる */
 .lock-hint {
   position: absolute;
   left: 50%;
-  bottom: calc(100% + 6px);
+  top: 6px;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  gap: 2px;
-  padding: 6px 10px;
+  gap: 4px;
+  padding: 3px 10px;
   border-radius: 12px;
   background: rgb(20 24 32 / 86%);
   color: #fff;
@@ -881,7 +882,7 @@ html[data-theme="retro"] .talk .device-input {
 }
 
 .lock-hint-arrow {
-  font-size: 1.3rem;
+  font-size: 1rem;
   line-height: 1;
   animation: lock-hint-bob 0.9s ease-in-out infinite;
 }

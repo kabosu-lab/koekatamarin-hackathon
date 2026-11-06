@@ -1,58 +1,49 @@
-/* 一日の機能（今日の3人、受信箱、分身、自習室、日報）の実画面を撮る。capture-app.mjs のあとに動かす
-   1つの画面で失敗しても、残りは撮って、失敗した名前を最後に知らせる */
-import { createRequire } from "node:module";
-import { readFileSync, writeFileSync } from "node:fs";
-const require = createRequire(new URL("../../package.json", import.meta.url));
-const { chromium } = require("@playwright/test");
+/* 一日の機能（今日の3人、受信箱、パートナー、自習室、日報など）の実画面を撮る。capture-app.mjs のあとに動かす
+   1つの画面で失敗しても、残りは撮って、失敗した名前を最後に知らせる。見た目は今の1つ（レトロ） */
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { BASE, OUT, REGIONS, PHONE, chromium, prepare, switchTo, typeToPartner, deliver, boxOf } from "./capture-lib.mjs";
 
-const BASE = process.env.APP_URL ?? "http://127.0.0.1:3177";
-const OUT = new URL("../public/app/", import.meta.url).pathname;
-const REGIONS = new URL("../src/candidates/regions.json", import.meta.url);
-const regions = JSON.parse(readFileSync(REGIONS, "utf8"));
-const SAEKI = "佐伯 みどり（国語・2年担任）", OKAWARA = "大河原 誠（英語・学年主任）", AOKI = "青木 ひより（2年）", KYOTO = "藤本 恵（教頭）";
+const regions = existsSync(REGIONS) ? JSON.parse(readFileSync(REGIONS, "utf8")) : {};
 const failed = [];
 
 const browser = await chromium.launch({ channel: "chrome" });
 try {
-  const context = await browser.newContext({ viewport: { width: 412, height: 860 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true, locale: "ja-JP" });
-  await context.addCookies([{ name: "koekata_theme", value: "pop", url: BASE }]); /* 動画はポップで撮る */
+  const context = await browser.newContext(PHONE);
+  await prepare(context, "saeki");
   const page = await context.newPage();
 
-  async function switchTo(option) {
-    await page.goto(`${BASE}/`);
-    await page.getByLabel("使う人").selectOption({ label: option });
-    await page.getByRole("button", { name: "切り替え" }).click();
-    await page.locator(`.talk[data-viewer="${option.split("（")[0]}"]`).waitFor();
-  }
   async function shot(name, ...locators) {
     const first = locators[0]?.first();
     if (first) { await first.evaluate(el => el.scrollIntoView({ block: "center" })); await page.waitForTimeout(250); }
     await page.screenshot({ path: `${OUT}${name}.png` });
-    const size = page.viewportSize(), boxes = (await Promise.all(locators.map(l => l.first().boundingBox()))).filter(Boolean);
-    if (boxes.length) {
-      const x = Math.max(0, Math.min(...boxes.map(b => b.x))), y = Math.max(0, Math.min(...boxes.map(b => b.y)));
-      const r = Math.min(size.width, Math.max(...boxes.map(b => b.x + b.width))), u = Math.min(size.height, Math.max(...boxes.map(b => b.y + b.height)));
-      regions[name] = { main: { x, y, w: r - x, h: u - y } };
-    }
+    const box = await boxOf(page, ...locators);
+    if (box) regions[name] = { main: box };
   }
   async function section(name, run) {
     try { await run(); } catch (error) { failed.push(`${name}: ${String(error.message).split("\n")[0]}`); }
   }
+  /* トロフィーが届いた知らせは、ひと押しで閉じる（撮る画面に重ねない） */
+  async function closeMoments() {
+    const moment = page.locator(".ribbon-moment");
+    for (let i = 0; i < 5 && await moment.first().isVisible().catch(() => false); i++) {
+      await moment.first().click();
+      await page.waitForTimeout(300);
+    }
+  }
+  const imageLoaded = (locator) => locator.evaluate(img => img.complete || new Promise(done => { img.onload = done; }));
 
   await section("今日の3人", async () => {
-    await switchTo(SAEKI);
-    await page.goto(`${BASE}/today`);
+    await switchTo(page, "saeki", "/today");
     await page.locator(".today-card").first().waitFor();
     await shot("feature-today", page.locator(".today-card"));
   });
 
   await section("受信箱", async () => {
     const asked = "作文の書き出しを、生徒にどう教えていますか？";
-    await switchTo(OKAWARA);
+    await switchTo(page, "ogawara");
     const response = await page.request.post(`${BASE}/api/publish`, { data: { text: asked, channelId: "study", askedPersonId: "saeki" } });
     if (!response.ok()) throw new Error(`publish ${response.status()}`);
-    await switchTo(SAEKI);
-    await page.goto(`${BASE}/inbox`);
+    await switchTo(page, "saeki", "/inbox");
     const card = page.getByRole("region").filter({ hasText: asked }).first();
     await card.waitFor();
     await shot("feature-inbox", card);
@@ -65,32 +56,38 @@ try {
     await shot("feature-inbox-goal", page.getByText("解決！"));
   });
 
-  await section("分身とありがとう", async () => {
-    await switchTo(AOKI);
-    await page.goto(`${BASE}/me`);
+  await section("パートナーとありがとう", async () => {
+    await switchTo(page, "aoki", "/me");
     const form = page.getByRole("region", { name: "サンクスカードを送る" });
-    await form.getByLabel("送る相手").selectOption({ label: SAEKI });
+    await form.getByLabel("送る相手").selectOption({ label: "佐伯 みどり（国語・2年担任）" });
     await form.getByLabel("ありがとうの言葉").fill("作文の書き出し、声に出したら書けました。");
     await form.getByRole("button", { name: "サンクスカードを送る" }).click();
     await form.getByText("ありがとうが届きました").waitFor();
-    await switchTo(SAEKI);
-    await page.goto(`${BASE}/me`);
+    await switchTo(page, "saeki", "/me");
     const quiz = page.getByRole("region", { name: "最初の問いかけ" });
     if (await quiz.isVisible()) {
       await quiz.getByRole("button", { name: "人物" }).click();
       await quiz.getByRole("button", { name: "じっくり話を聞く" }).click();
       await quiz.waitFor({ state: "detached" });
     }
-    const buddy = page.getByRole("region", { name: "相棒", exact: true });
-    await buddy.waitFor();
-    await buddy.locator("img").first().evaluate(img => img.complete || new Promise(done => { img.onload = done; }));
-    await shot("feature-buddy", buddy);
+    /* 「履歴と設定」の上の窓：パートナーと、頑張りたいこと */
+    await page.locator(".me-screen").waitFor();
+    await page.waitForTimeout(800);
+    await closeMoments();
+    await page.evaluate(() => { scrollTo(0, 0); document.querySelectorAll(".device-body").forEach((el) => { el.scrollTop = 0; }); });
+    await page.waitForTimeout(300);
+    await page.screenshot({ path: `${OUT}feature-me.png` });
+    regions["feature-me"] = { main: await boxOf(page, page.locator(".me-screen"), page.getByRole("region", { name: "頑張りたいこと" })) };
+    const partner = page.getByRole("region", { name: "パートナー", exact: true });
+    await partner.waitFor();
+    await imageLoaded(partner.locator("img").first());
+    await shot("feature-buddy", partner);
     await shot("feature-thanks", page.getByRole("region", { name: "もらったありがとう" }));
     await page.goto(`${BASE}/minna`);
     await page.getByRole("heading", { name: "みんな" }).waitFor();
     await page.waitForLoadState("networkidle");
     await shot("feature-minna");
-    await page.getByRole("link", { name: "春を見る" }).click();
+    await page.getByRole("link", { name: "桜の木を大きく見る" }).click();
     await page.waitForLoadState("networkidle");
     await page.waitForTimeout(400);
     await page.screenshot({ path: `${OUT}feature-sakura.png` });
@@ -99,7 +96,7 @@ try {
 
   await section("一緒に勉強", async () => {
     await page.goto(`${BASE}/study/room`);
-    const room = page.getByRole("region", { name: "自習室" });
+    const room = page.getByRole("region", { name: "自習室" }).first();
     await room.waitFor();
     await page.waitForLoadState("networkidle");
     await shot("feature-room", room);
@@ -107,11 +104,8 @@ try {
 
   await section("日報", async () => {
     const shared = "作文の書き出しを、声に出して読ませた。";
-    await switchTo(SAEKI);
-    await page.getByRole("button", { name: "文字で書く" }).click();
-    await page.getByLabel("相棒に書く").fill(shared);
-    await page.getByRole("button", { name: "相棒に送る" }).click();
-    await page.getByRole("log").locator(".bubble.assistant:not(.waiting)").last().waitFor();
+    await switchTo(page, "saeki");
+    await typeToPartner(page, shared);
     await page.goto(`${BASE}/daily`);
     await page.getByRole("button", { name: "今日の日報を作る" }).click();
     const item = page.getByRole("checkbox", { name: shared });
@@ -120,17 +114,16 @@ try {
     await item.click();
     await page.waitForTimeout(400);
     await shot("feature-daily-checked", page.getByRole("checkbox").nth(1), item);
-    await switchTo(KYOTO);
-    await page.goto(`${BASE}/daily/received`);
+    await switchTo(page, "fujimoto", "/daily/received");
     const report = page.getByRole("article").filter({ hasText: shared }).first();
     await report.getByLabel("一言かえす").fill("よく見ていますね。");
     await report.getByRole("button", { name: "一言を送る" }).click();
     await report.locator(".response-card").waitFor();
     await shot("feature-daily-received", report);
   });
+
   await section("校内の知恵", async () => {
-    await switchTo(AOKI);
-    await page.goto(`${BASE}/chie`);
+    await switchTo(page, "aoki", "/chie");
     await page.getByRole("link", { name: "出張の出し方" }).waitFor();
     await page.waitForTimeout(700); /* 画面が出そろうのを待つ */
     await shot("feature-chie");
@@ -145,14 +138,12 @@ try {
   });
 
   await section("添付", async () => {
-    await switchTo(AOKI);
-    await page.locator(".attach-button input").setInputFiles(process.env.DEMO_CERTIFICATE);
+    if (!process.env.DEMO_CERTIFICATE) throw new Error("DEMO_CERTIFICATE がない（recapture.sh が作る）");
+    await switchTo(page, "aoki");
+    await page.locator('.device-side input[type="file"]').setInputFiles(process.env.DEMO_CERTIFICATE);
     await page.getByRole("region", { name: "付けたファイル" }).waitFor();
-    await page.getByRole("button", { name: "文字で書く" }).click();
-    await page.getByLabel("相棒に書く").fill("校内ロボットコンテストで準優勝しました！");
-    await page.getByRole("button", { name: "相棒に送る" }).click();
-    await page.getByRole("log").locator(".bubble.assistant:not(.waiting)").last().waitFor();
-    await page.getByRole("button", { name: "言葉にして送る" }).click();
+    await typeToPartner(page, "校内ロボットコンテストで準優勝しました！");
+    await deliver(page).click();
     const check = page.getByRole("group", { name: "添付の確認" });
     await check.waitFor();
     await page.waitForTimeout(300);
@@ -160,13 +151,11 @@ try {
   });
 
   await section("報酬", async () => {
-    await switchTo(OKAWARA);
-    await page.goto(`${BASE}/me`);
-    const ribbons = page.getByRole("region", { name: "リボン" });
-    await ribbons.getByText("はじめての一言").waitFor();
-    await shot("feature-ribbon", ribbons);
-    await switchTo("野田 翔（情報・ものづくり部顧問）");
-    await page.goto(`${BASE}/me`);
+    await switchTo(page, "ogawara", "/me");
+    const trophies = page.getByRole("region", { name: "トロフィー" });
+    await trophies.waitFor();
+    await shot("feature-ribbon", trophies);
+    await switchTo(page, "noda", "/me");
     await page.getByRole("region", { name: "贈り物の卵" }).getByRole("button", { name: "開ける" }).first().click();
     const stage = page.getByRole("dialog", { name: "贈り物の卵" });
     await stage.getByRole("heading", { name: /が生まれた！/ }).waitFor();
@@ -176,13 +165,11 @@ try {
     const event = page.getByRole("region", { name: "期間限定のイベント" }).first();
     await event.waitFor();
     await shot("feature-event", event);
-    await switchTo("白石 文（養護・相談室）");
-    await page.goto(`${BASE}/me`); /* 今の段階を起点にする */
-    await page.getByRole("region", { name: "相棒", exact: true }).locator("img").waitFor();
-    await switchTo(AOKI);
+    await switchTo(page, "shiraishi", "/me"); /* 今の段階を起点にする */
+    await page.getByRole("region", { name: "パートナー", exact: true }).locator("img").first().waitFor();
+    await switchTo(page, "aoki");
     for (let i = 0; i < 12; i++) await page.request.post(`${BASE}/api/thanks`, { data: { toPersonId: "shiraishi", message: `助かりました ${i}` } });
-    await switchTo("白石 文（養護・相談室）");
-    await page.goto(`${BASE}/me`);
+    await switchTo(page, "shiraishi", "/me");
     const card = page.getByRole("region", { name: "進化", exact: true });
     await card.getByRole("button", { name: "進化の候補を見る" }).click();
     await card.locator(".evolve-choices button").first().waitFor();
@@ -190,22 +177,11 @@ try {
     await shot("feature-evolve", card);
   });
 
-  await section("モダン", async () => {
-    const adult = await browser.newContext({ viewport: { width: 412, height: 860 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true, locale: "ja-JP" });
-    const m = await adult.newPage();
-    await m.goto(`${BASE}/`);
-    await m.getByRole("button", { name: "話しかける" }).waitFor();
-    await m.waitForTimeout(600);
-    await m.screenshot({ path: `${OUT}feature-modern.png` });
-    await adult.close();
-  });
-
-  await section("分身の絵", async () => {
-    await switchTo(SAEKI);
-    await page.goto(`${BASE}/me`);
+  await section("パートナーの絵", async () => {
+    await switchTo(page, "saeki", "/me");
     const art = page.locator(".avatar-image").first();
     await art.waitFor();
-    await art.evaluate(img => img.complete || new Promise(done => { img.onload = done; }));
+    await imageLoaded(art);
     await art.screenshot({ path: `${OUT}avatar.png`, omitBackground: true });
   });
 } finally {
