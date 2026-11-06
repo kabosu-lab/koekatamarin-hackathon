@@ -22,6 +22,17 @@ export function recentFeed(channels: ChannelView[], postsOf: (channelId: string)
   return items.sort((a, b) => b.activeAt.localeCompare(a.activeAt)).slice(0, limit);
 }
 
+/** チャネルの札で絞る。null はすべて */
+export function filterFeed(items: FeedItem[], channelId: string | null): FeedItem[] {
+  return channelId === null ? items : items.filter((item) => item.channel.id === channelId);
+}
+
+/** 札に出すチャネル。見えるチャネルのうち、一覧に投稿があるものを、チャネルの並び順で */
+export function feedChannels(channels: ChannelView[], items: FeedItem[]): ChannelView[] {
+  const used = new Set(items.map((item) => item.channel.id));
+  return channels.filter((channel) => used.has(channel.id));
+}
+
 /** 「3分前」「2時間前」「11/5」のような、短い時刻の書き方 */
 export function shortAgo(iso: string, now: Date): string {
   const minutes = Math.floor((now.getTime() - new Date(iso).getTime()) / 60_000);

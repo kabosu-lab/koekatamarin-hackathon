@@ -1,0 +1,986 @@
+/*
+ * 0-1k・0-1j：「みんな」と校内の桜。
+ * 動かすのは transform と opacity だけ（原則3）。時間は 60〜120 / 160〜260 / 600〜800ms の3段（原則1）。
+ * イージングは標準 cubic-bezier(0.2, 0.8, 0.2, 1) と、ばね cubic-bezier(0.34, 1.56, 0.64, 1) の2本（原則2）。
+ */
+
+:root {
+  --minna-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --minna-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* ---- 桜の場面（みんなと、校内の桜の画面で共通） ---- */
+
+.koekata-sakura {
+  --minna-sky-top: #a9dcf5;
+  --minna-sky-bottom: #e4f6fb;
+  isolation: isolate;
+}
+
+.koekata-sakura[data-time="morning"] {
+  --minna-sky-top: #bfe3f4;
+  --minna-sky-bottom: #fde9d6;
+}
+
+.koekata-sakura[data-time="evening"] {
+  --minna-sky-top: #f6b98d;
+  --minna-sky-bottom: #fde3c4;
+}
+
+/* 0-1j(4)：夜は空だけを暗くし、木は沈ませない（重ねる暗さを薄くする） */
+.koekata-sakura[data-time="night"] {
+  --minna-sky-top: #2f3f78;
+  --minna-sky-bottom: #7d8fc4;
+}
+
+.koekata-sakura::before {
+  z-index: 1;
+}
+
+.sakura-scene.koekata-sakura[data-time="night"]::before {
+  background: rgb(20 30 80 / 18%);
+}
+
+.sakura-scene.koekata-sakura[data-time="evening"]::before {
+  background: rgb(240 120 60 / 12%);
+}
+
+.koekata-sakura-art,
+.koekata-sakura-shadow {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.koekata-sakura-art {
+  z-index: 0;
+}
+
+/* 春の見通しの花の影。押すのは上に重ねた透明のボタン */
+.koekata-sakura-shadow {
+  z-index: 1;
+  pointer-events: none;
+}
+
+.koekata-sakura .petal {
+  z-index: 2;
+}
+
+.koekata-sakura-forecast {
+  position: absolute;
+  z-index: 2;
+  top: 6%;
+  left: 26%;
+  width: 48%;
+  height: 44%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+}
+
+.koekata-sakura-forecast:focus-visible {
+  outline: 3px solid #f08bab;
+  outline-offset: 2px;
+}
+
+.koekata-forecast-card {
+  position: absolute;
+  z-index: 5;
+  top: 8px;
+  right: 8px;
+  left: 8px;
+  max-width: 24rem;
+  margin-inline: auto;
+  padding: 8px 12px;
+  border: 1px solid #f3c2d1;
+  border-radius: 12px;
+  background: rgb(255 255 255 / 96%);
+  color: #1d1c19;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  box-shadow: 0 6px 18px rgb(40 30 50 / 18%);
+  animation: koekata-rise 220ms var(--minna-ease) both;
+}
+
+.koekata-forecast-card p {
+  margin: 0;
+}
+
+.koekata-forecast-card button {
+  display: block;
+  min-height: 32px;
+  margin: 4px 0 0 auto;
+  padding: 0 12px;
+  border: 1px solid #d9d4c7;
+  border-radius: 999px;
+  background: #fff;
+  color: inherit;
+  font: inherit;
+}
+
+/* 0-1j(2)：飛んでくる葉。右下から樹冠の決まった場所へ 600ms で飛び、着いたら弾んで3秒光る */
+.koekata-leaves {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.koekata-leaf {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  margin: -6px 0 0 -6px;
+  border-radius: 70% 0;
+  background: #f6a8c0;
+  animation:
+    koekata-leaf-fly 600ms var(--minna-ease) both,
+    koekata-leaf-land 260ms var(--minna-spring) both,
+    koekata-leaf-fade 3000ms ease-in both;
+}
+
+.koekata-sakura[data-season="aki"] .koekata-leaf {
+  background: #ffc86b;
+}
+
+.koekata-sakura[data-season="natsu"] .koekata-leaf {
+  background: #8fd07f;
+}
+
+/* 光りは filter でなく、明るい色の重ねを opacity で */
+.koekata-leaf::after {
+  position: absolute;
+  inset: -3px;
+  border-radius: inherit;
+  background: #fffbe8;
+  content: "";
+  opacity: 0;
+  animation: koekata-leaf-glow 3000ms ease-out 600ms both;
+}
+
+@keyframes koekata-leaf-fly {
+  from {
+    transform: translate(var(--from-x), var(--from-y)) rotate(-120deg) scale(0.8);
+  }
+  to {
+    transform: translate(0, 0) rotate(0) scale(1);
+  }
+}
+
+@keyframes koekata-leaf-land {
+  from {
+    scale: 1.4;
+  }
+  to {
+    scale: 1;
+  }
+}
+
+@keyframes koekata-leaf-fade {
+  0%,
+  85% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes koekata-leaf-glow {
+  0% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.koekata-plus,
+.koekata-ff-count {
+  position: absolute;
+  z-index: 4;
+  top: 10px;
+  right: 10px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: #fff;
+  color: #c2386a;
+  font-weight: 800;
+  font-size: 0.95rem;
+  box-shadow: 0 2px 8px rgb(40 30 50 / 18%);
+  animation: koekata-pop 260ms var(--minna-spring) both;
+}
+
+.koekata-ff-count {
+  right: auto;
+  left: 50%;
+  translate: -50% 0;
+}
+
+@keyframes koekata-pop {
+  from {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes koekata-rise {
+  from {
+    transform: translateY(8px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* ---- みんなの外枠：ページ全体を1つのスクロールに（0-1k(1)） ---- */
+
+.minna-page {
+  gap: 4px;
+}
+
+.minna-scroll {
+  --p: 0;
+  --shrink: 200px;
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  border: 7px solid var(--bezel, #23272b);
+  border-radius: 16px;
+  background: var(--window, #f4fafd);
+}
+
+/* 0-1k(2)：開いた直後は桜が大きく、スクロールすると指に付いて縮む（--p は MinnaFrame が書く） */
+.minna-stage {
+  position: relative;
+  z-index: 0;
+  height: clamp(230px, 42dvh, 330px);
+  transform-origin: 50% 100%;
+  transform: translateY(calc(var(--p) * var(--shrink) * 0.5)) scale(calc(1 - 0.08 * var(--p)));
+  opacity: calc(1 - max(0, (var(--p) - 0.6) / 0.4));
+}
+
+.minna-stage .minna-scene {
+  height: 100%;
+  min-height: 0;
+  margin: 0;
+  border-radius: 9px 9px 0 0;
+}
+
+.minna-title {
+  position: absolute;
+  z-index: 3;
+  top: 8px;
+  left: 8px;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 88%);
+  color: #1d1c19;
+}
+
+.minna-title h1 {
+  margin: 0;
+  font-size: 1.05rem;
+  line-height: 1.5;
+}
+
+.minna-title p {
+  margin: 0;
+  font-size: 0.72rem;
+  color: #55526a;
+}
+
+.minna-sakura-caption {
+  position: absolute;
+  z-index: 3;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  padding: 6px 10px 8px;
+  background: rgb(255 255 255 / 93%);
+  color: #1d1c19;
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.minna-sakura-story {
+  margin: 0;
+  font-weight: 700;
+}
+
+.minna-sakura-progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 2px 0;
+  overflow: hidden;
+}
+
+.minna-sakura-meter {
+  position: relative;
+  flex: 0 0 96px;
+  height: 7px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #f4dde5;
+}
+
+.minna-sakura-meter > span {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #f6a8c0, #e2638c);
+  transform-origin: 0 50%;
+  transition: transform 220ms var(--minna-ease);
+}
+
+.minna-sakura-rest {
+  display: inline-block;
+  font-weight: 700;
+  color: #b02f5c;
+  animation: minna-roll 200ms var(--minna-ease) both;
+}
+
+@keyframes minna-roll {
+  from {
+    transform: translateY(-100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+.minna-sakura-link {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 8px;
+  color: inherit;
+  text-decoration: none;
+}
+
+main a.minna-sakura-link {
+  color: #1d1c19;
+}
+
+.minna-sakura-link strong::after {
+  content: " ›";
+}
+
+.minna-sakura-link span {
+  color: #55526a;
+  font-size: 0.74rem;
+}
+
+/* 帯と札の列。帯は場面の下の端に重ねて置き、縮むと上に残る */
+/* 帯は場面の下の端に重なる。縮む前は、重なった所を押しても下の桜のリンクに届くようにする */
+.minna-column {
+  position: relative;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.minna-sticky {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  margin-top: -48px;
+}
+
+.minna-chip-row,
+.minna-posts {
+  pointer-events: auto;
+}
+
+html[data-theme="retro"] main .minna-band,
+.minna-band {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  height: 48px;
+  margin: 0;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 0;
+  background: linear-gradient(90deg, #fde3ea, #fff3d6);
+  color: #1d1c19;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-align: left;
+}
+
+.minna-scroll .minna-band {
+  opacity: clamp(0, calc((var(--p) - 0.5) * 2), 1);
+  pointer-events: none;
+}
+
+.minna-scroll[data-shrunk="true"] .minna-band {
+  pointer-events: auto;
+}
+
+.minna-band::after {
+  margin-left: auto;
+  color: #b02f5c;
+  font-size: 0.8rem;
+  content: "桜を開く ⌃";
+}
+
+.minna-chip-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border-bottom: 1px solid #dfe5ea;
+  background: var(--window, #f4fafd);
+}
+
+.minna-chips {
+  display: flex;
+  flex: 1 1 auto;
+  gap: 6px;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.minna-chips::-webkit-scrollbar {
+  display: none;
+}
+
+html[data-theme="retro"] main .minna-chip,
+.minna-chip {
+  flex: none;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid #c9cfd6;
+  border-radius: 999px;
+  background: #fff;
+  color: #1d1c19;
+  font: inherit;
+  font-size: 0.82rem;
+  transition: transform 120ms var(--minna-spring);
+}
+
+html[data-theme="retro"] main .minna-chip[aria-pressed="true"],
+.minna-chip[aria-pressed="true"] {
+  border-color: #1d1c19;
+  background: #1d1c19;
+  color: #fff;
+}
+
+html[data-theme="retro"] main .minna-chips .minna-chip:active {
+  transform: scale(0.94);
+  transition-duration: 60ms;
+}
+
+.minna-entrances {
+  display: flex;
+  flex: none;
+  gap: 4px;
+}
+
+.minna-entrances a {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  min-height: 36px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: #fff;
+  color: #1d1c19;
+  font-size: 0.78rem;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+/* 狭い幅では入口を絵だけにして、札に場所を譲る（読み上げの名前は残す） */
+@container (max-width: 560px) {
+  .minna-entrance-text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .minna-entrances a {
+    min-width: 40px;
+    justify-content: center;
+    font-size: 1rem;
+  }
+}
+
+.minna-entrance-badge {
+  min-width: 1.2rem;
+  margin-left: 2px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: #ff5a3c;
+  color: #fff;
+  font-size: 0.7rem;
+  line-height: 1.2rem;
+  text-align: center;
+}
+
+/* ---- 投稿のカード（0-1k(4)）：幅いっぱい、本文は切らない ---- */
+
+.minna-posts {
+  padding: 8px 8px 16px;
+}
+
+.minna-post-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  transition: opacity 160ms var(--minna-ease);
+}
+
+.minna-post-list[data-fading="true"] {
+  opacity: 0;
+  transition: opacity 80ms ease-in;
+}
+
+.minna-post {
+  padding: 10px 12px;
+  border: 1px solid #dfe3e8;
+  border-radius: 14px;
+  background: #fff;
+  color: #1d1c19;
+}
+
+.minna-post-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 6px;
+}
+
+.minna-post-role {
+  color: #55526a;
+  font-size: 0.75rem;
+}
+
+.minna-post-head small {
+  margin-left: auto;
+  color: #65635b;
+  font-size: 0.72rem;
+}
+
+.minna-post-body {
+  margin: 4px 0 0;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.minna-post-note {
+  margin: 4px 0 0;
+  color: #65635b;
+  font-size: 0.78rem;
+}
+
+.minna-post-replies {
+  display: grid;
+  gap: 6px;
+  margin: 8px 0 0;
+  padding: 0 0 0 10px;
+  border-left: 3px solid #f4dde5;
+  list-style: none;
+  font-size: 0.9rem;
+}
+
+.minna-post-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+html[data-theme="retro"] main .minna-post-actions button,
+.minna-post-actions button {
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid #c9cfd6;
+  border-radius: 999px;
+  background: #fff;
+  color: #1d1c19;
+  font: inherit;
+  font-size: 0.85rem;
+}
+
+html[data-theme="retro"] main .minna-post-actions .minna-post-like[aria-pressed="true"] {
+  border-color: #e2638c;
+  background: #fde3ea;
+}
+
+html[data-theme="retro"] main .minna-post-actions .minna-post-reply {
+  margin-left: auto;
+  border-color: #1d1c19;
+  background: #1d1c19;
+  color: #fff;
+}
+
+html[data-theme="retro"] main .minna-post-actions button:active {
+  transform: scale(0.94);
+  transition-duration: 60ms;
+}
+
+.minna-post-likes,
+.minna-post-count {
+  color: #55526a;
+  font-size: 0.85rem;
+}
+
+.minna-post-count[data-bump="true"] {
+  display: inline-block;
+  animation: minna-bump 260ms var(--minna-spring) both;
+}
+
+@keyframes minna-bump {
+  from {
+    transform: scale(1.3);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+main a.minna-post-open {
+  display: inline-block;
+  margin-top: 6px;
+  color: #55526a;
+  font-size: 0.78rem;
+}
+
+.minna-post-empty {
+  margin: 8px 4px;
+  color: #55526a;
+}
+
+main a.minna-talk-link {
+  display: block;
+  margin: 12px 4px 4px;
+  color: #1d1c19;
+  font-weight: 700;
+  text-align: right;
+  text-decoration: none;
+}
+
+.minna-more {
+  display: grid;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+main .minna-more a {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid #dfe3e8;
+  border-radius: 12px;
+  background: #fff;
+  color: #1d1c19;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
+.minna-event {
+  display: grid;
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: #fff4cf;
+  color: #1d1c19;
+}
+
+.minna-event small {
+  color: #55526a;
+}
+
+/* ---- その場の返信（0-1k(5)）：下からせり上がる欄 ---- */
+
+.minna-reply-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+}
+
+.minna-reply-scrim {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  opacity: 0.3;
+  animation: minna-scrim 160ms var(--minna-ease) both;
+}
+
+.minna-reply-sheet {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: grid;
+  gap: 6px;
+  max-width: 34rem;
+  margin: 0 auto;
+  padding: 8px 14px max(14px, env(safe-area-inset-bottom));
+  border-radius: 18px 18px 0 0;
+  background: #fff;
+  color: #1d1c19;
+  box-shadow: 0 -6px 24px rgb(20 20 30 / 20%);
+  animation: minna-sheet-in 220ms var(--minna-ease) both;
+}
+
+.minna-reply-layer[data-state="closing"] .minna-reply-sheet {
+  animation: minna-sheet-out 160ms ease-in both;
+}
+
+.minna-reply-layer[data-state="closing"] .minna-reply-scrim {
+  opacity: 0;
+  transition: opacity 160ms ease-in;
+  animation: none;
+}
+
+.minna-reply-handle {
+  justify-self: center;
+  width: 40px;
+  height: 4px;
+  border-radius: 999px;
+  background: #d5d8dd;
+}
+
+.minna-reply-label {
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.minna-reply-sheet textarea {
+  width: 100%;
+  min-height: 72px;
+  padding: 8px 10px;
+  border: 2px solid #1d1c19;
+  border-radius: 12px;
+  font: inherit;
+  resize: vertical;
+}
+
+.minna-reply-error {
+  margin: 0;
+  color: #b3261e;
+  font-size: 0.85rem;
+}
+
+.minna-reply-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.minna-reply-buttons button {
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid #c9cfd6;
+  border-radius: 999px;
+  background: #fff;
+  color: #1d1c19;
+  font: inherit;
+}
+
+.minna-reply-buttons .minna-reply-mic[aria-pressed="true"] {
+  border-color: #ff5a3c;
+  background: #ffe3da;
+}
+
+.minna-reply-buttons .minna-reply-send {
+  margin-left: auto;
+  border-color: #1d1c19;
+  background: #1d1c19;
+  color: #fff;
+  font-weight: 700;
+}
+
+.minna-reply-buttons .minna-reply-send:disabled {
+  opacity: 0.45;
+}
+
+@keyframes minna-sheet-in {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes minna-sheet-out {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(100%);
+  }
+}
+
+@keyframes minna-scrim {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 0.3;
+  }
+}
+
+/* ---- iPad の横向き・PC（0-1k(7)）：左に桜（大きいまま動かない）、右に投稿のスクロールの2列 ---- */
+
+/* 機器の形（縦長の本体）は話す画面のもの。みんなは横に広く使う */
+@media (min-width: 900px) and (min-height: 561px) {
+  .retro-home.minna-page {
+    width: min(100%, 1240px);
+  }
+}
+
+@container (min-width: 900px) {
+  .minna-scroll {
+    display: grid;
+    grid-template-columns: minmax(320px, 42%) minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
+    overflow: hidden;
+  }
+
+  .minna-stage {
+    height: auto;
+    min-height: 0;
+    transform: none;
+    opacity: 1;
+  }
+
+  .minna-stage .minna-scene {
+    border-radius: 9px 0 0 9px;
+  }
+
+  .minna-column {
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .minna-sticky {
+    margin-top: 0;
+  }
+
+  html[data-theme="retro"] main .minna-scroll .minna-band,
+  .minna-scroll .minna-band {
+    display: none;
+  }
+}
+
+/* 縦に長い桜の場面（2列の左）でも木が大きくなりすぎないよう、絵は横長のまま説明の上に置く */
+.minna-stage {
+  container: minna-stage / size;
+}
+
+@container minna-stage (min-height: 480px) and (max-aspect-ratio: 1 / 1) {
+  .minna-stage .minna-scene {
+    background: linear-gradient(180deg, var(--minna-sky-top), var(--minna-sky-bottom));
+  }
+
+  .minna-scene :is(.koekata-sakura-art, .koekata-sakura-shadow, .koekata-leaves) {
+    top: auto;
+    bottom: 110px;
+    height: 52.5cqw;
+  }
+
+  .minna-scene .koekata-sakura-forecast {
+    top: auto;
+    bottom: calc(110px + 24cqw);
+    height: 26cqw;
+  }
+}
+
+/* ---- 校内の桜の画面（/sakura） ---- */
+
+.sakura-page .koekata-sakura {
+  min-height: 15rem;
+}
+
+.sakura-page .koekata-sakura .caption {
+  z-index: 3;
+}
+
+.sakura-story {
+  margin: 0.75rem 0 0.25rem;
+  font-weight: 700;
+}
+
+.sakura-progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 0.5rem;
+}
+
+.sakura-progress .minna-sakura-meter {
+  flex-basis: 140px;
+}
+
+/* ---- 動きを減らす設定：意味は残し、動きだけ消す（原則6） ---- */
+
+@media (prefers-reduced-motion: reduce) {
+  .minna-stage {
+    transform: none;
+    opacity: 1;
+  }
+
+  .minna-scroll[data-shrunk="true"] .minna-stage {
+    opacity: 0;
+  }
+
+  .minna-scroll .minna-band {
+    opacity: 0;
+  }
+
+  .minna-scroll[data-shrunk="true"] .minna-band {
+    opacity: 1;
+  }
+
+  .koekata-leaf,
+  .koekata-leaf::after,
+  .koekata-plus,
+  .koekata-ff-count,
+  .koekata-forecast-card,
+  .minna-sakura-rest,
+  .minna-post-count[data-bump="true"],
+  .minna-reply-sheet,
+  .minna-reply-scrim,
+  .minna-reply-layer[data-state="closing"] .minna-reply-sheet {
+    animation: none;
+  }
+
+  .minna-post-list,
+  .minna-post-list[data-fading="true"],
+  .minna-sakura-meter > span,
+  .minna-chip {
+    transition: none;
+  }
+}
