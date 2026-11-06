@@ -91,7 +91,9 @@ function start(canvas: HTMLCanvasElement, shape: LumpShape, color: string, state
   gl.useProgram(program);
   gl.bindVertexArray(gl.createVertexArray());
   gl.clearColor(0, 0, 0, 0);
+  // uniform の場所は起動時に1回だけ取る（毎コマ探さない。0-1i）
   const at = (name: string) => gl.getUniformLocation(program, name);
+  const loc = { res: at("uRes"), t: at("uT"), listen: at("uListen"), hop: at("uHop"), blink: at("uBlink") };
   gl.uniform3fv(at("uSize"), shape.size);
   gl.uniform3fv(at("uColor"), hexToRgb(color));
   gl.uniform1f(at("uWobble"), shape.wobble);
@@ -110,8 +112,9 @@ function start(canvas: HTMLCanvasElement, shape: LumpShape, color: string, state
   });
   watcher.observe(canvas);
   const pose = { t: 0, listen: 0, hop: 0, blink: 0, nextBlink: 2.5 };
+  // 窓の大きさは変わったときだけ測る。毎コマ getBoundingClientRect すると、毎コマ強制レイアウトになる（0-1i）
+  const box = { width: canvas.clientWidth, height: canvas.clientHeight };
   const draw = () => {
-    const box = canvas.getBoundingClientRect();
     const w = Math.max(1, Math.round(box.width * scale));
     const h = Math.max(1, Math.round(box.height * scale));
     if (canvas.width !== w || canvas.height !== h) {
@@ -119,21 +122,31 @@ function start(canvas: HTMLCanvasElement, shape: LumpShape, color: string, state
       canvas.height = h;
     }
     gl.viewport(0, 0, w, h);
-    gl.uniform2f(at("uRes"), w, h);
-    gl.uniform1f(at("uT"), pose.t);
-    gl.uniform1f(at("uListen"), pose.listen);
-    gl.uniform1f(at("uHop"), pose.hop);
-    gl.uniform1f(at("uBlink"), pose.blink);
+    gl.uniform2f(loc.res, w, h);
+    gl.uniform1f(loc.t, pose.t);
+    gl.uniform1f(loc.listen, pose.listen);
+    gl.uniform1f(loc.hop, pose.hop);
+    gl.uniform1f(loc.blink, pose.blink);
     gl.clear(gl.COLOR_BUFFER_BIT);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
   };
 
+  const sizer = new ResizeObserver(([entry]) => {
+    if (!entry) return;
+    box.width = entry.contentRect.width;
+    box.height = entry.contentRect.height;
+    // 動きを減らす設定では止めた1枚なので、大きさが変わったときに描き直す
+    if (reduce) draw();
+  });
+  sizer.observe(canvas);
+
   // 動きを減らす設定の端末では止めた1枚だけを描く
   if (reduce) {
     draw();
-    const observer = new ResizeObserver(draw);
-    observer.observe(canvas);
-    return () => observer.disconnect();
+    return () => {
+      sizer.disconnect();
+      watcher.disconnect();
+    };
   }
 
   let frame = 0;
@@ -142,8 +155,17 @@ function start(canvas: HTMLCanvasElement, shape: LumpShape, color: string, state
   let seen = replies.current;
   const tick = (now: number) => {
     frame = requestAnimationFrame(tick);
-    // 隠れているとき、文字を打っているとき、画面を指で動かしているときは描かない
-    if (!visible || document.hidden || document.activeElement?.tagName === "TEXTAREA" || document.documentElement.dataset.swiping) {
+    // 隠れているとき、文字を打っているとき、画面を指で動かしているとき、ホイールを回しているとき、
+    // パートナーが縮んでいく途中は描かない（指の動きに GPU を回す）
+    const root = document.documentElement.dataset;
+    if (
+      !visible ||
+      document.hidden ||
+      document.activeElement?.tagName === "TEXTAREA" ||
+      root.swiping ||
+      root.wheeling ||
+      root.companion === "shrinking"
+    ) {
       last = now;
       return;
     }
@@ -174,6 +196,7 @@ function start(canvas: HTMLCanvasElement, shape: LumpShape, color: string, state
   frame = requestAnimationFrame(tick);
   return () => {
     cancelAnimationFrame(frame);
+    sizer.disconnect();
     watcher.disconnect();
   };
 }

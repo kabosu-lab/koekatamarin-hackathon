@@ -321,9 +321,27 @@ html[data-embed] .lcd {
 }
 
 .dolphin {
+  position: relative;
+  isolation: isolate;
   height: 100%;
   aspect-ratio: 1;
   max-width: 100%;
+}
+
+/* 聞いている間の光。3D の canvas に filter を掛けると毎コマ合成が二重になるので、下に置いた円の opacity で光らせる（0-1i） */
+.dolphin::before {
+  content: "";
+  position: absolute;
+  inset: 4%;
+  z-index: -1;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgb(31 111 120 / 45%), rgb(31 111 120 / 0%));
+  opacity: 0;
+  pointer-events: none;
+}
+
+.talk.device[data-state="listening"] .dolphin::before {
+  opacity: 1;
 }
 
 .dolphin canvas,
@@ -657,8 +675,8 @@ html[data-theme="retro"] .talk .device-side:focus-visible .device-side-face {
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .talk.device[data-state="listening"] .dolphin {
-    filter: drop-shadow(0 0 12px rgb(31 111 120 / 55%));
+  .dolphin::before {
+    transition: opacity 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
   }
 
   .solidify {
@@ -966,11 +984,23 @@ html[data-theme="retro"] :is(.home, .soudan) {
   background: rgb(255 255 255 / 82%);
 }
 
-/* 0-0t：会話の上端で、途中まで見える行（「これを覚えて」など）を半分に切って見せない。上の端はやわらかく消す */
+/* 0-0t：会話の上端で、途中まで見える行（「これを覚えて」など）を半分に切って見せない。上の端はやわらかく消す。
+   スクロールする要素に mask を掛けるとスクロールのたびに全部描き直されるので、窓の色の勾配を上に貼り付けて重ねる（0-1i） */
 .talk.device .log {
   padding-top: 14px;
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 14px);
-  mask-image: linear-gradient(to bottom, transparent 0, #000 14px);
+}
+
+.talk.device .log::before {
+  content: "";
+  position: sticky;
+  top: -14px;
+  z-index: 1;
+  flex: none;
+  height: 14px;
+  /* 上の余白の中に置き、場所は取らない（下の -6px は行の間の gap を打ち消す） */
+  margin: -14px 0 -6px;
+  background: linear-gradient(to bottom, var(--window), rgb(255 255 255 / 0%));
+  pointer-events: none;
 }
 
 /* 0-0y：パートナーの言葉は、パートナーの絵より上に、パートナーから出る吹き出しで出す。パートナーは窓の下の真ん中 */
@@ -1001,11 +1031,16 @@ html[data-theme="retro"] :is(.home, .soudan) {
   line-height: 1.6;
 }
 
-/* しっぽは吹き出しの外に出すので、吹き出しを包む影を使う（中身のスクロールで切れないように） */
+/* しっぽは吹き出しの外の別の部品。スクロールする吹き出しに filter を掛けるとスクロールのたびに全部描き直されるので、
+   影は吹き出しの外側の動かない box-shadow で付ける（0-1i） */
 .talk.device .bubble.assistant.latest,
 .talk.device .bubble.assistant.waiting {
   overflow-x: visible;
-  filter: drop-shadow(0 2px 0 rgb(0 0 0 / 6%));
+}
+
+.talk.device .log > .bubble.assistant.latest,
+.talk.device .log > .bubble.assistant.waiting {
+  box-shadow: 0 2px 0 rgb(0 0 0 / 6%);
 }
 
 .talk.device .bubble.assistant.latest + *,
@@ -1092,20 +1127,14 @@ html[data-theme="retro"] :is(.home, .soudan) {
   color: var(--muted);
 }
 
+/* 0-1k：本文は切らずに全部見せる */
 .minna-feed-body {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
-  overflow: hidden;
   line-height: 1.55;
   overflow-wrap: anywhere;
 }
 
 .minna-feed-reply {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  overflow: hidden;
+  overflow-wrap: anywhere;
   padding-left: 8px;
   border-left: 3px solid var(--line);
   color: var(--muted);
@@ -1570,4 +1599,14 @@ html[data-theme="retro"] .talk .lock-banner button {
 
 .me-tile-label {
   font-size: clamp(0.85rem, 2.1dvh, 1.1rem);
+}
+
+/* 0-1i：カクつきの残り。会話中（0-1l）は上の端の勾配を使わない。スワイプで画面ごと動く間は大きな影を消す */
+.talk.device[data-talking="true"] .log::before {
+  display: none;
+}
+
+html[data-swiping] .retro-home,
+html[data-swiping] .wide-panel {
+  box-shadow: none;
 }

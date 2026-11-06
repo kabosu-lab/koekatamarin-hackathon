@@ -22,8 +22,9 @@ export function voiceReply(reply: string): string {
 }
 const READY_VOICE = "今の話、みんなに届けられそう。あとで画面で確かめてね。";
 
+/** 音を鳴らすかは sound.ts と同じく、"on" のときだけ（0-1m の食い違いを直す） */
 function soundIsOn(): boolean {
-  return document.documentElement.dataset.sound !== "off";
+  return document.documentElement.dataset.sound === "on";
 }
 
 /**
