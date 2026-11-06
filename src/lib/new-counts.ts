@@ -116,7 +116,7 @@ export type NewsLine = { text: string; href: string };
 /**
  * パートナーの最初の一言（新着があるとき）。押すとその画面へ行く。
  * 生徒には友だちの口調、先生にはです・ます。新着がなければ null（いつもの一言のまま）。
- * 今日の3人は「みんな」を開くと自動で出るので、ここでは言わない。
+ * 今日の3人は「みんな」を開くと自動で出るので、ここでは言わない。コレクションはタイルのバッジだけにする（吹き出しでは言わない）。
  */
 export function newsLine(counts: NewCounts, role: string): NewsLine | null {
   const polite = role !== "student";
@@ -128,10 +128,5 @@ export function newsLine(counts: NewCounts, role: string): NewsLine | null {
     return { text: `${polite ? `受信箱に${counts.inbox}件届いています` : `受信箱に${counts.inbox}件届いてるよ`}。${minna}`, href: "/inbox" };
   }
   if (counts.thanks > 0) return { text: `${arrived("ありがとう", counts.thanks)}。${me}`, href: "/me?open=thanks" };
-  if (counts.collection > 0)
-    return {
-      text: polite ? `コレクションに新しいものが${counts.collection}個あります。${me}` : `コレクションに新しいのが${counts.collection}個あるよ。${me}`,
-      href: "/me?open=partner",
-    };
   return null;
 }

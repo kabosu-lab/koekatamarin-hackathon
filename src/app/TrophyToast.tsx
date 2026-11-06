@@ -10,7 +10,7 @@ import { Sticker } from "./Sticker";
 import { useFirstCardClear } from "./use-first-card-clear";
 import "./trophy-toast.css";
 
-/** 画面が落ち着いて、返事の知らせ（ReplyToast）が先に出てから出す */
+/** 画面が落ち着いてから出す */
 const START_MS = 400;
 /** 1つを見せる時間（2〜3秒） */
 const SHOW_MS = 2600;
@@ -46,12 +46,6 @@ function playTrophyChime(): void {
   }
 }
 
-/** 返事の知らせが窓の上に出ていれば、その下に出す（重ねない） */
-function topBelowReplyToast(): number | undefined {
-  const reply = document.querySelector(".reply-toast")?.getBoundingClientRect();
-  return reply && reply.height > 0 ? Math.round(reply.bottom + 8) : undefined;
-}
-
 /**
  * トロフィーを取った瞬間の小さな知らせ。上からすっと出て、2〜3秒で自分で消える。押すとコレクションのそのトロフィーが開く。
  * 生徒には「🏆 実績解除！」、先生には「トロフィーが届きました：」と落ち着いた形で。
@@ -62,7 +56,6 @@ export function TrophyToast({ trophies }: { trophies: NewRibbon[] }) {
   const [index, setIndex] = useState(-1);
   const [revealed, setRevealed] = useState(false);
   const [leaving, setLeaving] = useState(false);
-  const [top, setTop] = useState<number | undefined>(undefined);
   // 0-2q(1)：最初の注意カードの暗幕が出ている間は待ち、カードを閉じてから出す
   const clear = useFirstCardClear();
 
@@ -80,7 +73,6 @@ export function TrophyToast({ trophies }: { trophies: NewRibbon[] }) {
   useEffect(() => {
     const current = trophies[index];
     if (!current) return;
-    setTop(topBelowReplyToast());
     setLeaving(false);
     setRevealed(!current.hidden);
     const timers: ReturnType<typeof setTimeout>[] = [];
@@ -114,7 +106,7 @@ export function TrophyToast({ trophies }: { trophies: NewRibbon[] }) {
   const name = revealed ? current.name : "？？？";
   const line = current.quip ?? current.story;
   return createPortal(
-    <div className="trophy-toast-layer" style={top === undefined ? undefined : { top }}>
+    <div className="trophy-toast-layer">
       <Link
         key={`${index}-${current.id}`}
         className="trophy-toast"
