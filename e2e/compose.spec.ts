@@ -116,6 +116,8 @@ test("送り先と見える範囲は札で選べ、矢印キーでも動かせ�
 
   const channels = page.getByRole("radiogroup", { name: "送り先のチャネル" });
   const radios = channels.getByRole("radio");
+  // 下書きのシートがせり上がるのを待ってから数える
+  await expect(radios.first()).toBeVisible();
   expect(await radios.count()).toBeGreaterThan(1);
   await expect(channels.locator("[aria-checked=true]")).toHaveCount(1);
   const second = radios.nth(1);

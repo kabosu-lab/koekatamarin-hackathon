@@ -10,6 +10,7 @@ import { PROMISE_FULL, PROMISE_SHORT, promiseCookieName } from "@/lib/promise-co
 import { TRIAL_PROMISE_SHORT } from "@/lib/trial";
 import { useKeepsWords, useTrial } from "./TrialContext";
 import { HeardLine } from "./HeardLine";
+import { BottomSheet } from "./BottomSheet";
 import { PartnerIcon } from "./PartnerIcon";
 import { KnowledgeResults } from "./chie/KnowledgeResults";
 import { Compose, type ComposeStart } from "./Compose";
@@ -113,6 +114,8 @@ export function Talk({
   const [notice, setNotice] = useState("");
   const [scripted, setScripted] = useState(false);
   const [composing, setComposing] = useState<ComposeStart | null>(null);
+  // シートを閉じても下書き（composing）は残し、とどけるでもう一度開くと続きから
+  const [sheetOpen, setSheetOpen] = useState(false);
   const [preparing, setPreparing] = useState(false);
   // 0-1n：3秒を超えて待たせたら、何をしているかを一言見せる
   const [preparingSlow, setPreparingSlow] = useState(false);
@@ -356,6 +359,7 @@ export function Talk({
       }
       setSuggestion(null);
       setComposing({ draft, review, channels, people, asked, attachment: checked, goalId: goal?.id });
+      setSheetOpen(true);
     } catch {
       setNotice("下書きを作れませんでした。もう一度押してください。");
     } finally {
@@ -539,32 +543,43 @@ export function Talk({
 
   latest.current = { send: (text) => void send(text), draft };
 
-  if (composing) {
+  // 0-1o：下書きの確認。話す画面では下からせり上がるシートに入れ、話す画面は暗く沈めて残す
+  const closeSheet = () => setSheetOpen(false);
+  const composeView = composing && (
+    <Compose
+      {...composing}
+      viewer={viewer}
+      onCancel={() => {
+        setSheetOpen(false);
+        setComposing(null);
+      }}
+      onReplaceAttachment={() => {
+        setSheetOpen(false);
+        void removeAttachment();
+        setComposing(null);
+        setNotice("撮り直したものや別のファイルを、もう一度付けてください。");
+      }}
+      onSent={(channel, postId, words, isPublic, teams) => {
+        setSheetOpen(false);
+        setComposing(null);
+        setSentTo({ channel, postId, isPublic, teams });
+        setDeliveredAt(messages.length);
+        // 届けたら、光の段もポンの段も最初に戻す
+        levelRef.current = 0;
+        setLevel(0);
+        popStep.current = 0;
+        setGoalForPost(null);
+        setAttachment(null);
+        setBurst(words);
+        playSendSound(words);
+      }}
+    />
+  );
+
+  if (composing && !device) {
     return (
       <div className="talk" data-viewer={viewer.name}>
-        <Compose
-          {...composing}
-          viewer={viewer}
-          onCancel={() => setComposing(null)}
-          onReplaceAttachment={() => {
-            void removeAttachment();
-            setComposing(null);
-            setNotice("撮り直したものや別のファイルを、もう一度付けてください。");
-          }}
-          onSent={(channel, postId, words, isPublic, teams) => {
-            setComposing(null);
-            setSentTo({ channel, postId, isPublic, teams });
-            setDeliveredAt(messages.length);
-            // 届けたら、光の段もポンの段も最初に戻す
-            levelRef.current = 0;
-            setLevel(0);
-            popStep.current = 0;
-            setGoalForPost(null);
-            setAttachment(null);
-            setBurst(words);
-            playSendSound(words);
-          }}
-        />
+        {composeView}
       </div>
     );
   }
@@ -801,6 +816,9 @@ export function Talk({
       >
         {burst && <SendBurst words={burst} avatarImage={avatarImage} onDone={() => setBurst(null)} />}
         {promiseCard}
+        <BottomSheet open={sheetOpen && composing !== null} onClose={closeSheet} label="こんな言葉でどうかな？">
+          {composeView}
+        </BottomSheet>
         <section className="lcd" aria-label="パートナーの画面">
           <ReplyToast initial={notices} paused={listening} pollMs={noticePollMs} />
           {lockedTalk.locked && (
@@ -951,6 +969,7 @@ export function Talk({
             data-busy={preparing}
             onClick={() => {
               if (hasTyped) void send(draft);
+              else if (composing) setSheetOpen(true);
               else void startCompose(askTarget ?? undefined);
             }}
           >
