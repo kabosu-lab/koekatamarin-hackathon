@@ -1,5 +1,5 @@
 import { splitIntoWords } from "@/lib/lumps";
-import { type DeliverLevel, scheduleCommitPop, schedulePop, scheduleReadyChord, scheduleSendSound } from "@/lib/send-sound";
+import { type DeliverLevel, scheduleCommitPop, scheduleCommitRun, schedulePop, scheduleReadyChord, scheduleSendSound } from "@/lib/send-sound";
 
 const MASTER_GAIN = 0.5;
 const ECHO_GAIN = 0.18;
@@ -145,12 +145,29 @@ export function playReachedSound(): void {
 /**
  * 声が1区切り固まったときのやわらかい「ポン」。step（1 から）ごとに音階が1段上がる。
  * 木琴の音色で、ホイールの「カリ」とは別。音の設定が「on」のときだけ鳴る。
+ * 0-2m で、話している間の音は playCommitRun（話し終えたあとにまとめて鳴らす）へ移す。本体が移し終えたら消してよい。
  */
 export function playCommitPop(step: number): void {
   const output = audioOutput();
   if (!output) return;
   try {
     scheduleCommitPop(output.audio, output.out, output.audio.currentTime + 0.02, step);
+  } catch {
+    // 音が出せなくても、話すのには関係ない
+  }
+}
+
+/**
+ * 話し終えて指を離したあとの「ポンポンポン…」（0-2m）。count はその会話で話した回数。
+ * 1回目は1つ、話すたびに増え、上限で止まる。とどけるの最後の音へ向かって上がる。
+ * 話している間（onCommitted のたび）には鳴らさず、離して送ったときに1回だけ呼ぶ。
+ * やわらかい鈴の音色。判定は audioOutput() の1か所。
+ */
+export function playCommitRun(count: number): void {
+  const output = audioOutput();
+  if (!output) return;
+  try {
+    scheduleCommitRun(output.audio, output.out, output.audio.currentTime + 0.02, count);
   } catch {
     // 音が出せなくても、話すのには関係ない
   }

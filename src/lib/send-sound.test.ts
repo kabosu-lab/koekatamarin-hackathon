@@ -1,6 +1,21 @@
 import { describe, expect, it } from "vitest";
 import { sendTiming } from "./lumps";
-import { commitPopNotes, COMMIT_NOTES, hz, pentatonicUp, raiseLevel, readyChordNotes, scheduleCommitPop, scheduleReadyChord, scheduleSendSound } from "./send-sound";
+import {
+  COMMIT_NOTES,
+  COMMIT_RUN_GAP,
+  COMMIT_RUN_MAX,
+  COMMIT_RUN_TARGET,
+  commitPopNotes,
+  commitRunNotes,
+  hz,
+  pentatonicUp,
+  raiseLevel,
+  readyChordNotes,
+  scheduleCommitPop,
+  scheduleCommitRun,
+  scheduleReadyChord,
+  scheduleSendSound,
+} from "./send-sound";
 
 /** 実物の AudioContext が例外にする使い方を、同じように例外にする偽物。 */
 function fakeAudio() {
@@ -172,5 +187,65 @@ describe("音を組み立てる", () => {
     const { audio, out, started } = fakeAudio();
     scheduleReadyChord(audio, out, 1, 2);
     expect([...new Set(started)].map((at) => Math.round((at - 1) * 1000))).toEqual([0, 60, 120]);
+  });
+});
+
+// 0-2m：話し終えたあとにまとめて鳴らす音
+describe("話し終えたあとの音", () => {
+  it("1回目は1つ、話すたびに1つ増え、上限で止まる", () => {
+    const counts = Array.from({ length: COMMIT_RUN_MAX + 3 }, (_, i) => commitRunNotes(i + 1).length);
+    expect(counts.slice(0, COMMIT_RUN_MAX)).toEqual(Array.from({ length: COMMIT_RUN_MAX }, (_, i) => i + 1));
+    expect(counts.slice(COMMIT_RUN_MAX).every((count) => count === COMMIT_RUN_MAX)).toBe(true);
+    expect(COMMIT_RUN_MAX).toBeLessThanOrEqual(8);
+  });
+
+  it("0 や負、数でない回数でも1つ鳴らす", () => {
+    expect(commitRunNotes(0)).toHaveLength(1);
+    expect(commitRunNotes(-2)).toHaveLength(1);
+    expect(commitRunNotes(Number.NaN)).toHaveLength(1);
+  });
+
+  it("最後の音は、とどけるの締めの和音の最後の音と同じ", () => {
+    const last = readyChordNotes(3).slice(-1)[0].note;
+    expect(COMMIT_RUN_TARGET).toBe(last);
+    for (let count = 1; count <= COMMIT_RUN_MAX + 2; count++) expect(commitRunNotes(count).slice(-1)[0].note).toBe(last);
+  });
+
+  it("音は1つずつ上がり、すべてペンタトニックの中", () => {
+    for (let count = 1; count <= COMMIT_RUN_MAX; count++) {
+      const notes = commitRunNotes(count).map(({ note }) => note);
+      notes.forEach((note) => expect(inPentatonic(note)).toBe(true));
+      for (let i = 1; i < notes.length; i++) expect(notes[i]).toBeGreaterThan(notes[i - 1]);
+    }
+    expect(commitRunNotes(COMMIT_RUN_MAX).map(({ note }) => note)).toEqual([72, 74, 76, 79, 81, 84]);
+  });
+
+  it("間は短く（80〜120ms）、音量は小さい", () => {
+    expect(COMMIT_RUN_GAP).toBeGreaterThanOrEqual(0.08);
+    expect(COMMIT_RUN_GAP).toBeLessThanOrEqual(0.12);
+    const run = commitRunNotes(COMMIT_RUN_MAX);
+    run.forEach(({ delay }, i) => expect(delay).toBeCloseTo(i * COMMIT_RUN_GAP));
+    for (const { volume } of run) {
+      expect(volume).toBeGreaterThan(0);
+      expect(volume).toBeLessThanOrEqual(0.15);
+      expect(volume).toBeLessThan(readyChordNotes(3)[0].volume);
+    }
+  });
+
+  it("ペンタトニックで下へもたどれる", () => {
+    expect(pentatonicUp(84, -1)).toBe(81);
+    expect(pentatonicUp(84, -5)).toBe(72);
+    expect(pentatonicUp(72, -1)).toBe(69);
+  });
+
+  it("鈴の音色で組み立て、例外なく鳴らせる（1つの音に3つの倍音）", () => {
+    const { audio, started } = fakeAudio();
+    expect(() => scheduleCommitRun(audio, {} as AudioNode, 1, 3)).not.toThrow();
+    expect(started).toHaveLength(9);
+    expect(started.every((item) => item.kind === "sine")).toBe(true);
+    const starts = [...new Set(started.map(({ at }) => Math.round((at - 1) * 1000)))];
+    expect(starts).toEqual([0, 100, 200]);
+    const fundamentals = started.filter((_, i) => i % 3 === 0).map(({ frequency }) => frequency);
+    expect(fundamentals).toEqual([79, 81, 84].map(hz));
   });
 });

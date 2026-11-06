@@ -125,14 +125,15 @@ export function scheduleSendSound(audio: BaseAudioContext, out: AudioNode, t0: n
   schedulePop(audio, out, t0 + timing.land + 0.46, 84, 0.3);
 }
 
-/** ハ長調ペンタトニックの音（ド・レ・ミ・ソ・ラ）。上へ n 段たどる。 */
+/** ハ長調ペンタトニックの音（ド・レ・ミ・ソ・ラ）。上へ n 段たどる（負なら下へ）。 */
 const PENTATONIC = [0, 2, 4, 7, 9];
 export function pentatonicUp(note: number, steps: number): number {
   const octave = Math.floor((note - 60) / 12);
   const index = PENTATONIC.indexOf((((note - 60) % 12) + 12) % 12);
   if (index < 0) throw new Error(`ペンタトニックの外の音です: ${note}`);
   const position = index + steps;
-  return 60 + 12 * (octave + Math.floor(position / PENTATONIC.length)) + PENTATONIC[position % PENTATONIC.length];
+  const size = PENTATONIC.length;
+  return 60 + 12 * (octave + Math.floor(position / size)) + PENTATONIC[((position % size) + size) % size];
 }
 
 /** 声が1区切り固まるたびの「ポン」の音階。言葉の音（WORD_NOTES）を2オクターブに延ばしたもの */
@@ -176,6 +177,63 @@ export function readyChordNotes(level: DeliverLevel): { delay: number; note: num
 
 export function scheduleReadyChord(audio: BaseAudioContext, out: AudioNode, at: number, level: DeliverLevel) {
   for (const { delay, note, volume } of readyChordNotes(level)) schedulePop(audio, out, at + delay, note, volume);
+}
+
+// 0-2m：声が固まる音は、話している間は鳴らさず、指を離したあとにまとめて鳴らす
+
+/** 話し終えたあとの音の数の上限（ド〜1オクターブ上のドの6音） */
+export const COMMIT_RUN_MAX = 6;
+/** 音と音の間（秒）。短く続けて「ポンポンポン…」にする */
+export const COMMIT_RUN_GAP = 0.1;
+const COMMIT_RUN_VOLUME = 0.14;
+
+/** とどけるの締めの和音（いちばん豊かな段）の最後の音。話し終えたあとの音はここへ向かって上がる */
+export const COMMIT_RUN_TARGET = readyChordNotes(3).slice(-1)[0].note;
+
+/**
+ * 話し終えたあとに続けて鳴らす音。count はその会話で話した回数。
+ * 1回目は1つ、話すたびに1つ増え、COMMIT_RUN_MAX で止まる。
+ * ペンタトニックを下から上がり、最後の音はいつも COMMIT_RUN_TARGET（とどけるの最後の音）。
+ * 音量は小さく、後ろほどわずかに大きくして、最後の音で落ち着かせる。
+ */
+export function commitRunNotes(count: number): { delay: number; note: number; volume: number }[] {
+  const length = Math.min(Math.max(Math.floor(Number.isFinite(count) ? count : 1), 1), COMMIT_RUN_MAX);
+  return Array.from({ length }, (_, index) => {
+    const lift = length === 1 ? 1 : 0.8 + (0.2 * index) / (length - 1);
+    return {
+      delay: index * COMMIT_RUN_GAP,
+      note: pentatonicUp(COMMIT_RUN_TARGET, index - (length - 1)),
+      volume: COMMIT_RUN_VOLUME * lift,
+    };
+  });
+}
+
+/**
+ * やわらかい鈴やマリンバ寄りの音。木琴（schedulePop）より立ち上がりを丸く、余韻を少し長くする。
+ * サイン波の基音に、小さな倍音（2倍と4倍）を少しだけ重ね、短く減衰させる。
+ */
+export function scheduleChime(audio: BaseAudioContext, out: AudioNode, at: number, note: number, volume: number) {
+  const partials: [number, number, number][] = [
+    [1, 1, 0.22],
+    [2, 0.12, 0.1],
+    [4, 0.05, 0.05],
+  ];
+  for (const [ratio, level, decay] of partials) {
+    const tone = audio.createOscillator();
+    tone.type = "sine";
+    tone.frequency.value = hz(note) * ratio;
+    const gain = audio.createGain();
+    gain.gain.setValueAtTime(0, at);
+    gain.gain.linearRampToValueAtTime(volume * level, at + 0.008);
+    gain.gain.setTargetAtTime(0, at + 0.008, decay);
+    tone.connect(gain).connect(out);
+    tone.start(at);
+    tone.stop(at + 1);
+  }
+}
+
+export function scheduleCommitRun(audio: BaseAudioContext, out: AudioNode, at: number, count: number) {
+  for (const { delay, note, volume } of commitRunNotes(count)) scheduleChime(audio, out, at + delay, note, volume);
 }
 
 /** 段は上がるだけで下げない。下げてよいのは、届けたときと命や安全のとき（呼び出し側で 0 にする） */
