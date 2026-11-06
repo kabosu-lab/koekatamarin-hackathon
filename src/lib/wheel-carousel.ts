@@ -17,6 +17,8 @@ export const FLING_MIN = 0.004;
 export const FLING_MAX = 4;
 /** 1コマに鳴らすカリの上限 */
 export const MAX_CLICKS_PER_FRAME = 3;
+/** 真ん中のチップの大きさ（0-2o(1)：ほかより、はっきり大きく） */
+export const CENTER_SCALE = 1.16;
 /** 輪の外とみなす半径の倍率 */
 export const CANCEL_RADIUS = 1.15;
 
@@ -45,12 +47,15 @@ export function layoutOf(k: number): ChipLayout {
   const near = Math.min(a, 2);
   // 2枚より外は、2.5枚で見えなくなるまで薄くする（そこで中身を入れ替えても見えない）
   const edge = a <= 2 ? 1 : Math.max(0, (2.5 - a) / 0.5);
+  // 0-2o(1)：真ん中をはっきり大きく、隣から先は小さく薄く（隣までで大きく下がり、その外はゆるやかに）
+  const inner = Math.min(near, 1);
+  const outer = near - inner;
   return {
     x: k * 96,
     y: 10 * k * k,
-    scale: 1 - 0.22 * near,
+    scale: CENTER_SCALE - 0.44 * inner - 0.14 * outer,
     rotate: -4 * k,
-    opacity: (1 - 0.3 * near) * edge,
+    opacity: (1 - 0.45 * inner - 0.2 * outer) * edge,
     center: a < 0.5,
   };
 }

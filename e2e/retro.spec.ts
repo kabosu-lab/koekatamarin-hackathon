@@ -92,6 +92,52 @@ test("0-1g(3)：真ん中のマイクの上で離すと、何も開かずにや�
   await expect(page.locator(".wheel-carousel")).toHaveAttribute("data-state", "idle");
 });
 
+test("0-2o：ホイールを出すと最初はホームが真ん中で、チップが替わると説明の一文も替わる", async ({ page }) => {
+  await asPerson(page, "aoki");
+  await page.goto("/");
+  const wheel = (await page.locator(".click-wheel").boundingBox())!;
+  const cx = wheel.x + wheel.width / 2;
+  const cy = wheel.y + wheel.height / 2;
+  const r = wheel.width * 0.44;
+  const at = (deg: number) => ({ x: cx + r * Math.cos((deg * Math.PI) / 180), y: cy + r * Math.sin((deg * Math.PI) / 180) });
+  const caption = page.locator(".wheel-carousel-caption");
+  await expect(caption).toHaveAttribute("aria-live", "polite");
+  await page.mouse.move(at(0).x, at(0).y);
+  await page.mouse.down();
+  await page.mouse.move(at(10).x, at(10).y);
+  await page.mouse.move(at(20).x, at(20).y);
+  await expect(page.locator(".wheel-carousel")).toHaveAttribute("data-state", "turning");
+  await expect(page.locator('.wheel-carousel-slot[data-center="true"]')).toContainText("ホーム");
+  await expect(caption).toHaveText(/^ホーム：/);
+  await expect(caption).toBeVisible();
+  for (const deg of [35, 50, 65, 80]) await page.mouse.move(at(deg).x, at(deg).y, { steps: 2 });
+  await expect(caption).not.toHaveText(/ホーム/);
+  await expect(caption).toHaveText(/^.+：.+/);
+  // 真ん中のマイクの上で離して、何も開かずにやめる
+  await page.mouse.move(cx, cy, { steps: 2 });
+  await page.mouse.up();
+  await expect(page.locator(".wheel-carousel")).toHaveAttribute("data-state", "idle");
+});
+
+test("0-2o：真ん中のホームを選ぶと、話す画面のままホイールが閉じる", async ({ page }) => {
+  await asPerson(page, "aoki");
+  await page.goto("/");
+  // 開く動きを通ったか（やめたのではなく、ホームを開いたか）を記録する
+  await page.evaluate(() => {
+    const root = document.querySelector(".wheel-carousel")!;
+    const seen: string[] = [];
+    (window as unknown as { wheelStates: string[] }).wheelStates = seen;
+    new MutationObserver(() => seen.push(root.getAttribute("data-state") ?? "")).observe(root, { attributes: true, attributeFilter: ["data-state"] });
+  });
+  // 12度を越えたところで出るだけにして、回さずに離す
+  await traceWheel(page, [0, 20]);
+  await expect(page.locator(".wheel-carousel")).toHaveAttribute("data-state", "idle");
+  expect(await page.evaluate(() => (window as unknown as { wheelStates: string[] }).wheelStates)).toContain("opening");
+  await page.waitForTimeout(600);
+  await expect(page).toHaveURL(/127\.0\.0\.1:\d+\/$/);
+  await expect(page.locator(".click-wheel")).toBeVisible();
+});
+
 test("命や安全の案内はレトロでも液晶の中に見える", async ({ page }) => {
   await asPerson(page, "aoki");
   await page.goto("/");

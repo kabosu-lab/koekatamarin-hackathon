@@ -1846,3 +1846,52 @@ html[data-theme="retro"] .talk .device-mic {
 .talk.device .log > .find-knowledge {
   align-self: center;
 }
+
+/* ===== 0-2o：ホイールのカルーセルの直し ===== */
+
+/* (1) 真ん中のチップを、濃い枠と深い影ではっきり強調する。大きさと薄さは wheel-carousel.ts の layoutOf。
+   隣と少し重なるので、真ん中を手前に出す */
+.wheel-carousel-slot[data-center="true"] {
+  z-index: 2;
+}
+
+.wheel-carousel [data-center="true"] > .chip {
+  box-shadow:
+    0 0 0 3px var(--ink, #1c2126),
+    inset 0 0 0 2px var(--accent, #1f6f78),
+    0 0 0 7px color-mix(in srgb, var(--accent, #1f6f78) 45%, transparent),
+    0 16px 30px rgb(10 16 24 / 50%);
+}
+
+/* (2) 選んでいるチップの説明。チップの下、暗い幕の上に一文で出す（中身は WheelCarousel が書く） */
+.wheel-carousel-caption {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  top: calc(var(--chip-width, 112px) * 0.84 + 14px);
+  z-index: 1;
+  margin: 0;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.45;
+  text-align: center;
+  text-shadow: 0 1px 3px rgb(0 0 0 / 60%);
+  opacity: 0;
+  transition: opacity 120ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  pointer-events: none;
+}
+
+.wheel-carousel[data-state="turning"] .wheel-carousel-caption {
+  opacity: 1;
+}
+
+/* 動きを減らす設定では暗い幕が出ないので、文の後ろにだけ暗い地を敷く */
+@media (prefers-reduced-motion: reduce) {
+  .wheel-carousel-caption {
+    padding: 6px 10px;
+    border-radius: 10px;
+    background: rgb(10 16 24 / 78%);
+    transition: none;
+  }
+}

@@ -77,6 +77,7 @@ export function WheelCarousel({
 }) {
   const n = items.length;
   const rootRef = useRef<HTMLDivElement>(null);
+  const captionRef = useRef<HTMLParagraphElement>(null);
   const slotRefs = useRef<(HTMLDivElement | null)[]>([]);
   const [slotItems, setSlotItems] = useState<number[]>(() =>
     Array.from({ length: VISIBLE }, (_, slot) => wrapIndex(initial + slotTarget(slot, 0), n)),
@@ -100,6 +101,7 @@ export function WheelCarousel({
     lastFrame: 0,
     slotItems: slotItems,
     centerSlot: -1,
+    captionId: "",
     timers: [] as number[],
   });
   // 最新の呼び先を ref に（rAF とタイマーから古いものを呼ばない）
@@ -148,6 +150,17 @@ export function WheelCarousel({
       const its = latest.current.items;
       if (its.length === 0) return undefined;
       return its[wrapIndex(s.origin + Math.round(s.shown), its.length)];
+    }
+
+    /** 0-2o(2)：真ん中のチップの説明を一文で。替わったときだけ書く（読み上げは aria-live で1回） */
+    function writeCaption() {
+      const item = centerItem();
+      const id = item?.id ?? "";
+      if (id === s.captionId) return;
+      s.captionId = id;
+      const el = captionRef.current;
+      if (!el) return;
+      el.textContent = item ? (item.description ? `${item.label}：${item.description}` : item.label) : "";
     }
 
     /** 5枚の置き場所を書く。ここで書くのは transform と opacity だけ */
@@ -279,6 +292,7 @@ export function WheelCarousel({
       if (clicks > 0) {
         s.bumpAt = now;
         if (latest.current.sound) playWheelClick(clicks);
+        writeCaption();
         const item = centerItem();
         if (item) latest.current.onTick?.(item);
       }
@@ -309,9 +323,11 @@ export function WheelCarousel({
       s.springV = 0;
       s.velocity = 0;
       s.centerSlot = -1;
+      s.captionId = "";
       s.lastMoveAt = performance.now();
       setPhase("turning");
       paint(s.lastMoveAt);
+      writeCaption();
       startLoop();
     }
 
@@ -386,9 +402,11 @@ export function WheelCarousel({
   if (n === 0) return null;
 
   return (
-    <div className="wheel-carousel" ref={rootRef} data-state="idle" aria-hidden="true">
-      <div className="wheel-scrim" />
-      <div className="wheel-carousel-band">
+    <div className="wheel-carousel" ref={rootRef} data-state="idle">
+      <div className="wheel-scrim" aria-hidden="true" />
+      {/* 0-2o(2)：チップの下の暗い幕の上に、選んでいるチップの説明。中身は writeCaption が直接書く */}
+      <p className="wheel-carousel-caption" ref={captionRef} aria-live="polite" />
+      <div className="wheel-carousel-band" aria-hidden="true">
         {slotItems.map((index, slot) => {
           const item = items[index] ?? items[0];
           return (

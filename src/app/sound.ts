@@ -77,6 +77,29 @@ if (typeof document !== "undefined") {
     },
     { passive: true },
   );
+
+  // 0-2o(3)：iPhone の Safari は、なぞる（ドラッグ）だけの pointerdown では音を起こせない。
+  // 指を離したとき（touchend・pointerup・click）に起こし、無音を1回鳴らして、以後の音を通す。
+  // 起きたと分かるまでは、離すたびに試す（最初の操作が許可にならない端末もあるため）。
+  let unlocked = false;
+  const wake = () => {
+    if (unlocked || !soundAllowed()) return;
+    try {
+      const { audio } = setup();
+      const silent = audio.createBufferSource();
+      silent.buffer = audio.createBuffer(1, 1, audio.sampleRate);
+      silent.connect(audio.destination);
+      silent.start(0);
+      void audio.resume().then(() => {
+        if (audio.state === "running") unlocked = true;
+      });
+    } catch {
+      // 音が出せなくても、操作には関係ない
+    }
+  };
+  for (const type of ["touchend", "pointerup", "click"] as const) {
+    document.addEventListener(type, wake, { passive: true, capture: true });
+  }
 }
 
 /** 送ったときの音。動きと同じ時刻で鳴らす。音を消している人には鳴らさない。 */
