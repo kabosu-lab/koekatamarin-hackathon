@@ -22,6 +22,11 @@ export type SpeechHandlers = {
   onFinal(text: string): void;
   onError(message: string): void;
   onEnd(): void;
+  /**
+   * 声が1区切り文字に固まったとき（確定した区切りごと）。finalLength はそこまでに固まった文字の数。
+   * 短すぎる区切り（2字以下）と、前の呼び出しから 0.3 秒未満のときは呼ばない。ポンの音を鳴らすため。
+   */
+  onCommitted?(finalLength: number): void;
 };
 
 function recognitionClass(): RecognitionConstructor | undefined {
@@ -55,6 +60,12 @@ const QUICK_END_MS = 1000;
 const MAX_QUICK_ENDS = 5;
 const RESTART_DELAY_MS = 200;
 const DEFAULT_SILENCE_LIMIT_MS = 3 * 60 * 1000;
+/** 区切りの知らせ（onCommitted）の間をこれだけあける。これより短い区切りは知らせない */
+const COMMIT_GAP_MS = 300;
+const COMMIT_MIN_CHARS = 3;
+/** 確定（isFinal）が来ない端末の保険：文字がこれだけ変わらず、これだけ増えたら1区切りとみなす */
+const STEADY_MS = 300;
+const STEADY_MIN_CHARS = 4;
 
 /**
  * 1回の認識の結果を文章にする。端末によって、確定した結果が前の結果を含んだまま
@@ -113,6 +124,20 @@ export function runListening(
   let silenceTimer: ReturnType<typeof setTimeout> | undefined;
   let stopTimer: ReturnType<typeof setTimeout> | undefined;
   let heardAny = false;
+  let steadyTimer: ReturnType<typeof setTimeout> | undefined;
+  /** 最後に区切りを知らせたときの文字の数と時刻 */
+  let signaledLength = 0;
+  let signaledAt = -Infinity;
+
+  const signalCommitted = (length: number, minChars: number) => {
+    if (!handlers.onCommitted || finished || paused) return;
+    if (length - signaledLength < minChars) return;
+    const time = now();
+    if (time - signaledAt < COMMIT_GAP_MS) return;
+    signaledLength = length;
+    signaledAt = time;
+    handlers.onCommitted(length);
+  };
   const slowTimer = setTimeout(() => {
     if (!heardAny && !finished) handlers.onError(SLOW_NOTICE);
   }, slowMs);
@@ -130,6 +155,7 @@ export function runListening(
     clearTimeout(silenceTimer);
     clearTimeout(stopTimer);
     clearTimeout(slowTimer);
+    clearTimeout(steadyTimer);
     commit();
     if (message) handlers.onError(message);
     handlers.onEnd();
@@ -158,7 +184,13 @@ export function runListening(
       currentInterim = interim;
       if (finalText || interim) heardAny = true;
       watchSilence();
-      handlers.onInterim(committed + currentFinal + currentInterim);
+      const heard = committed + currentFinal + currentInterim;
+      handlers.onInterim(heard);
+      signalCommitted(committed.length + currentFinal.length, COMMIT_MIN_CHARS);
+      if (handlers.onCommitted) {
+        clearTimeout(steadyTimer);
+        steadyTimer = setTimeout(() => signalCommitted(heard.length, STEADY_MIN_CHARS), STEADY_MS);
+      }
     };
     recognition.onerror = ({ error }) => {
       const fatal = FATAL_ERRORS[error];
@@ -216,6 +248,7 @@ export function runListening(
       paused = true;
       clearTimeout(restartTimer);
       clearTimeout(silenceTimer);
+      clearTimeout(steadyTimer);
       current?.stop();
     },
     resume() {

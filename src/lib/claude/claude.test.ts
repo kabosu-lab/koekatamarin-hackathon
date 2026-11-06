@@ -90,14 +90,14 @@ describe("converse", () => {
       [],
       "……",
     );
-    expect(refused).toEqual({ reply: refusalReply, refused: true, ready: false });
+    expect(refused).toEqual({ reply: refusalReply, refused: true, ready: false, level: 0 });
 
     const empty = await converse(
       { mode: "real", complete: async () => ({ text: "  ", refused: false }) },
       [],
       "……",
     );
-    expect(empty).toEqual({ reply: refusalReply, refused: false, ready: false });
+    expect(empty).toEqual({ reply: refusalReply, refused: false, ready: false, level: 0 });
   });
 });
 
@@ -134,9 +134,43 @@ describe("最初の一言", () => {
 describe("とどけるを光らせる印", () => {
   it("印を返事から取り除き、あったかどうかを返す", () => {
     expect(splitReady(`いいね、それ届けてみよう。
-${READY_MARK}`)).toEqual({ reply: "いいね、それ届けてみよう。", ready: true });
-    expect(splitReady("もう少し聞かせて。")).toEqual({ reply: "もう少し聞かせて。", ready: false });
+${READY_MARK}`)).toEqual({ reply: "いいね、それ届けてみよう。", ready: true, level: 1 });
+    expect(splitReady("もう少し聞かせて。")).toEqual({ reply: "もう少し聞かせて。", ready: false, level: 0 });
     expect(splitReady(READY_MARK).reply).toBe("");
+  });
+
+  it("段つきの印 [[とどけられる:1]]〜[[とどけられる:3]] を読み、前の形は段1として読む", () => {
+    expect(splitReady("何があったか、言葉になったね。\n[[とどけられる:1]]")).toEqual({ reply: "何があったか、言葉になったね。", ready: true, level: 1 });
+    expect(splitReady("どうしたかも出たね。\n[[とどけられる:2]]")).toEqual({ reply: "どうしたかも出たね。", ready: true, level: 2 });
+    expect(splitReady("もう投稿にできそう。\n[[とどけられる:3]]")).toEqual({ reply: "もう投稿にできそう。", ready: true, level: 3 });
+    expect(splitReady("全角のコロンでも\n[[とどけられる：2]]").level).toBe(2);
+  });
+
+  it("印が2つあれば高いほう、範囲の外の数字は1〜3に収め、どの印も画面に出さない", () => {
+    const result = splitReady("[[とどけられる:1]]途中[[とどけられる:3]]");
+    expect(result).toEqual({ reply: "途中", ready: true, level: 3 });
+    expect(splitReady("あ\n[[とどけられる:9]]").level).toBe(3);
+    expect(splitReady("あ\n[[とどけられる:0]]").level).toBe(1);
+  });
+
+  it("命や安全に関わる言葉があるときは、印があっても光らせない", async () => {
+    const claude = { mode: "real" as const, complete: async () => ({ text: "話してくれてありがとう。\n[[とどけられる:3]]", refused: false }) };
+    expect(await converse(claude, [], "もう消えたい")).toMatchObject({ ready: false, level: 0 });
+    expect(await converse(claude, [], "今日の授業がうまくいった")).toMatchObject({ ready: true, level: 3 });
+  });
+
+  it("台本では、話が進むほど段が1→2→3と上がる", async () => {
+    const claude = createScriptedClaude();
+    const lines = ["今日の授業、急に静かになった瞬間があって", "声を小さくしたんだ", "そしたらみんな聞いてくれた", "若い先生にも役立ちそう"];
+    const history: { role: "user" | "assistant"; content: string }[] = [];
+    const levels: number[] = [];
+    for (const line of lines) {
+      const result = await converse(claude, history, line);
+      expect(result.reply).not.toContain("[[");
+      levels.push(result.level);
+      history.push({ role: "user", content: line }, { role: "assistant", content: result.reply });
+    }
+    expect(levels).toEqual([0, 1, 2, 3]);
   });
 
   it("パートナーの指示に印の決まりがあり、試用の指示にも残る", () => {
@@ -146,7 +180,7 @@ ${READY_MARK}`)).toEqual({ reply: "いいね、それ届けてみよう。", rea
 
   it("印だけの返事は、答えられなかったときの言葉にして、光らせない", async () => {
     const claude = { mode: "real" as const, complete: async () => ({ text: READY_MARK, refused: false }) };
-    expect(await converse(claude, [], "こんにちは")).toEqual({ reply: refusalReply, refused: false, ready: false });
+    expect(await converse(claude, [], "こんにちは")).toEqual({ reply: refusalReply, refused: false, ready: false, level: 0 });
   });
 
   it("台本でも、要素がそろったら光り、そろう前は光らない", async () => {

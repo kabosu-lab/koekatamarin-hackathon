@@ -211,3 +211,82 @@ describe("runListening", () => {
     expect(calls.final).toEqual(["前半後半"]);
   });
 });
+
+describe("声が1区切り固まったときの知らせ（onCommitted）", () => {
+  function committedHandlers() {
+    const { calls, value } = handlers();
+    const committed: number[] = [];
+    return { calls, committed, value: { ...value, onCommitted: (length: number) => committed.push(length) } };
+  }
+
+  it("確定した区切りが増えるたびに、そこまでの文字の数を知らせる", () => {
+    const { committed, value } = committedHandlers();
+    runListening(Class, value);
+    latest().hear(result("今日の授業で", false));
+    expect(committed).toEqual([]);
+    latest().hear(result("今日の授業で"));
+    expect(committed).toEqual([6]);
+    vi.advanceTimersByTime(500);
+    latest().hear(result("今日の授業で"), result("声を小さくした"));
+    expect(committed).toEqual([6, 13]);
+  });
+
+  it("前の知らせから 0.3 秒未満と、2字以下の短い区切りは知らせない", () => {
+    const { committed, value } = committedHandlers();
+    runListening(Class, value);
+    latest().hear(result("今日の授業で"));
+    vi.advanceTimersByTime(100);
+    latest().hear(result("今日の授業で"), result("静かに"));
+    expect(committed).toEqual([6]);
+    vi.advanceTimersByTime(400);
+    latest().hear(result("今日の授業で"), result("静かに"), result("ね"));
+    // 0.3 秒たったので、知らせ損ねた分とまとめて1回
+    expect(committed).toEqual([6, 10]);
+    vi.advanceTimersByTime(400);
+    latest().hear(result("今日の授業で"), result("静かに"), result("ね"), result("あ"));
+    expect(committed).toEqual([6, 10]);
+  });
+
+  it("確定が来ない端末でも、文字が 0.3 秒変わらず4字以上増えたら1区切りとみなす", () => {
+    const { committed, value } = committedHandlers();
+    runListening(Class, value);
+    latest().hear(result("今日は", false));
+    vi.advanceTimersByTime(400);
+    expect(committed).toEqual([]);
+    latest().hear(result("今日は暑かった", false));
+    vi.advanceTimersByTime(200);
+    latest().hear(result("今日は暑かったね", false));
+    vi.advanceTimersByTime(299);
+    expect(committed).toEqual([]);
+    vi.advanceTimersByTime(1);
+    expect(committed).toEqual([8]);
+    // あとから同じ文が確定しても、重ねて鳴らさない
+    vi.advanceTimersByTime(500);
+    latest().hear(result("今日は暑かったね"));
+    expect(committed).toEqual([8]);
+  });
+
+  it("聞き直しをまたいでも、それまでの言葉の分を数え、止めたあとは知らせない", () => {
+    const { committed, value } = committedHandlers();
+    const session = runListening(Class, value);
+    latest().hear(result("前半の話"));
+    vi.advanceTimersByTime(2000);
+    latest().onend?.();
+    vi.advanceTimersByTime(300);
+    latest().hear(result("後半の話"));
+    expect(committed).toEqual([4, 8]);
+    latest().hear(result("後半の話"), result("まだ続き", false));
+    session.stop();
+    vi.advanceTimersByTime(1000);
+    expect(committed).toEqual([4, 8]);
+  });
+
+  it("onCommitted がなくても、これまでどおり動く", () => {
+    const { calls, value } = handlers();
+    const session = runListening(Class, value);
+    latest().hear(result("今日は"));
+    vi.advanceTimersByTime(500);
+    session.stop();
+    expect(calls.final).toEqual(["今日は"]);
+  });
+});
