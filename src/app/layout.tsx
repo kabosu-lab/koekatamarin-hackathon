@@ -10,6 +10,7 @@ import { FeedbackSheet } from "./FeedbackSheet";
 import { SwipeNav } from "./SwipeNav";
 import { EmbedMark } from "./WidePanels";
 import { TrialProvider } from "./TrialContext";
+import { ViewportFit } from "./ViewportFit";
 import "./globals.css";
 import "./modern.css";
 import "./usability.css";
@@ -20,12 +21,16 @@ import "./deliver-light.css";
 export const metadata: Metadata = {
   title: "こえかた",
   description: "話すだけで、できることが増える。AI と仲間の力を借りて、もっと楽しく、もっと早く。",
+  // ホーム画面に追加して開くと、Safari の URL の帯が出ない（0-2e）
+  appleWebApp: { capable: true, title: "こえかた", statusBarStyle: "default" },
 };
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
+  // Android の Chrome は、キーボードが開くと画面ごと縮める（0-2e）
+  interactiveWidget: "resizes-content",
 };
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
@@ -45,6 +50,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
           {collectsFeedback() && <FeedbackSheet />}
           <SwipeNav />
           <EmbedMark />
+          <ViewportFit />
         </TrialProvider>
       </body>
     </html>
