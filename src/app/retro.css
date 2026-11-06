@@ -1783,3 +1783,66 @@ html[data-theme="retro"] .talk .partner-tap:active {
   font-size: 0.75rem;
   text-align: center;
 }
+
+/* ---- 0-2i：夜の画面の確認（11/7）で見つかった崩れ。文を切らない・はみ出さない ---- */
+
+/* (3) マイクのボタンの文字（7文字）は1行のまま。ホイールの幅に合わせて文字を小さくする（iPad 横の真ん中は細い） */
+.click-wheel {
+  container-type: inline-size;
+}
+
+html[data-theme="retro"] .talk .device-mic {
+  font-size: clamp(0.75rem, calc((58cqi - 16px) / 7.2), 1rem);
+  white-space: nowrap;
+}
+
+/* (4) タイルの名前は途中で折らない。列の幅に合わせて文字を小さくし、狭い欄では2列にする */
+.me-tiles {
+  --me-tile-cols: 3;
+}
+
+.me-tile-label {
+  font-size: min(clamp(0.85rem, 2.1dvh, 1.1rem), calc((100cqw - 48px) / var(--me-tile-cols) / 7.4));
+  white-space: nowrap;
+}
+
+@container (max-width: 360px) {
+  .me-tiles {
+    --me-tile-cols: 2;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .me-tile-face {
+    width: min(30cqw, 12dvh, 96px);
+  }
+}
+
+/* (5) 窓の下の中身は、機器の幅が狭いあいだは1列。カードを細い2列に押し込まない */
+@container (max-width: 760px) {
+  .device-window .home {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* (5) ボタンの言葉は途中で折らない。並ばないときは次の行へ送る */
+.device-window .card .row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.device-window .card .row > button {
+  flex: 1 1 8rem;
+  max-width: 100%;
+  white-space: nowrap;
+}
+
+/* (9) 広い画面で左右に欄が出ているときは、同じ入口になる下のスワイプの印と点を出さない */
+.device-row:has(.wide-panel) .swipe-mark {
+  visibility: hidden;
+}
+
+/* (10) 「校内の知恵を探す」は「新しく話す」の札の下にそろえて、真ん中に置く */
+.talk.device .log > .find-knowledge {
+  align-self: center;
+}

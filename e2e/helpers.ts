@@ -4,7 +4,7 @@ import { expect, type Page } from "@playwright/test";
 export async function switchPerson(page: Page, option: string) {
   // 人物の切り替えは「履歴と設定」の「設定」のタイルの中
   await page.goto("/me?open=settings");
-  await page.getByLabel("使う人").selectOption({ label: option });
+  await page.getByLabel("試す人を切り替える").selectOption({ label: option });
   const switched = page.waitForResponse((response) => Boolean(response.request().headers()["next-action"]));
   await page.getByRole("button", { name: "切り替え" }).click();
   await switched;

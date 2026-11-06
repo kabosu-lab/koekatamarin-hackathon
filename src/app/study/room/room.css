@@ -389,6 +389,14 @@ html body .home.room-page > .card {
   margin-top: 0;
 }
 
+/* 0-2i(6)：カードの幅を中身で決めず、景色・タイマー・曲を同じ幅にそろえる（iPad で幅がばらばらにならない） */
+html body .home.room-page > .card {
+  box-sizing: border-box;
+  align-self: stretch;
+  width: 100%;
+  max-width: none;
+}
+
 /* ---- みんなで聴く曲 ---- */
 .room-music {
   display: grid;

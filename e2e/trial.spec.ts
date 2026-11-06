@@ -100,7 +100,7 @@ test("外の URL から開いても、サーバーの処理と API を拒まな�
   await enter(page);
   await page.goto("/me?open=settings");
   const actionRequest = page.waitForRequest((r) => r.method() === "POST" && Boolean(r.headers()["next-action"]));
-  await page.getByLabel("使う人").selectOption({ label: "木下 蓮（3年・ものづくり部）" });
+  await page.getByLabel("試す人を切り替える").selectOption({ label: "木下 蓮（3年・ものづくり部）" });
   await page.getByRole("button", { name: "切り替え" }).click();
   const original = await actionRequest;
   const headers = await original.allHeaders();
@@ -139,7 +139,7 @@ test("選べるのは生徒だけで、最初の人物も生徒になる", async
   await expect(page.locator('.talk[data-viewer="青木 ひより"]')).toBeVisible();
   await page.goto("/me?open=settings");
   await page.goto("/me?open=settings");
-  const options = await page.getByLabel("使う人").locator("option").allTextContents();
+  const options = await page.getByLabel("試す人を切り替える").locator("option").allTextContents();
   expect(options).toEqual(["青木 ひより（2年）", "木下 蓮（3年・ものづくり部）", "中村 結衣（1年・吹奏楽部）"]);
 });
 
@@ -171,7 +171,7 @@ test("サーバーの処理を直接呼んでも、先生には切り替えら�
   await enter(page);
   await page.goto("/me?open=settings");
   const actionRequest = page.waitForRequest((r) => r.method() === "POST" && Boolean(r.headers()["next-action"]));
-  await page.getByLabel("使う人").selectOption({ label: "木下 蓮（3年・ものづくり部）" });
+  await page.getByLabel("試す人を切り替える").selectOption({ label: "木下 蓮（3年・ものづくり部）" });
   await page.getByRole("button", { name: "切り替え" }).click();
   const original = await actionRequest;
   await expect(async () => {

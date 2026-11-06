@@ -156,7 +156,10 @@ export default async function MinnaPage({ searchParams }: { searchParams: Promis
               </Link>
               <Link className="minna-dock-item" href="/chie">
                 <Icon name="idea" />
-                <span>校内の知恵</span>
+                <span>
+                  校内の<wbr />
+                  知恵
+                </span>
               </Link>
               {/* アプリの中の校内チャネルの画面ではなく、本物の Teams を開く */}
               <a className="minna-dock-item" href={teamsUrl()} target="_blank" rel="noopener noreferrer" aria-label="Teams を開く">

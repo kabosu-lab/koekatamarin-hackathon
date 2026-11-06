@@ -37,7 +37,7 @@ test("しばらく出さないは本人にだけ効き、相手には何も見�
 
   // 相手の画面には、誰かに隠されたことが出ない
   await page.goto("/me?open=settings");
-  const option = page.getByLabel("使う人").locator("option", { hasText: name });
+  const option = page.getByLabel("試す人を切り替える").locator("option", { hasText: name });
   await switchPerson(page, (await option.textContent()) ?? "");
   for (const path of ["/me", "/today"]) {
     await page.goto(path);
