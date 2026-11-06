@@ -50,6 +50,9 @@ test("試用の注意は最初に1回だけカードで全部見せ、あとは�
   await page.getByRole("button", { name: "入る" }).click();
   const card = page.getByRole("dialog", { name: "試用版について" });
   await expect(card).toContainText(NOTICE);
+  // 注意の文のあとに、感想の誘いと、右上のアイコンと同じ絵（0-2h (4b)）
+  await expect(card).toContainText("気づいたことを、ぜひ教えてね。右上の");
+  await expect(card.getByRole("img", { name: "感想のアイコン" }).locator("svg")).toBeVisible();
   // スクロールなしで、文と「わかった」が全部見える
   await expect(card).toBeInViewport({ ratio: 1 });
   // 相談室に要点を伝えるという、本番の約束は出さない（試用では届かない）
@@ -61,19 +64,21 @@ test("試用の注意は最初に1回だけカードで全部見せ、あとは�
 
   await page.reload();
   await expect(card).toHaveCount(0);
-  // 消したあとは、試用の印を出さない（製品版と同じ画面）
+  // 消したあとは、試用の印を出さない（製品版と同じ画面）。感想の入口だけが右上に小さく浮かぶ（0-2h）
   for (const path of ["/", "/teams", "/minna"]) {
     await page.goto(path);
-    await expect(page.getByRole("button", { name: "感想を送る" }), path).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "感想を送る" }), path).toHaveCount(1);
     await expect(page.getByText("試用版"), path).toHaveCount(0);
   }
   await page.goto("/soudan");
   await expect(page.locator("main")).toContainText("相談室に知らせは届きません");
-  // 読み直しと感想は「履歴と設定」から
+  // 読み直しは「履歴と設定」から。感想の入口はタイルに置かない（同じ入口を2か所に置かない）
   await page.goto("/me?open=trial");
   const tools = page.getByRole("region", { name: "試用版について" });
+  await expect(tools.getByRole("button", { name: "感想を送る" })).toHaveCount(0);
   await tools.getByRole("button", { name: "注意を読み直す" }).click();
   await expect(card).toContainText(NOTICE);
+  await expect(card).toContainText("気づいたことを、ぜひ教えてね。");
 });
 
 test("命や安全に関わる話では、先生や相談室に届いていないことと窓口を伝える", async ({ page }) => {
@@ -206,7 +211,6 @@ test("生徒の試用では、話した言葉をパートナーに覚えさせ�
 
 test("改善点は種類だけでも送れて、ありがとうと出て、続けて送れる", async ({ page }) => {
   await enter(page);
-  await page.goto("/me?open=trial");
   await page.getByRole("button", { name: "感想を送る" }).click();
   const sheet = page.getByRole("dialog", { name: "感想を送る" });
   await expect(sheet).toContainText("名前は書かないでください。ここは相談先ではありません。困っていることは先生に直接話してください。");
@@ -227,21 +231,19 @@ test("改善点は種類だけでも送れて、ありがとうと出て、続�
 
 test("改善点の書きかけは、画面を移っても消えない", async ({ page }) => {
   await enter(page);
-  await page.goto("/me?open=trial");
   await page.getByRole("button", { name: "感想を送る" }).click();
   const sheet = page.getByRole("dialog", { name: "感想を送る" });
   await sheet.getByRole("radio", { name: "こうしたい" }).check();
   await sheet.getByLabel("くわしく").fill("書きかけの言葉");
-  await sheet.getByRole("button", { name: "閉じる" }).click();
+  await sheet.getByRole("button", { name: "閉じる", exact: true }).click();
 
   await page.goto("/teams");
-  await page.goto("/me?open=trial");
   await page.getByRole("button", { name: "感想を送る" }).click();
   await expect(sheet.getByLabel("くわしく")).toHaveValue("書きかけの言葉");
   await expect(sheet.getByRole("radio", { name: "こうしたい" })).toBeChecked();
 });
 
-test("改善点は投稿にも他の画面にも出ず、入口は履歴と設定にだけある", async ({ page }) => {
+test("改善点は投稿にも他の画面にも出ず、入口は右上の1つだけ", async ({ page }) => {
   await enter(page);
   const secret = `改善の本文 ${test.info().testId}`;
   const response = await page.request.post("/api/feedback", { data: { kind: "こうしたい", body: secret, path: "/" } });
@@ -250,9 +252,10 @@ test("改善点は投稿にも他の画面にも出ず、入口は履歴と設�
     await page.goto(path);
     await expect(page.getByText(secret), path).toHaveCount(0);
   }
-  // 入口は「履歴と設定」の中にだけある
+  // 入口は右上に浮かぶ1つだけ。「履歴と設定」の中には置かない
   await page.goto("/me?open=trial");
-  await expect(page.getByRole("button", { name: "感想を送る" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "感想を送る" })).toHaveCount(1);
+  await expect(page.locator(".feedback-fab")).toBeVisible();
 });
 
 test("改善点は合言葉がないと送れず、同じ端末の連打を止める", async ({ page, playwright }) => {
@@ -286,8 +289,8 @@ test.describe("見た目を選んでいない生徒", () => {
     // 注意は1か所だけ。窓の中に同じ注意を重ねて出さない
     await expect(page.locator(".promise")).toHaveCount(0);
     await card.getByRole("button", { name: "わかった" }).click();
-    await expect(page.getByRole("button", { name: "感想を送る" })).toHaveCount(0);
-    await page.goto("/me?open=trial");
-    await expect(page.getByRole("button", { name: "感想を送る" })).toBeVisible();
+    // 閉じた直後に、右上の感想のアイコンが弾んで場所を教える
+    await expect(page.locator(".feedback-fab")).toHaveAttribute("data-bounce", "true");
+    await expect(page.getByRole("button", { name: "感想を送る" })).toBeInViewport({ ratio: 1 });
   });
 });

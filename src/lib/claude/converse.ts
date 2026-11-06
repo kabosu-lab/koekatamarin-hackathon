@@ -1,7 +1,7 @@
 import { assessWithoutClaude } from "../safety";
 import type { DeliverLevel } from "../send-sound";
-import { isTrialMode } from "../trial";
-import { companionSystemPrompt, refusalReply, trialCompanionSystemPrompt } from "./persona";
+import { collectsFeedback, isTrialMode } from "../trial";
+import { companionSystemPrompt, refusalReply, trialCompanionSystemPrompt, trialFeedbackRules } from "./persona";
 import type { ChatMessage, ClaudeClient } from "./types";
 
 const MAX_REPLY_TOKENS = 4000;
@@ -13,6 +13,11 @@ export type ConverseResult = {
   ready: boolean;
   /** とどけるの光の段。0＝光らない、1＝何があったか、2＝どうしたか・どうなったか、3＝誰の役に立つかまで */
   level: ReadyLevel;
+  /**
+   * パートナーがアプリへの感想を「作っている人に届けてもいい？」と聞いた（`[[感想]]` の印）。
+   * 試用版で感想を集めているときだけ付く（聞いていないときは付けない）。保存は、本人が次にいいと言ったときに画面がする
+   */
+  feedback?: true;
 };
 
 /** 段の型は、画面の音と光（send-sound.ts）と同じものを使う */
@@ -34,6 +39,15 @@ export function splitReady(text: string): { reply: string; ready: boolean; level
   return { reply: withSources(text.replace(READY_MARKS, "")).trim(), ready: level > 0, level: level as ReadyLevel };
 }
 
+/** アプリへの感想を届けてよいか聞いた印。画面には出さない */
+const FEEDBACK_MARKS = /\n?\[\[感想\]\]/g;
+
+/** 返事から感想の印を取り除き、印があったかを返す */
+export function splitFeedback(text: string): { text: string; feedback: boolean } {
+  const feedback = /\[\[感想\]\]/.test(text);
+  return { text: text.replace(FEEDBACK_MARKS, ""), feedback };
+}
+
 /** 調べもの（0-1s）の出典の印 [[出典:題|URL]] を、印のまま見せず「出典：題 URL」の行にする */
 const SOURCE_MARKS = /\n?\[\[出典:([^|\]]*)\|([^\]]*)\]\]/g;
 export function withSources(text: string): string {
@@ -52,7 +66,12 @@ export async function converse(
   userText: string,
   memory: string = "",
 ): Promise<ConverseResult> {
-  const prompt = isTrialMode() ? trialCompanionSystemPrompt : companionSystemPrompt;
+  const asksFeedback = collectsFeedback();
+  const prompt = isTrialMode()
+    ? asksFeedback
+      ? `${trialCompanionSystemPrompt}\n\n${trialFeedbackRules}`
+      : trialCompanionSystemPrompt
+    : companionSystemPrompt;
   const { text, refused } = await claude.complete({
     task: "converse",
     system: memory ? `${prompt}\n\n${memory}` : prompt,
@@ -60,11 +79,13 @@ export async function converse(
     maxTokens: MAX_REPLY_TOKENS,
   });
 
-  const { reply, level } = splitReady(text);
+  // 感想の印は、試用でないときも画面に出さない
+  const marked = splitFeedback(text);
+  const { reply, level } = splitReady(marked.text);
   if (refused || reply === "") {
     return { reply: refusalReply, refused, ready: false, level: 0 };
   }
-  // 命や安全に関わるはっきりした言葉があれば、パートナーが印を付けても光らせない
+  // 命や安全に関わるはっきりした言葉があれば、パートナーが印を付けても光らせず、感想も預からない
   if (assessWithoutClaude(userText).concern) return { reply, refused: false, ready: false, level: 0 };
-  return { reply, refused: false, ready: level > 0, level };
+  return { reply, refused: false, ready: level > 0, level, ...(asksFeedback && marked.feedback ? { feedback: true as const } : {}) };
 }

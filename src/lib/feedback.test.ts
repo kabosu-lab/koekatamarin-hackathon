@@ -13,7 +13,25 @@ describe("改善点の受け取り", () => {
   it("種類だけでも送れて、知らない種類や長すぎる本文は受け取らない", () => {
     expect(parseFeedback({ kind: "よかった" })).toEqual({ kind: "よかった", body: "", path: "不明", screenWidth: null });
     expect(parseFeedback({ kind: "違う" })).toBeNull();
-    expect(parseFeedback({ body: "本文だけ" })).toBeNull();
+    expect(parseFeedback(null)).toBeNull();
+  });
+
+  it("種類は選ばなくても、本文があれば送れる。どちらもなければ受け取らない", () => {
+    expect(parseFeedback({ body: "本文だけ" })).toMatchObject({ kind: "感想", body: "本文だけ" });
+    expect(parseFeedback({ kind: "", body: "本文だけ" })).toMatchObject({ kind: "感想" });
+    expect(parseFeedback({ body: "  " })).toBeNull();
+    expect(parseFeedback({})).toBeNull();
+    expect(parseFeedback({ kind: "違う", body: "本文" })).toBeNull();
+  });
+
+  it("話す画面で預かった本文は「話の中で」として分ける。本文がなければ受け取らない", () => {
+    expect(parseFeedback({ body: "ボタンが小さい", from: "talk" })).toMatchObject({ kind: "話の中で", body: "ボタンが小さい" });
+    expect(parseFeedback({ body: "", from: "talk" })).toBeNull();
+    // 名前や人物の欄は受け取っても残さない
+    expect(parseFeedback({ body: "本文", name: "青木", personId: "p-1" })).toEqual({ kind: "感想", body: "本文", path: "不明", screenWidth: null });
+  });
+
+  it("本文の形と長さを確かめる", () => {
     expect(parseFeedback(null)).toBeNull();
     expect(parseFeedback({ kind: "動かない", body: 1 })).toBeNull();
     expect(parseFeedback({ kind: "動かない", body: "あ".repeat(1000) })?.body).toHaveLength(1000);

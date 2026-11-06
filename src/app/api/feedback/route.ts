@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { cookies } from "next/headers";
 import { getDatabase } from "@/lib/db";
 import { createFeedbackLimiter, parseFeedback, saveFeedback } from "@/lib/feedback";
-import { isTrialMode } from "@/lib/trial";
+import { collectsFeedback } from "@/lib/trial";
 
 const DEVICE_COOKIE = "koekata_feedback_device";
 const MAX_REQUEST_LENGTH = 16_000;
@@ -10,7 +10,8 @@ const allow = createFeedbackLimiter();
 
 /** 試用の改善点を受け取る。合言葉は入口（src/proxy.ts）で確かめ済み。人物は読まない。 */
 export async function POST(request: Request) {
-  if (!isTrialMode()) return Response.json({ error: "見つかりません" }, { status: 404 });
+  // 試用で感想を集めているときだけ（審査員用・本番・みんな用では受け取らない）
+  if (!collectsFeedback()) return Response.json({ error: "見つかりません" }, { status: 404 });
 
   const store = await cookies();
   const device = store.get(DEVICE_COOKIE)?.value ?? null;
@@ -27,7 +28,7 @@ export async function POST(request: Request) {
     // 下で 400 にする
   }
   const parsed = parseFeedback(input);
-  if (!parsed) return Response.json({ error: "種類を選んでください。本文は1000字までです" }, { status: 400 });
+  if (!parsed) return Response.json({ error: "種類を選ぶか、本文を書いてください。本文は1000字までです" }, { status: 400 });
 
   saveFeedback(getDatabase(), parsed, new Date());
   return Response.json({ ok: true });

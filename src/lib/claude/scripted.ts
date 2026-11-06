@@ -1,4 +1,4 @@
-import { openingLines } from "./persona";
+import { FEEDBACK_MARK, openingLines } from "./persona";
 import type { ClaudeClient } from "./types";
 
 /** 段つきの印。パートナーの指示の決まり（`[[とどけられる:1]]`〜`[[とどけられる:3]]`）と同じ形 */
@@ -11,6 +11,18 @@ const replies: Record<(typeof openingLines)[number], string> = {
   あんた何ができるん: "話聞くんと、もやもやを言葉にするんが得意やで。今なんかある？",
   私は嫌やわ: "そっか、嫌かあ。無理に使わんでええよ。どのへんが嫌やった？",
 };
+
+/**
+ * 試用版で感想を集めているときの例（0-2h）。アプリへの感想が出たら、作っている人に届けてよいか聞いて印を付ける。
+ * 聞いたあとの返事には短くお礼だけ言う（届けるかは画面が本人の返事で決める）。
+ */
+function feedbackReply(spoken: string, previous: string): string | null {
+  if (/このアプリ|こえかた/.test(spoken) && /使いにく|分かりにく|わかりにく|動かない|してほしい|欲しい|ほしい|よかった|いい/.test(spoken)) {
+    return `教えてくれてありがとう。それ、作っている人に届けてもいい？ 名前は届かないよ。\n${FEEDBACK_MARK}`;
+  }
+  if (/作っている人に届けてもいい/.test(previous)) return "わかった、ありがとう！";
+  return null;
+}
 
 /** キーなしで見どころを通すための架空の例。話した本人が自分のコツに気づく流れ。 */
 function storyReply(spoken: string, talk: string): string | null {
@@ -199,7 +211,7 @@ function scriptedAvatarPick() {
 export function createScriptedClaude(): ClaudeClient {
   return {
     mode: "scripted",
-    async complete({ task, messages, jsonSchema }) {
+    async complete({ task, system, messages, jsonSchema }) {
       if (task === "title_suggest") return { text: JSON.stringify({ titles: ["台本の相談役", "台本の師匠", "台本の達人"] }), refused: false };
       if (task === "avatar_pick") return { text: JSON.stringify(scriptedAvatarPick()), refused: false };
       if (task === "goal_check") return { text: JSON.stringify(scriptedGoalCheck(messages[0].content as string)), refused: false };
@@ -219,7 +231,7 @@ export function createScriptedClaude(): ClaudeClient {
 
       const last = messages.at(-1)?.content.trim() ?? "";
       const talk = messages.filter((message) => message.role === "user").map((message) => String(message.content)).join("\n");
-      const text = storyReply(last, talk) ?? (replies as Record<string, string>)[last] ?? fallbackReply;
+      const text = (system.includes(FEEDBACK_MARK) ? feedbackReply(last, messages.at(-2)?.content ?? "") : null) ?? storyReply(last, talk) ?? (replies as Record<string, string>)[last] ?? fallbackReply;
       return { text, refused: false };
     },
   };
