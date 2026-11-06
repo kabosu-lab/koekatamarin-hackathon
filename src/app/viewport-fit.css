@@ -1,0 +1,27 @@
+/*
+ * キーボードが開いている間の形（0-2e）。ViewportFit が html に data-keyboard と --vvh（見えている高さ）を入れる。
+ * どの順で読まれても retro.css の 100dvh に勝つよう、data-keyboard の分だけ詳しく書く。
+ */
+
+/* 話す画面・みんな：本体を見えている高さに縮め、入力欄をキーボードのすぐ上に置く。窓は低くなってよい */
+html[data-keyboard="open"]:not([data-embed]) body:has(.retro-home) {
+  height: var(--vvh);
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* ホイールとボタン、下の印は、打っている間は畳む（Enter で送れる）。閉じると戻る */
+html[data-keyboard="open"] .talk.device :is(.device-controls, .swipe-mark) {
+  display: none;
+}
+
+/* 下からせり上がる欄（とどけるのシート・みんなの返信・感想）も、キーボードの上に収める */
+html[data-keyboard="open"] :is(.bottom-sheet, .minna-reply-layer) {
+  top: var(--vv-top, 0px);
+  bottom: auto;
+  height: var(--vvh);
+}
+
+html[data-keyboard="open"] .bottom-sheet .bottom-sheet-panel {
+  max-height: calc(var(--vvh) * 0.92);
+}
