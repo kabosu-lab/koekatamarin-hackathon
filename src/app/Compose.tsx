@@ -2,7 +2,7 @@
 
 import type { TeamsDelivery } from "@/lib/destination/teams-bridge";
 import { Icon } from "./Icon";
-import { type KeyboardEvent, useLayoutEffect, useRef, useState } from "react";
+import { Fragment, type KeyboardEvent, useLayoutEffect, useRef, useState } from "react";
 import type { Draft, Review } from "@/lib/claude/compose";
 import type { AttachmentNotice, AttachmentNoticeKind, AttachmentView } from "@/lib/attachment";
 import type { ChannelView, PersonView, PostScope } from "@/lib/destination/types";
@@ -104,6 +104,16 @@ export function Compose({
   }, [text]);
 
   const channel = channels.find((c) => c.id === channelId) ?? channels[0];
+  // 0-2k：送り先を誰が見るのかを、数と一文で見せる。肩書きが学年から始まる人は生徒（ダミーの決まり）
+  const isStudent = (label: string) => /^[0-9０-９]年/.test(label);
+  const staffCount = people.filter((person) => !isStudent(person.label)).length + (isStudent(viewer.label) ? 0 : 1);
+  const studentCount = people.filter((person) => isStudent(person.label)).length + (isStudent(viewer.label) ? 1 : 0);
+  const audienceLine =
+    scope !== "everyone" || !channel
+      ? null
+      : channel.audience === "staff"
+        ? `${channel.name}：先生 ${staffCount}人が見ます。生徒には見えません`
+        : `${channel.name}：先生 ${staffCount}人と生徒 ${studentCount}人が見ます`;
   const checked = text.trim() === reviewedText.trim();
   const blocked = checked && review.verdict === "block";
   const missingPerson = scope === "person" && scopePersonId === "";
@@ -254,7 +264,16 @@ export function Compose({
       <ChipGroup
         label="送り先のチャネル"
         value={channelId}
-        options={channels.map((c) => ({ value: c.id, label: c.name }))}
+        options={[...channels]
+          .sort((a, b) => Number(a.audience === "everyone") - Number(b.audience === "everyone"))
+          .map((c) => ({
+            value: c.id,
+            label: c.name,
+            // 先生だけの段と、生徒も見る段に分ける。生徒が使うときは、先生だけのチャネルはもともと出てこない
+            group: c.audience === "staff" ? "先生だけ" : "生徒も見る",
+            mark: c.audience === "staff" ? "🔒" : "👥",
+            count: c.audience === "staff" ? staffCount : staffCount + studentCount,
+          }))}
         onChange={setChannelId}
       />
 
@@ -286,6 +305,11 @@ export function Compose({
         </p>
       )}
 
+      {audienceLine && (
+        <p className="compose-audience" role="status">
+          {audienceLine}
+        </p>
+      )}
       <div className="compose-actions compose-sheet-actions">
         <button type="button" className="secondary" disabled={busy} onClick={onCancel}>
           <Icon name="cancel" />
@@ -309,7 +333,8 @@ function ChipGroup({
 }: {
   label: string;
   value: string;
-  options: { value: string; label: string }[];
+  /** group：段の見出し（同じ見出しの続きは1つの段にまとめる）。mark と count：札の印と人数 */
+  options: { value: string; label: string; group?: string; mark?: string; count?: number }[];
   onChange(value: string): void;
 }) {
   function move(event: KeyboardEvent<HTMLDivElement>) {
@@ -335,18 +360,31 @@ function ChipGroup({
         {options.map((option, index) => {
           const checked = option.value === value;
           const focusable = checked || (index === 0 && !options.some((o) => o.value === value));
+          const heading = option.group && option.group !== options[index - 1]?.group ? option.group : null;
           return (
+            <Fragment key={option.value}>
+            {heading && (
+              <span className="compose-chip-group" aria-hidden="true">
+                {heading}
+              </span>
+            )}
             <button
               type="button"
               role="radio"
               aria-checked={checked}
               tabIndex={focusable ? 0 : -1}
               className="compose-chip"
-              key={option.value}
               onClick={() => onChange(option.value)}
             >
+              {option.mark && (
+                <span className="compose-chip-mark" aria-hidden="true">
+                  {option.mark}
+                </span>
+              )}
               {option.label}
+              {option.count !== undefined && <span className="compose-chip-count">（{option.count}人）</span>}
             </button>
+            </Fragment>
           );
         })}
       </div>

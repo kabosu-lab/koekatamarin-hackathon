@@ -123,7 +123,9 @@ test("送り先と見える範囲は札で選べ、矢印キーでも動かせ�
   const second = radios.nth(1);
   await second.click();
   await expect(second).toHaveAttribute("aria-checked", "true");
-  await expect(page.locator(".preview-title")).toContainText((await second.textContent()) ?? "");
+  // 札には印と人数も付くので、チャネルの名前の部分だけを比べる
+  const name = await second.evaluate((element) => Array.from(element.childNodes).filter((node) => node.nodeType === Node.TEXT_NODE).map((node) => node.textContent).join("").trim());
+  await expect(page.locator(".preview-title")).toContainText(name);
 
   const scope = page.getByRole("radiogroup", { name: "見える範囲" });
   await expect(scope.getByRole("radio", { name: "チャネルのみんな" })).toHaveAttribute("aria-checked", "true");
@@ -182,4 +184,19 @@ test("下書きを作れないときも、話した言葉は残る", async ({ pa
   await page.getByRole("button", { name: "とどける" }).click();
   await expect(page.locator(".notice")).toContainText("もう一度押して");
   await expect(page.getByRole("log").locator(".bubble.user")).toContainText("大事な話");
+});
+
+test("0-2k：送り先は「先生だけ」と「生徒も見る」に分かれ、送る前に誰が見るかを一文で出す", async ({ page }) => {
+  await page.goto("/");
+  await say(page, "送り先の見え方を確かめる");
+  await page.getByRole("button", { name: "とどける" }).click();
+  const channels = page.getByRole("radiogroup", { name: "送り先のチャネル" });
+  await expect(channels.getByRole("radio").first()).toBeVisible();
+  await expect(channels).toContainText("先生だけ");
+  await expect(channels).toContainText("生徒も見る");
+  await channels.getByRole("radio", { name: /職員室/ }).click();
+  await expect(page.locator(".compose-audience")).toContainText("職員室：先生");
+  await expect(page.locator(".compose-audience")).toContainText("生徒には見えません");
+  await channels.getByRole("radio", { name: /資格の勉強会/ }).click();
+  await expect(page.locator(".compose-audience")).toContainText(/先生 \d+人と生徒 \d+人が見ます/);
 });
