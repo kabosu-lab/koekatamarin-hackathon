@@ -145,7 +145,7 @@ export function SoFar({
           </span>
         </button>
       </section>
-      <SoFarStory open={open} onClose={() => setOpen(false)} story={story} rewards={rewards} />
+      <SoFarStory open={open} onClose={() => setOpen(false)} story={story} rewards={rewards} personId={personId} />
     </>
   );
 }
