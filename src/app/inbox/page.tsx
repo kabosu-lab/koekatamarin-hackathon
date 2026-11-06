@@ -4,7 +4,6 @@ import { getViewer } from "@/lib/current-person";
 import { getDatabase } from "@/lib/db";
 import { getDestination } from "@/lib/destination/current";
 import { syncFromTeamsIfStale } from "@/lib/destination/teams-bridge";
-import { countContributions } from "@/lib/avatar";
 import { listInbox, listPassCandidates } from "@/lib/inbox";
 import { listKnowledgeTasks } from "@/lib/knowledge";
 import { listKohoRequests } from "@/lib/koho";
@@ -33,13 +32,10 @@ export default async function InboxPage() {
     db,
     replies.map((reply) => reply.replyId),
   );
-  const { goals, assists } = countContributions(db, viewer.id);
 
   return (
-    <PageShell back={{ href: "/minna", label: "みんな" }} title="受信箱" lead="話すだけで返せます。詳しくないことは、詳しい人につなげます。">
-      <p className="inbox-counts">
-        解決 {goals}・つないだ {assists}
-      </p>
+    // 0-2q(5)：「解決・つないだ」の数は「これまで」の帯にあるので、ここには出さない。広い画面でも1列
+    <PageShell className="inbox-page" back={{ href: "/minna", label: "みんな" }} title="受信箱" lead="話すだけで返せます。詳しくないことは、詳しい人につなげます。">
 
       {listKohoRequests(db, viewer.id).map((request) => (
         <section className="card" aria-label="広報への紹介の確認" key={request.postId}>

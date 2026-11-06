@@ -32,7 +32,7 @@ import { GiftEggs } from "./GiftEggs";
 import { listCompanions, listGiftEggs, syncGiftEggs } from "@/lib/gift-eggs";
 import { RibbonMoment } from "../RibbonMoment";
 import { Ribbons } from "./Ribbons";
-import { listNewRibbons, listTrophyShelves, syncRibbons } from "@/lib/ribbons";
+import { listNewRibbons, listTrophyShelves, syncRibbonsOnOpen } from "@/lib/ribbons";
 import { showsRewards } from "@/lib/rewards-view";
 import { ArtRefresher, AvatarFromPhoto, AvatarQuiz, MemoryList, ProfileEditor, ThanksForm } from "./MeActions";
 
@@ -59,7 +59,7 @@ export default async function MePage({ searchParams }: { searchParams: Promise<{
   const appearance = readAppearance((name) => store.get(name)?.value);
   const db = getDatabase();
   // 隠している人にも裏で集まる
-  syncRibbons(db, viewer.id, new Date());
+  syncRibbonsOnOpen(db, viewer.id, new Date());
   syncGiftEggs(db, viewer.id, new Date());
   const rewards = showsRewards(appearance);
   const photos = createDummyPhotos();

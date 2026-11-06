@@ -3319,3 +3319,21 @@ html[data-avatar="hide"] .burst-speaker {
   text-decoration: none;
   overflow-wrap: anywhere;
 }
+
+/* ---- 0-2q(5)：受信箱 ---- */
+
+/* 届いた返事の名前は「野田／翔さ／ん」と折らない（本文は折れてよい） */
+.inbox-replies a > strong {
+  overflow-wrap: normal;
+  word-break: keep-all;
+}
+
+/* 広い画面でも1列にまとめ、空のときの一言が右に浮かないようにする */
+@media (min-width: 768px) {
+  main.page-shell.inbox-page {
+    display: flex;
+    flex-direction: column;
+    max-width: 40rem;
+    align-items: stretch;
+  }
+}

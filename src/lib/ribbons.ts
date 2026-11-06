@@ -96,6 +96,20 @@ export function syncRibbons(db: DatabaseSync, personId: string, now: Date, event
   }
 }
 
+const openedKey = (personId: string) => `ribbons-opened:${personId}`;
+
+/**
+ * 画面を開いたときの同期（0-2q(1)）。その人が初めて開いたときに、もう満たしていた分（ダミーの投稿など）は
+ * 記録だけして知らせない。知らせるのは、開いてから本人がしたこと（と、それに届いた返事）で満たしたものだけ。
+ */
+export function syncRibbonsOnOpen(db: DatabaseSync, personId: string, now: Date): void {
+  const opened = db.prepare("SELECT 1 FROM app_meta WHERE key = ?").get(openedKey(personId)) !== undefined;
+  syncRibbons(db, personId, now);
+  if (opened) return;
+  db.prepare("UPDATE person_ribbons SET seen_at = ? WHERE person_id = ? AND seen_at IS NULL").run(now.toISOString(), personId);
+  db.prepare("INSERT OR IGNORE INTO app_meta (key, value) VALUES (?, ?)").run(openedKey(personId), now.toISOString());
+}
+
 type Row = { ribbon_id: string; is_public: number; story: string | null; story_at: string | null };
 
 function toView(trophy: TrophyDefinition, row: Row): RibbonView {

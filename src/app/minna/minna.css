@@ -1420,3 +1420,12 @@ html[data-theme="retro"] main .minna-today-step,
     word-break: keep-all;
   }
 }
+
+/* ---- 0-2q：朝の画面の確認で見つかったもの ---- */
+
+/* (4) レトロの帯の余白（html[data-theme="retro"] main .minna-band）が、メガホンの分の右の空きを消していた。
+   メガホン（右 8px・44px）の左で「桜を開く」が終わるよう、同じ強さで右を空ける */
+html[data-theme="retro"] main .minna-band[data-event],
+main .minna-band[data-event] {
+  padding-right: 60px;
+}

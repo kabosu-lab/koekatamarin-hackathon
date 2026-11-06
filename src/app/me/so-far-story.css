@@ -476,3 +476,15 @@
     animation: none !important;
   }
 }
+
+/* ---- 0-2q(7)：0 の項目の薄い下地が、1 のある棒より目立たないように ----
+   人の役に立った3本の区切りは、棒の柱ではなく下の名前の札だけに付ける（まだ 0 でも縦長の柱を作らない） */
+.so-far-bar[data-helped] {
+  background: none;
+}
+
+.so-far-bar[data-helped] small {
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}

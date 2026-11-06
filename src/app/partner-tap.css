@@ -238,3 +238,10 @@
     opacity: 0.7;
   }
 }
+
+/* 0-2q(10)：最初の注意カードが出ている間は、問いかけの吹き出しを描かない。カードが消えると、ふだんどおり根元からばねで出る */
+.partner-greeting[data-waiting="true"] .partner-bubble,
+.partner-greeting[data-waiting="true"] .partner-tail {
+  visibility: hidden;
+  animation: none;
+}

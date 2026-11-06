@@ -156,3 +156,51 @@ html .me-so-far button.so-far-band:active {
     transform: none;
   }
 }
+
+/* ---- 0-2q(9)：「これまで」の帯 ----
+   狭い欄（iPad 横の左の欄など）では、1項目を「数の下に名前」の小さな札にして、3つずつ2段に収める（縦長に折らない） */
+.me-so-far {
+  container: so-far / inline-size;
+}
+
+@container so-far (max-width: 340px) {
+  .so-far-row {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 2px 4px;
+    font-size: 0.72rem;
+  }
+
+  .so-far-item {
+    display: grid;
+    justify-items: center;
+    line-height: 1.25;
+  }
+
+  .so-far-item .so-far-num {
+    order: -1;
+    font-size: 1.7em;
+  }
+
+  .so-far-up {
+    position: absolute;
+    top: 0;
+    right: 0;
+    margin: 0;
+  }
+}
+
+/* iPhone など縦に長い画面で、帯の下に大きな空きを残さない：窓の下の中身を上下に散らし、帯の文字も少し大きく */
+.device-window > .home:has(> .me-so-far) {
+  min-height: 100%;
+  box-sizing: border-box;
+  justify-content: space-evenly;
+}
+
+@media (min-height: 760px) {
+  @container so-far (min-width: 341px) {
+    .so-far-row {
+      font-size: clamp(0.95rem, 2.1dvh, 1.15rem);
+    }
+  }
+}

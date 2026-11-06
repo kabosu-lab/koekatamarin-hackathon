@@ -3,6 +3,7 @@
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import type { PartnerLineKind } from "@/lib/partner-lines";
 import type { TapReaction } from "./partner-tap";
+import { useFirstCardClear } from "./use-first-card-clear";
 import "./partner-tap.css";
 
 /** 1字を出す間隔（設計書 §2-1-A：35ms/字の等速。30字で約1秒） */
@@ -19,10 +20,15 @@ function prefersReducedMotion(): boolean {
 }
 
 /** 決まった文を等速で1字ずつ出す。文が替わると最初から。減らす設定では一度に出す */
-function useTypewriter(text: string, delayMs: number) {
+function useTypewriter(text: string, delayMs: number, ready = true) {
   const [shown, setShown] = useState(0);
   useEffect(() => {
     const chars = Array.from(text);
+    // 0-2q(10)：最初の注意カードが出ている間は、まだ1字も出さない
+    if (!ready) {
+      setShown(0);
+      return;
+    }
     if (prefersReducedMotion()) {
       setShown(chars.length);
       return;
@@ -41,7 +47,7 @@ function useTypewriter(text: string, delayMs: number) {
       clearTimeout(wait);
       if (timer) clearInterval(timer);
     };
-  }, [text, delayMs]);
+  }, [text, delayMs, ready]);
   return shown;
 }
 
@@ -83,7 +89,9 @@ export function PartnerGreeting({
   children: ReactNode;
 }) {
   const chars = Array.from(text);
-  const shown = useTypewriter(text, delayMs);
+  // 0-2q(10)：最初の注意カードが消えてから、delayMs 後に1字目（設計書 §2-5：カード消える → 300ms → 吹き出し）
+  const ready = useFirstCardClear();
+  const shown = useTypewriter(text, delayMs, ready);
   const typing = shown < chars.length;
   const typedRef = useRef(onTyped);
   useEffect(() => {
@@ -97,7 +105,7 @@ export function PartnerGreeting({
   const react = reaction ?? (typing && shown > 0 ? "talking" : undefined);
 
   return (
-    <div className="partner-greeting" data-kind={kind}>
+    <div className="partner-greeting" data-kind={kind} data-waiting={ready ? undefined : "true"}>
       <span className="visually-hidden" aria-live="polite">
         {text}
       </span>
