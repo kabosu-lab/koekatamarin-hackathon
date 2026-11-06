@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { createAnthropicClaude, MODEL, type MessagesApi } from "./anthropic";
 import { converse, splitReady } from "./converse";
 import { createClaude } from "./index";
-import { companionSystemPrompt, openingLines, READY_MARK, refusalReply, trialCompanionSystemPrompt } from "./persona";
+import { companionSystemPrompt, openingLines, READY_MARK, readyMark, refusalReply, trialCompanionSystemPrompt } from "./persona";
 import { createScriptedClaude } from "./scripted";
 
 function stubApi(response: { content: unknown[]; stop_reason: string }) {
@@ -139,9 +139,15 @@ ${READY_MARK}`)).toEqual({ reply: "いいね、それ届けてみよう。", rea
     expect(splitReady(READY_MARK).reply).toBe("");
   });
 
-  it("パートナーの指示に印の決まりがあり、試用の指示にも残る", () => {
-    expect(companionSystemPrompt).toContain(READY_MARK);
-    expect(trialCompanionSystemPrompt).toContain(READY_MARK);
+  it("パートナーの指示に段つきの印の決まりがあり、試用の指示にも残る", () => {
+    for (const prompt of [companionSystemPrompt, trialCompanionSystemPrompt]) {
+      expect(prompt).toContain(readyMark(1));
+      expect(prompt).toContain(readyMark(2));
+      expect(prompt).toContain(readyMark(3));
+      expect(prompt).toContain("前より低い段にはしない");
+      expect(prompt).toContain("命や安全に関わる話のときは付けない");
+    }
+    expect(readyMark(2)).toBe("[[とどけられる:2]]");
   });
 
   it("印だけの返事は、答えられなかったときの言葉にして、光らせない", async () => {

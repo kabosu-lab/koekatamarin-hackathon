@@ -9,6 +9,13 @@ import { assessSafety, assessWithoutClaude, createSafetyNotice, type SafetyNotic
 
 export type { SafetyNoticeBody };
 
+/** 話している人が生徒か先生か。生徒には勉強の答えをすぐ言わないために、パートナーに渡す。名前は渡さない */
+export function speakerForPrompt(db: DatabaseSync, viewerId: string): string {
+  const row = db.prepare("SELECT role FROM people WHERE id = ?").get(viewerId) as { role?: string } | undefined;
+  if (!row?.role) return "";
+  return `話している人：${row.role === "student" ? "生徒" : "先生"}`;
+}
+
 /** パートナーの返事と、命や安全の確認を同時に進める。確認に失敗しても会話は止めず、はっきりした言葉は見逃さない。 */
 export async function handleTalk(
   claude: ClaudeClient,
@@ -23,7 +30,7 @@ export async function handleTalk(
       claude,
       input,
       parsed
-        ? [memoryForPrompt(db, getDestination(db), viewerId), goalsForPrompt(db, viewerId), schoolPostsForPrompt(getDestination(db), viewerId)]
+        ? [speakerForPrompt(db, viewerId), memoryForPrompt(db, getDestination(db), viewerId), goalsForPrompt(db, viewerId), schoolPostsForPrompt(getDestination(db), viewerId)]
             .filter(Boolean)
             .join("\n\n")
         : "",
