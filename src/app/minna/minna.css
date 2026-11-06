@@ -855,13 +855,6 @@ main a.minna-talk-link {
 
 /* ---- iPad の横向き・PC（0-1k(7)）：左に桜（大きいまま動かない）、右に投稿のスクロールの2列 ---- */
 
-/* 機器の形（縦長の本体）は話す画面のもの。みんなは横に広く使う */
-@media (min-width: 900px) and (min-height: 561px) {
-  .retro-home.minna-page {
-    width: min(100%, 1240px);
-  }
-}
-
 @container (min-width: 900px) {
   .minna-scroll {
     display: grid;
@@ -1294,6 +1287,7 @@ html[data-theme="retro"] main .minna-megaphone,
 
 .minna-today-foot {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 6px;
 }
@@ -1325,6 +1319,8 @@ html[data-theme="retro"] main .minna-today-step,
 
 .minna-today-done {
   margin-left: auto;
+  /* 細い列（横向きの3列の右）でも「みんなを見る」を折らない。入らなければ次の行へ回る */
+  white-space: nowrap;
   border-color: #1d1c19;
   background: #1d1c19;
   color: #fff;

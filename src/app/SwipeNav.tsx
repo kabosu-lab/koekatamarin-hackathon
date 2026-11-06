@@ -3,6 +3,8 @@
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { isDeep, SWIPE_HOME, SWIPE_SCREENS, swipeTarget } from "@/lib/swipe-nav";
+import { WIDE_QUERY } from "@/lib/wide";
+import { Peek, remember, screenOf } from "./swipe-peek";
 
 /**
  * 操作の途中の指の動きを、画面の移動にしない場所。
@@ -34,6 +36,8 @@ type Arrival = { from: "left" | "right"; ms: number; rest: number };
 
 const reducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 const page = () => document.querySelector<HTMLElement>("body > main, main");
+/** スワイプは狭い画面だけ（0-2y (3)）。広い画面は3列が並び、欄（iframe）の中の奥の画面は「戻る」で閉じる */
+const swipes = () => document.documentElement.dataset.embed !== "true" && !window.matchMedia(WIDE_QUERY).matches;
 
 /** 指を置いた所から外へ向かって、横にスクロールできる入れ物（カルーセル、チップの列）があるか */
 function insideSideScroller(target: Element | null): boolean {
@@ -107,6 +111,8 @@ export function SwipeNav() {
     }
     const main = page();
     if (!main || !arrival || (arrival.from !== "left" && arrival.from !== "right") || reducedMotion()) return;
+    // 指で払ったときは、チラ見せの姿がもう同じ位置まで来ている。重ねて動かさない（0-2z）
+    if (Number(arrival.rest) === 0) return;
     // 出ていった画面の残りの距離から、同じ時間・同じイージングで入ってくる（間を空けない）
     const rest = Math.min(1, Math.max(0, Number(arrival.rest) || 0));
     const ms = Math.min(MAX_MS, Math.max(MIN_MS, Number(arrival.ms) || MAX_MS));
@@ -125,8 +131,26 @@ export function SwipeNav() {
     let still = false;
     // 速さを出すための、直近2回の指の位置と時刻
     let recent: { x: number; t: number }[] = [];
+    // 0-2z：ドラッグ中の隣の画面のチラ見せ
+    let peek: Peek | null = null;
+
+    const dropPeek = () => {
+      peek?.remove();
+      peek = null;
+    };
+
+    /** 指の向きに見える隣の画面。向きが変わったら、反対の隣に替える */
+    const peekToward = (dx: number) => {
+      if (!main || dx === 0) return;
+      const target = swipeTarget(pathname, Math.sign(dx) * 1000, 0, false, deep);
+      const side = dx < 0 ? 1 : -1;
+      if (peek && peek.target === target && peek.side === side) return;
+      dropPeek();
+      if (target) peek = new Peek(target, side, main);
+    };
 
     const reset = () => {
+      dropPeek();
       delete document.documentElement.dataset.swiping;
       if (main) {
         main.style.transition = "";
@@ -146,8 +170,8 @@ export function SwipeNav() {
       const blocked =
         event.touches.length !== 1 ||
         root.dataset.theme !== "retro" ||
-        // 広い画面の左右の欄（iframe）の中でホームへ移ると、欄の中が話す画面になってしまう
-        (deep && root.dataset.embed === "true") ||
+        // 広い画面と、その左右の欄（iframe）の中では移らない。欄の中でホームへ移ると、欄の中が話す画面になってしまう
+        !swipes() ||
         target?.closest(NO_SWIPE) ||
         (landscape && !deep && target?.closest(NO_SWIPE_LANDSCAPE)) ||
         insideSideScroller(target) ||
@@ -166,13 +190,21 @@ export function SwipeNav() {
       const dy = event.touches[0].clientY - start.y;
       if (!dragging) {
         if (Math.abs(dx) < LOCK_DISTANCE || Math.abs(dx) < Math.abs(dy) * 1.6) return;
-        main = page();
+        main = screenOf();
         if (!main) return;
         dragging = true;
+        // 今の姿を覚えておく（次にこの画面へ戻るときのチラ見せ）
+        remember(pathname, main);
         // 動かしている間は、窓の 3D の描画を止める（VoiceLump が見る）。指の動きに GPU を回す
         document.documentElement.dataset.swiping = "true";
         main.style.willChange = "transform";
         main.style.transition = "none";
+      }
+      // 0-2z：指に1対1で付いて動き、隣の画面がチラ見えする
+      peekToward(dx);
+      if (peek) {
+        peek.move(dx);
+        return;
       }
       // 指に付いて動く。遠くへ行くほど少し重くする
       const moved = Math.sign(dx) * Math.min(Math.abs(dx), 40 + Math.abs(dx) * 0.85);
@@ -190,6 +222,43 @@ export function SwipeNav() {
       const sideways = !landscape || deep;
       const forward = (sideways ? dx : touch.clientY - start.y) < 0;
       start = null;
+      if (peek && main && dragging) {
+        // 0-2z：離したら、ホイールと同じばねで吸い付く。届けば隣の画面へ、届かなければ元の位置へ
+        const [a, b] = recent.length >= 2 ? recent : [{ x: touch.clientX, t: 0 }, { x: touch.clientX, t: 1 }];
+        const velocity = (b.x - a.x) / Math.max(1, b.t - a.t);
+        const settling = peek;
+        const moving = main;
+        peek = null;
+        main = null;
+        dragging = false;
+        const finish = () => {
+          settling.remove();
+          delete document.documentElement.dataset.swiping;
+          if (moving.isConnected) {
+            moving.style.transform = "";
+            moving.style.transition = "";
+            moving.style.willChange = "";
+          }
+        };
+        if (!next || next !== settling.target) {
+          settling.settle(dx, velocity, 0, finish);
+          return;
+        }
+        saveArrival({ from: forward ? "right" : "left", ms: MAX_MS, rest: 0 });
+        router.push(next);
+        const path = next.split("?")[0];
+        const began = performance.now();
+        settling.settle(dx, velocity, forward ? -1 : 1, () => {
+          // 新しい画面に入れ替わってから、チラ見せの姿を外す（入れ替わる前に外すと、古い画面が一瞬見える）
+          const wait = () => {
+            if (location.pathname === path && !moving.isConnected) requestAnimationFrame(finish);
+            else if (performance.now() - began > 3000) finish();
+            else setTimeout(wait, 30);
+          };
+          wait();
+        });
+        return;
+      }
       if (!next) {
         // 届かなければ、ばねで1回だけ元の位置へ戻す
         if (main && dragging) {
@@ -230,7 +299,7 @@ export function SwipeNav() {
     // 部品からの「ホームへ戻して」（今日の3人の端の先へのめくり）。受けたら preventDefault で知らせる
     const onHomeRequest = (event: Event) => {
       const root = document.documentElement;
-      if (root.dataset.theme !== "retro" || root.dataset.embed === "true") return;
+      if (root.dataset.theme !== "retro" || !swipes()) return;
       event.preventDefault();
       const { forward, layer } = (event as CustomEvent<SwipeHomeRequest>).detail ?? { forward: true };
       const animate = !reducedMotion();

@@ -40,6 +40,7 @@ import { postFeedback } from "./FeedbackSheet";
 import { isFeedbackConsent } from "@/lib/feedback-consent";
 import { ClickWheel } from "./ClickWheel";
 import { VoiceLump } from "./VoiceLump";
+import { openScreenFromHome } from "./WidePanels";
 import type { NewsLine } from "@/lib/new-counts";
 import type { LumpShapeName } from "@/lib/lump-shapes";
 import type { TeamsDelivery } from "@/lib/destination/teams-bridge";
@@ -851,7 +852,7 @@ export function Talk({
     if (messages.length > 0) return;
     // 0-2v：新着の知らせは、押すとその画面へ（帯やバナーは別に出さない）
     if (line.kind === "news" && news) {
-      router.push(news.href);
+      openScreenFromHome(news.href, (href) => router.push(href));
       return;
     }
     const recent = [...recentLines, line.text].slice(-3);
@@ -1120,7 +1121,8 @@ export function Talk({
             items={newCounts ? WHEEL_CHIPS.map((chip) => ({ ...chip, badge: newCounts[chip.id as "inbox" | "today"] })) : WHEEL_CHIPS}
             onOpen={(item) => {
               const chip = WHEEL_CHIPS.find((candidate) => candidate.id === item.id);
-              if (chip && chip.id !== "home") router.push(chip.href);
+              // 0-2y：横向きの3列では、属する列の中で開く
+              if (chip && chip.id !== "home") openScreenFromHome(chip.href, (href) => router.push(href));
             }}
           />
           {lockedTalk.locked && (

@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { switchPerson } from "./helpers";
+import { openScreen, switchPerson } from "./helpers";
 
 test("下の階層の画面でも、左上の戻る印で、どこから来たかが分かる（下のタブはもうない）", async ({ page }) => {
   for (const path of ["/today", "/daily", "/inbox"]) {
@@ -316,9 +316,12 @@ for (const width of [768, 1280]) {
     const page = await (await browser.newContext({ viewport: { width, height: 900 } })).newPage();
     await page.goto("/");
     await switchPerson(page, "野田 翔（情報・ものづくり部顧問）");
-    await page.goto("/me?open=partner");
-    await expect(page.getByRole("region", { name: "トロフィー" })).toBeVisible();
-    expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0);
+    // 0-2y：1280 幅では、3列の左の列の中
+    const screen = await openScreen(page, "/me?open=partner");
+    await expect(screen.getByRole("region", { name: "トロフィー" })).toBeVisible();
+    for (const where of [page, screen]) {
+      expect(await where.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0);
+    }
     await page.context().close();
   });
 }

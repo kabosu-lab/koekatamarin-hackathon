@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
-import { switchPerson } from "./helpers";
+import { openScreen, switchPerson } from "./helpers";
 
 const TEACHER = "佐伯 みどり（国語・2年担任）";
 const OTHER = "野田 翔（情報・ものづくり部顧問）";
@@ -168,14 +168,15 @@ for (const viewport of [
     await page.setViewportSize(viewport);
     await page.goto("/");
     await switchPerson(page, "青木 ひより（2年）");
-    await page.goto("/inbox");
-    await expect(page.getByRole("heading", { name: "受信箱", level: 1 })).toBeVisible();
-    await expect(page.getByText(/解決 \d+・つないだ \d+/)).toHaveCount(0);
-    for (const name of await page.locator(".inbox-replies a > strong").all()) {
+    // 0-2y (6)：横向きでは、受信箱は3列の右の列の中
+    const screen = await openScreen(page, "/inbox");
+    await expect(screen.getByRole("heading", { name: "受信箱", level: 1 })).toBeVisible();
+    await expect(screen.getByText(/解決 \d+・つないだ \d+/)).toHaveCount(0);
+    for (const name of await screen.locator(".inbox-replies a > strong").all()) {
       const lineHeight = await name.evaluate((element) => parseFloat(getComputedStyle(element).lineHeight) || 24);
       expect((await name.boundingBox())!.height).toBeLessThan(lineHeight * 1.6);
     }
     // 中身は1列
-    await expect(page.locator("main.page-shell")).toHaveCSS("flex-direction", "column");
+    await expect(screen.locator("main.page-shell")).toHaveCSS("flex-direction", "column");
   });
 }

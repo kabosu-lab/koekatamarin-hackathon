@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { openScreen } from "./helpers";
 
 // 今日の3人のモーダル（その日はじめての「みんな」で出る）は、出したことにしておく。モーダルは e2e/minna.spec.ts で確かめる
 test.beforeEach(async ({ context }) => {
@@ -88,18 +89,19 @@ for (const viewport of [
 ]) {
   test(`履歴と設定のタイルは、スクロールなしで全部見える（${viewport.width}×${viewport.height}）`, async ({ page }) => {
     await page.setViewportSize(viewport);
-    await page.goto("/me");
+    // 0-2y：広い画面では、履歴と設定は3列の左の列の中
+    const screen = await openScreen(page, "/me");
     // トロフィーの小さな知らせは押すとコレクションへ移るので、押さずに Esc で閉じる
     const toast = page.locator(".trophy-toast");
     if (await toast.isVisible().catch(() => false)) await page.keyboard.press("Escape");
-    const tiles = page.getByRole("navigation", { name: "履歴と設定の項目" }).getByRole("link");
+    const tiles = screen.getByRole("navigation", { name: "履歴と設定の項目" }).getByRole("link");
     // 0-2b：6枚（3列×2段）と、その下の「これまで」の帯
     await expect(tiles).toHaveCount(6);
     for (const tile of await tiles.all()) await expect(tile).toBeInViewport({ ratio: 1 });
-    await expect(page.getByRole("region", { name: "これまで" })).toBeInViewport({ ratio: 1 });
+    await expect(screen.getByRole("region", { name: "これまで" })).toBeInViewport({ ratio: 1 });
     await tiles.filter({ hasText: "頑張りたいこと" }).click();
-    await expect(page.getByRole("region", { name: "頑張りたいこと" })).toBeVisible();
-    await page.getByRole("link", { name: "‹ 履歴と設定" }).click();
+    await expect(screen.getByRole("region", { name: "頑張りたいこと" })).toBeVisible();
+    await screen.getByRole("link", { name: "‹ 履歴と設定" }).click();
     await expect(tiles.first()).toBeVisible();
   });
 }

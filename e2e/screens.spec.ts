@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { isWideViewport, openScreen } from "./helpers";
 
 /**
  * 0-1q：すべての画面を iPhone の幅と iPad の縦・横で撮り、古い形が残っていないかを確かめる。
@@ -78,18 +79,19 @@ for (const viewport of VIEWPORTS) {
     test("奥の画面は同じ形：左上に戻る印が1つ、見出しが1つ、文は途中で切れない", async ({ page }) => {
       test.setTimeout(240_000);
       for (const path of SUB_SCREENS) {
-        await page.goto(path);
+        // 0-2y：広い画面では、奥の画面は3列のその列の中に開く。列の中を見る
+        const screen = await openScreen(page, path);
         await closeMoments(page);
-        await expect(page.locator("h1"), path).toHaveCount(1);
-        const back = page.locator(".back-link");
+        await expect(screen.locator("h1"), path).toHaveCount(1);
+        const back = screen.locator(".back-link");
         await expect(back, path).toHaveCount(1);
         await expect(back, path).toHaveText(/^‹ /);
         const box = await back.boundingBox();
         expect(box?.y, path).toBeLessThan(120);
         if (OWN_FRAME.includes(path)) continue;
-        await expect(page.locator("main.page-shell"), path).toHaveCount(1);
+        await expect(screen.locator("main.page-shell"), path).toHaveCount(1);
         // 文が途中で切れる箱がない（行の数で切る指定を使わない）
-        const clamped = await page.evaluate(() =>
+        const clamped = await screen.evaluate(() =>
           [...document.querySelectorAll("main *")]
             .filter((el) => {
               const style = getComputedStyle(el);
@@ -115,10 +117,11 @@ const FIT_VIEWPORTS = [
 for (const viewport of FIT_VIEWPORTS) {
   test(`履歴と設定は ${viewport.name}（${viewport.width}×${viewport.height}）でスクロールなしにタイル6枚と帯が見える`, async ({ page }) => {
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
-    await page.goto("/me");
+    // 0-2y：広い画面では、履歴と設定は左の列の中
+    const screen = await openScreen(page, "/me");
     await closeMoments(page);
-    await expect(page.locator(".me-tiles a")).toHaveCount(6);
-    const fit = await page.evaluate(() => {
+    await expect(screen.locator(".me-tiles a")).toHaveCount(6);
+    const fit = await screen.evaluate(() => {
       const body = document.querySelector(".device-body");
       const bottomOf = (selector: string) =>
         Math.max(...[...document.querySelectorAll(selector)].map((el) => el.getBoundingClientRect().bottom));
@@ -134,7 +137,8 @@ for (const viewport of FIT_VIEWPORTS) {
     expect(fit.inner, "中身の入れ物").toBeLessThanOrEqual(1);
     expect(fit.tiles, "タイル").toBeLessThanOrEqual(0);
     expect(fit.band, "帯").toBeLessThanOrEqual(0);
-    expect(fit.dots, "点").toBeLessThanOrEqual(0);
+    // 列の中では点を出さない（3列が並ぶので、同じ入口になる）
+    if (screen === page) expect(fit.dots, "点").toBeLessThanOrEqual(0);
     await page.screenshot({ path: test.info().outputPath(`fit-${viewport.width}x${viewport.height}-me.png`), animations: "disabled" });
   });
 }
@@ -171,19 +175,19 @@ for (const viewport of VIEWPORTS) {
     });
 
     test("(1)(5) 設定：「デモ用」の言葉がなく、カードは1列で、ボタンの言葉は1行で収まる", async ({ page }) => {
-      await page.goto("/me?open=settings");
+      const screen = await openScreen(page, "/me?open=settings");
       await closeMoments(page);
-      await expect(page.getByText("デモ用")).toHaveCount(0);
-      await expect(page.getByLabel("試す人を切り替える")).toBeVisible();
+      await expect(screen.getByText("デモ用")).toHaveCount(0);
+      await expect(screen.getByLabel("試す人を切り替える")).toBeVisible();
       // カードを細い2列に押し込まない：どのカードも窓の下の幅いっぱい
-      const widths = await page.locator(".device-window .home > .card, .device-window .home > section.card").evaluateAll((cards) =>
+      const widths = await screen.locator(".device-window .home > .card, .device-window .home > section.card").evaluateAll((cards) =>
         cards.map((card) => Math.round(card.getBoundingClientRect().width)),
       );
       expect(widths.length).toBeGreaterThan(2);
       expect(Math.max(...widths) - Math.min(...widths), widths.join(",")).toBeLessThanOrEqual(2);
-      const memory = page.getByRole("region", { name: /覚えていること/ }).first();
+      const memory = screen.getByRole("region", { name: /覚えていること/ }).first();
       if (await memory.count()) expect((await memory.boundingBox())!.width).toBeGreaterThanOrEqual(Math.max(...widths) - 2);
-      for (const button of await page.locator(".device-window .card .row > button").all()) {
+      for (const button of await screen.locator(".device-window .card .row > button").all()) {
         if (!(await button.isVisible())) continue;
         const text = await button.innerText();
         expect(await lineCount(button), text).toBe(1);
@@ -212,9 +216,9 @@ for (const viewport of VIEWPORTS) {
     });
 
     test("(4) 履歴と設定：タイルの名前は途中で折れない（広い画面では左の欄の中も）", async ({ page }) => {
-      await page.goto("/me");
+      const screen = await openScreen(page, "/me");
       await closeMoments(page);
-      const labels = page.locator(".me-tile-label");
+      const labels = screen.locator(".me-tile-label");
       await expect(labels).toHaveCount(6);
       for (const label of await labels.all()) {
         const text = await label.innerText();
@@ -223,7 +227,7 @@ for (const viewport of VIEWPORTS) {
         const tile = (await label.locator("xpath=..").boundingBox())!;
         expect(box.width, text).toBeLessThanOrEqual(tile.width + 1);
       }
-      if (viewport.width >= 1100) {
+      if (isWideViewport(page)) {
         await page.goto("/");
         const panel = page.frameLocator('iframe[title="履歴と設定"]').locator(".me-tile-label");
         await expect(panel).toHaveCount(6);
@@ -233,10 +237,11 @@ for (const viewport of VIEWPORTS) {
 
     test("(6) 自習室：景色1枚の中に、人数と曲の札とタイマーの帯が重なり、幅からはみ出さない", async ({ page }) => {
       // 0-2s で1画面に収めた。前の「3枚のカードを同じ幅に」は、景色1枚に重ねる形になった
-      await page.goto("/study/room");
-      const stage = (await page.locator("main.room-page > .room-stage").boundingBox())!;
+      // 0-2y：横向きでは3列の右の列の中
+      const screen = await openScreen(page, "/study/room");
+      const stage = (await screen.locator("main.room-page > .room-stage").boundingBox())!;
       for (const part of [".room-stage .study-count", ".room-music", ".room-band"]) {
-        const box = (await page.locator(part).boundingBox())!;
+        const box = (await screen.locator(part).boundingBox())!;
         expect(box.x, part).toBeGreaterThanOrEqual(stage.x - 0.5);
         expect(box.x + box.width, part).toBeLessThanOrEqual(stage.x + stage.width + 0.5);
       }
@@ -244,7 +249,7 @@ for (const viewport of VIEWPORTS) {
 
     test("(2)(7) みんな：春の見通しの吹き出しは説明の文に重ならず、下の帯の名前は「…」で切れない", async ({ page }) => {
       // 広い画面では、話す画面の右の欄の中の「みんな」を見る
-      const wide = viewport.width >= 1100;
+      const wide = isWideViewport(page);
       await page.goto(wide ? "/" : "/minna");
       const frame = wide ? page.frameLocator('iframe[title="みんな"]') : page;
       const card = frame.locator(".koekata-forecast-card");
@@ -262,7 +267,7 @@ for (const viewport of VIEWPORTS) {
     test("(9) 左右に欄が出ているときは、下のスワイプの印と点を出さない", async ({ page }) => {
       await page.goto("/");
       const mark = page.locator(".talk .swipe-mark");
-      if (viewport.width >= 1100) {
+      if (isWideViewport(page)) {
         await expect(page.frameLocator('iframe[title="みんな"]').getByRole("heading", { name: "みんな" })).toBeVisible();
         await expect(mark).toBeHidden();
       } else {
