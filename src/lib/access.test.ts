@@ -50,6 +50,13 @@ describe("入口の判断", () => {
     expect(decideGate({ ...base, pathname: "/api/health/x" })).toBe("unauthorized");
   });
 
+  it("ホーム画面に追加する設定とアイコンは、合言葉なしで読める（道が完全に同じときだけ）", () => {
+    for (const pathname of ["/manifest.webmanifest", "/icon1", "/apple-icon"]) {
+      expect(decideGate({ ...base, pathname })).toBe("pass");
+    }
+    expect(decideGate({ ...base, pathname: "/icon1/x" })).toBe("to_access");
+    expect(decideGate({ ...base, pathname: "/apple-icon.png" })).toBe("to_access");  });
+
   it("正しい cookie なら通し、違えば通さない", () => {
     expect(decideGate({ ...base, token: accessToken(CODE) })).toBe("pass");
     expect(decideGate({ ...base, token: CODE })).toBe("to_access");

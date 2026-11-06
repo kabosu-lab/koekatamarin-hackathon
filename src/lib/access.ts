@@ -32,9 +32,15 @@ export function accessCookieHeader(code: string): string {
   return `${ACCESS_COOKIE}=${accessToken(code)}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${COOKIE_MAX_AGE_SECONDS}`;
 }
 
-/** 合言葉なしで開ける道。入力画面と、起動の確認だけ。 */
+/**
+ * ホーム画面に追加するときに、端末が cookie なしで読みに来る道（0-2e）。
+ * 中身はアプリの名前と色とパートナーの絵だけで、利用者の情報は入らない。
+ */
+const HOME_SCREEN_PATHS = new Set(["/manifest.webmanifest", "/icon1", "/apple-icon"]);
+
+/** 合言葉なしで開ける道。入力画面と、起動の確認と、ホーム画面に追加する設定だけ。 */
 export function isOpenPath(pathname: string): boolean {
-  return pathname === ACCESS_PATH || pathname === "/api/health";
+  return pathname === ACCESS_PATH || pathname === "/api/health" || HOME_SCREEN_PATHS.has(pathname);
 }
 
 export type GateDecision = "pass" | "to_access" | "unauthorized";
