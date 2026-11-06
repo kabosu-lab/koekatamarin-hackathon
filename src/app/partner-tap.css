@@ -59,7 +59,6 @@
   cursor: pointer;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
-  transform-origin: 50% 100%;
 }
 
 .partner-tap:focus-visible {
@@ -68,13 +67,15 @@
   border-radius: 12px;
 }
 
-/* 動いている間だけ will-change を付ける（原則3） */
-.partner-tap[data-react] {
+/* 反応の動きは data-react だけで付ける（会話のあとの小さなアイコン .chat-icon にもそのまま付けられる）。
+   動いている間だけ will-change を付ける（原則3） */
+[data-react] {
+  transform-origin: 50% 100%;
   will-change: transform;
 }
 
 /* 弾む：押して沈み、ばねで上へ（手応え 80ms + ばね 200ms） */
-.partner-tap[data-react="bounce"] {
+[data-react="bounce"] {
   animation: partner-bounce 260ms var(--partner-spring);
 }
 
@@ -94,7 +95,7 @@
 }
 
 /* つぶれて戻る（スクワッシュ＆ストレッチ） */
-.partner-tap[data-react="squash"] {
+[data-react="squash"] {
   animation: partner-squash 260ms var(--partner-spring);
 }
 
@@ -115,7 +116,7 @@
 
 /* まばたき：一瞬だけ縦に縮む（目を閉じたように見える、手応えの速さ）。
    前提：本物の目のまばたきは VoiceLump の uBlink で、外からは動かせないため、体ごとの小さな縮みで表す */
-.partner-tap[data-react="blink"] {
+[data-react="blink"] {
   animation: partner-blink 120ms ease-in-out;
 }
 
@@ -126,7 +127,7 @@
 }
 
 /* 耳や尾が揺れる：根元を軸に左右へ小さく揺れる */
-.partner-tap[data-react="wiggle"] {
+[data-react="wiggle"] {
   animation: partner-wiggle 260ms var(--partner-ease);
 }
 
@@ -149,7 +150,7 @@
 }
 
 /* 目を回す：何度も続けて押したときだけの小さなお楽しみ（祝いの長さ） */
-.partner-tap[data-react="dizzy"] {
+[data-react="dizzy"] {
   animation: partner-dizzy 720ms var(--partner-ease);
 }
 
@@ -169,7 +170,7 @@
 }
 
 /* 吹き出しの字が出ている間、小さく弾み続ける（話している感じ。§2-1-A の 3） */
-.partner-tap[data-react="talking"] {
+[data-react="talking"] {
   animation: partner-talking 280ms var(--partner-ease) infinite alternate;
 }
 
@@ -216,12 +217,12 @@
     animation: none;
   }
 
-  .partner-tap[data-react] {
+  [data-react] {
     will-change: auto;
     animation: partner-dim 120ms ease-in-out;
   }
 
-  .partner-tap[data-react="talking"] {
+  [data-react="talking"] {
     animation: none;
   }
 
