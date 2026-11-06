@@ -48,6 +48,7 @@ import { TrialTools } from "../TrialNotice";
 import { DailyPanel } from "../daily/DailyPanel";
 import { getReport, japanDate } from "@/lib/daily";
 import { recipientsOf } from "@/lib/recipients";
+import { countNew, markCollectionOpened, markThanksOpened } from "@/lib/new-counts";
 import "./me.css";
 export const metadata: Metadata = { title: "履歴と設定｜こえかた" };
 export const dynamic = "force-dynamic";
@@ -74,6 +75,11 @@ export default async function MePage({ searchParams }: { searchParams: Promise<{
   const noun = viewer.role === "student" ? "日記" : "日報";
   const now = new Date();
   const openKey = resolveOpenKey(typeof requested === "string" ? requested : undefined);
+  // 0-2v：開いたら消える。数え方はホーム・みんな・ホイールと同じ1か所（今日の3人の入口はここにないので数えない）
+  if (openKey === "thanks") markThanksOpened(db, viewer.id, now);
+  if (openKey === "partner") markCollectionOpened(db, viewer.id, now);
+  const fresh = countNew(db, getDestination(db), viewer.id, now, { rewards, todaySeen: true });
+  const badgeOf = (n: number) => (n > 0 ? String(n) : undefined);
 
   // 0-2b：タイルは6枚（3列×2段）。受信箱は「みんな」とホイール、話の履歴は「話す」の会話に任せる
   const tiles: {
@@ -123,6 +129,7 @@ export default async function MePage({ searchParams }: { searchParams: Promise<{
       key: "thanks",
       label: "ありがとう",
       icon: "thanks",
+      badge: badgeOf(fresh.thanks),
       content: () => {
         const thanks = listThanks(db, viewer.id);
         // 0-2j：一覧からは選ばせず、最近やりとりした人を数人だけ顔つきで出す
@@ -152,7 +159,7 @@ export default async function MePage({ searchParams }: { searchParams: Promise<{
       key: "partner",
       label: "パートナー",
       icon: "me",
-      badge: eggs.length > 0 ? String(eggs.length) : rewards && evolution !== null ? "!" : undefined,
+      badge: badgeOf(fresh.collection) ?? (rewards && evolution !== null ? "!" : undefined),
       content: () => (
         <>
           {rewards && (

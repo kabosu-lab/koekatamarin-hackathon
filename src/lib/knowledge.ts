@@ -4,7 +4,6 @@ import { reviewPost } from "./claude/compose";
 import type { ClaudeClient } from "./claude/types";
 import { MAX_BODY_LENGTH, type PostAttachment, type PostDestination, type PostView } from "./destination/types";
 import { forgottenSources } from "./memory";
-import { isNoticeHours } from "./inbox";
 import { listHiddenIds } from "./hidden-people";
 import { KNOWLEDGE_TOPICS } from "./trophies";
 import { noteAskSuggested, noteKnowledgeFixed } from "./trophy-log";
@@ -481,11 +480,6 @@ export function listKnowledgeTasks(db: DatabaseSync, viewerId: string): Knowledg
     ...toConfirm.map((row) => ({ id: row.id, title: row.title, reason: "confirm" as const })),
     ...toFix.map((row) => ({ id: row.id, title: row.title, reason: "fix" as const })),
   ];
-}
-
-/** 最初の画面に出す数。時間外は 0 にして、新しい義務感にしない。 */
-export function countKnowledgeForNotice(db: DatabaseSync, viewerId: string, now: Date): number {
-  return isNoticeHours(now) ? listKnowledgeTasks(db, viewerId).length : 0;
 }
 
 export function confirmKnowledge(db: DatabaseSync, itemId: string, personId: string, now: Date): boolean {

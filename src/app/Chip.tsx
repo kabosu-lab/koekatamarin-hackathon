@@ -11,6 +11,8 @@ export type ChipItem = {
   icon: IconName;
   /** 何ができるか、どこへ行くかを一文で（0-2o(2)：ホイールで選んでいる間、チップの下に出す） */
   description?: string;
+  /** 0-2v：新着の数。0 や省略なら出さない */
+  badge?: number;
 };
 
 /**
@@ -23,12 +25,17 @@ export function Chip({
   selected = false,
   className,
   ...rest
-}: { item: Pick<ChipItem, "label" | "code" | "icon">; selected?: boolean } & HTMLAttributes<HTMLDivElement>) {
+}: { item: Pick<ChipItem, "label" | "code" | "icon" | "badge">; selected?: boolean } & HTMLAttributes<HTMLDivElement>) {
   return (
     <div className={className ? `chip ${className}` : "chip"} data-selected={selected ? "true" : undefined} {...rest}>
       <span className="chip-art">
         <Icon name={item.icon} />
       </span>
+      {(item.badge ?? 0) > 0 && (
+        <span className="chip-badge" aria-label={`新着${item.badge}件`}>
+          {item.badge}
+        </span>
+      )}
       <span className="chip-label">{item.label}</span>
       <span className="chip-code" aria-hidden="true">
         {item.code}

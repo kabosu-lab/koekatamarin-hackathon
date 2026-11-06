@@ -9,6 +9,7 @@ import { listInbox, listPassCandidates } from "@/lib/inbox";
 import { listKnowledgeTasks } from "@/lib/knowledge";
 import { listKohoRequests } from "@/lib/koho";
 import { listRecentReplies } from "@/lib/reply-notices";
+import { markInboxOpened } from "@/lib/new-counts";
 import { agreeKoho, declineKoho } from "../koho/actions";
 import { KnowledgeTasks } from "../chie/KnowledgeTasks";
 import { listReceived } from "@/lib/daily";
@@ -34,6 +35,8 @@ export default async function InboxPage() {
     replies.map((reply) => reply.replyId),
   );
   const { goals, assists } = countContributions(db, viewer.id);
+  // 0-2v：開いたら、返事と届いた日報の新着の数は消える（お願いは応えるまで残る）
+  markInboxOpened(db, viewer.id);
 
   return (
     <PageShell back={{ href: "/minna", label: "みんな" }} title="受信箱" lead="話すだけで返せます。詳しくないことは、詳しい人につなげます。">

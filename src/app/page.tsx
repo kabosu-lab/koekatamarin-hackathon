@@ -4,14 +4,15 @@ import { getDatabase } from "@/lib/db";
 import { getAvatar } from "@/lib/avatar";
 import { lumpLookOf } from "@/lib/avatar-art";
 import { companionColor } from "@/lib/companion-art";
-import { syncFromTeamsIfStale, teamsSyncMs } from "@/lib/destination/teams-bridge";
+import { syncFromTeamsIfStale } from "@/lib/destination/teams-bridge";
 import { dailyQuestion } from "@/lib/daily-question";
 import { getGoal, goalQuestion } from "@/lib/goals";
 import { readAppearance } from "@/lib/appearance";
 import { promiseCookieName } from "@/lib/promise-cookie";
-import { listReplyNotices } from "@/lib/reply-notices";
 import { RibbonMoment } from "./RibbonMoment";
-import { isNoticeHours } from "@/lib/inbox";
+import { countNew, newsLine, sideCounts } from "@/lib/new-counts";
+import { getDestination } from "@/lib/destination/current";
+import { TODAY_SEEN_COOKIE } from "./minna/today-seen";
 import { syncGiftEggs } from "@/lib/gift-eggs";
 import { listNewRibbons, syncRibbons } from "@/lib/ribbons";
 import { showsRewards } from "@/lib/rewards-view";
@@ -43,8 +44,10 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
   const look = lumpLookOf(db, viewer.id);
   syncRibbons(db, viewer.id, new Date());
   syncGiftEggs(db, viewer.id, new Date());
-  syncGiftEggs(db, viewer.id, new Date());
   const question = goalQuestion(db, viewer.id, new Date()) ?? dailyQuestion(new Date());
+  // 0-2v：新着の数（みんな・履歴と設定・ホイールと同じ数え方）。知恵や頑張りから来たときは、その話を先にする
+  const counts = countNew(db, getDestination(db), viewer.id, new Date(), { rewards, todaySeen: store.has(TODAY_SEEN_COOKIE) });
+  const news = ask || goal || talk ? null : newsLine(counts, viewer.role);
 
   // 全員同じ1画面。ほかの画面へはスワイプと、下の小さな印から移る
   return (
@@ -56,8 +59,8 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
       <Talk
         key={viewer.id}
         device
-        noticePollMs={teamsSyncMs()}
-        notices={isNoticeHours(new Date()) ? listReplyNotices(db, viewer.id) : []}
+        news={news}
+        newCounts={{ ...sideCounts(counts), inbox: counts.inbox, today: counts.today }}
         viewer={{ name: viewer.name, label: viewer.label, role: viewer.role }}
         viewerId={viewer.id}
         promiseSeen={promiseSeen}
