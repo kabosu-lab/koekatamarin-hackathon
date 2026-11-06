@@ -28,6 +28,8 @@ import { ReplyField } from "./ReplyField";
 import { TodayEntrance, TodayModal, type TodayModalCard, TodayProvider } from "./TodayModal";
 import { teamsUrl } from "./teams-link";
 import { TODAY_SEEN_COOKIE } from "./today-seen";
+import { ThanksEntry } from "../thanks/ThanksCard";
+import type { PostView } from "@/lib/destination/types";
 import "./minna.css";
 
 export const metadata: Metadata = { title: "みんな｜こえかた" };
@@ -193,6 +195,7 @@ export default async function MinnaPage({ searchParams }: { searchParams: Promis
                               <small>{shortAgo(reply.createdAt, now)}</small>
                             </span>
                             <p className="minna-post-body">{reply.body}</p>
+                            {reply.authorId !== viewer.id && <ThanksEntry person={{ id: reply.authorId, name: reply.authorName, label: reply.authorLabel }} />}
                           </li>
                         ))}
                       </ul>
@@ -205,6 +208,7 @@ export default async function MinnaPage({ searchParams }: { searchParams: Promis
                       liked={post.likedByViewer}
                       replyCount={post.replies.length}
                     />
+                    <PostThanks post={post} viewerId={viewer.id} />
                     <Link className="minna-post-open" href={`/teams?channel=${channel.id}#post-${post.id}`}>
                       {channel.name}で見る
                     </Link>
@@ -225,4 +229,12 @@ export default async function MinnaPage({ searchParams }: { searchParams: Promis
       <TodayModal cards={todayCards} />
     </TodayProvider>
   );
+}
+
+/** 0-2j：頑張りの投稿には「おめでとう」、お知らせや報告には「ありがとう」。困りごとの投稿には置かない（返事で応える） */
+function PostThanks({ post, viewerId }: { post: PostView; viewerId: string }) {
+  if (post.authorId === viewerId) return null;
+  const label = post.kind === "effort" ? "おめでとう" : post.kind === "notice" || post.kind === "report" ? "ありがとう" : null;
+  if (!label) return null;
+  return <ThanksEntry person={{ id: post.authorId, name: post.authorName, label: post.authorLabel }} label={label} />;
 }

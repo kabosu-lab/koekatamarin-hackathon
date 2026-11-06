@@ -7,6 +7,8 @@ import { getViewer } from "@/lib/current-person";
 import { getDatabase } from "@/lib/db";
 import { getDraft } from "@/lib/profile";
 import { listThanks } from "@/lib/thanks";
+import { listRecentPartners } from "@/lib/thanks-people";
+import { ThanksKindMark } from "../thanks/ThanksCard";
 import { listTitles, wornTitle } from "@/lib/titles";
 import { PersonTitle } from "../PersonTitle";
 import { TitleCollection } from "./TitleCollection";
@@ -123,17 +125,19 @@ export default async function MePage({ searchParams }: { searchParams: Promise<{
       icon: "thanks",
       content: () => {
         const thanks = listThanks(db, viewer.id);
-        const others = people.filter((p) => p.id !== viewer.id).map(({ id, name, label }) => ({ id, name, label }));
+        // 0-2j：一覧からは選ばせず、最近やりとりした人を数人だけ顔つきで出す
+        const recent = listRecentPartners(db, viewer.id).map((p) => ({ ...p, image: getAvatar(db, p.id).image }));
         return (
           <>
-            <ThanksForm key={`${viewer.id}-thanks`} people={others} />
+            <ThanksForm key={`${viewer.id}-thanks`} recent={recent} />
             <section className="card" aria-label="もらったありがとう">
               <h2>もらったありがとう</h2>
               {thanks.length === 0 ? (
                 <p className="muted">これから届きます。</p>
               ) : (
                 thanks.map((card) => (
-                  <p className="thanks-card" key={card.id}>
+                  <p className="thanks-card" key={card.id} data-kind={card.kind}>
+                    <ThanksKindMark kind={card.kind} />
                     <strong>{card.fromName}さん</strong>：{card.message}
                   </p>
                 ))

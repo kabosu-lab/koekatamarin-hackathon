@@ -11,13 +11,14 @@ test("ありがとうに肩書きを添えて贈り、受け取って選ぶと�
   await page.goto("/me?open=thanks");
   const form = page.getByRole("region", { name: "サンクスカードを送る" });
   const recipient = "中村 結衣（1年・吹奏楽部）";
-  await form.getByLabel("送る相手").selectOption({ label: recipient });
+  await form.getByLabel("名前で探す").fill("吹奏楽");
+  await form.getByRole("list", { name: "見つかった人" }).getByRole("button", { name: /中村 結衣さん/ }).click();
 
   await form.getByRole("button", { name: "案を出す" }).click();
   await form.getByRole("button", { name: "台本の相談役" }).click();
   await expect(form.getByLabel("肩書きを添える")).toHaveValue("台本の相談役");
   await form.getByLabel("肩書きを添える").fill(title);
-  await form.getByLabel("ありがとうの言葉").fill("助かりました");
+  await form.getByLabel("届けることば").fill("助かりました");
   await form.getByRole("button", { name: "サンクスカードを送る" }).click();
   await expect(form).toContainText("ありがとうが届きました");
 
@@ -59,5 +60,10 @@ test("肩書きは自分では作れない（入れる場所がない）", async
   await page.goto("/me?open=thanks");
   const collection = page.getByRole("region", { name: "もらった肩書き" });
   await expect(collection.getByRole("textbox")).toHaveCount(0);
-  await expect(page.getByRole("region", { name: "サンクスカードを送る" }).getByLabel("送る相手").locator("option", { hasText: "佐伯 みどり" })).toHaveCount(0);
+  // 自分には贈れない（名前で探しても出ない）
+  const form = page.getByRole("region", { name: "サンクスカードを送る" });
+  await form.getByLabel("名前で探す").fill("佐伯");
+  const found = form.getByRole("list", { name: "見つかった人" });
+  await expect(found).toContainText("見つかりませんでした");
+  await expect(found.getByRole("button")).toHaveCount(0);
 });

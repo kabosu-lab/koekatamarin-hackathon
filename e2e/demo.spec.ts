@@ -85,8 +85,9 @@ test("先生の一日：話しかける、返す、パス、サンクス、日�
   await switchPerson(page, MAKER);
   await page.goto("/me?open=thanks");
   const form = page.getByRole("region", { name: "サンクスカードを送る" });
-  await form.getByLabel("送る相手").selectOption({ label: TEACHER });
-  await form.getByLabel("ありがとうの言葉").fill("つないでくれて、ありがとうございました");
+  // 一覧からは選ばない。お願いを聞いてくれた先生は「最近やりとりした人」に出ている
+  await form.getByRole("group", { name: "最近やりとりした人" }).getByRole("button", { name: `${TEACHER.split("（")[0]}さん` }).click();
+  await form.getByLabel("届けることば").fill("つないでくれて、ありがとうございました");
   await form.getByRole("button", { name: "サンクスカードを送る" }).click();
   await expect(form).toContainText("ありがとうが届きました");
 

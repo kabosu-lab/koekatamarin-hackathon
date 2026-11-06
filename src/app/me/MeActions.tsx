@@ -1,11 +1,11 @@
 "use client";
 
-import { playReachedSound } from "@/app/sound";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { MemoryItem } from "@/lib/memory";
 import type { ProfileDraft } from "@/lib/profile";
 import { PhotoHatch } from "./PhotoHatch";
+import { type RecentPerson, ThanksPicker } from "../thanks/ThanksCard";
 
 async function postJson(url: string, body: unknown) {
   const response = await fetch(url, {
@@ -189,95 +189,12 @@ export function MemoryList({ initial }: { initial: MemoryItem[] }) {
   );
 }
 
-export function ThanksForm({ people }: { people: { id: string; name: string; label: string }[] }) {
-  const [to, setTo] = useState("");
-  const [message, setMessage] = useState("");
-  const [title, setTitle] = useState("");
-  const [ideas, setIdeas] = useState<string[]>([]);
-  const [thinking, setThinking] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [notice, setNotice] = useState("");
-
-  // 押したときだけ Claude が案を出す。贈るかどうかを決めるのは送る人
-  async function suggest() {
-    setThinking(true);
-    setNotice("");
-    try {
-      const { ok, data } = await postJson("/api/titles/suggest", { toPersonId: to });
-      if (ok && Array.isArray(data.titles)) {
-        setIdeas(data.titles as string[]);
-        if (data.titles.length === 0) setNotice("案を出せるだけの言葉が、まだありません。自分の言葉で贈れます。");
-      } else {
-        setNotice("案を作れませんでした。自分の言葉でも贈れます。");
-      }
-    } catch {
-      setNotice("案を作れませんでした。自分の言葉でも贈れます。");
-    } finally {
-      setThinking(false);
-    }
-  }
-
-  async function send() {
-    setBusy(true);
-    setNotice("");
-    try {
-      const { ok, data } = await postJson("/api/thanks", { toPersonId: to, message, ...(title.trim() ? { title } : {}) });
-      if (ok) {
-        const name = people.find((p) => p.id === to)?.name ?? "";
-        setNotice(`${name}さんに、ありがとうが届きました。`);
-        playReachedSound();
-        setMessage("");
-        setTo("");
-        setTitle("");
-        setIdeas([]);
-      } else {
-        setNotice(typeof data.error === "string" ? data.error : "まだ送っていません。もう一度押してください。");
-      }
-    } catch {
-      setNotice("まだ送っていません。もう一度押してください。");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <section className="card" aria-label="サンクスカードを送る">
-      <h2>今週助けてくれた人は？</h2>
-      <label>
-        送る相手
-        <select value={to} onChange={(event) => setTo(event.target.value)}>
-          <option value="">選んでください</option>
-          {people.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}（{p.label}）
-            </option>
-          ))}
-        </select>
-      </label>
-      <label>
-        ありがとうの言葉
-        <textarea rows={2} maxLength={2000} value={message} onChange={(event) => setMessage(event.target.value)} />
-      </label>
-      <label>
-        肩書きを添える（なくても送れます）
-        <input type="text" maxLength={20} value={title} placeholder="文化祭動画の師匠" onChange={(event) => setTitle(event.target.value)} />
-      </label>
-      <div className="row title-ideas">
-        <button type="button" className="secondary" disabled={thinking || to === ""} onClick={() => void suggest()}>
-          {thinking ? "考えています…" : "案を出す"}
-        </button>
-        {ideas.map((idea) => (
-          <button type="button" className="secondary" key={idea} onClick={() => setTitle(idea)}>
-            {idea}
-          </button>
-        ))}
-      </div>
-      <button type="button" disabled={busy || to === "" || message.trim() === ""} onClick={() => void send()}>
-        サンクスカードを送る
-      </button>
-      {notice && <p role="status">{notice}</p>}
-    </section>
-  );
+/**
+ * サンクスカード（0-2j）。送り先は一覧から選ばせない：最近やりとりした人のチップと、打って絞り込む欄だけ。
+ * 中身は「ありがとう」の入口のシートと同じ部品（src/app/thanks/ThanksCard.tsx）。
+ */
+export function ThanksForm({ recent }: { recent: RecentPerson[] }) {
+  return <ThanksPicker recent={recent} />;
 }
 
 /** 本人が押したときだけ、登録した写真を読む。読み終わるまで、誕生の演出を見せる。 */

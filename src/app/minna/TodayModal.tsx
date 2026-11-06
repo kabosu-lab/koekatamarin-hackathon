@@ -3,6 +3,7 @@
 import { Icon } from "@/app/Icon";
 import { createContext, type CSSProperties, type KeyboardEvent, type PointerEvent, type ReactNode, useContext, useEffect, useRef, useState } from "react";
 import { Avatar } from "../Avatar";
+import { ThanksEntry } from "../thanks/ThanksCard";
 import { ReplyField } from "./ReplyField";
 import { TODAY_SEEN_COOKIE } from "./today-seen";
 
@@ -279,6 +280,7 @@ export function TodayModal({ cards }: { cards: TodayModalCard[] }) {
                   liked={card.liked}
                   replyCount={card.replyCount}
                 />
+                <ThanksEntry person={{ id: card.authorId, name: card.authorName, label: card.authorLabel }} />
               </article>
             ))}
             <section className="minna-today-card minna-today-end" aria-label="おしまい" aria-hidden={index !== last} inert={index !== last}>
