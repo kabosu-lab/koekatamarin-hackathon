@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { Review } from "@/lib/claude/compose";
 import type { Portfolio, PortfolioEntry, PortfolioKind } from "@/lib/portfolio";
 import type { Recipient } from "@/lib/recipients";
+import { BottomSheet } from "../BottomSheet";
 
 type Channel = { id: string; name: string };
 type Scope = "everyone" | "managers";
@@ -54,6 +55,7 @@ export function PortfolioPanel({ initial, channels, recipients, viewerName, noun
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
   const [reflectionDraft, setReflectionDraft] = useState<string | null>(null);
+  const [adding, setAdding] = useState(false);
 
   // Teams へ届ける流れ。開くのも選ぶのも本人で、初めは何も選ばれていない
   const [sharing, setSharing] = useState(false);
@@ -191,7 +193,7 @@ export function PortfolioPanel({ initial, channels, recipients, viewerName, noun
               <textarea value={reflectionDraft} rows={8} onChange={(event) => setReflectionDraft(event.target.value)} />
             </label>
             <button type="button" disabled={busy || reflectionDraft.trim() === ""} onClick={() => void saveReflection()}>
-              ポートフォリオに残す
+              残す
             </button>
             <button type="button" className="secondary" disabled={busy} onClick={() => setReflectionDraft(null)}>
               残さない
@@ -219,27 +221,15 @@ export function PortfolioPanel({ initial, channels, recipients, viewerName, noun
         </p>
       </section>
 
-      <section className="card" aria-label={`たまった${noun}`}>
-        <h2>たまった{noun}</h2>
-        {portfolio.days.length === 0 ? (
-          <p className="muted">この学期の{noun}はまだありません。</p>
-        ) : (
-          portfolio.days.map((day) => (
-            <details className="portfolio-day" key={day.id}>
-              <summary>{day.date}</summary>
-              <ul>
-                {day.items.map((item) => (
-                  <li key={item.id}>{item.text}</li>
-                ))}
-              </ul>
-            </details>
-          ))
-        )}
-      </section>
-
-      <section className="card" aria-label="足したもの">
-        <h2>足したもの</h2>
-        {portfolio.added.length === 0 && <p className="muted">下の「足せるもの」から、残したいものを選べます。</p>}
+      {/* 0-2b：足したものと、たまった日報・日記を「残したもの」1枚に。足すのはボトムシートから */}
+      <section className="card" aria-label="残したもの">
+        <div className="portfolio-head">
+          <h2>残したもの</h2>
+          <button type="button" className="secondary" disabled={busy} onClick={() => setAdding(true)}>
+            足す
+          </button>
+        </div>
+        {portfolio.added.length === 0 && <p className="muted">「足す」から、残したいものを選べます。何も足さなくても大丈夫です。</p>}
         {portfolio.added.map((entry) => (
           <div className="portfolio-entry" key={keyOf(entry)}>
             <EntryBody entry={entry} />
@@ -248,12 +238,30 @@ export function PortfolioPanel({ initial, channels, recipients, viewerName, noun
             </button>
           </div>
         ))}
+        <section className="portfolio-days" aria-label={`たまった${noun}`}>
+          <h3>たまった{noun}</h3>
+          {portfolio.days.length === 0 ? (
+            <p className="muted">この学期の{noun}はまだありません。</p>
+          ) : (
+            portfolio.days.map((day) => (
+              <details className="portfolio-day" key={day.id}>
+                <summary>{day.date}</summary>
+                <ul>
+                  {day.items.map((item) => (
+                    <li key={item.id}>{item.text}</li>
+                  ))}
+                </ul>
+              </details>
+            ))
+          )}
+        </section>
       </section>
 
-      <section className="card" aria-label="足せるもの">
+      <BottomSheet open={adding} onClose={() => setAdding(false)} label="足せるもの">
         <h2>足せるもの</h2>
-        <p className="muted">足すかどうかは、あなたが決めます。何も足さなくても大丈夫です。</p>
+        <p className="muted">足すかどうかは、あなたが決めます。</p>
         {!rewards && <p className="muted">トロフィーを隠している間は、ここにも出しません。</p>}
+        {portfolio.candidates.length === 0 && <p className="muted">いま足せるものはありません。</p>}
         {GROUPS.map((group) => {
           const entries = portfolio.candidates.filter((entry) => entry.kind === group.kind);
           if (entries.length === 0) return null;
@@ -276,7 +284,7 @@ export function PortfolioPanel({ initial, channels, recipients, viewerName, noun
             </details>
           );
         })}
-      </section>
+      </BottomSheet>
 
       <section className="card" aria-label="Teams へ届ける">
         <h2>Teams へ届ける</h2>

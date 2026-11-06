@@ -27,7 +27,7 @@ const SUB_SCREENS = [
   "/daily",
   "/daily/received",
   "/lookback",
-  "/portfolio",
+  // /portfolio は「ふりかえり」のタイル（/me?open=lookback）へ送る（0-2b）
   "/people/noda",
   "/soudan",
   "/yousu",
