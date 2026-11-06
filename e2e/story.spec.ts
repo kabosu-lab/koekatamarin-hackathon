@@ -23,14 +23,14 @@ test("見どころ：話す、問い返しで気づく、本人が確かめて�
 
   await input.fill("今日の授業、急に静かになった瞬間があって");
   await input.press("Enter");
-  await expect(assistant.last()).toContainText("その少し前、何してたん");
+  await expect(assistant.last()).toContainText("その少し前、何をしていたんですか");
   // 文字数ではなく、パートナーが要素がそろったと判断したときだけ光る
   await expect(deliver).not.toHaveAttribute("data-ready", "true");
 
   await input.fill(`声を小さくしたんだ ${id}`);
   await input.press("Enter");
   await expect(assistant).toHaveCount(2);
-  await expect(assistant.last()).toContainText("コツかもしれん");
+  await expect(assistant.last()).toContainText("コツかもしれません");
   // 届けられそうなことを、色と文字で伝える。自動では送らない
   await expect(deliver).toHaveAttribute("data-ready", "true");
   await expect(deliver).toContainText("言葉になりそう");

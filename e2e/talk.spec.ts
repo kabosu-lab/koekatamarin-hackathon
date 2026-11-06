@@ -90,7 +90,7 @@ test("声で話すと、聞いている様子を見せ、話した言葉を残�
   // 送るボタンを押さなくてもパートナーへ送られる
   const log = page.getByRole("log");
   await expect(log.locator(".bubble.user")).toHaveText(/私は嫌やわ/);
-  await expect(log.locator(".bubble.assistant")).toContainText("無理に使わんでええ");
+  await expect(log.locator(".bubble.assistant")).toContainText("無理に使わなくて大丈夫");
   await expect(page.getByText("聞いています…")).toHaveCount(0);
 });
 

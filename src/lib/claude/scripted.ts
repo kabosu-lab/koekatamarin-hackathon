@@ -4,31 +4,47 @@ import type { ClaudeClient } from "./types";
 /** 段つきの印。パートナーの指示の決まり（`[[とどけられる:1]]`〜`[[とどけられる:3]]`）と同じ形 */
 const readyMark = (level: 1 | 2 | 3) => `[[とどけられる:${level}]]`;
 
+/** 生徒（または誰か分からないとき）には、相手のトーンに合わせて返す */
 const fallbackReply = "なるほど、聞かせてくれてありがとう。もう少し詳しく教えてもらえますか？";
-
 const replies: Record<(typeof openingLines)[number], string> = {
   こんにちは: "こんにちは！今日はどんな一日でしたか？",
   あんた何ができるん: "話聞くんと、もやもやを言葉にするんが得意やで。今なんかある？",
   私は嫌やわ: "そっか、嫌かあ。無理に使わんでええよ。どのへんが嫌やった？",
 };
 
-/** キーなしで見どころを通すための架空の例。話した本人が自分のコツに気づく流れ。 */
-function storyReply(spoken: string, talk: string): string | null {
+/** 先生には、くだけて話されても、いつもやわらかい丁寧語で返す（0-2c） */
+const teacherFallbackReply = "なるほど、聞かせてくださってありがとうございます。もう少し詳しく教えてもらえますか？";
+const teacherReplies: Record<(typeof openingLines)[number], string> = {
+  こんにちは: "こんにちは！今日はどんな一日でしたか？",
+  あんた何ができるん: "話を聞いて、もやもやを言葉にするのが得意です。今、何かありますか？",
+  私は嫌やわ: "そうでしたか、嫌でしたか。無理に使わなくて大丈夫ですよ。どのあたりが嫌でしたか？",
+};
+
+/** 話している人が先生か。パートナーへの指示に添えた「話している人」の行（talk-request.ts の speakerForPrompt）で見分ける */
+export function isTeacherSpeaking(system: string | undefined): boolean {
+  return /^話している人：先生$/m.test(system ?? "");
+}
+
+/** キーなしで見どころを通すための架空の例。話した本人が自分のコツに気づく流れ。先生には丁寧語で返す */
+function storyReply(spoken: string, talk: string, teacher = false): string | null {
+  const say = (forTeacher: string, forStudent: string) => (teacher ? forTeacher : forStudent);
   // 告知は、話の全体を見て足りないことだけ聞く
   if (/勉強会|ゼミ/.test(talk)) {
-    if (!/\d+時|\d+日|曜/.test(talk)) return "ええやん、告知にしよ。いつやるん？";
-    if (!/室|館|オンライン/.test(talk)) return "どこでやるん？";
-    return `そろったね。とどけるで確かめて、みんなに知らせよう。\n${readyMark(3)}`;
+    if (!/\d+時|\d+日|曜/.test(talk)) return say("いいですね、告知にしましょう。いつ開きますか？", "ええやん、告知にしよ。いつやるん？");
+    if (!/室|館|オンライン/.test(talk)) return say("どこで開きますか？", "どこでやるん？");
+    return `${say("そろいましたね。とどけるで確かめて、みんなに知らせましょう。", "そろったね。とどけるで確かめて、みんなに知らせよう。")}\n${readyMark(3)}`;
   }
   // とどけるの3段。話が進むほど上がる：静かになった（まだ）→ 声を小さく（段1）→ 聞いてくれた（段2）→ 誰の役に立つか（段3）
   if (/声を小さく|聞いてくれた/.test(talk) && /若い先生|ほかの先生|新任|役に立|役立/.test(spoken)) {
-    return `それ、もうそのまま投稿にできそう。とどけるで確かめてみて。\n${readyMark(3)}`;
+    return `${say("それ、もうそのまま投稿にできそうです。とどけるで確かめてみてください。", "それ、もうそのまま投稿にできそう。とどけるで確かめてみて。")}\n${readyMark(3)}`;
   }
   if (/声を小さく/.test(talk) && /聞いてくれた|うまくいった/.test(spoken)) {
-    return `それ、コツかもしれんね。ちゃんと効いたんや。どんな人に役立ちそう？\n${readyMark(2)}`;
+    return `${say("それ、コツかもしれませんね。ちゃんと効いたんですね。どんな人に役立ちそうですか？", "それ、コツかもしれんね。ちゃんと効いたんや。どんな人に役立ちそう？")}\n${readyMark(2)}`;
   }
-  if (/声を小さく/.test(spoken)) return `それ、コツかもしれんね。ほかの先生にも届けてみる？そのあと、どうなったん？\n${readyMark(1)}`;
-  if (/静かになった/.test(spoken)) return "へえ、急に静かに。その少し前、何してたん？";
+  if (/声を小さく/.test(spoken)) {
+    return `${say("それ、コツかもしれませんね。ほかの先生にも届けてみますか？そのあと、どうなりましたか？", "それ、コツかもしれんね。ほかの先生にも届けてみる？そのあと、どうなったん？")}\n${readyMark(1)}`;
+  }
+  if (/静かになった/.test(spoken)) return say("へえ、急に静かに。その少し前、何をしていたんですか？", "へえ、急に静かに。その少し前、何してたん？");
   return null;
 }
 
@@ -199,7 +215,7 @@ function scriptedAvatarPick() {
 export function createScriptedClaude(): ClaudeClient {
   return {
     mode: "scripted",
-    async complete({ task, messages, jsonSchema }) {
+    async complete({ task, system, messages, jsonSchema }) {
       if (task === "title_suggest") return { text: JSON.stringify({ titles: ["台本の相談役", "台本の師匠", "台本の達人"] }), refused: false };
       if (task === "avatar_pick") return { text: JSON.stringify(scriptedAvatarPick()), refused: false };
       if (task === "goal_check") return { text: JSON.stringify(scriptedGoalCheck(messages[0].content as string)), refused: false };
@@ -219,7 +235,11 @@ export function createScriptedClaude(): ClaudeClient {
 
       const last = messages.at(-1)?.content.trim() ?? "";
       const talk = messages.filter((message) => message.role === "user").map((message) => String(message.content)).join("\n");
-      const text = storyReply(last, talk) ?? (replies as Record<string, string>)[last] ?? fallbackReply;
+      const teacher = isTeacherSpeaking(system);
+      const text =
+        storyReply(last, talk, teacher) ??
+        ((teacher ? teacherReplies : replies) as Record<string, string>)[last] ??
+        (teacher ? teacherFallbackReply : fallbackReply);
       return { text, refused: false };
     },
   };
