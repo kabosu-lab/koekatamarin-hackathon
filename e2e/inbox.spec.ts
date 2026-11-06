@@ -48,8 +48,14 @@ test("詳しくないことはパスでき、相手の受信箱に届く", async
   const card = page.getByRole("region").filter({ hasText: words });
   await card.getByText("もっと詳しい人につなぐ").click();
   await card.getByLabel("つなぐ相手").selectOption({ label: OTHER });
+  // パートナーが「@〇〇さん、…どうですか？」の下書きを作り、本人が確かめて送る（0-2g）
+  const words2 = card.getByLabel("元の投稿への返事（相手に @ で届きます）");
+  await expect(words2).toHaveValue(/^@野田 翔さん、.*どうですか？$/);
   await card.getByRole("button", { name: "つなぐ" }).click();
   await expect(page.getByText("つないでくれてありがとう")).toBeVisible();
+
+  await page.goto("/teams?channel=study");
+  await expect(page.getByRole("article").filter({ hasText: words }).locator(".reply")).toContainText("@野田 翔さん");
 
   await page.goto("/");
   await switchPerson(page, OTHER);

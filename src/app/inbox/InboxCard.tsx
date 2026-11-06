@@ -21,11 +21,35 @@ export function InboxCard({ item, candidates }: { item: InboxItem; candidates: P
   const [notice, setNotice] = useState("");
   const [done, setDone] = useState<"replied" | "passed" | null>(null);
 
+  const [passWords, setPassWords] = useState("");
+
+  /** 相手を選んだら、パートナーが「〇〇さん、どうですか？」の下書きを作る。送るのは本人が確かめてから。 */
+  async function choose(personId: string) {
+    setPassTo(personId);
+    setPassWords("");
+    setNotice("");
+    if (personId === "") return;
+    setBusy(true);
+    try {
+      const { ok, data } = await postJson("/api/inbox/pass-draft", { postId: item.postId, toPersonId: personId });
+      if (!ok || typeof data.text !== "string") throw new Error("draft failed");
+      setPassWords(data.text);
+    } catch {
+      setNotice("下書きを作れませんでした。自分の言葉で書いて送れます。");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function pass() {
     setBusy(true);
     setNotice("");
     try {
-      const { ok } = await postJson("/api/inbox/pass", { postId: item.postId, toPersonId: passTo });
+      const { ok, status } = await postJson("/api/inbox/pass", { postId: item.postId, toPersonId: passTo, text: passWords });
+      if (status === 422) {
+        setNotice("この言葉では送れません。言い方を変えてください。");
+        return;
+      }
       if (!ok) throw new Error("pass failed");
       setDone("passed");
     } catch {
@@ -74,7 +98,7 @@ export function InboxCard({ item, candidates }: { item: InboxItem; candidates: P
           <div className="pass">
             <label>
               つなぐ相手
-              <select value={passTo} onChange={(event) => setPassTo(event.target.value)}>
+              <select value={passTo} disabled={busy} onChange={(event) => void choose(event.target.value)}>
                 <option value="">選んでください</option>
                 {candidates.map((candidate) => (
                   <option key={candidate.id} value={candidate.id}>
@@ -83,7 +107,13 @@ export function InboxCard({ item, candidates }: { item: InboxItem; candidates: P
                 ))}
               </select>
             </label>
-            <button type="button" disabled={busy || passTo === ""} onClick={() => void pass()}>
+            {passTo !== "" && (
+              <label>
+                元の投稿への返事（相手に @ で届きます）
+                <textarea value={passWords} rows={3} maxLength={2000} onChange={(event) => setPassWords(event.target.value)} />
+              </label>
+            )}
+            <button type="button" disabled={busy || passTo === "" || passWords.trim() === ""} onClick={() => void pass()}>
               つなぐ
             </button>
           </div>

@@ -67,8 +67,89 @@ type GraphMessage = {
   from: { user?: { id?: string; displayName?: string } | null } | null;
   body: { content: string; contentType?: string };
   replies?: GraphMessage[];
+  /** 本文の <at id="n"> と対になる、メンションされた人 */
+  mentions?: GraphMention[];
   reactions?: { reactionType?: string; user?: { user?: { id?: string; displayName?: string | null } | null } | null }[];
 };
+
+type GraphMention = {
+  id: number;
+  mentionText?: string;
+  mentioned?: { user?: { id?: string; displayName?: string | null; userIdentityType?: string } | null } | null;
+};
+
+/** Graph へ送る本文。メンションがあるときだけ html にする。 */
+export type TeamsMessageBody = {
+  body: { contentType: "text" | "html"; content: string };
+  mentions?: GraphMention[];
+};
+
+export type MentionTarget = { name: string; teamsUserId: string | null };
+
+function escapeHtml(text: string): string {
+  return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+
+/**
+ * 本文の「@名前」を Teams のメンションにする（0-2g）。Teams のユーザー ID が分からない人は、
+ * メンションにせず名前だけを書く。メンションが1つもなければ、今までどおり文字で送る。
+ */
+export function buildTeamsMessage(text: string, targets: MentionTarget[]): TeamsMessageBody {
+  const mentions: GraphMention[] = [];
+  let html = escapeHtml(text);
+  let plain = text;
+  for (const target of targets) {
+    const marker = `@${target.name}`;
+    if (!plain.includes(marker)) continue;
+    plain = plain.replace(marker, target.name);
+    if (!target.teamsUserId) {
+      html = html.replace(escapeHtml(marker), escapeHtml(target.name));
+      continue;
+    }
+    const id = mentions.length;
+    html = html.replace(escapeHtml(marker), `<at id="${id}">${escapeHtml(target.name)}</at>`);
+    mentions.push({ id, mentionText: target.name, mentioned: { user: { id: target.teamsUserId, displayName: target.name, userIdentityType: "aadUser" } } });
+  }
+  if (mentions.length === 0) return { body: { contentType: "text", content: plain } };
+  return { body: { contentType: "html", content: html.replace(/\r?\n/g, "<br>") }, mentions };
+}
+
+/** こえかたの人 → Teams のユーザー ID（サインインのときの記録の逆引き）。分からなければ null。 */
+export function teamsUserIdOf(personId: string): string | null {
+  for (const [teamsUserId, linkedId] of Object.entries(readLinkedPeople())) if (linkedId === personId) return teamsUserId;
+  return null;
+}
+
+/** 生徒には、生徒が見られないチャネル（職員室など）のお願いを渡さない。 */
+export function canBeAsked(db: DatabaseSync, personId: string, channelId: string): boolean {
+  const person = db.prepare("SELECT role FROM people WHERE id = ?").get(personId) as { role: string } | undefined;
+  const channel = db.prepare("SELECT audience FROM channels WHERE id = ?").get(channelId) as { audience: string } | undefined;
+  if (!person || !channel) return false;
+  return channel.audience === "everyone" || person.role !== "student";
+}
+
+function mentionTarget(db: DatabaseSync, personId: string): MentionTarget | null {
+  const name = personName(db, personId);
+  return name ? { name, teamsUserId: teamsUserIdOf(personId) } : null;
+}
+
+/** 「聞いてみる」の投稿は、頭で相手をメンションする。本人が本文に @名前 を書いていればそこを使う。 */
+export function askMessage(db: DatabaseSync, text: string, askedPersonId: string | undefined): TeamsMessageBody {
+  const target = askedPersonId ? mentionTarget(db, askedPersonId) : null;
+  if (!target) return buildTeamsMessage(text, []);
+  const withHead = text.includes(`@${target.name}`) ? text : `@${target.name}さん\n${text}`;
+  return buildTeamsMessage(withHead, [target]);
+}
+
+/** 返事の本文にある「@名前」のうち、その投稿を見られる人だけをメンションにする（回す、0-2g）。 */
+export function replyMessage(db: DatabaseSync, viewerId: string, channelId: string, text: string): TeamsMessageBody {
+  const people = db.prepare("SELECT id FROM people ORDER BY length(name) DESC").all() as { id: string }[];
+  const targets = people
+    .filter((person) => person.id !== viewerId && canBeAsked(db, person.id, channelId))
+    .map((person) => mentionTarget(db, person.id))
+    .filter((target): target is MentionTarget => target !== null && text.includes(`@${target.name}`));
+  return buildTeamsMessage(text, targets);
+}
 
 /** Teams の HTML を文字だけにする。画面には HTML を出さない。 */
 export function plainText(html: string): string {
@@ -200,7 +281,7 @@ export async function sendPostToTeams(db: DatabaseSync, viewerId: string, postId
     }
     const token = result.token;
     const path = await channelPath(fetcher, token, target);
-    const sent = await graph<{ id: string }>(fetcher, token, path, { body: { contentType: "text", content: body } });
+    const sent = await graph<{ id: string }>(fetcher, token, path, askMessage(db, body, options.askedPersonId));
     saveLink(db, postId, "post", sent.id);
     return { state: "sent" };
   } catch (error) {
@@ -220,7 +301,7 @@ export async function sendReplyToTeams(db: DatabaseSync, viewerId: string, reply
     const target = config && channelId ? teamsTargetFor(db, config, channelId) : null;
     if (!target || !token) return;
     const path = await channelPath(fetcher, token, target);
-    const sent = await graph<{ id: string }>(fetcher, token, `${path}/${parent}/replies`, { body: { contentType: "text", content: body } });
+    const sent = await graph<{ id: string }>(fetcher, token, `${path}/${parent}/replies`, replyMessage(db, viewerId, channelId as string, body));
     saveLink(db, replyId, "reply", sent.id);
   } catch (error) {
     logFailure("返信", error);
@@ -302,12 +383,45 @@ function matchPerson(db: DatabaseSync, message: GraphMessage, linked: Record<str
   return (db.prepare("SELECT id FROM people WHERE name = ?").get(nameWithoutRole(user.displayName)) as { id: string } | undefined)?.id ?? null;
 }
 
-/** こえかたから送った直後で印がまだない投稿を、二重に取り込まない。 */
+/**
+ * こえかたから送った直後で印がまだない投稿を、二重に取り込まない。
+ * メンションを付けて送った分は、Teams では「@」が外れ、頭に相手の名前が付くので、それも同じものとみなす。
+ */
 function unlinkedLocal(db: DatabaseSync, table: "posts" | "replies", authorId: string, body: string): string | null {
-  const row = db
-    .prepare(`SELECT id FROM ${table} WHERE author_id = ? AND body = ? AND id NOT IN (SELECT local_id FROM teams_links) ORDER BY created_at DESC LIMIT 1`)
-    .get(authorId, body) as { id: string } | undefined;
-  return row?.id ?? null;
+  const rows = db
+    .prepare(`SELECT id, body FROM ${table} WHERE author_id = ? AND id NOT IN (SELECT local_id FROM teams_links) ORDER BY created_at DESC LIMIT 20`)
+    .all(authorId) as { id: string; body: string }[];
+  const same = (local: string) => {
+    const bare = local.replace(/@/g, "");
+    return local === body || bare === body || body.endsWith(`\n${bare}`);
+  };
+  return rows.find((row) => same(row.body))?.id ?? null;
+}
+
+/** Teams のメンションを、こえかたの人にする。 */
+function mentionedPeople(db: DatabaseSync, message: GraphMessage, linked: Record<string, string>): string[] {
+  return (message.mentions ?? [])
+    .map((mention) => matchPerson(db, { from: { user: mention.mentioned?.user ?? null } } as GraphMessage, linked))
+    .filter((personId): personId is string => personId !== null);
+}
+
+/**
+ * Teams で直接メンションされた投稿や返事を、メンションされた人の受信箱に入れる（0-2g）。
+ * 見るのは初めて取り込むときだけ（あとで回したお願いを、同期のたびに戻さない）。
+ * 生徒には生徒が見られないチャネルのお願いを渡さず、投稿した本人とメンションした本人には入れない。
+ * 今のお願いの相手が返事で別の人をメンションしたら、アプリの「回す」と同じくパスとして残す。
+ */
+function askFromMentions(db: DatabaseSync, postId: string, mentionerId: string, mentioned: string[], createdAt: string): void {
+  const post = db.prepare("SELECT channel_id, author_id, scope, asked_person_id FROM posts WHERE id = ?").get(postId) as
+    | { channel_id: string; author_id: string; scope: string; asked_person_id: string | null }
+    | undefined;
+  if (!post || post.scope !== "everyone") return;
+  const to = mentioned.find((personId) => personId !== mentionerId && personId !== post.author_id && canBeAsked(db, personId, post.channel_id));
+  if (!to || to === post.asked_person_id) return;
+  if (post.asked_person_id && post.asked_person_id === mentionerId) {
+    db.prepare("INSERT INTO post_passes (id, post_id, from_person_id, to_person_id, created_at) VALUES (?, ?, ?, ?, ?)").run(randomUUID(), postId, mentionerId, to, createdAt);
+  }
+  db.prepare("UPDATE posts SET asked_person_id = ? WHERE id = ?").run(to, postId);
 }
 
 /** Teams の投稿と返信を DB へ取り込む。本文のないもの（Workflow のカードなど）と、対応する人がいないものは飛ばす。 */
@@ -356,6 +470,7 @@ function importPost(db: DatabaseSync, message: GraphMessage, linked: Record<stri
   const id = randomUUID();
   db.prepare("INSERT INTO posts (id, channel_id, author_id, kind, body, created_at) VALUES (?, ?, ?, 'report', ?, ?)").run(id, channelId, authorId, text, message.createdDateTime);
   saveLink(db, id, "post", message.id);
+  askFromMentions(db, id, authorId, mentionedPeople(db, message, linked), message.createdDateTime);
   return id;
 }
 
@@ -372,6 +487,7 @@ function importReply(db: DatabaseSync, reply: GraphMessage, postId: string, link
   const id = randomUUID();
   db.prepare("INSERT INTO replies (id, post_id, author_id, body, created_at) VALUES (?, ?, ?, ?, ?)").run(id, postId, authorId, text, reply.createdDateTime);
   saveLink(db, id, "reply", reply.id);
+  askFromMentions(db, postId, authorId, mentionedPeople(db, reply, linked), reply.createdDateTime);
 }
 
 let lastSync = 0;

@@ -7,7 +7,7 @@ import { openDatabase } from "../db";
 import { listReplyNotices } from "../reply-notices";
 import { seedDatabase } from "../seed";
 import { createDummyTeams } from "./dummy-teams";
-import { awaitTeamsDelivery, nameWithoutRole, plainText, sendReactionToTeams, reachedTeams, resetTeamsBridge, sendPostToTeams, sendReplyToTeams, syncFromTeams, syncFromTeamsIfStale, teamsMode, teamsSyncMs, withTeamsBridge } from "./teams-bridge";
+import { askMessage, awaitTeamsDelivery, buildTeamsMessage, canBeAsked, nameWithoutRole, replyMessage, plainText, sendReactionToTeams, reachedTeams, resetTeamsBridge, sendPostToTeams, sendReplyToTeams, syncFromTeams, syncFromTeamsIfStale, teamsMode, teamsSyncMs, withTeamsBridge } from "./teams-bridge";
 
 const CONFIG = { tenant: "example.test", clientId: "dummy", team: "T", channel: "C" };
 const FAR = Date.now() + 3_600_000;
@@ -415,5 +415,126 @@ describe("文字にする", () => {
   it("改行を残し、タグを消す", () => {
     expect(plainText("<p>一行目</p><p>二行目<br/>三行目</p>")).toBe("一行目\n二行目\n三行目");
     expect(plainText('<attachment id="x"></attachment>')).toBe("");
+  });
+});
+
+describe("メンション（0-2g）", () => {
+  const linkPeople = (map: Record<string, string>) => writeFileSync(join(dir, "teams-people.json"), JSON.stringify(map));
+  const mentionOf = (teamsUserId: string, name: string) => ({ id: 0, mentionText: name, mentioned: { user: { id: teamsUserId, displayName: name } } });
+  const mentioned = (id: string, name: string, content: string, mentions: unknown[], replies: unknown[] = []) => ({ ...message(id, name, content, replies), mentions });
+  const askedOf = (body: string) =>
+    (db.prepare("SELECT asked_person_id FROM posts WHERE body = ?").get(body) as { asked_person_id: string | null } | undefined)?.asked_person_id;
+
+  it("@名前を、本文の <at> と mentions の組にする。本文の HTML は逃がし、改行は <br> にする", () => {
+    expect(buildTeamsMessage("@大河原 誠さん\n<b>a & b</b>", [{ name: "大河原 誠", teamsUserId: "u-oga" }])).toEqual({
+      body: { contentType: "html", content: '<at id="0">大河原 誠</at>さん<br>&lt;b&gt;a &amp; b&lt;/b&gt;' },
+      mentions: [{ id: 0, mentionText: "大河原 誠", mentioned: { user: { id: "u-oga", displayName: "大河原 誠", userIdentityType: "aadUser" } } }],
+    });
+  });
+
+  it("Teams の ID が分からない相手は、メンションにせず名前だけを書く", () => {
+    expect(buildTeamsMessage("@野田 翔さん、どうですか？", [{ name: "野田 翔", teamsUserId: null }])).toEqual({
+      body: { contentType: "text", content: "野田 翔さん、どうですか？" },
+    });
+  });
+
+  it("聞いてみるの投稿は、頭で相手をメンションして送る", async () => {
+    signIn("saeki");
+    linkPeople({ "u-saeki": "saeki", "u-oga": "ogawara" });
+    const { calls, fetcher } = fakeGraph();
+    await sendPostToTeams(db, "saeki", "p1", "study", "英語の音読、どうしてますか？", { askedPersonId: "ogawara" }, fetcher);
+    const [sent] = posts(calls);
+    expect(sent.body).toEqual({
+      body: { contentType: "html", content: '<at id="0">大河原 誠</at>さん<br>英語の音読、どうしてますか？' },
+      mentions: [{ id: 0, mentionText: "大河原 誠", mentioned: { user: { id: "u-oga", displayName: "大河原 誠", userIdentityType: "aadUser" } } }],
+    });
+  });
+
+  it("聞いてみるの相手の ID が分からなければ、メンションなしで名前を頭に書く", () => {
+    linkPeople({ "u-saeki": "saeki" });
+    expect(askMessage(db, "教えてください", "ogawara")).toEqual({ body: { contentType: "text", content: "大河原 誠さん\n教えてください" } });
+    expect(askMessage(db, "ふつうの投稿", undefined)).toEqual({ body: { contentType: "text", content: "ふつうの投稿" } });
+  });
+
+  it("範囲を絞った聞いてみるは、Teams へもメンションも送らない", async () => {
+    signIn("saeki");
+    linkPeople({ "u-oga": "ogawara" });
+    const { fetcher, spy } = fakeGraph();
+    await sendPostToTeams(db, "saeki", "p1", "study", "本文", { askedPersonId: "ogawara", scope: "person", scopePersonId: "ogawara" }, fetcher);
+    expect(spy).not.toHaveBeenCalled();
+  });
+
+  it("返事の @名前 は、その投稿を見られる人だけメンションにする（生徒に職員室を渡さない）", () => {
+    linkPeople({ "u-oga": "ogawara", "u-aoki": "aoki" });
+    const inStudy = replyMessage(db, "saeki", "study", "@大河原 誠さん、@青木 ひよりさん、どうですか？");
+    expect(inStudy.mentions?.map((m) => m.mentioned?.user?.id).sort()).toEqual(["u-aoki", "u-oga"]);
+    const inStaff = replyMessage(db, "saeki", "staffroom", "@大河原 誠さん、@青木 ひよりさん、どうですか？");
+    expect(inStaff.mentions?.map((m) => m.mentioned?.user?.id)).toEqual(["u-oga"]);
+    expect(inStaff.body.content).toContain("@青木 ひより");
+    expect(canBeAsked(db, "aoki", "staffroom")).toBe(false);
+    expect(canBeAsked(db, "aoki", "study")).toBe(true);
+  });
+
+  it("回すの返事は、元の投稿への返事として新しい人をメンションする", async () => {
+    signIn("saeki");
+    linkPeople({ "u-noda": "noda" });
+    const { calls, fetcher } = fakeGraph();
+    db.prepare("INSERT INTO posts (id, channel_id, author_id, kind, body, created_at) VALUES ('p1', 'study', 'kawamura', 'report', '相談', '2026-11-06T00:00:00Z')").run();
+    await sendPostToTeams(db, "saeki", "p1", "study", "相談", {}, fetcher);
+    await sendReplyToTeams(db, "saeki", "r1", "p1", "@野田 翔さん、詳しいと思って、つなぎました。どうですか？", fetcher);
+    const reply = posts(calls).at(-1)!;
+    expect(reply.url).toContain("/replies");
+    expect(reply.body).toMatchObject({ body: { contentType: "html", content: '<at id="0">野田 翔</at>さん、詳しいと思って、つなぎました。どうですか？' } });
+  });
+
+  describe("取り込み", () => {
+    beforeEach(() => {
+      signIn();
+      linkPeople({ "u-saeki": "saeki", "u-oga": "ogawara", "u-aoki": "aoki" });
+    });
+
+    it("Teams で直接メンションされた投稿は、メンションされた人の受信箱に入る", async () => {
+      await syncFromTeams(db, fakeGraph([mentioned("m1", "佐伯 みどり", '<at id="0">大河原 誠</at> 教えてください', [mentionOf("u-oga", "大河原 誠")])]).fetcher);
+      expect(askedOf("大河原 誠 教えてください")).toBe("ogawara");
+    });
+
+    it("返事の中のメンションも受信箱に入り、今のお願いの相手が回したならパスとして残る", async () => {
+      const reply = mentioned("r1", "佐伯 みどり", '<at id="0">大河原 誠</at>さん、どうですか？', [mentionOf("u-oga", "大河原 誠")]);
+      const post = mentioned("m1", "青木 ひより", '<at id="0">佐伯 みどり</at> 質問です', [mentionOf("u-saeki", "佐伯 みどり")], [reply]);
+      await syncFromTeams(db, fakeGraph([post]).fetcher);
+      expect(askedOf("佐伯 みどり 質問です")).toBe("ogawara");
+      expect(db.prepare("SELECT from_person_id, to_person_id FROM post_passes").all()).toEqual([{ from_person_id: "saeki", to_person_id: "ogawara" }]);
+    });
+
+    it("メンションを見るのは初めて取り込むときだけ（あとで回したお願いを戻さない）", async () => {
+      const graphMessages = [mentioned("m1", "佐伯 みどり", '<at id="0">大河原 誠</at> 一度だけ', [mentionOf("u-oga", "大河原 誠")])];
+      await syncFromTeams(db, fakeGraph(graphMessages).fetcher);
+      db.prepare("UPDATE posts SET asked_person_id = 'noda' WHERE body = ?").run("大河原 誠 一度だけ");
+      await syncFromTeams(db, fakeGraph(graphMessages).fetcher);
+      expect(askedOf("大河原 誠 一度だけ")).toBe("noda");
+    });
+
+    it("生徒は、生徒が見られないチャネルでメンションされても受信箱に入らない", async () => {
+      writeFileSync(join(dir, "teams.json"), JSON.stringify({ ...CONFIG, localChannel: "staffroom" }));
+      await syncFromTeams(db, fakeGraph([mentioned("m1", "佐伯 みどり", '<at id="0">青木 ひより</at> 職員室の話', [mentionOf("u-aoki", "青木 ひより")])]).fetcher);
+      expect(askedOf("青木 ひより 職員室の話")).toBeNull();
+    });
+
+    it("自分で自分をメンションしても、受信箱には入らない", async () => {
+      await syncFromTeams(db, fakeGraph([mentioned("m1", "佐伯 みどり", '<at id="0">佐伯 みどり</at> メモ', [mentionOf("u-saeki", "佐伯 みどり")])]).fetcher);
+      expect(askedOf("佐伯 みどり メモ")).toBeNull();
+    });
+
+    it("取り込みでは何も送らない（メンションは本人が送るときだけ）", async () => {
+      const { calls, fetcher } = fakeGraph([mentioned("m1", "佐伯 みどり", '<at id="0">大河原 誠</at> 読むだけ', [mentionOf("u-oga", "大河原 誠")])]);
+      await syncFromTeams(db, fetcher);
+      expect(posts(calls)).toEqual([]);
+    });
+
+    it("メンションを付けて送った直後の投稿を、印がなくても二重に取り込まない", async () => {
+      createDummyTeams(db).createPost("saeki", "study", "二重にしない質問", { askedPersonId: "ogawara" });
+      await syncFromTeams(db, fakeGraph([mentioned("m9", "佐伯 みどり", '<at id="0">大河原 誠</at>さん<br>二重にしない質問', [mentionOf("u-oga", "大河原 誠")])]).fetcher);
+      expect(db.prepare("SELECT count(*) AS c FROM posts WHERE body LIKE '%二重にしない質問'").get()).toEqual({ c: 1 });
+    });
   });
 });

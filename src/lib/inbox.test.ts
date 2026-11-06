@@ -10,7 +10,11 @@ import {
   countForNotice,
   draftReply,
   handleInboxReply,
+  draftPass,
   handlePass,
+  handlePassDraft,
+  handlePassWithReply,
+  passDraftTemplate,
   handleReplyDraft,
   isNoticeHours,
   listInbox,
@@ -199,5 +203,51 @@ describe("パスとアシスト", () => {
 
   it("自分に届いていないお願いはパスできない", () => {
     expect(handlePass(db, teams, "noda", { postId: STUDENT_ASK, toPersonId: "ogawara" }, NOW).status).toBe(404);
+  });
+});
+
+describe("回す（0-2g）", () => {
+  it("下書きは「@〇〇さん、…どうですか？」の決まった形で、台本モードでも同じ", async () => {
+    const result = await handlePassDraft(scripted, db, teams, "saeki", { postId: STUDENT_ASK, toPersonId: "noda" });
+    expect(result).toEqual({
+      status: 200,
+      body: { text: "@野田 翔さん、情報・ものづくり部顧問の野田さんなら詳しいと思って、つなぎました。どうですか？" },
+    });
+  });
+
+  it("本物の Claude には理由の一言だけを書かせ、名前と問いかけはこちらで付ける。だめなら決まった形", async () => {
+    const real: ClaudeClient = { mode: "real", complete: vi.fn(async () => ({ text: JSON.stringify({ reason: "ものづくり部の顧問なので" }), refused: false })) };
+    expect(await draftPass(real, "相談", { id: "noda", name: "野田 翔", label: "情報" })).toBe("@野田 翔さん、ものづくり部の顧問なので。どうですか？");
+    const broken: ClaudeClient = { mode: "real", complete: vi.fn(async () => ({ text: "{", refused: false })) };
+    expect(await draftPass(broken, "相談", { id: "noda", name: "野田 翔", label: "情報" })).toBe(passDraftTemplate({ id: "noda", name: "野田 翔", label: "情報" }));
+  });
+
+  it("本人が確かめた言葉を元の投稿への返事として送り、相手の受信箱へ移す", async () => {
+    const text = "@野田 翔さん、詳しいと思って、つなぎました。どうですか？";
+    const result = await handlePassWithReply(scripted, db, teams, "saeki", { postId: STUDENT_ASK, toPersonId: "noda", text }, NOW);
+    expect(result.status).toBe(200);
+    expect(listInbox(db, "saeki").map((i) => i.postId)).not.toContain(STUDENT_ASK);
+    expect(listInbox(db, "noda")[0]).toMatchObject({ postId: STUDENT_ASK, passedThrough: ["佐伯 みどり"] });
+    const post = teams.listPosts("noda", "making").find((p) => p.id === STUDENT_ASK);
+    expect(post?.replies.at(-1)).toMatchObject({ authorId: "saeki", body: text });
+    expect(post?.answered).toBe(false);
+  });
+
+  it("生徒には、職員室のお願いを回せない（下書きも作らない）", async () => {
+    expect((await handlePassDraft(scripted, db, teams, "saeki", { postId: STAFF_ASK, toPersonId: "aoki" })).status).toBe(404);
+    const result = await handlePassWithReply(scripted, db, teams, "saeki", { postId: STAFF_ASK, toPersonId: "aoki", text: "@青木 ひよりさん、どうですか？" }, NOW);
+    expect(result.status).toBe(404);
+    expect(listInbox(db, "saeki").map((i) => i.postId)).toContain(STAFF_ASK);
+  });
+
+  it("確かめられないときは回さず、返事も送らない", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const failing: ClaudeClient = { mode: "real", complete: vi.fn(async () => { throw new Error("down"); }) };
+    const before = teams.listPosts("saeki", "making").find((p) => p.id === STUDENT_ASK)?.replies.length;
+    const result = await handlePassWithReply(failing, db, teams, "saeki", { postId: STUDENT_ASK, toPersonId: "noda", text: "どうですか？" }, NOW);
+    expect(result.status).toBe(503);
+    expect(listInbox(db, "saeki").map((i) => i.postId)).toContain(STUDENT_ASK);
+    expect(teams.listPosts("saeki", "making").find((p) => p.id === STUDENT_ASK)?.replies.length).toBe(before);
+    log.mockRestore();
   });
 });
