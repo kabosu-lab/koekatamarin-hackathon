@@ -3,21 +3,23 @@ import { audioOutput } from "./sound";
 
 /**
  * ホイールの「カリ」（設計書 §2-1-C 4）。乾いたラチェットの音。iPhone のスピーカーでも聞こえるよう、
- * 帯域は 3kHz、歯は 800Hz にする（0-2w。2kHz・600Hz・0.12 では小さなスピーカーでほぼ聞こえなかった）。
- * 20ms の雑音を AudioContext ごとに1回だけ作り、使い回す（鳴らすたびに作らない）。
+ * 帯域は 3kHz、歯は 800Hz、音量 0.3・長さ約 28ms にする（0-2w。前の 2kHz・600Hz・0.12・20ms（減衰 6ms）・歯 0.06 で 8ms は、
+ * iPhone でもパソコンでもほぼ聞こえなかった）。雑音は AudioContext ごとに1回だけ作り、使い回す（鳴らすたびに作らない）。
  */
-/** カリの帯域・音量・歯の高さと長さ（0-2w の点検の値） */
+/** カリの帯域・音量・長さと、歯の高さ・音量・長さ（0-2w） */
 export const CLICK_BAND_HZ = 3000;
-export const CLICK_GAIN = 0.28;
+export const CLICK_GAIN = 0.3;
+export const CLICK_SECONDS = 0.028;
 export const TOOTH_HZ = 800;
-export const TOOTH_SECONDS = 0.015;
+export const TOOTH_GAIN = 0.15;
+export const TOOTH_SECONDS = 0.025;
 
 const clickBuffers = new WeakMap<BaseAudioContext, AudioBuffer>();
 
 function clickBuffer(audio: BaseAudioContext): AudioBuffer {
   const cached = clickBuffers.get(audio);
   if (cached) return cached;
-  const length = Math.max(1, Math.floor(audio.sampleRate * 0.02));
+  const length = Math.max(1, Math.floor(audio.sampleRate * CLICK_SECONDS));
   const buffer = audio.createBuffer(1, length, audio.sampleRate);
   const samples = buffer.getChannelData(0);
   for (let i = 0; i < length; i++) samples[i] = Math.random() * 2 - 1;
@@ -36,18 +38,18 @@ function scheduleClick(audio: BaseAudioContext, out: AudioNode, at: number): voi
   const level = audio.createGain();
   level.gain.setValueAtTime(0, at);
   level.gain.linearRampToValueAtTime(CLICK_GAIN, at + 0.001);
-  level.gain.setTargetAtTime(0, at + 0.001, 0.006);
+  level.gain.setTargetAtTime(0, at + 0.001, 0.009);
   noise.connect(band).connect(level).connect(out);
   noise.start(at);
-  noise.stop(at + 0.025);
+  noise.stop(at + CLICK_SECONDS);
 
-  // 下に短い音を重ねて「歯」の感じ（15ms 続くよう、減衰もそれに合わせる）
+  // 下に短い音を重ねて「歯」の感じ（長さに合わせて減衰もゆっくりにする）
   const tooth = audio.createOscillator();
   tooth.type = "sine";
   tooth.frequency.value = TOOTH_HZ;
   const toothLevel = audio.createGain();
-  toothLevel.gain.setValueAtTime(0.06, at);
-  toothLevel.gain.setTargetAtTime(0, at + 0.002, 0.004);
+  toothLevel.gain.setValueAtTime(TOOTH_GAIN, at);
+  toothLevel.gain.setTargetAtTime(0, at + 0.002, 0.007);
   tooth.connect(toothLevel).connect(out);
   tooth.start(at);
   tooth.stop(at + TOOTH_SECONDS);

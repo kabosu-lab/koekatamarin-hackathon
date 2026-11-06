@@ -4,7 +4,7 @@ const output = vi.hoisted(() => ({ current: null as null | { audio: ReturnType<t
 
 vi.mock("./sound", () => ({ audioOutput: () => output.current }));
 
-import { CLICK_BAND_HZ, CLICK_GAIN, playWheelClick, playWheelOpen, TOOTH_HZ, TOOTH_SECONDS } from "./wheel-sound";
+import { CLICK_BAND_HZ, CLICK_GAIN, CLICK_SECONDS, playWheelClick, playWheelOpen, TOOTH_GAIN, TOOTH_HZ, TOOTH_SECONDS } from "./wheel-sound";
 
 /** 作った音の部品を記録する偽物。 */
 function fakeAudio(state: string) {
@@ -76,7 +76,7 @@ describe("ホイールのカリ（0-2w）", () => {
     expect(audio.made.sources).toBe(0);
   });
 
-  it("起きているときは、3kHz の雑音と 800Hz・15ms の歯で鳴らす", () => {
+  it("起きているときは、3kHz の雑音と 800Hz の歯（25ms）で鳴らす", () => {
     const audio = fakeAudio("running");
     output.current = { audio, out: {} };
     playWheelClick(1);
@@ -85,7 +85,7 @@ describe("ホイールのカリ（0-2w）", () => {
     expect(audio.made.peaks).toContain(CLICK_GAIN);
     expect(audio.made.oscillators).toHaveLength(1);
     expect(audio.made.oscillators[0].frequency).toBe(800);
-    expect(audio.made.oscillators[0].stopAt - audio.currentTime).toBeCloseTo(0.02 + 0.015, 5);
+    expect(audio.made.oscillators[0].stopAt - audio.currentTime).toBeCloseTo(0.02 + 0.025, 5);
   });
 
   it("値は点検で決めた範囲に収まる", () => {
@@ -93,7 +93,11 @@ describe("ホイールのカリ（0-2w）", () => {
     expect(CLICK_GAIN).toBeGreaterThanOrEqual(0.25);
     expect(CLICK_GAIN).toBeLessThanOrEqual(0.3);
     expect(TOOTH_HZ).toBe(800);
-    expect(TOOTH_SECONDS).toBe(0.015);
+    expect(TOOTH_SECONDS).toBeGreaterThanOrEqual(0.02);
+    expect(TOOTH_GAIN).toBeGreaterThanOrEqual(0.1);
+    // 0-2w：はっきり聞こえる長さ（25〜30ms）。前の 20ms・減衰 6ms では聞こえなかった
+    expect(CLICK_SECONDS).toBeGreaterThanOrEqual(0.025);
+    expect(CLICK_SECONDS).toBeLessThanOrEqual(0.03);
   });
 
   it("1コマに積むのは最大3回", () => {
