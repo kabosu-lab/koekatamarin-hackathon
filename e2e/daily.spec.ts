@@ -7,7 +7,7 @@ async function say(page: Page, text: string) {
   await expect(page.getByRole("log").locator(".bubble.assistant").last()).toBeVisible();
 }
 
-test("話したことが日報の項目になり、チェックした項目だけが管理職に届き、一言が返る", async ({ page }) => {
+test("話したことが日報の項目になり、チェックして「届ける」を押した項目だけが管理職に届き、一言が返る", async ({ page }) => {
   const shared = `作文を褒めた ${test.info().testId}`;
   await page.goto("/");
   await switchPerson(page, "川村 陽菜（理科・1年副担任・生徒指導）");
@@ -27,8 +27,14 @@ test("話したことが日報の項目になり、チェックした項目だ�
   await page.goto("/");
   await switchPerson(page, "川村 陽菜（理科・1年副担任・生徒指導）");
   await page.goto("/daily");
+  await expect(page.getByText("チェックを付けた項目を、藤本先生に届けます。付けなければ自分だけの日報です。")).toBeVisible();
+  await expect(page.getByRole("button", { name: "自分だけに残す" })).toBeVisible();
   await page.getByRole("checkbox", { name: shared }).click();
   await expect(page.getByRole("checkbox", { name: shared })).toBeChecked();
+  await page.getByRole("button", { name: "藤本先生に届ける（1件）" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "藤本先生に届きました" })).toBeVisible();
+  // 届いたら、元の画面（履歴と設定）へ戻る
+  await expect(page).toHaveURL(/\/me$/);
 
   await page.goto("/");
   await switchPerson(page, "藤本 恵（教頭）");
@@ -54,6 +60,8 @@ test("生徒の日記は担任にだけ届く", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "今日の日記" })).toBeVisible();
   await page.getByRole("checkbox", { name: words }).click();
   await expect(page.getByRole("checkbox", { name: words })).toBeChecked();
+  await page.getByRole("button", { name: /^.+先生に届ける（1件）$/ }).click();
+  await expect(page).toHaveURL(/\/me$/);
 
   await page.goto("/");
   await switchPerson(page, "藤本 恵（教頭）");
@@ -115,7 +123,7 @@ test("開くだけでまとまり、増えていなければ二度目は呼ば�
   await expect(page.getByRole("checkbox", { name: fixed })).toBeVisible();
 });
 
-test("チェックは1つずつ確定し、処理中は押せない。失敗したら元のまま伝える", async ({ page }) => {
+test("0-2u：チェックだけでは届かず、届けるのに失敗したら知らせて、選んだものを残す", async ({ page }) => {
   const words = `チェックの確認 ${test.info().testId}`;
   await page.goto("/");
   await switchPerson(page, "野田 翔（情報・ものづくり部顧問）");
@@ -124,21 +132,68 @@ test("チェックは1つずつ確定し、処理中は押せない。失敗し�
   const box = page.getByRole("checkbox", { name: words });
   await expect(box).not.toBeChecked();
 
-  let release = () => {};
-  const held = new Promise<void>((resolve) => {
-    release = resolve;
-  });
-  await page.route("**/api/daily", async (route) => {
-    await held;
-    await route.fulfill({ status: 503, json: { error: "x" } });
+  // チェックを付けても、サーバーには何も送らない
+  const sends: string[] = [];
+  page.on("request", (request) => {
+    if (request.url().endsWith("/api/daily") && request.method() === "POST") sends.push(String((request.postDataJSON() as { action?: string }).action));
   });
   await box.click();
-  await expect(box).toBeDisabled();
-  release();
+  await expect(box).toBeChecked();
+  const button = page.getByRole("button", { name: "藤本先生に届ける（1件）" });
+  await expect(button).toBeVisible();
+  await expect(button).toBeInViewport();
+  expect(sends).toEqual([]);
 
-  await expect(page.locator(".notice")).toContainText("変えられませんでした");
+  await page.route("**/api/daily", (route) => route.fulfill({ status: 503, json: { error: "x" } }));
+  await button.click();
+  await expect(page.locator(".notice")).toContainText("藤本先生に届けられませんでした");
+  await expect(box).toBeChecked();
   await expect(box).toBeEnabled();
-  await expect(box).not.toBeChecked();
+  await expect(button).toBeEnabled();
+  await expect(page).toHaveURL(/\/daily$/);
+});
+
+test("0-2u：届けたあとに増えた項目は、次に押したときに増えた分だけ届く", async ({ page }) => {
+  const first = `一つ目の話 ${test.info().testId}`;
+  const second = `二つ目の話 ${test.info().testId}`;
+  await page.goto("/");
+  await switchPerson(page, "中村 結衣（1年・吹奏楽部）");
+  await say(page, first);
+  await page.goto("/daily");
+  await page.getByRole("checkbox", { name: first }).click();
+  await page.getByRole("button", { name: "川村先生に届ける（1件）" }).click();
+  await expect(page).toHaveURL(/\/me$/);
+
+  await page.goto("/");
+  await say(page, second);
+  await page.goto("/daily");
+  // 届いた項目は届いた印のまま、変えられない
+  await expect(page.getByRole("checkbox", { name: first })).toBeChecked();
+  await expect(page.getByRole("checkbox", { name: first })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "自分だけに残す" })).toBeVisible();
+  await page.getByRole("checkbox", { name: second }).click();
+  const sent = page.waitForRequest((request) => request.url().endsWith("/api/daily") && (request.postDataJSON() as { action?: string }).action === "send");
+  await page.getByRole("button", { name: "川村先生に届ける（1件）" }).click();
+  expect(((await sent).postDataJSON() as { itemIds: string[] }).itemIds).toHaveLength(1);
+  await expect(page).toHaveURL(/\/me$/);
+
+  await page.goto("/");
+  await switchPerson(page, "川村 陽菜（理科・1年副担任・生徒指導）");
+  await page.goto("/inbox");
+  const report = page.getByRole("article", { name: "中村 結衣さんから" });
+  await expect(report).toContainText(first);
+  await expect(report).toContainText(second);
+});
+
+test("0-2u：何も選ばずに押すと「残しました」と出して、履歴と設定へ戻る", async ({ page }) => {
+  await page.goto("/");
+  await switchPerson(page, "大河原 誠（英語・学年主任）");
+  await say(page, `残すだけの話 ${test.info().testId}`);
+  await page.goto("/daily");
+  await expect(page.getByRole("checkbox").first()).toBeVisible();
+  await page.getByRole("button", { name: "自分だけに残す" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "残しました" })).toBeVisible();
+  await expect(page).toHaveURL(/\/me$/);
 });
 
 test("チェックと文章は同じ行に並ぶ", async ({ page }) => {

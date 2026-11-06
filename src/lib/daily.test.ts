@@ -9,6 +9,7 @@ import {
   handleEdit,
   handleEvening,
   handleRespond,
+  handleSend,
   handleSync,
   japanDate,
   listReceived,
@@ -300,6 +301,42 @@ describe("チェックした項目だけが届く", () => {
     expect(handleCheck(db, "fujimoto", { itemId: report.items[0].id, checked: true }).status).toBe(404);
     expect(handleCheck(db, "aoki", { itemId: report.items[0].id, checked: true }).status).toBe(404);
     expect(listReceived(db, "fujimoto")).toEqual([]);
+  });
+});
+
+describe("届けるボタン（0-2u）", () => {
+  it("選んだ項目だけを、押したときに届け、届いた数を返す", async () => {
+    const report = await make();
+    expect(listReceived(db, "fujimoto")).toEqual([]);
+    const outcome = handleSend(db, "saeki", { itemIds: [report.items[0].id] }, NOW);
+    expect(outcome.status).toBe(200);
+    expect(outcome.body.sent).toBe(1);
+    expect((outcome.body.report as { items: { checked: boolean }[] }).items[0].checked).toBe(true);
+    expect(listReceived(db, "fujimoto")[0].items).toEqual(["作文を褒めた"]);
+  });
+
+  it("もう届いた項目は数えず、増えた分だけ届く", async () => {
+    const report = await make();
+    handleSend(db, "saeki", { itemIds: [report.items[0].id] }, NOW);
+    const again = handleSend(db, "saeki", { itemIds: [report.items[0].id, report.items[1].id] }, NOW);
+    expect(again.body.sent).toBe(1);
+    expect(listReceived(db, "fujimoto")[0].items).toHaveLength(2);
+  });
+
+  it("本人以外の項目や、空・形の違う依頼は届けない", async () => {
+    const report = await make();
+    expect(handleSend(db, "fujimoto", { itemIds: [report.items[0].id] }, NOW).body.sent).toBe(0);
+    expect(handleSend(db, "saeki", { itemIds: [] }, NOW).status).toBe(400);
+    expect(handleSend(db, "saeki", { itemIds: "x" }, NOW).status).toBe(400);
+    expect(handleSend(db, "saeki", { itemIds: [1] }, NOW).status).toBe(400);
+    expect(listReceived(db, "fujimoto")).toEqual([]);
+  });
+
+  it("handleDaily の send から届けられる", async () => {
+    const report = await make();
+    const outcome = await handleDaily(scripted, db, "saeki", { action: "send", itemIds: [report.items[0].id] });
+    expect(outcome.status).toBe(200);
+    expect(listReceived(db, "fujimoto")).toHaveLength(1);
   });
 });
 
