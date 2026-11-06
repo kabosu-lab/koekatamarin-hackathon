@@ -17,7 +17,8 @@ async function open(browser: Browser, personId: string) {
 /** 投稿した人に、別の人たちから返事を届ける。 */
 async function replied(browser: Browser, authorId: string, replierIds: string[], words: string) {
   const author = await open(browser, authorId);
-  await author.goto("/");
+  // ほかのテストで届いた返事を先に読んでおき、このテストの分だけを数える
+  await author.goto("/inbox");
   const posted = await author.request.post("/api/publish", { data: { text: words, channelId: "study" } });
   expect(posted.ok()).toBe(true);
   for (const [index, replierId] of replierIds.entries()) {

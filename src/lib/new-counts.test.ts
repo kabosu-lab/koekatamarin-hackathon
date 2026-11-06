@@ -41,6 +41,15 @@ describe("新着の数（0-2v）", () => {
     expect(countNew(db, teams, "aoki", NOW, SEEN)).toMatchObject({ inbox: 0, replies: 0 });
   });
 
+  it("届いた日報は受信箱に入り、受信箱を開くと消える", () => {
+    // 青木さん（生徒）の日記は、担任の佐伯先生に届く
+    db.prepare("INSERT INTO daily_reports (id, person_id, date, created_at) VALUES ('r-new', 'aoki', '2026-11-04', ?)").run(NOW.toISOString());
+    db.prepare("INSERT INTO report_items (id, report_id, position, text, checked) VALUES ('r-new-0', 'r-new', 0, '作文を書いた', 1)").run();
+    expect(countNew(db, teams, "saeki", NOW, SEEN)).toMatchObject({ reports: 1, inbox: 3 });
+    markInboxOpened(db, "saeki");
+    expect(countNew(db, teams, "saeki", NOW, SEEN)).toMatchObject({ reports: 0, asks: 2, inbox: 2 });
+  });
+
   it("お願い（メンション）は応えるまで残り、時間外は数えない", () => {
     expect(countNew(db, teams, "saeki", NOW, SEEN).asks).toBe(2);
     markInboxOpened(db, "saeki");
@@ -100,9 +109,10 @@ describe("パートナーの最初の一言", () => {
     });
   });
 
-  it("ありがとうとコレクションは、履歴と設定へ行く", () => {
+  it("ありがとうは履歴と設定へ行く。コレクションは吹き出しでは言わない（タイルのバッジと左の点だけ）", () => {
     expect(newsLine({ ...empty, thanks: 1 }, "student")?.href).toBe("/me?open=thanks");
-    expect(newsLine({ ...empty, collection: 1 }, "student")?.href).toBe("/me?open=partner");
+    expect(newsLine({ ...empty, collection: 1 }, "student")).toBeNull();
+    expect(sideCounts({ ...empty, collection: 1 }).me).toBe(1);
   });
 
   it("新着がない、または今日の3人だけのときは、いつもの一言のまま", () => {
