@@ -459,12 +459,155 @@ describe("操作の記録", () => {
   });
 });
 
+describe("立場で解ける隠しトロフィー", () => {
+  const STANCE = ["nurse-word", "grade-head-eyes", "homeroom-reply", "principal-office", "guidance-cheer", "rare-word"];
+
+  function likePost(postId: string, who: string) {
+    db.prepare("INSERT INTO post_likes (post_id, person_id) VALUES (?, ?)").run(postId, who);
+  }
+
+  /** やり取りの多い人にする（めずらしい一言にならない） */
+  function busy(who: string, before: string) {
+    for (let index = 0; index < 4; index += 1) post(who, new Date(Date.parse(before) - (index + 1) * 86_400_000).toISOString(), { kind: "effort" });
+  }
+
+  beforeEach(() => {
+    person("s", "2年", "student");
+    person("nurse", "養護教諭");
+    person("head", "数学・学年主任");
+    person("home", "国語・2年担任");
+    person("sub", "理科・2年副担任");
+    person("boss", "校長", "admin");
+    person("guide", "体育・生徒指導主事");
+    db.prepare("UPDATE people SET homeroom_teacher_id = 'home' WHERE id = 's'").run();
+  });
+
+  it("すべて隠しで、取るまで条件を見せない", () => {
+    for (const id of STANCE) expect(TROPHIES.find((trophy) => trophy.id === id)?.hidden).toBe(true);
+  });
+
+  it("保健室からの一言は、養護の先生から自分の投稿へ返事が届いたとき", () => {
+    const id = post("s", day("2026-10-01"));
+    busy("nurse", day("2026-10-02"));
+    expect(earned("s")).not.toContain("nurse-word");
+    reply(id, "nurse", day("2026-10-02"));
+    expect(earned("s")).toContain("nurse-word");
+    expect(listRibbons(db, "s").find((trophy) => trophy.id === "nurse-word")?.story).not.toContain("nurse名");
+  });
+
+  it("人の投稿へ養護の先生が返事をしても、自分は取らない", () => {
+    const id = post("a", day("2026-10-01"));
+    reply(id, "s", day("2026-10-02"));
+    reply(id, "nurse", day("2026-10-03"));
+    expect(earned("s")).not.toContain("nurse-word");
+  });
+
+  it("学年主任のまなざしは、学年主任からのいいね", () => {
+    const id = post("s", day("2026-10-01"));
+    reply(id, "head", day("2026-10-02"));
+    expect(earned("s")).not.toContain("grade-head-eyes");
+    likePost(id, "head");
+    expect(earned("s")).toContain("grade-head-eyes");
+  });
+
+  it("担任からの返事は、生徒なら自分の担任から。副担任や別の担任は数えない", () => {
+    const id = post("s", day("2026-10-01"));
+    reply(id, "sub", day("2026-10-02"));
+    person("other", "英語・3年担任");
+    reply(id, "other", day("2026-10-03"));
+    expect(earned("s")).not.toContain("homeroom-reply");
+    reply(id, "home", day("2026-10-04"));
+    expect(earned("s")).toContain("homeroom-reply");
+  });
+
+  it("担任の決まっていない人は、肩書きの「担任」で読む", () => {
+    const id = post("a", day("2026-10-01"));
+    reply(id, "sub", day("2026-10-02"));
+    expect(earned("a")).not.toContain("homeroom-reply");
+    reply(id, "home", day("2026-10-03"));
+    expect(earned("a")).toContain("homeroom-reply");
+  });
+
+  it("校長室に届いたは、管理職からの返事かいいね。先生にもある", () => {
+    const mine = post("a", day("2026-10-01"));
+    likePost(mine, "boss");
+    expect(earned("a")).toContain("principal-office");
+    const theirs = post("s", day("2026-10-01"));
+    reply(theirs, "boss", day("2026-10-02"));
+    expect(earned("s")).toContain("principal-office");
+  });
+
+  it("教頭も管理職に数える", () => {
+    const id = post("s", day("2026-10-01"));
+    reply(id, "fujimoto", day("2026-10-02"));
+    expect(earned("s")).toContain("principal-office");
+  });
+
+  it("生徒指導からのエールは、肩書きに生徒指導がある人からの返事かいいね", () => {
+    const id = post("s", day("2026-10-01"));
+    expect(earned("s")).not.toContain("guidance-cheer");
+    likePost(id, "guide");
+    expect(earned("s")).toContain("guidance-cheer");
+  });
+
+  it("ダミーの先生の肩書きから、養護・学年主任・担任・管理職が読める", () => {
+    const id = post("aoki", day("2026-10-30"));
+    for (const who of ["shiraishi", "saeki", "fujimoto"]) reply(id, who, day("2026-10-31"));
+    likePost(id, "ogawara");
+    const trophies = earned("aoki");
+    for (const trophy of ["nurse-word", "homeroom-reply", "principal-office", "grade-head-eyes"]) expect(trophies).toContain(trophy);
+  });
+
+  it("めずらしい一言は、直近30日のやり取りが少ない人からの返事。誰からかもいつかも書かない", () => {
+    const id = post("s", day("2026-10-10"));
+    busy("c", day("2026-10-11"));
+    reply(id, "c", day("2026-10-11"));
+    expect(earned("s")).not.toContain("rare-word");
+    // 30日より前のやり取りは数えない
+    for (let index = 0; index < 5; index += 1) post("d", day("2026-08-01"), { kind: "effort" });
+    reply(id, "d", day("2026-10-12"));
+    expect(earned("s")).toContain("rare-word");
+    const trophy = listRibbons(db, "s").find((item) => item.id === "rare-word");
+    expect(trophy?.story).toBe("めずらしい一言が届いた");
+    expect(trophy?.description).toBe("めずらしい一言が届いた");
+    expect(trophy?.selfOnly).toBe(true);
+  });
+
+  it("Teams から取り込んだ返事も数える（同じ表に入る）", async () => {
+    const id = post("s", day("2026-10-01"));
+    db.prepare("INSERT INTO replies (id, post_id, author_id, body, created_at) VALUES ('teams-reply-1', ?, 'nurse', 'Teams から', ?)").run(id, day("2026-10-02"));
+    expect(earned("s")).toContain("nurse-word");
+  });
+
+  it("1つにつき1回だけ。2回目の返事で新しく届かない", () => {
+    const id = post("s", day("2026-10-01"));
+    reply(id, "nurse", day("2026-10-02"));
+    syncRibbons(db, "s", NOW);
+    handleRibbon(db, "s", { action: "seen" }, NOW);
+    reply(id, "nurse", day("2026-10-03"));
+    syncRibbons(db, "s", NOW);
+    expect(listNewRibbons(db, "s").map((trophy) => trophy.id)).not.toContain("nurse-word");
+    expect(listRibbons(db, "s").filter((trophy) => trophy.id === "nurse-word")).toHaveLength(1);
+  });
+
+  it("新しく届いたものは、生徒には「実績解除」、先生には丁寧な形で出せるよう印を付ける", () => {
+    const mine = post("s", day("2026-10-01"));
+    reply(mine, "nurse", day("2026-10-02"));
+    syncRibbons(db, "s", NOW);
+    expect(listNewRibbons(db, "s").every((trophy) => !trophy.polite)).toBe(true);
+    const theirs = post("a", day("2026-10-01"));
+    reply(theirs, "boss", day("2026-10-02"));
+    syncRibbons(db, "a", NOW);
+    expect(listNewRibbons(db, "a").every((trophy) => trophy.polite)).toBe(true);
+  });
+});
+
 describe("守ること", () => {
   const SELF_ONLY = TROPHIES.filter((trophy) => trophy.selfOnly);
 
   it("回数を条件にするものと、言い換えや取り消しは、プロフィールに出せない", () => {
     expect(SELF_ONLY.map((trophy) => trophy.id).sort()).toEqual(
-      ["legend", "pass-wizard", "rephrase-hero", "thanks-millionaire", "trusted", "undo-art", "unsung-hero", "walking-archive", "walking-search"].sort(),
+      ["legend", "pass-wizard", "rare-word", "rephrase-hero", "thanks-millionaire", "trusted", "undo-art", "unsung-hero", "walking-archive", "walking-search"].sort(),
     );
     db.prepare("INSERT INTO person_ribbons (person_id, ribbon_id, earned_at, is_public) VALUES ('a', 'undo-art', ?, 1)").run(NOW.toISOString());
     expect(listPublicRibbons(db, "a")).toEqual([]);
@@ -522,7 +665,7 @@ describe("守ること", () => {
   });
 
   it("画面の部品は、一覧を型だけ読み込む（隠しトロフィーの条件が配られない）", () => {
-    for (const path of ["src/app/Sticker.tsx", "src/app/me/Ribbons.tsx", "src/app/RibbonMoment.tsx"]) {
+    for (const path of ["src/app/Sticker.tsx", "src/app/me/Ribbons.tsx", "src/app/RibbonMoment.tsx", "src/app/TrophyToast.tsx"]) {
       const source = readFileSync(path, "utf8");
       for (const line of source.split("\n").filter((text) => /@\/lib\/(trophies|trophy-rules|ribbons)"/.test(text))) expect(line).toMatch(/^import type /);
     }

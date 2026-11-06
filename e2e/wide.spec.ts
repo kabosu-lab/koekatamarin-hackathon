@@ -74,8 +74,9 @@ for (const viewport of [
   test(`履歴と設定のタイルは、スクロールなしで全部見える（${viewport.width}×${viewport.height}）`, async ({ page }) => {
     await page.setViewportSize(viewport);
     await page.goto("/me");
-    const moment = page.locator(".ribbon-moment");
-    if (await moment.isVisible().catch(() => false)) await moment.click();
+    // トロフィーの小さな知らせは押すとコレクションへ移るので、押さずに Esc で閉じる
+    const toast = page.locator(".trophy-toast");
+    if (await toast.isVisible().catch(() => false)) await page.keyboard.press("Escape");
     const tiles = page.getByRole("navigation", { name: "履歴と設定の項目" }).getByRole("link");
     expect(await tiles.count()).toBeGreaterThanOrEqual(8);
     for (const tile of await tiles.all()) await expect(tile).toBeInViewport({ ratio: 1 });

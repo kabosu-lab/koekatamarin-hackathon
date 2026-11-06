@@ -100,6 +100,15 @@ export const TROPHIES: readonly TrophyDefinition[] = [
   { id: "rephrase-hero", name: "言い直しの勇者", description: "言い換えの提案を受け入れて送った", category: "hidden", emblem: "speech", quip: "角が取れました", hidden: true, selfOnly: true },
   { id: "under-sakura", name: "桜の木の下で", description: "開花の日に投稿した", category: "hidden", emblem: "flower", quip: "特に何も起きません", hidden: true },
   { id: "one-more-lap", name: "一周まわって", description: "自分が昔答えた内容を、自分で探して読んだ", category: "hidden", emblem: "book", quip: "誰の言葉か、見覚えがありますね", hidden: true },
+
+  // 立場で解ける隠しトロフィー。個人の名前ではなく、肩書きと役割で決める（どの学校でも使え、特定の先生に頼みが集まらない）
+  { id: "nurse-word", name: "保健室からの一言", description: "保健室の先生から、返事が届いた", category: "hidden", emblem: "heart", hidden: true },
+  { id: "grade-head-eyes", name: "学年主任のまなざし", description: "学年主任の先生から、いいねが届いた", category: "hidden", emblem: "star", hidden: true },
+  { id: "homeroom-reply", name: "担任からの返事", description: "担任の先生から、返事が届いた", category: "hidden", emblem: "speech", hidden: true },
+  { id: "principal-office", name: "校長室に届いた", description: "管理職の先生から、返事かいいねが届いた", category: "hidden", emblem: "flag", hidden: true },
+  { id: "guidance-cheer", name: "生徒指導からのエール", description: "生徒指導の先生から、返事かいいねが届いた", category: "hidden", emblem: "arrow", hidden: true },
+  // 誰が・なぜ珍しいかは出さない（めったに使わない人だと分かる見せ方をしない）
+  { id: "rare-word", name: "めずらしい一言", description: "めずらしい一言が届いた", category: "hidden", emblem: "flower", hidden: true, selfOnly: true },
 ];
 
 /** 知恵の種類。本文を読まずに判定できるよう、作る人が選ぶ。 */
