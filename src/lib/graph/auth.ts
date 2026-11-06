@@ -123,11 +123,43 @@ export async function startDeviceLogin(
 
 /** 使えるアクセストークンを返す。設定かサインインがなければ null（通信しない）。 */
 export async function getAccessToken(fetcher: Fetch = fetch, now = Date.now(), personId?: string): Promise<string | null> {
+  const result = await getAccessTokenResult(fetcher, now, personId);
+  return "token" in result ? result.token : null;
+}
+
+/**
+ * トークンが取れなかった本当の理由（0-1p）。画面に正直に出すため、理由を分ける。
+ * - signin：この人はまだサインインしていない（トークンの保存がない）
+ * - refresh：保存はあるが、更新を Microsoft に断られた。code は AADSTS の番号だけ（トークンや説明文は持ち出さない）
+ * - network：Microsoft につながらなかった
+ */
+export type TokenFailure = { error: "signin" } | { error: "refresh"; code: string | null } | { error: "network" };
+
+/** Microsoft の答えから、AADSTS の番号だけを取り出す */
+export function aadstsCode(body: unknown): string | null {
+  const record = (body ?? {}) as { error_codes?: unknown; error_description?: unknown };
+  const first = Array.isArray(record.error_codes) ? record.error_codes[0] : undefined;
+  if (typeof first === "number" && Number.isInteger(first)) return `AADSTS${first}`;
+  const found = typeof record.error_description === "string" ? record.error_description.match(/AADSTS\d{4,7}/) : null;
+  return found ? found[0] : null;
+}
+
+export async function getAccessTokenResult(fetcher: Fetch = fetch, now = Date.now(), personId?: string): Promise<{ token: string } | TokenFailure> {
   const config = readGraphConfig();
   const stored = readJson<StoredToken>(tokenPath(personId));
-  if (!config || !stored) return null;
-  if (stored.expiresAt - EXPIRY_MARGIN_MS > now) return stored.accessToken;
-  const response = await fetcher(`${authority(config)}/token`, formBody({ grant_type: "refresh_token", client_id: config.clientId, refresh_token: stored.refreshToken, scope: SCOPES }));
-  if (!response.ok) return null;
-  return saveToken((await response.json()) as TokenBody, stored.refreshToken, now, personId).accessToken;
+  if (!config || !stored) return { error: "signin" };
+  if (stored.expiresAt - EXPIRY_MARGIN_MS > now) return { token: stored.accessToken };
+  let response: Response;
+  try {
+    response = await fetcher(`${authority(config)}/token`, formBody({ grant_type: "refresh_token", client_id: config.clientId, refresh_token: stored.refreshToken, scope: SCOPES }));
+  } catch {
+    return { error: "network" };
+  }
+  if (!response.ok) {
+    const code = aadstsCode(await response.json().catch(() => null));
+    // 記録には番号だけを残す（トークンは出さない）
+    console.error("Teams のサインインの更新を断られました", code ?? `HTTP ${response.status}`);
+    return { error: "refresh", code };
+  }
+  return { token: saveToken((await response.json()) as TokenBody, stored.refreshToken, now, personId).accessToken };
 }

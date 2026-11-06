@@ -55,6 +55,9 @@ export function deliveryText(channelName: string, teams?: TeamsDelivery): string
     case "skipped":
       if (teams.reason === "scope") return "こえかたに残しました。範囲を絞った投稿は Teams へ送りません。";
       if (teams.reason === "signin") return "こえかたに残しました。Teams へは届いていません（この人はサインインしていません）。";
+      if (teams.reason === "unlinked") return "こえかたに残しました。このチャネルは Teams につないでいません。";
+      if (teams.reason === "refresh")
+        return `こえかたに残しました。Teams へは届いていません（サインインの更新を、組織のセキュリティの設定に止められました${teams.code ? `。${teams.code}` : ""}）。`;
       return "こえかたに残しました。この投稿は校内だけに届きます。";
     default:
       return `${channelName}に届きました。`;
@@ -109,6 +112,16 @@ export function Talk({
   const [scripted, setScripted] = useState(false);
   const [composing, setComposing] = useState<ComposeStart | null>(null);
   const [preparing, setPreparing] = useState(false);
+  // 0-1n：3秒を超えて待たせたら、何をしているかを一言見せる
+  const [preparingSlow, setPreparingSlow] = useState(false);
+  useEffect(() => {
+    if (!preparing) {
+      setPreparingSlow(false);
+      return;
+    }
+    const timer = setTimeout(() => setPreparingSlow(true), 3000);
+    return () => clearTimeout(timer);
+  }, [preparing]);
   const [safety, setSafety] = useState<SafetyNotice | null>(null);
   const [suggestion, setSuggestion] = useState<ConnectSuggestion | null>(null);
   const [burst, setBurst] = useState<string | null>(null);
@@ -783,6 +796,16 @@ export function Talk({
           <div className="log" role="log" aria-label="パートナーとの会話" ref={logRef} data-noswipe-landscape>
             {acknowledged && messages.length === 0 && !listening && !sending && question && <p className="daily-question">{question}</p>}
             {chatList}
+            {preparing && (
+              // 0-1n：下書きができるまで、出る場所に下書きカードの形を出し、光の帯を流す
+              <div className="draft-skeleton" role="status">
+                <span className="visually-hidden">下書きを作っています</span>
+                <i aria-hidden="true" />
+                <i aria-hidden="true" />
+                <i aria-hidden="true" />
+                {preparingSlow && <small>話したことから、投稿の下書きを作っています…</small>}
+              </div>
+            )}
             {cards}
             {canCompose && !safety && (
               <button type="button" className="remember find-knowledge" disabled={sending || finding} onClick={() => void findKnowledge()}>
@@ -892,6 +915,7 @@ export function Talk({
             data-mode={hasTyped ? "send" : "deliver"}
             data-ready={readyToDeliver}
             disabled={listening || sending || preparing || (!hasTyped && !canCompose)}
+            data-busy={preparing}
             onClick={() => {
               if (hasTyped) void send(draft);
               else void startCompose(askTarget ?? undefined);

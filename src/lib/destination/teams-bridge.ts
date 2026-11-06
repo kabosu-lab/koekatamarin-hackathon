@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
-import { getAccessToken, type GraphConfig, readGraphConfig, readLinkedPeople } from "../graph/auth";
+import { getAccessToken, getAccessTokenResult, type GraphConfig, readGraphConfig, readLinkedPeople } from "../graph/auth";
 import { isTrialMode, trialTeamsSender } from "../trial";
 import type { CreatePostOptions, PostDestination } from "./types";
 
@@ -32,7 +32,8 @@ export type TeamsDelivery =
   | { state: "off" }
   | { state: "sent" }
   | { state: "pending" }
-  | { state: "skipped"; reason: "scope" | "kept" | "signin" }
+  | { state: "skipped"; reason: "scope" | "kept" | "signin" | "unlinked" }
+  | { state: "skipped"; reason: "refresh"; code: string | null }
   | { state: "failed" };
 
 const DELIVERY_WAIT_MS = 4_000;
@@ -188,9 +189,16 @@ export async function sendPostToTeams(db: DatabaseSync, viewerId: string, postId
       return { state: "sent" };
     }
     // 本人の名前で届けるので、本人がサインインしていなければ送らない。試用では決めたダミーの名前で届ける
-    const token = await getAccessToken(fetcher, Date.now(), trialTeamsSender() ?? viewerId);
     const target = config && teamsTargetFor(db, config, channelId);
-    if (!target || !token) return { state: "skipped", reason: "signin" };
+    if (!target) return { state: "skipped", reason: "unlinked" };
+    const result = await getAccessTokenResult(fetcher, Date.now(), trialTeamsSender() ?? viewerId);
+    if ("error" in result) {
+      // 取れなかった本当の理由を画面に出す（0-1p）。前はどれも「サインインしていません」と出していた
+      if (result.error === "refresh") return { state: "skipped", reason: "refresh", code: result.code };
+      if (result.error === "network") return { state: "failed" };
+      return { state: "skipped", reason: "signin" };
+    }
+    const token = result.token;
     const path = await channelPath(fetcher, token, target);
     const sent = await graph<{ id: string }>(fetcher, token, path, { body: { contentType: "text", content: body } });
     saveLink(db, postId, "post", sent.id);

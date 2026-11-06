@@ -56,3 +56,22 @@ test("考え中は、アイコンの横の「…」の吹き出しになる", as
   await expect(waiting).toBeInViewport({ ratio: 1 });
   await expect(waiting).toHaveCount(0);
 });
+
+test("0-1n：下書きを待つ間は、下書きの形が光り、とどけるの縁が回り、3秒を超えたら何をしているかを出す", async ({ page }) => {
+  await page.route("**/api/draft", async (route) => {
+    await new Promise((done) => setTimeout(done, 3600));
+    await route.continue();
+  });
+  await page.goto("/");
+  const input = page.getByLabel("パートナーに書く");
+  await input.fill("今日の授業、急に静かになった瞬間があって");
+  await input.press("Enter");
+  await expect(page.getByRole("log").locator(".bubble.assistant:not(.waiting)")).toHaveCount(1);
+  const deliver = page.getByRole("button", { name: /とどける/ });
+  await deliver.click();
+  const skeleton = page.locator(".draft-skeleton");
+  await expect(skeleton).toBeVisible();
+  await expect(page.getByRole("button", { name: /作っています/ })).toHaveAttribute("data-busy", "true");
+  await expect(skeleton).toContainText("下書きを作っています", { timeout: 5000 });
+  await expect(page.getByLabel("投稿の文章")).toBeVisible({ timeout: 15000 });
+});

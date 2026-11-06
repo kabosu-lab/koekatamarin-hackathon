@@ -88,6 +88,8 @@ for (const [teams, expected] of [
   [{ state: "pending" }, "Teams へは確認中"],
   [{ state: "failed" }, "Teams へは届いていません（つながりませんでした）"],
   [{ state: "skipped", reason: "signin" }, "この人はサインインしていません"],
+  [{ state: "skipped", reason: "refresh", code: "AADSTS530035" }, "組織のセキュリティの設定に止められました。AADSTS530035"],
+  [{ state: "skipped", reason: "unlinked" }, "このチャネルは Teams につないでいません"],
   [{ state: "skipped", reason: "scope" }, "範囲を絞った投稿は Teams へ送りません"],
   [{ state: "skipped", reason: "kept" }, "校内だけに届きます"],
 ] as const) {

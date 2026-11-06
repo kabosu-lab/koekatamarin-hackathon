@@ -1453,3 +1453,83 @@ html[data-theme="retro"] :is(.home, .soudan) {
   filter: none;
   font-size: 1rem;
 }
+
+/* 0-1n：待つ間も何かが動く。下書きの形に光の帯が流れる（transform だけ） */
+.draft-skeleton {
+  position: relative;
+  display: grid;
+  gap: 8px;
+  align-self: stretch;
+  padding: 12px;
+  border-radius: 14px;
+  background: var(--surface);
+  overflow: hidden;
+  animation: chat-in 200ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.draft-skeleton i {
+  display: block;
+  height: 12px;
+  border-radius: 6px;
+  background: rgb(31 41 51 / 10%);
+}
+
+.draft-skeleton i:nth-of-type(2) {
+  width: 85%;
+}
+
+.draft-skeleton i:nth-of-type(3) {
+  width: 60%;
+}
+
+.draft-skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, transparent 20%, rgb(255 255 255 / 70%) 50%, transparent 80%);
+  transform: translateX(-100%);
+  animation: skeleton-shine 1.2s ease-in-out infinite;
+}
+
+.draft-skeleton small {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+@keyframes skeleton-shine {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+/* 作っている間は、とどけるの縁を回る輪にする。写真を付けている間も同じ */
+.talk.device .device-side[data-busy="true"] .device-side-face {
+  position: relative;
+}
+
+.talk.device .device-side[data-busy="true"] .device-side-face::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 3px solid transparent;
+  border-top-color: var(--accent);
+  animation: busy-ring 0.9s linear infinite;
+}
+
+@keyframes busy-ring {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .draft-skeleton::after,
+  .talk.device .device-side[data-busy="true"] .device-side-face::after {
+    animation: none;
+  }
+}
+
+html[data-theme="retro"] .talk .device-side[data-busy="true"]:disabled {
+  opacity: 1;
+}

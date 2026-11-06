@@ -260,6 +260,15 @@ describe("送った結果", () => {
     logged.mockRestore();
   });
 
+  it("サインインの更新を断られたときは、その理由と番号を返す（サインインしていない、とは言わない）", async () => {
+    signIn("saeki");
+    writeFileSync(join(dir, "teams-token-saeki.json"), JSON.stringify({ accessToken: "old", refreshToken: "r", expiresAt: 0 }));
+    const logged = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const denied = vi.fn(async () => json({ error: "invalid_grant", error_codes: [530035] }, 400)) as unknown as typeof fetch;
+    expect(await sendVia(denied)).toEqual({ state: "skipped", reason: "refresh", code: "AADSTS530035" });
+    logged.mockRestore();
+  });
+
   it("確認の印と、教職員だけのチャネルは、理由を分けずに校内だけとして返す", async () => {
     signIn("saeki");
     const needsLook = await sendVia(fakeGraph().fetcher, { needsLook: true });
