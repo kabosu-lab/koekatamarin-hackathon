@@ -21,7 +21,6 @@ const SUB_SCREENS = [
   "/teams",
   "/chie",
   "/chie/new",
-  "/study",
   "/study/room",
   "/walk",
   "/daily",
@@ -39,11 +38,10 @@ const EMBED_SCREENS = ["/tab"];
 
 /**
  * 共通の外枠（src/app/ui/PageShell.tsx）を使わない奥の画面。
- * 桜は「みんな」の担当、自習室は自習室の担当が作り直し中。校内チャネルは Teams に似せた画面なので外枠を持たない
+ * 桜は「みんな」の担当が作り直し中。校内チャネルは Teams に似せた画面なので外枠を持たない。
+ * （/study は自習室 /study/room へ送るだけなので、ここには並べない）
  */
-const OWN_FRAME = ["/sakura", "/study/room", "/teams"];
-/** 戻る印をまだ持たない画面（自習室の担当が作り直し中） */
-const NO_BACK_YET = ["/study/room"];
+const OWN_FRAME = ["/sakura", "/teams"];
 
 async function closeMoments(page: Page) {
   const moment = page.locator(".ribbon-moment");
@@ -82,13 +80,11 @@ for (const viewport of VIEWPORTS) {
         await page.goto(path);
         await closeMoments(page);
         await expect(page.locator("h1"), path).toHaveCount(1);
-        if (!NO_BACK_YET.includes(path)) {
-          const back = page.locator(".back-link");
-          await expect(back, path).toHaveCount(1);
-          await expect(back, path).toHaveText(/^‹ /);
-          const box = await back.boundingBox();
-          expect(box?.y, path).toBeLessThan(120);
-        }
+        const back = page.locator(".back-link");
+        await expect(back, path).toHaveCount(1);
+        await expect(back, path).toHaveText(/^‹ /);
+        const box = await back.boundingBox();
+        expect(box?.y, path).toBeLessThan(120);
         if (OWN_FRAME.includes(path)) continue;
         await expect(page.locator("main.page-shell"), path).toHaveCount(1);
         // 文が途中で切れる箱がない（行の数で切る指定を使わない）

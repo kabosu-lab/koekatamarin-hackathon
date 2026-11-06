@@ -21,10 +21,6 @@ html body .room-card {
   margin-bottom: 0.75rem;
 }
 
-.room-rest {
-  margin: 0.75rem 0 0;
-}
-
 .study-room.room-scene {
   --buddy: clamp(84px, 25cqw, 112px);
   --room-wall-height: clamp(190px, 44cqw, 340px);
@@ -388,20 +384,7 @@ html body .room-card {
   background: linear-gradient(180deg, #a8d58a, #8fc477);
 }
 
-/* ---- 新しい形にそろえる（0-1q）：下のタブのナビと「デモ用：使う人」は自習室では出さない ---- */
-/* room.css は「みんな」や「桜」も読むので、必ず .room-page のときだけにする */
-body:has(.room-page) > :is(.bottom-nav, .demo-switcher) {
-  display: none;
-}
-
-html body .home.room-page {
-  gap: 12px;
-}
-
-html body .home.room-page > h1 {
-  margin: 0;
-}
-
+/* ---- 外枠は PageShell（0-1q）。カードの間は外枠の gap だけにする ---- */
 html body .home.room-page > .card {
   margin-top: 0;
 }
