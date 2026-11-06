@@ -21,7 +21,10 @@ export type RibbonView = {
   selfOnly: boolean;
   art: TrophyArt;
 } & RibbonStory & { isPublic: boolean };
-export type NewRibbon = Pick<RibbonView, "id" | "name" | "description" | "quip" | "hidden" | "art" | "story">;
+export type NewRibbon = Pick<RibbonView, "id" | "name" | "description" | "quip" | "hidden" | "art" | "story"> & {
+  /** 先生には「実績解除」と言わず、です・ます調で知らせる */
+  polite: boolean;
+};
 export type PublicRibbon = Pick<RibbonView, "id" | "name" | "description" | "art">;
 
 /** 棚の1枠。取っていない隠しトロフィーには、名前も条件も ID も渡さない。 */
@@ -132,7 +135,9 @@ export function listPublicRibbons(db: DatabaseSync, personId: string): PublicRib
 /** まだ本人に見せていないトロフィー。もらった瞬間の演出に使う。 */
 export function listNewRibbons(db: DatabaseSync, personId: string): NewRibbon[] {
   const rows = db.prepare("SELECT ribbon_id, is_public, story, story_at FROM person_ribbons WHERE person_id = ? AND seen_at IS NULL").all(personId) as Row[];
-  return toViews(rows).map(({ id, name, description, quip, hidden, art, story }) => ({ id, name, description, quip, hidden, art, story }));
+  const role = (db.prepare("SELECT role FROM people WHERE id = ?").get(personId) as { role: string } | undefined)?.role;
+  const polite = role !== "student";
+  return toViews(rows).map(({ id, name, description, quip, hidden, art, story }) => ({ id, name, description, quip, hidden, art, story, polite }));
 }
 
 /** トロフィーの棚。もらっていないものは影だけにする。順位や割合は出さない。期間限定の棚は、もらってから出す。 */

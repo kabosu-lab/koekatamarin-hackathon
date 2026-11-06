@@ -43,9 +43,10 @@ const EMBED_SCREENS = ["/tab"];
  */
 const OWN_FRAME = ["/sakura", "/teams"];
 
+/** トロフィーの小さな知らせは押すとコレクションへ移るので、押さずに Esc で閉じる */
 async function closeMoments(page: Page) {
-  const moment = page.locator(".ribbon-moment");
-  if (await moment.isVisible().catch(() => false)) await moment.click();
+  const toast = page.locator(".trophy-toast");
+  if (await toast.isVisible().catch(() => false)) await page.keyboard.press("Escape");
 }
 
 async function shoot(page: Page, path: string, viewport: string) {

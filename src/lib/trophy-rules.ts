@@ -109,6 +109,58 @@ function helpDates(db: DatabaseSync, personId: string): string[] {
   ].map((row) => text(row.at));
 }
 
+/** 立場は肩書き（label）と役割（role）から読む。個人の名前では決めない。 */
+type Stance = { id: string; role: string; label: string };
+const isNurse = (who: Stance) => /養護/.test(who.label);
+const isGradeHead = (who: Stance) => /学年主任|学年長/.test(who.label);
+// 副担任は担任に数えない
+const isHomeroomLabel = (who: Stance) => /(?<!副)担任/.test(who.label);
+const isManager = (who: Stance) => who.role === "admin" || /校長|教頭/.test(who.label);
+const isGuidance = (who: Stance) => /生徒指導/.test(who.label);
+
+/** 「めずらしい」とみなす、返事の前30日のやり取り（投稿と返事）の数の上限 */
+const RARE_MAX = 3;
+const RARE_WINDOW_MS = 30 * 86_400_000;
+
+/** 自分の投稿に、他の人から届いた返事（Teams から取り込んだものも同じ表に入る）。 */
+function repliesToMe(db: DatabaseSync, personId: string): (Stance & { replyId: string; at: string })[] {
+  return all(
+    db,
+    `SELECT a.id, a.role, a.label, r.id AS reply_id, r.created_at AS at
+     FROM replies r JOIN posts p ON p.id = r.post_id JOIN people a ON a.id = r.author_id
+     WHERE p.author_id = ? AND r.author_id != p.author_id ORDER BY r.created_at, r.rowid`,
+    personId,
+  ).map((row) => ({ id: text(row.id), role: text(row.role), label: text(row.label), replyId: text(row.reply_id), at: text(row.at) }));
+}
+
+/** 自分の投稿に、他の人から届いたいいね。いいねには日時がないので、気づいた日を使う。 */
+function likesToMe(db: DatabaseSync, personId: string): Stance[] {
+  return all(
+    db,
+    `SELECT a.id, a.role, a.label FROM post_likes l JOIN posts p ON p.id = l.post_id JOIN people a ON a.id = l.person_id
+     WHERE p.author_id = ? AND l.person_id != p.author_id ORDER BY p.created_at`,
+    personId,
+  ).map((row) => ({ id: text(row.id), role: text(row.role), label: text(row.label) }));
+}
+
+/** 名前は書かない（立場で決めるトロフィーなので、物語も立場で語る）。 */
+function fromStance(match: (who: Stance) => boolean, ways: { replies: boolean; likes: boolean }, replyStory: string, likeStory: string): Rule {
+  return (db, personId) => {
+    if (ways.replies) {
+      const reply = repliesToMe(db, personId).find(match);
+      if (reply) return { story: replyStory, at: reply.at };
+    }
+    if (ways.likes && likesToMe(db, personId).some(match)) return { story: likeStory, at: null };
+    return null;
+  };
+}
+
+/** 生徒は自分の担任から。担任の決まっていない人は、肩書きの「担任」で読む。 */
+function isMyHomeroom(db: DatabaseSync, personId: string): (who: Stance) => boolean {
+  const mine = text(one(db, "SELECT homeroom_teacher_id AS id FROM people WHERE id = ?", personId)?.id);
+  return (who) => (mine ? who.id === mine : isHomeroomLabel(who));
+}
+
 /** リボンの判定と物語は、そのまま引き継ぐ。範囲を絞った投稿は、相手の名前を出さない。 */
 export const TROPHY_RULES: Record<string, Rule> = {
   "first-answer": (db, personId) => {
@@ -533,4 +585,25 @@ export const TROPHY_RULES: Record<string, Rule> = {
   },
 
   "one-more-lap": fromLog("found-own-answer", "昔の自分の答えを、探して読んだ日"),
+
+  "nurse-word": fromStance(isNurse, { replies: true, likes: false }, "保健室の先生から、返事が届いた日", ""),
+  "grade-head-eyes": fromStance(isGradeHead, { replies: false, likes: true }, "", "学年主任の先生から、いいねが届いた"),
+  "homeroom-reply": (db, personId, now) =>
+    fromStance(isMyHomeroom(db, personId), { replies: true, likes: false }, "担任の先生から、返事が届いた日", "")(db, personId, now),
+  "principal-office": fromStance(isManager, { replies: true, likes: true }, "管理職の先生から、返事が届いた日", "管理職の先生から、いいねが届いた"),
+  "guidance-cheer": fromStance(isGuidance, { replies: true, likes: true }, "生徒指導の先生から、返事が届いた日", "生徒指導の先生から、いいねが届いた"),
+
+  // 誰から・いつかは書かない（日時からも、めったに使わない人だと分かってしまう）
+  "rare-word": (db, personId) => {
+    const count = db.prepare(
+      `SELECT (SELECT count(*) FROM posts WHERE author_id = ?1 AND created_at >= ?2 AND created_at < ?3)
+            + (SELECT count(*) FROM replies WHERE author_id = ?1 AND created_at >= ?2 AND created_at < ?3 AND id != ?4) AS n`,
+    );
+    const rare = repliesToMe(db, personId).some((reply) => {
+      const since = new Date(Date.parse(reply.at) - RARE_WINDOW_MS).toISOString();
+      const row = count.get(reply.id, since, reply.at, reply.replyId) as { n: number };
+      return row.n <= RARE_MAX;
+    });
+    return rare ? { story: "めずらしい一言が届いた", at: null } : null;
+  },
 };
