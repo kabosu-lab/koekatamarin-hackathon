@@ -108,6 +108,9 @@ function schedulePiano(audio: BaseAudioContext, out: AudioNode, at: number, note
   }
 }
 
+/** 送る音の部品1つの音量の上限（祝いの音の目安 0.5〜0.6）。 */
+export const SEND_MAX_GAIN = 0.6;
+
 /** 言葉（音階が上がる）→ 固まる → ためる → ヒューン → 低い音 → 届く和音 → ピアノ。t0 は動きの始まり。 */
 export function scheduleSendSound(audio: BaseAudioContext, out: AudioNode, t0: number, wordCount: number) {
   const timing = sendTiming(wordCount);
@@ -116,10 +119,11 @@ export function scheduleSendSound(audio: BaseAudioContext, out: AudioNode, t0: n
 
   const flight = timing.land - timing.launch;
   scheduleHyun(audio, out, t0 + timing.launch - 0.03, flight + 0.16, 0.2);
-  scheduleWhoosh(audio, out, t0 + timing.launch, flight * 1.3, 2.4);
+  // 0-2w：ほかの音とそろえる（前はシューン 2.4・着地 0.8 で外れていた）。どの部品も SEND_MAX_GAIN 以下
+  scheduleWhoosh(audio, out, t0 + timing.launch, flight * 1.3, SEND_MAX_GAIN);
   schedulePop(audio, out, t0 + timing.launch + flight * 0.44, 60, 0.55);
 
-  schedulePop(audio, out, t0 + timing.land, 60, 0.8);
+  schedulePop(audio, out, t0 + timing.land, 60, 0.5);
   for (const [delay, note] of LAND_NOTES) schedulePop(audio, out, t0 + timing.land + delay, note, 0.5);
   schedulePiano(audio, out, t0 + timing.land + 0.26, 84, 0.16);
   schedulePop(audio, out, t0 + timing.land + 0.46, 84, 0.3);

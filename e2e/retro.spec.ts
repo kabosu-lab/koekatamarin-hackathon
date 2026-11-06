@@ -83,6 +83,51 @@ test("0-1g(3)：輪をなぞると機能のチップが出て、離すと真ん�
   await expect(page).not.toHaveURL(/127\.0\.0\.1:\d+\/$/, { timeout: 5000 });
 });
 
+test("0-2w：輪をなぞると、なぞっている間にカリの音を作る（3kHz の雑音と 800Hz の歯）", async ({ page }) => {
+  await page.addInitScript(() => {
+    const made = { filters: [] as BiquadFilterNode[], oscillators: [] as OscillatorNode[] };
+    (window as unknown as { soundMade: typeof made }).soundMade = made;
+    const proto = AudioContext.prototype;
+    const filter = proto.createBiquadFilter;
+    proto.createBiquadFilter = function (this: AudioContext) {
+      const node = filter.call(this);
+      made.filters.push(node);
+      return node;
+    };
+    const oscillator = proto.createOscillator;
+    proto.createOscillator = function (this: AudioContext) {
+      const node = oscillator.call(this);
+      made.oscillators.push(node);
+      return node;
+    };
+  });
+  await asPerson(page, "aoki");
+  await page.goto("/");
+  const wheel = (await page.locator(".click-wheel").boundingBox())!;
+  const cx = wheel.x + wheel.width / 2;
+  const cy = wheel.y + wheel.height / 2;
+  const r = wheel.width * 0.44;
+  const at = (deg: number) => ({ x: cx + r * Math.cos((deg * Math.PI) / 180), y: cy + r * Math.sin((deg * Math.PI) / 180) });
+  await page.mouse.move(at(0).x, at(0).y);
+  await page.mouse.down();
+  for (const deg of [20, 40, 60, 80, 100]) await page.mouse.move(at(deg).x, at(deg).y, { steps: 3 });
+  const counts = () =>
+    page.evaluate(() => {
+      const made = (window as unknown as { soundMade: { filters: BiquadFilterNode[]; oscillators: OscillatorNode[] } }).soundMade;
+      return {
+        clicks: made.filters.filter((node) => node.type === "bandpass" && node.frequency.value === 3000).length,
+        teeth: made.oscillators.filter((node) => node.frequency.value === 800).length,
+      };
+    });
+  // 指を離す前（なぞっている間）に、もう作られている
+  await expect.poll(() => counts().then((made) => made.clicks)).toBeGreaterThan(0);
+  const made = await counts();
+  expect(made.teeth).toBe(made.clicks);
+  // 真ん中で離してやめる（開いて画面が替わらないように）
+  await page.mouse.move(cx, cy, { steps: 2 });
+  await page.mouse.up();
+});
+
 test("0-1g(3)：真ん中のマイクの上で離すと、何も開かずにやめる", async ({ page }) => {
   await asPerson(page, "aoki");
   await page.goto("/");

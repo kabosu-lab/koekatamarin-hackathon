@@ -14,8 +14,55 @@ import {
   scheduleCommitPop,
   scheduleCommitRun,
   scheduleReadyChord,
+  SEND_MAX_GAIN,
   scheduleSendSound,
 } from "./send-sound";
+
+/** 出口（out）へつながる音量の値（setValueAtTime・linearRamp・曲線）を集める偽物。変調の深さ（Hz）は数えない。 */
+function gainRecorder(out: object) {
+  const levels: { values: number[]; toOut: boolean }[] = [];
+  const param = (values: number[] | null) => ({
+    value: 0,
+    setValueAtTime: (value: number) => values?.push(value),
+    linearRampToValueAtTime: (value: number) => values?.push(value),
+    exponentialRampToValueAtTime: (value: number) => values?.push(value),
+    setTargetAtTime() {},
+    setValueCurveAtTime: (points: Float32Array) => values?.push(...points),
+    cancelScheduledValues() {},
+  });
+  const node = () => ({ connect: (next: unknown) => next });
+  const audio = {
+    sampleRate: 8000,
+    createOscillator: () => ({ ...node(), type: "sine", frequency: param(null), detune: param(null), start() {}, stop() {} }),
+    createGain() {
+      const level = { values: [] as number[], toOut: false };
+      levels.push(level);
+      return {
+        gain: param(level.values),
+        connect(next: unknown) {
+          if (next === out) level.toOut = true;
+          return next;
+        },
+      };
+    },
+    createBiquadFilter: () => ({ ...node(), type: "", Q: param(null), frequency: param(null) }),
+    createBuffer: (_channels: number, length: number) => ({ getChannelData: () => new Float32Array(length) }),
+    createBufferSource: () => ({ ...node(), buffer: null, start() {}, stop() {} }),
+  };
+  const gains = () => levels.filter((level) => level.toOut).flatMap((level) => level.values);
+  return { audio: audio as unknown as BaseAudioContext, gains };
+}
+
+describe("送る音の音量（0-2w）", () => {
+  it.each([1, 3, 6])("言葉が %i 個でも、どの部品も上限を超えない（前はシューン 2.4 で外れていた）", (count) => {
+    const out = {};
+    const recorder = gainRecorder(out);
+    scheduleSendSound(recorder.audio, out as AudioNode, 0, count);
+    const gains = recorder.gains();
+    expect(gains.length).toBeGreaterThan(0);
+    expect(Math.max(...gains)).toBeLessThanOrEqual(SEND_MAX_GAIN + 1e-9);
+  });
+});
 
 /** 実物の AudioContext が例外にする使い方を、同じように例外にする偽物。 */
 function fakeAudio() {
