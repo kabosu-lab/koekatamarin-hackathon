@@ -6,8 +6,25 @@ const ECHO_GAIN = 0.18;
 
 let shared: { audio: AudioContext; out: AudioNode } | null = null;
 
+/**
+ * 音を鳴らしてよいか。判定はここ1か所だけ（0-1v）。アプリの中に「音を消す」はなく、いつも鳴らす。
+ * 音を切るのは端末の消音や音量で（iPhone・iPad は下の audioSession で消音スイッチに従う）。
+ */
+export function soundAllowed(): boolean {
+  return typeof document !== "undefined";
+}
+
 function setup() {
   if (shared) return shared;
+  // 対応する端末（iOS Safari など）では、ほかの音楽を止めず、消音スイッチに従う種類にする
+  const session = (navigator as Navigator & { audioSession?: { type: string } }).audioSession;
+  if (session) {
+    try {
+      session.type = "ambient";
+    } catch {
+      // 設定できなくても鳴らせる
+    }
+  }
   const audio = new AudioContext();
   const master = audio.createGain();
   master.gain.value = MASTER_GAIN;
@@ -36,7 +53,7 @@ function setup() {
  * 音の設定が「on」のときだけ返す。判定はここに1つにまとめる（0-1m：判定の食い違いをなくす）。
  */
 export function audioOutput(): { audio: AudioContext; out: AudioNode } | null {
-  if (typeof document === "undefined" || document.documentElement.dataset.sound !== "on") return null;
+  if (!soundAllowed()) return null;
   try {
     const output = setup();
     void output.audio.resume();
@@ -51,7 +68,7 @@ if (typeof document !== "undefined") {
   document.addEventListener(
     "pointerdown",
     () => {
-      if (document.documentElement.dataset.sound !== "on") return;
+      if (!soundAllowed()) return;
       try {
         void setup().audio.resume();
       } catch {
@@ -64,7 +81,7 @@ if (typeof document !== "undefined") {
 
 /** 送ったときの音。動きと同じ時刻で鳴らす。音を消している人には鳴らさない。 */
 export function playSendSound(words: string): void {
-  if (document.documentElement.dataset.sound !== "on") return;
+  if (!soundAllowed()) return;
   try {
     const { audio, out } = setup();
     void audio.resume();
@@ -82,7 +99,7 @@ export function playSendSound(words: string): void {
 /** 人に届いた瞬間の小さな音（応援、返信、ありがとう）。音を消している人には鳴らさない。 */
 /** リボンが贈られた瞬間のファンファーレ。短く、同じ調で上がる。 */
 export function playRibbonSound(): void {
-  if (document.documentElement.dataset.sound !== "on") return;
+  if (!soundAllowed()) return;
   try {
     const { audio, out } = setup();
     void audio.resume();
@@ -102,7 +119,7 @@ export function playRibbonSound(): void {
 
 /** ホイールを回したときの小さな音。 */
 export function playWheelTick(): void {
-  if (document.documentElement.dataset.sound !== "on") return;
+  if (!soundAllowed()) return;
   try {
     const { audio, out } = setup();
     void audio.resume();
@@ -113,7 +130,7 @@ export function playWheelTick(): void {
 }
 
 export function playReachedSound(): void {
-  if (document.documentElement.dataset.sound !== "on") return;
+  if (!soundAllowed()) return;
   try {
     const { audio, out } = setup();
     void audio.resume();

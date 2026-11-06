@@ -5,6 +5,7 @@ import { AIZUCHI_INTERVAL_MS, aizuchiAt, detectCommand, withoutEndWord } from "@
 import type { ChatMessage } from "@/lib/claude/types";
 import type { SafetyNotice } from "./SafetyCard";
 import type { ListeningSession } from "./speech";
+import { soundAllowed } from "./sound";
 
 const COMMAND_WAIT_MS = 1200;
 /** 話した分がこれだけ増えたら、命や安全の確認を通す */
@@ -22,10 +23,8 @@ export function voiceReply(reply: string): string {
 }
 const READY_VOICE = "今の話、みんなに届けられそう。あとで画面で確かめてね。";
 
-/** 音を鳴らすかは sound.ts と同じく、"on" のときだけ（0-1m の食い違いを直す） */
-function soundIsOn(): boolean {
-  return document.documentElement.dataset.sound === "on";
-}
+/** 音を鳴らすかは sound.ts の1か所で決める（0-1v） */
+const soundIsOn = soundAllowed;
 
 /**
  * 固定中のふるまい。歩きながら話すと同じく、合いの手、「どう思う？」への声の返事、「終わり」で止まること、

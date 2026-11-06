@@ -17,6 +17,8 @@ import "./globals.css";
 import "./modern.css";
 import "./usability.css";
 import "./retro.css";
+// とどけるの光の段。retro.css の古い光を止めるので、retro.css より後に読む
+import "./deliver-light.css";
 
 export const metadata: Metadata = {
   title: "こえかた",

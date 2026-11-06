@@ -18,7 +18,8 @@ import { SafetyCard, type SafetyNotice } from "./SafetyCard";
 import { AttachmentPreview } from "./AttachmentPreview";
 import { Avatar } from "./Avatar";
 import { playSendSound, SendBurst } from "./SendBurst";
-import { audioOutput } from "./sound";
+import { audioOutput, playCommitPop, playReadyChord } from "./sound";
+import { raiseLevel, type DeliverLevel } from "@/lib/send-sound";
 import type { AttachmentView } from "@/lib/attachment";
 import { loadTalk, saveTalk } from "./talk-storage";
 import { isSpeechSupported, type ListeningSession, SLOW_NOTICE, startSession } from "./speech";
@@ -143,6 +144,11 @@ export function Talk({
   const connectDone = useRef(false);
   // 送ったあとに話した分だけで、次を目立たせるか決める
   const [deliveredAt, setDeliveredAt] = useState(0);
+  // 0-1g(5)：とどけるの光の段（1〜3）。上がるだけで、届けたら0に戻る
+  const [level, setLevel] = useState<DeliverLevel>(0);
+  const levelRef = useRef<DeliverLevel>(0);
+  // 0-1g(4)：声が固まるたびに上がるポンの段。届けたら最初に戻る
+  const popStep = useRef(0);
   /** パートナーが「投稿にできる要素がそろった」と判断した時点の会話の長さ */
   const [readyAt, setReadyAt] = useState<number | null>(null);
   const [sentTo, setSentTo] = useState<{ channel: ChannelView; postId: string; isPublic: boolean; teams?: TeamsDelivery } | null>(null);
@@ -234,10 +240,11 @@ export function Talk({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ history, text }),
       });
-      const { reply, mode, ready, safety: notice } = (await response.json().catch(() => ({}))) as {
+      const { reply, mode, ready, level: incoming, safety: notice } = (await response.json().catch(() => ({}))) as {
         reply?: string;
         mode?: string;
         ready?: boolean;
+        level?: number;
         safety?: SafetyNotice;
       };
       // 返事が作れなくても、相談室に伝えたことは必ず本人に知らせる
@@ -252,6 +259,13 @@ export function Talk({
       setScripted(mode === "scripted");
       // パートナーが「投稿にできる要素がそろった」と判断したら、とどけるを光らせる。命や安全の案内のときは光らせない
       if (ready === true && !notice) setReadyAt(updated.length);
+      // 段は上がるだけ。上がった瞬間だけ締めの和音を鳴らす。命や安全の案内のときは上げない
+      if (!notice) {
+        const next = raiseLevel(levelRef.current, incoming ?? (ready === true ? 1 : 0));
+        if (next > levelRef.current) playReadyChord(next);
+        levelRef.current = next;
+        setLevel(next);
+      }
       // 命や安全の案内が出ているときは、人の紹介をしない
       if (notice) connectDone.current = true;
       void checkConnect(updated);
@@ -428,6 +442,11 @@ export function Talk({
         const typed = latest.current.draft.trim();
         latest.current.send(typed ? `${typed}\n${rest}` : rest);
       },
+      // 0-1g(4)：声が1区切り固まるたびに、やわらかいポン。音階が1段ずつ上がる
+      onCommitted: () => {
+        popStep.current += 1;
+        playCommitPop(popStep.current);
+      },
       onError: setNotice,
       onEnd: () => {
         setListening(false);
@@ -536,6 +555,10 @@ export function Talk({
             setComposing(null);
             setSentTo({ channel, postId, isPublic, teams });
             setDeliveredAt(messages.length);
+            // 届けたら、光の段もポンの段も最初に戻す
+            levelRef.current = 0;
+            setLevel(0);
+            popStep.current = 0;
             setGoalForPost(null);
             setAttachment(null);
             setBurst(words);
@@ -923,6 +946,7 @@ export function Talk({
             className="device-side"
             data-mode={hasTyped ? "send" : "deliver"}
             data-ready={readyToDeliver}
+            data-level={readyToDeliver ? level || 1 : undefined}
             disabled={listening || sending || preparing || (!hasTyped && !canCompose)}
             data-busy={preparing}
             onClick={() => {
@@ -934,7 +958,7 @@ export function Talk({
               <Icon name="send" />
             </span>
             {hasTyped ? "パートナーへ送る" : preparing ? "作っています" : "とどける"}
-            {readyToDeliver && <small className="ready-note">言葉になりそう</small>}
+            {readyToDeliver && <small className="ready-note">{level >= 3 ? "もう投稿にできる" : "言葉になりそう"}</small>}
           </button>
         </div>
 
