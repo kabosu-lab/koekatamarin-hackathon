@@ -397,58 +397,296 @@ html body .home.room-page > .card {
   max-width: none;
 }
 
-/* ---- みんなで聴く曲 ---- */
-.room-music {
-  display: grid;
-  gap: 12px;
+/* ==== 1画面に収める（0-2s）。自習室の画面（.room-fit）だけ。Teams のタブ（/tab）は前の流れのまま ==== */
+html body main.page-shell.room-fit {
+  height: 100vh;
+  height: 100dvh;
+  max-height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+  gap: 8px;
+  padding-bottom: max(12px, env(safe-area-inset-bottom));
 }
 
-.room-music-now {
-  display: grid;
-  gap: 4px;
-}
-
-.room-music-label {
-  color: var(--muted);
-  font-size: 0.875rem;
-}
-
-.room-music-name {
-  font-size: 1.25rem;
-  line-height: 1.4;
-  overflow-wrap: anywhere;
-}
-
-/* 人数は札の形で小さく。数だけで、誰かは出さない */
-.room-music-together {
-  justify-self: start;
-  padding: 4px 12px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  font-size: 0.875rem;
-  line-height: 1.5;
-}
-
-.room-music-actions {
-  display: flex;
-  flex-wrap: wrap;
+/* 見出しは「‹ みんな」と「自習室」を1行に */
+html body main.page-shell.room-fit > .page-head {
+  flex: none;
+  flex-direction: row;
+  align-items: center;
   gap: 8px;
 }
 
-/* 押しやすい大きさ。文字は折り返し、切らない */
-html body .room-music-actions button {
-  flex: 1 1 10rem;
-  min-height: 48px;
-  margin: 0;
-  border-radius: 999px;
-  white-space: normal;
+html body main.page-shell.room-fit > .page-head h1 {
+  font-size: 1.25rem;
+  white-space: nowrap;
 }
 
-.room-music-note {
+/* 景色は残りの高さいっぱい。札と帯はこの中に重ねる */
+.room-stage {
+  /* 壁の高さ・下の帯の場所。cq の単位は中の .room-frame の大きさで決まる */
+  --fit-wall: min(52cqh, 70cqw);
+  --fit-band: 6.5rem;
+  position: relative;
+  flex: 1 1 auto;
+  align-self: stretch;
+  /* 中身から幅を決めない入れ物なので、列の幅いっぱいに広げる（広げないと広い画面で 0 になる） */
+  width: 100%;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: 1rem;
+  background: var(--surface);
+}
+
+.room-frame {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  container-type: size;
+}
+
+html body .room-fit .room-card {
+  position: absolute;
+  inset: 0;
+  width: auto;
   margin: 0;
-  color: var(--muted);
+  padding: 0;
+  container-type: normal;
+}
+
+.room-fit .study-room.room-scene {
+  --room-wall-height: var(--fit-wall);
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+
+.room-fit .room-backdrop {
+  position: absolute;
+  inset: 0 0 auto;
+  height: var(--fit-wall);
+}
+
+/* 席の列。人数の段ごとにキャラクターの大きさを決め、机は折り返して並ぶ。上は壁の下の端に少しかかる */
+.room-fit .room-floor {
+  --buddy: min(30cqw, 26cqh, 112px);
+  position: absolute;
+  top: calc(var(--fit-wall) - var(--buddy) * 0.8);
+  right: 0;
+  bottom: var(--fit-band);
+  left: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-content: center;
+  justify-content: center;
+  gap: calc(var(--buddy) * 0.2) 0.5rem;
+  margin: 0;
+  padding: 0 0.75rem;
+}
+
+.room-fit .room-scene[data-crowd="some"] .room-floor {
+  --buddy: min(21cqw, 16cqh, 112px);
+}
+
+.room-fit .room-scene[data-crowd="many"] .room-floor {
+  --buddy: min(19cqw, 13cqh, 104px);
+}
+
+.room-fit .room-scene[data-crowd="full"] .room-floor {
+  --buddy: min(15cqw, 12cqh, 96px);
+}
+
+.room-fit .room-table {
+  width: auto;
+  max-width: none;
+}
+
+.room-fit .room-seats {
+  gap: calc(var(--buddy) * 0.12);
+}
+
+.room-fit .room-desk {
+  gap: calc(var(--buddy) * 0.12);
+  height: calc(var(--buddy) * 0.28);
+  margin-top: calc(var(--buddy) * -0.16);
+  border-bottom-width: calc(var(--buddy) * 0.06);
+}
+
+.room-fit .room-book {
+  width: calc(var(--buddy) * 0.4);
+  height: calc(var(--buddy) * 0.1);
+  margin-left: calc(var(--buddy) * -0.2);
+}
+
+/* 座りきれない人は、奥の壁ぎわにぼかした影で。数は「ほか N人」の札で伝える */
+.room-shadows {
+  position: absolute;
+  z-index: 0;
+  top: calc(var(--room-wall-height) - 2.6rem);
+  right: 0;
+  left: 0;
+  display: flex;
+  justify-content: center;
+  gap: 0.6rem;
+  pointer-events: none;
+}
+
+.room-shadow {
+  width: 2.2rem;
+  height: 2.6rem;
+  border-radius: 50% 50% 0.6rem 0.6rem;
+  background: var(--room-wood-dark);
+  filter: blur(3px);
+  opacity: 0.35;
+}
+
+/* ---- 景色の上に重ねる札 ---- */
+html body .room-fit .room-chip {
+  position: relative;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: auto;
+  min-height: 44px;
+  margin: 0;
+  padding: 4px 14px;
+  border: 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface) 84%, transparent);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 12%);
+  color: var(--ink);
+  font-size: 0.9375rem;
+  font-weight: 700;
+  line-height: 1.3;
+  white-space: nowrap;
+  backdrop-filter: blur(6px);
+}
+
+html body .room-fit .room-card .study-count {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+}
+
+html body .room-fit .room-more {
+  position: absolute;
+  top: calc(var(--fit-wall) - 3.6rem);
+  left: 50%;
+  min-height: 32px;
   font-size: 0.875rem;
-  line-height: 1.6;
+  translate: -50% 0;
+}
+
+/* 曲の札（押すと曲を替える）と、自分の耳だけ止める小さな札 */
+.room-fit .room-music {
+  position: absolute;
+  z-index: 3;
+  top: 8px;
+  right: 8px;
+  max-width: calc(100% - 7.5rem);
+}
+
+/* 狭い画面では、音の札は曲の札の下へ回る */
+.room-fit .room-music-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+/* 狭い画面でも曲名を切らない。入らなければ札の中で折り返す */
+html body .room-fit .room-music-change {
+  min-width: 0;
+  white-space: normal;
+  text-align: left;
+}
+
+html body .room-fit .room-music-change:disabled {
+  opacity: 0.8;
+}
+
+.room-fit .room-music-name {
+  font-size: inherit;
+  word-break: keep-all;
+}
+
+html body .room-fit .room-music-play {
+  justify-content: center;
+  min-width: 44px;
+  padding-inline: 10px;
+}
+
+.room-fit .room-music-notice {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  white-space: nowrap;
+}
+
+/* 説明の一文は、最初の1回だけ景色の上に */
+.room-hint {
+  position: absolute;
+  z-index: 3;
+  /* 上の札にかからないよう、下の帯のすぐ上に出す */
+  right: 16px;
+  bottom: calc(var(--fit-band) + 8px);
+  left: 16px;
+  width: fit-content;
+  margin: 0 auto;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  text-align: center;
+  animation: room-notice-in 220ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+/* ---- 下の端の帯：タイマー（大きな数字）と「ここまでにする」 ---- */
+.room-band {
+  position: absolute;
+  z-index: 3;
+  right: 8px;
+  bottom: 8px;
+  left: 8px;
+}
+
+html body .room-fit .room-band > .card {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px 16px;
+  margin: 0;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 1rem;
+  background: color-mix(in srgb, var(--surface) 80%, transparent);
+  box-shadow: 0 2px 12px rgb(0 0 0 / 14%);
+  backdrop-filter: blur(8px);
+  animation: none;
+}
+
+.room-band .timer {
+  margin: 0;
+  font-size: 2.5rem;
+  line-height: 1.1;
+}
+
+.room-band :is(p, h2) {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.room-band label {
+  width: 100%;
+}
+
+html body .room-band button {
+  min-height: 48px;
+  margin: 0;
 }
 
 /* 曲が変わった知らせ。空のときは場所を取らない */
@@ -485,7 +723,8 @@ html body .room-music-actions button {
 
 /* 動きを減らす設定：意味は残し、動きだけ消す */
 @media (prefers-reduced-motion: reduce) {
-  .room-music-toast {
+  .room-music-toast,
+  .room-hint {
     animation: none;
   }
 }
