@@ -10,6 +10,7 @@ import { listCelebratedPostIds } from "@/lib/goals";
 import { listPopularCards, listQuietPosts, listSeenNotes, listTodayCards, viewerPublicWords, todayAffinity } from "@/lib/today";
 import { CardReply } from "./CardReply";
 import { TodayCards } from "./TodayCards";
+import { MarkTodaySeen } from "../minna/TodayModal";
 
 import { PageShell } from "@/app/ui/PageShell";
 export const metadata: Metadata = { title: "今日の3人｜こえかた" };
@@ -30,6 +31,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
 
   return (
     <PageShell back={{ href: "/minna", label: "みんな" }} title="今日の3人" lead="10秒で、誰かの頑張りを応援できます。">
+      <MarkTodaySeen />
 
       {seen.map((note) => (
         <p className="seen-note" key={note.postBody}>

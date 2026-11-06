@@ -235,13 +235,16 @@ for (const viewport of VIEWPORTS) {
       }
     });
 
-    test("(6) 自習室：景色・タイマー・曲のカードは同じ幅", async ({ page }) => {
+    test("(6) 自習室：景色1枚の中に、人数と曲の札とタイマーの帯が重なり、幅からはみ出さない", async ({ page }) => {
+      // 0-2s で1画面に収めた。前の「3枚のカードを同じ幅に」は、景色1枚に重ねる形になった
+      // 0-2y：横向きでは3列の右の列の中
       const screen = await openScreen(page, "/study/room");
-      const widths = await screen.locator("main.room-page > .card").evaluateAll((cards) =>
-        cards.map((card) => Math.round(card.getBoundingClientRect().width)),
-      );
-      expect(widths.length).toBeGreaterThanOrEqual(3);
-      expect(Math.max(...widths) - Math.min(...widths), widths.join(",")).toBeLessThanOrEqual(1);
+      const stage = (await screen.locator("main.room-page > .room-stage").boundingBox())!;
+      for (const part of [".room-stage .study-count", ".room-music", ".room-band"]) {
+        const box = (await screen.locator(part).boundingBox())!;
+        expect(box.x, part).toBeGreaterThanOrEqual(stage.x - 0.5);
+        expect(box.x + box.width, part).toBeLessThanOrEqual(stage.x + stage.width + 0.5);
+      }
     });
 
     test("(2)(7) みんな：春の見通しの吹き出しは説明の文に重ならず、下の帯の名前は「…」で切れない", async ({ page }) => {

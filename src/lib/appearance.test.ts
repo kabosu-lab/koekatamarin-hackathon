@@ -67,12 +67,14 @@ describe("きせかえ", () => {
 });
 
 describe("設定の読み取り", () => {
-  it("見た目は1つで、ふつうの大きさ、音あり", () => {
-    expect(readAppearance(() => undefined)).toEqual({ theme: "retro", size: "normal", sound: "on", avatar: "show" });
+  it("見た目は1つで、ふつうの大きさ。音の設定はない（0-1v：音はいつも鳴らす）", () => {
+    expect(readAppearance(() => undefined)).toEqual({ theme: "retro", size: "normal", avatar: "show" });
+    expect(isAppearanceValue("sound", "off")).toBe(false);
+    expect(isAppearanceValue("sound", "on")).toBe(false);
   });
 
   it("おかしな値は使わない", () => {
-    expect(readAppearance(() => '"><script>')).toEqual({ theme: "retro", size: "normal", sound: "on", avatar: "show" });
+    expect(readAppearance(() => '"><script>')).toEqual({ theme: "retro", size: "normal", avatar: "show" });
     expect(isAppearanceValue("theme", "game")).toBe(true);
     expect(isAppearanceValue("theme", "pop")).toBe(true);
     expect(isAppearanceValue("theme", "evil")).toBe(false);

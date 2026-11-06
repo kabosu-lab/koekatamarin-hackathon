@@ -49,11 +49,6 @@ test("動画の場面：白石先生（養護）が生徒の投稿に返事を�
   // マイクを隠さず、横にはみ出さない
   await expect(page.getByRole("button", { name: "押し続けて話す" })).toBeInViewport({ ratio: 1 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0);
-  // 返事の知らせと重ならない
-  const reply = await page.locator(".reply-toast").boundingBox();
-  const box = await nurse.boundingBox();
-  if (reply && box) expect(box.y).toBeGreaterThanOrEqual(reply.y + reply.height);
-
   // 押すと、コレクションのそのトロフィーへ
   await nurse.click();
   await expect(page).toHaveURL(/\/me\?open=collect&trophy=nurse-word/);

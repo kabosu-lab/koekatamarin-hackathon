@@ -49,65 +49,57 @@ function setup() {
 }
 
 /**
- * ほかの部品が自分の音を鳴らすための口（ホイールのカリ、ポン、和音）。
- * 音の設定が「on」のときだけ返す。判定はここに1つにまとめる（0-1m：判定の食い違いをなくす）。
+ * ほかの部品が自分の音を鳴らすための口（ホイールのカリ、ポン、和音）。判定は soundAllowed の1か所（0-1v）。
+ * 止まっていても null にはしない（起こすためだけに呼ぶ部品がある）。止まっている間に積みたくない音は、
+ * 呼ぶ側で audio.state を見て捨てる（wheel-sound.ts のカリ）。ここの resume は保険で、起こす責任は wake。
  */
 export function audioOutput(): { audio: AudioContext; out: AudioNode } | null {
   if (!soundAllowed()) return null;
   try {
     const output = setup();
-    void output.audio.resume();
+    if (output.audio.state !== "running") void output.audio.resume().catch(() => {});
     return output;
   } catch {
     return null;
   }
 }
 
-// スマホでは、指で触れた時に音を起こしておかないと、通信のあとに鳴らせない
-if (typeof document !== "undefined") {
-  document.addEventListener(
-    "pointerdown",
-    () => {
-      if (!soundAllowed()) return;
-      try {
-        void setup().audio.resume();
-      } catch {
-        // 音が出せなくても、操作には関係ない
-      }
-    },
-    { passive: true },
-  );
-
-  // 0-2o(3)：iPhone の Safari は、なぞる（ドラッグ）だけの pointerdown では音を起こせない。
-  // 指を離したとき（touchend・pointerup・click）に起こし、無音を1回鳴らして、以後の音を通す。
-  // 起きたと分かるまでは、離すたびに試す（最初の操作が許可にならない端末もあるため）。
-  let unlocked = false;
-  const wake = () => {
-    if (unlocked || !soundAllowed()) return;
-    try {
-      const { audio } = setup();
-      const silent = audio.createBufferSource();
-      silent.buffer = audio.createBuffer(1, 1, audio.sampleRate);
-      silent.connect(audio.destination);
-      silent.start(0);
-      void audio.resume().then(() => {
-        if (audio.state === "running") unlocked = true;
-      });
-    } catch {
-      // 音が出せなくても、操作には関係ない
-    }
-  };
-  for (const type of ["touchend", "pointerup", "click"] as const) {
-    document.addEventListener(type, wake, { passive: true, capture: true });
+/**
+ * 音を起こす口はここ1か所（0-2w）。最初の操作が何であっても（押す・なぞって離す・打つ）起こす。
+ * iPhone の Safari は、なぞるだけの pointerdown では起こせないので、離したとき（touchend・pointerup・click）にも試す。
+ * 無音を1回鳴らしてから resume する（iPhone の Safari が、これで以後の音を通す）。
+ * 掛け金は置かない：録音・電話・バックグラウンドで止まった（interrupted など）あとも、次の操作でまた起こす。
+ */
+export function wakeAudio(): void {
+  if (!soundAllowed()) return;
+  try {
+    const { audio } = setup();
+    if (audio.state === "running") return;
+    const silent = audio.createBufferSource();
+    silent.buffer = audio.createBuffer(1, 1, audio.sampleRate);
+    silent.connect(audio.destination);
+    silent.start(0);
+    void audio.resume().catch(() => {});
+  } catch {
+    // 音が出せなくても、操作には関係ない
   }
 }
 
-/** 送ったときの音。動きと同じ時刻で鳴らす。音を消している人には鳴らさない。 */
+/** 音を起こす合図にする操作。 */
+export const WAKE_EVENTS = ["pointerdown", "touchend", "pointerup", "click", "keydown"] as const;
+
+if (typeof document !== "undefined") {
+  for (const type of WAKE_EVENTS) {
+    document.addEventListener(type, wakeAudio, { passive: true, capture: true });
+  }
+}
+
+/** 送ったときの音。動きと同じ時刻で鳴らす。 */
 export function playSendSound(words: string): void {
-  if (!soundAllowed()) return;
+  const output = audioOutput();
+  if (!output) return;
   try {
-    const { audio, out } = setup();
-    void audio.resume();
+    const { audio, out } = output;
     // モダンは小さな音1つだけ
     if (document.documentElement.dataset.theme === "modern") {
       schedulePop(audio, out, audio.currentTime + 0.02, 79, 0.2);
@@ -119,44 +111,12 @@ export function playSendSound(words: string): void {
   }
 }
 
-/** 人に届いた瞬間の小さな音（応援、返信、ありがとう）。音を消している人には鳴らさない。 */
-/** リボンが贈られた瞬間のファンファーレ。短く、同じ調で上がる。 */
-export function playRibbonSound(): void {
-  if (!soundAllowed()) return;
-  try {
-    const { audio, out } = setup();
-    void audio.resume();
-    const t0 = audio.currentTime + 0.02;
-    [
-      [0, 72, 0.4],
-      [0.1, 76, 0.42],
-      [0.2, 79, 0.45],
-      [0.32, 84, 0.5],
-      [0.32, 76, 0.3],
-      [0.52, 88, 0.42],
-    ].forEach(([delay, note, volume]) => schedulePop(audio, out, t0 + delay, note, volume));
-  } catch {
-    // 音が出せなくても、操作には関係ない
-  }
-}
-
-/** ホイールを回したときの小さな音。 */
-export function playWheelTick(): void {
-  if (!soundAllowed()) return;
-  try {
-    const { audio, out } = setup();
-    void audio.resume();
-    schedulePop(audio, out, audio.currentTime + 0.005, 96, 0.08);
-  } catch {
-    // 音が出せなくても、操作には関係ない
-  }
-}
-
+/** 人に届いた瞬間の小さな音（応援、返信、ありがとう）。 */
 export function playReachedSound(): void {
-  if (!soundAllowed()) return;
+  const output = audioOutput();
+  if (!output) return;
   try {
-    const { audio, out } = setup();
-    void audio.resume();
+    const { audio, out } = output;
     const t0 = audio.currentTime + 0.02;
     schedulePop(audio, out, t0, 79, 0.4);
     schedulePop(audio, out, t0 + 0.09, 84, 0.45);
@@ -167,8 +127,8 @@ export function playReachedSound(): void {
 
 /**
  * 声が1区切り固まったときのやわらかい「ポン」。step（1 から）ごとに音階が1段上がる。
- * 木琴の音色で、ホイールの「カリ」とは別。音の設定が「on」のときだけ鳴る。
- * 0-2m で、話している間の音は playCommitRun（話し終えたあとにまとめて鳴らす）へ移す。本体が移し終えたら消してよい。
+ * 木琴の音色で、ホイールの「カリ」とは別。
+ * 話す画面は 0-2m で playCommitRun（話し終えたあとにまとめて鳴らす）へ移した。これは「これまで」の積み上がりで使う。
  */
 export function playCommitPop(step: number): void {
   const output = audioOutput();

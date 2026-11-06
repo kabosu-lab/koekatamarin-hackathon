@@ -76,11 +76,6 @@ export function isNoticeHours(now: Date): boolean {
   return hour >= 7 && hour < 19;
 }
 
-/** 最初の画面に出すお願いの数。時間外は 0 にして、お願いが新しい義務感にならないようにする。 */
-export function countForNotice(db: DatabaseSync, viewerId: string, now: Date): number {
-  return isNoticeHours(now) ? listInbox(db, viewerId).length : 0;
-}
-
 function currentAsked(db: DatabaseSync, postId: string, viewerId: string): { body: string; channel_id: string; author_id: string } | null {
   const post = db
     .prepare("SELECT body, channel_id, author_id, asked_person_id FROM posts WHERE id = ?")

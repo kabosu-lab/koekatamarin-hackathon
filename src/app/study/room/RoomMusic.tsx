@@ -102,12 +102,12 @@ class RoomPlayer {
 /**
  * 部屋に流れる曲。全員が同じ曲の同じ位置を聴く。音は初めから流す（0-1v）。
  * 音がもう起きていれば開いたときから、まだなら画面のどこかを最初に触ったときから流れる（sound.ts がそのタップで音を起こす）。
- * 自分の耳だけ止める小さなボタンを残す。音を切るのは端末の消音や音量で。
+ * 止めるボタンは置かない（0-1v：アプリに消音は置かない）。音を切るのは端末の消音や音量で。
  */
 export function RoomMusic({ initial }: { initial: Music }) {
   const [music, setMusic] = useState(initial);
-  /** 自分の耳で聴くか（止めるボタンで切り替える） */
-  const [listening, setListening] = useState(true);
+  /** いつも聴く（止めるボタンは置かない） */
+  const listening = true;
   /** 音が起きて、曲を鳴らせるか */
   const [awake, setAwake] = useState(false);
   const [preparing, setPreparing] = useState(false);
@@ -185,19 +185,13 @@ export function RoomMusic({ initial }: { initial: Music }) {
   }, [playing, music.trackId]);
 
   return (
-    <section className="card room-music" aria-label="みんなで聴く曲">
-      <div className="room-music-now">
-        <span className="room-music-label">いまの曲</span>
-        <strong className="room-music-name">{music.name}</strong>
-        <span className="room-music-together">いま {music.listening} 人が一緒に聴いています</span>
-      </div>
+    // 景色の上の端に重ねる小さな札（0-2s）。曲名の札を押すと曲が替わる。長い説明は読み上げにだけ残す
+    <section className="room-music" aria-label="みんなで聴く曲">
+      <span className="visually-hidden">いまの曲</span>
       <div className="room-music-actions">
-        <button type="button" className="room-music-play" onClick={() => setListening((value) => !value)}>
-          {listening ? "音を止める" : "音を流す"}
-        </button>
         <button
           type="button"
-          className="room-music-change secondary"
+          className="room-chip room-music-change"
           disabled={!music.canChange}
           onClick={() =>
             void fetch("/api/room-music", { method: "POST" })
@@ -206,10 +200,14 @@ export function RoomMusic({ initial }: { initial: Music }) {
               .catch(() => undefined)
           }
         >
-          {music.canChange ? "曲を変える" : "少し待つと変えられます"}
+          <span aria-hidden="true">♪</span>
+          <strong className="room-music-name">{music.name}</strong>
+          {music.canChange && <span className="room-music-turn" aria-hidden="true">⟳</span>}
+          <span className="visually-hidden">{music.canChange ? "曲を変える" : "少し待つと変えられます"}</span>
         </button>
       </div>
-      <p className="room-music-note">
+      <span className="visually-hidden">いま {music.listening} 人が一緒に聴いています</span>
+      <p className="room-music-note visually-hidden">
         {listening && !awake
           ? "画面を触ると、曲が流れはじめます"
           : playing && preparing

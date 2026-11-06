@@ -123,16 +123,15 @@ test("間が空くと短い合いの手を入れ、切ると入れない", async
   expect(await spokenWords(page).then((words) => words.length)).toBe(1);
 });
 
-test("音を消していると、声を出さない", async ({ page }) => {
+test("0-1v：前に「音なし」を選んでいても、アプリの中では音を消さず、声で返す", async ({ page }) => {
   await fakeVoice(page);
+  await page.context().addCookies([{ name: "koekata_sound", value: "off", domain: "127.0.0.1", path: "/" }]);
   await page.goto("/walk");
-  await page.evaluate(() => {
-    document.documentElement.dataset.sound = "off";
-  });
+  await expect(page.locator("html")).not.toHaveAttribute("data-sound", /.*/);
   await page.getByRole("button", { name: "話し始める" }).click();
   await hear(page, "どう思う？");
   await expect(page.locator(".walk-reply")).toBeVisible({ timeout: 15_000 });
-  expect(await spokenWords(page)).toEqual([]);
+  await expect.poll(() => spokenWords(page).then((words) => words.length)).toBeGreaterThan(0);
 });
 
 test("命や安全に関わる話は、歩いている間でも画面と声で案内する", async ({ page }) => {

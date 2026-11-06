@@ -7,6 +7,7 @@ import { audioOutput } from "@/app/sound";
 import { schedulePop } from "@/lib/send-sound";
 import type { NewRibbon } from "@/lib/ribbons";
 import { Sticker } from "./Sticker";
+import { useFirstCardClear } from "./use-first-card-clear";
 import "./trophy-toast.css";
 
 /** 画面が落ち着いて、返事の知らせ（ReplyToast）が先に出てから出す */
@@ -62,17 +63,19 @@ export function TrophyToast({ trophies }: { trophies: NewRibbon[] }) {
   const [revealed, setRevealed] = useState(false);
   const [leaving, setLeaving] = useState(false);
   const [top, setTop] = useState<number | undefined>(undefined);
+  // 0-2q(1)：最初の注意カードの暗幕が出ている間は待ち、カードを閉じてから出す
+  const clear = useFirstCardClear();
 
   useEffect(() => {
-    if (trophies.length === 0 || window.self !== window.top) return;
+    if (!clear || trophies.length === 0 || window.self !== window.top) return;
     void fetch("/api/ribbons", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "seen" }),
     }).catch(() => undefined);
-    const timer = setTimeout(() => setIndex(0), START_MS);
+    const timer = setTimeout(() => setIndex((current) => (current < 0 ? 0 : current)), START_MS);
     return () => clearTimeout(timer);
-  }, [trophies.length]);
+  }, [clear, trophies.length]);
 
   useEffect(() => {
     const current = trophies[index];

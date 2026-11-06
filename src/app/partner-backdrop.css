@@ -1,0 +1,332 @@
+/* 0-2x：パートナーの窓の背景。.lcd の中身の下に敷く。絵は PartnerBackdrop.tsx の SVG、色はここで時間ごとに */
+
+/* 色は時間が替わるとゆっくり混ざる（境目を急に変えない） */
+@property --pb-sky-top { syntax: "<color>"; inherits: true; initial-value: #8fc8ee; }
+@property --pb-sky-bottom { syntax: "<color>"; inherits: true; initial-value: #dff1fb; }
+@property --pb-wall { syntax: "<color>"; inherits: true; initial-value: #f3ecd9; }
+@property --pb-wall-side { syntax: "<color>"; inherits: true; initial-value: #e8dfc8; }
+@property --pb-ceiling { syntax: "<color>"; inherits: true; initial-value: #f7f2e4; }
+@property --pb-floor { syntax: "<color>"; inherits: true; initial-value: #d1a877; }
+@property --pb-light { syntax: "<color>"; inherits: true; initial-value: #ffffff; }
+@property --pb-sun { syntax: "<color>"; inherits: true; initial-value: #ffe08a; }
+@property --pb-tint { syntax: "<color>"; inherits: true; initial-value: transparent; }
+
+.lcd:has(> .partner-backdrop) {
+  isolation: isolate;
+}
+
+.partner-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  /* 吹き出しの文字が読みにくくならないよう、ふだんから薄く */
+  opacity: 0.5;
+  transition:
+    opacity 0.6s ease,
+    --pb-sky-top 20s linear,
+    --pb-sky-bottom 20s linear,
+    --pb-wall 20s linear,
+    --pb-wall-side 20s linear,
+    --pb-ceiling 20s linear,
+    --pb-floor 20s linear,
+    --pb-light 20s linear,
+    --pb-sun 20s linear,
+    --pb-tint 20s linear;
+
+  --pb-wood: #ad7c4b;
+  --pb-wood-dark: #775030;
+  --pb-curtain: #f3ead6;
+  --pb-board: #2f5a48;
+  --pb-hill: #9ccc86;
+  --pb-ground: #d9bb8c;
+  --pb-building: #e9e1cf;
+  --pb-window-glass: #a8cfe6;
+  --pb-trunk: #8a6549;
+  --pb-leaf: #7fb36f;
+}
+
+.partner-backdrop > svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.partner-backdrop[data-time="morning"] {
+  --pb-sky-top: #cfe6f2;
+  --pb-sky-bottom: #fff0cb;
+  --pb-wall: #efe2c8;
+  --pb-wall-side: #e6d6b8;
+  --pb-ceiling: #f6ecd8;
+  --pb-floor: #c79a68;
+  --pb-light: #fff3c9;
+  --pb-sun: #ffd98a;
+  --pb-tint: rgb(255 240 200 / 0.12);
+}
+
+.partner-backdrop[data-time="noon"] {
+  --pb-sky-top: #8fc8ee;
+  --pb-sky-bottom: #dff1fb;
+  --pb-wall: #f3ecd9;
+  --pb-wall-side: #e8dfc8;
+  --pb-ceiling: #f7f2e4;
+  --pb-floor: #d1a877;
+  --pb-light: #ffffff;
+  --pb-sun: #fff1b0;
+  --pb-tint: rgb(255 255 255 / 0);
+}
+
+.partner-backdrop[data-time="evening"] {
+  --pb-sky-top: #7d6aa8;
+  --pb-sky-bottom: #ffb27a;
+  --pb-wall: #e9c49a;
+  --pb-wall-side: #dcb084;
+  --pb-ceiling: #efcfa8;
+  --pb-floor: #b47f50;
+  --pb-light: #ffb56b;
+  --pb-sun: #ff9a52;
+  --pb-tint: rgb(255 150 80 / 0.1);
+}
+
+.partner-backdrop[data-time="night"] {
+  --pb-sky-top: #121a3a;
+  --pb-sky-bottom: #33437a;
+  --pb-wall: #5b5f78;
+  --pb-wall-side: #4c5068;
+  --pb-ceiling: #62667f;
+  --pb-floor: #4a4152;
+  --pb-light: #ffe7a8;
+  --pb-sun: #f3ecd2;
+  --pb-tint: rgb(20 30 70 / 0.12);
+  --pb-building: #3e4460;
+  --pb-window-glass: #ffe7a8;
+  --pb-ground: #5a5266;
+  --pb-hill: #3d5a4a;
+  --pb-leaf: #3f5f4a;
+}
+
+/* 会話中・聞いている間は、さらに淡く（言葉が主役） */
+.talk.device[data-talking="true"] .partner-backdrop,
+.talk.device[data-state="listening"] .partner-backdrop {
+  opacity: 0.18;
+}
+
+/* 暗い見た目では少し控えめに。くっきり（clear）では出さない */
+html[data-theme="game"] .partner-backdrop {
+  opacity: 0.35;
+}
+
+html[data-theme="game"] .talk.device[data-talking="true"] .partner-backdrop {
+  opacity: 0.12;
+}
+
+html[data-theme="clear"] .partner-backdrop,
+html[data-embed] .partner-backdrop {
+  display: none;
+}
+
+/* レア：桜吹雪と雪 */
+.pb-fall {
+  position: absolute;
+  inset: 0;
+}
+
+.pb-fall > span {
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 2px rgb(120 140 170 / 0.5);
+}
+
+.partner-backdrop[data-rare="sakura"] .pb-fall > span {
+  width: 9px;
+  height: 6px;
+  border-radius: 80% 0 80% 0;
+  background: #f7b6c8;
+  box-shadow: none;
+}
+
+.pb-rainbow,
+.pb-festival {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.pb-rainbow {
+  opacity: 0.75;
+}
+
+.pb-festival {
+  height: 22%;
+}
+
+/* レア：流れ星 */
+.pb-shooting {
+  position: absolute;
+  inset: 0;
+}
+
+.pb-shooting > span {
+  position: absolute;
+  top: 12%;
+  left: 55%;
+  width: 70px;
+  height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #fff8d8, rgb(255 255 255 / 0));
+  transform: rotate(-24deg);
+  opacity: 0;
+}
+
+/* 動きは、減らす設定でないときだけ */
+@media (prefers-reduced-motion: no-preference) {
+  .pb-fall > span {
+    animation: pb-fall 9s linear infinite;
+  }
+
+  .partner-backdrop[data-rare="sakura"] .pb-fall > span {
+    animation-name: pb-petal;
+  }
+
+  .pb-shooting > span {
+    animation: pb-shoot 7s ease-in infinite;
+  }
+
+  .pb-bunting {
+    transform-origin: 50% 0;
+    animation: pb-sway 4s ease-in-out infinite alternate;
+  }
+
+  .pb-star {
+    animation: pb-twinkle 3.2s ease-in-out infinite alternate;
+  }
+
+  .pb-mote {
+    animation: pb-mote 12s ease-in-out infinite alternate;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .partner-backdrop {
+    transition: none;
+  }
+
+  /* 止まっていても流れ星が見えるように */
+  .pb-shooting > span {
+    opacity: 0.9;
+  }
+}
+
+@keyframes pb-fall {
+  from {
+    transform: translate(0, -40px);
+  }
+  to {
+    transform: translate(-30px, 420px);
+  }
+}
+
+@keyframes pb-petal {
+  from {
+    transform: translate(0, -40px) rotate(0deg);
+  }
+  50% {
+    transform: translate(24px, 180px) rotate(200deg);
+  }
+  to {
+    transform: translate(-20px, 420px) rotate(420deg);
+  }
+}
+
+@keyframes pb-shoot {
+  0%,
+  70% {
+    opacity: 0;
+    transform: translate(0, 0) rotate(-24deg);
+  }
+  74% {
+    opacity: 1;
+  }
+  86% {
+    opacity: 0;
+    transform: translate(-160px, 72px) rotate(-24deg);
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes pb-sway {
+  from {
+    transform: rotate(-0.6deg);
+  }
+  to {
+    transform: rotate(0.6deg);
+  }
+}
+
+@keyframes pb-twinkle {
+  from {
+    opacity: 0.4;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes pb-mote {
+  from {
+    transform: translate(0, 0);
+  }
+  to {
+    transform: translate(10px, -16px);
+  }
+}
+
+/* コレクションの「めずらしい背景」（me/BackdropCollection.tsx） */
+.pb-collection > h3 {
+  margin: 0 0 0.4rem;
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.pb-collection ul {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(6.5rem, 1fr));
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pb-collection li {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.pb-collection li[data-seen="false"] {
+  opacity: 0.55;
+}
+
+.pb-collection small {
+  font-weight: 400;
+  opacity: 0.75;
+}
+
+.pb-swatch {
+  width: 100%;
+  height: 2.2rem;
+  border-radius: 8px;
+  background: repeating-linear-gradient(45deg, rgb(127 127 127 / 0.15) 0 6px, rgb(127 127 127 / 0.3) 6px 12px);
+}

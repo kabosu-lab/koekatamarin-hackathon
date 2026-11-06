@@ -178,3 +178,11 @@ html[data-theme="retro"] .trophy-toast::before {
     animation: trophy-toast-fade 160ms linear both;
   }
 }
+
+/* 0-2q(1)：狭い画面では、右上の感想のアイコン（44px、feedback-sheet.css）の下に出して重ねない。
+   知らせ（最大 360px）が真ん中にあってもアイコンに届く幅は 448px より狭いとき */
+@media (max-width: 520px) {
+  body:has(.feedback-fab) .trophy-toast-layer {
+    top: calc(env(safe-area-inset-top, 0px) + 56px);
+  }
+}

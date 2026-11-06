@@ -39,10 +39,10 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   const store = await cookies();
   const { viewer } = await getViewer();
   const appearance = readAppearance((name) => store.get(name)?.value);
-  const { theme, size, sound } = appearance;
+  const { theme, size } = appearance;
   const trial = isTrialMode();
   return (
-    <html lang="ja" data-theme={theme} data-size={size} data-sound={sound} data-avatar={showsRewards(appearance) ? "show" : "hide"} suppressHydrationWarning>
+    <html lang="ja" data-theme={theme} data-size={size} data-avatar={showsRewards(appearance) ? "show" : "hide"} suppressHydrationWarning>
       <head>
         {/* 0-2y：描く前に、欄の中かどうかと、広い画面で奥の画面を開いたときの行き先を決める */}
         <script dangerouslySetInnerHTML={{ __html: wideBootScript() }} />

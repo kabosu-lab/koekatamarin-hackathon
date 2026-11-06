@@ -32,7 +32,8 @@ import { GiftEggs } from "./GiftEggs";
 import { listCompanions, listGiftEggs, syncGiftEggs } from "@/lib/gift-eggs";
 import { RibbonMoment } from "../RibbonMoment";
 import { Ribbons } from "./Ribbons";
-import { listNewRibbons, listTrophyShelves, syncRibbons } from "@/lib/ribbons";
+import { BackdropCollection } from "./BackdropCollection";
+import { listNewRibbons, listTrophyShelves, syncRibbonsOnOpen } from "@/lib/ribbons";
 import { showsRewards } from "@/lib/rewards-view";
 import { ArtRefresher, AvatarFromPhoto, AvatarQuiz, MemoryList, ProfileEditor, ThanksForm } from "./MeActions";
 
@@ -48,6 +49,7 @@ import { TrialTools } from "../TrialNotice";
 import { DailyPanel } from "../daily/DailyPanel";
 import { getReport, japanDate } from "@/lib/daily";
 import { recipientsOf } from "@/lib/recipients";
+import { countNew, markCollectionOpened, markThanksOpened } from "@/lib/new-counts";
 import "./me.css";
 export const metadata: Metadata = { title: "履歴と設定｜こえかた" };
 export const dynamic = "force-dynamic";
@@ -59,7 +61,7 @@ export default async function MePage({ searchParams }: { searchParams: Promise<{
   const appearance = readAppearance((name) => store.get(name)?.value);
   const db = getDatabase();
   // 隠している人にも裏で集まる
-  syncRibbons(db, viewer.id, new Date());
+  syncRibbonsOnOpen(db, viewer.id, new Date());
   syncGiftEggs(db, viewer.id, new Date());
   const rewards = showsRewards(appearance);
   const photos = createDummyPhotos();
@@ -74,6 +76,11 @@ export default async function MePage({ searchParams }: { searchParams: Promise<{
   const noun = viewer.role === "student" ? "日記" : "日報";
   const now = new Date();
   const openKey = resolveOpenKey(typeof requested === "string" ? requested : undefined);
+  // 0-2v：開いたら消える。数え方はホーム・みんな・ホイールと同じ1か所（今日の3人の入口はここにないので数えない）
+  if (openKey === "thanks") markThanksOpened(db, viewer.id, now);
+  if (openKey === "partner") markCollectionOpened(db, viewer.id, now);
+  const fresh = countNew(db, getDestination(db), viewer.id, now, { rewards, todaySeen: true });
+  const badgeOf = (n: number) => (n > 0 ? String(n) : undefined);
 
   // 0-2b：タイルは6枚（3列×2段）。受信箱は「みんな」とホイール、話の履歴は「話す」の会話に任せる
   const tiles: {
@@ -123,6 +130,7 @@ export default async function MePage({ searchParams }: { searchParams: Promise<{
       key: "thanks",
       label: "ありがとう",
       icon: "thanks",
+      badge: badgeOf(fresh.thanks),
       content: () => {
         const thanks = listThanks(db, viewer.id);
         // 0-2j：一覧からは選ばせず、最近やりとりした人を数人だけ顔つきで出す
@@ -152,7 +160,7 @@ export default async function MePage({ searchParams }: { searchParams: Promise<{
       key: "partner",
       label: "パートナー",
       icon: "me",
-      badge: eggs.length > 0 ? String(eggs.length) : rewards && evolution !== null ? "!" : undefined,
+      badge: badgeOf(fresh.collection) ?? (rewards && evolution !== null ? "!" : undefined),
       content: () => (
         <>
           {rewards && (
@@ -207,6 +215,7 @@ export default async function MePage({ searchParams }: { searchParams: Promise<{
               <h2>コレクション</h2>
               <GiftEggs key={`${viewer.id}-eggs`} eggs={eggs} companions={listCompanions(db, viewer.id)} />
               <Ribbons key={`${viewer.id}-ribbons`} shelves={listTrophyShelves(db, viewer.id)} />
+              <BackdropCollection owner={viewer.id} />
             </section>
           )}
         </>
@@ -234,7 +243,7 @@ export default async function MePage({ searchParams }: { searchParams: Promise<{
             </section>
             <section className="card appearance" aria-label="見た目">
               <h2>見た目</h2>
-              {APPEARANCE_OPTIONS.filter((group) => group.name !== "theme" && group.name !== "sound")
+              {APPEARANCE_OPTIONS.filter((group) => group.name !== "theme")
                 .filter((group) => group.name !== "avatar" || appearance.theme !== "modern")
                 .map((group) => (
                   <form action={setAppearance} key={group.name}>
@@ -256,7 +265,7 @@ export default async function MePage({ searchParams }: { searchParams: Promise<{
                     </div>
                   </form>
                 ))}
-              {appearance.sound === "on" && <SoundTest />}
+              <SoundTest />
             </section>
             <MemoryList key={`${viewer.id}-memory`} initial={listMemories(db, getDestination(db), viewer.id)} />
             <HiddenPeople key={`${viewer.id}-hidden`} initial={listHiddenPeople(db, viewer.id)} />

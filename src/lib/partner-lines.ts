@@ -14,7 +14,8 @@
  */
 
 export type PartnerAudience = "student" | "teacher";
-export type PartnerLineKind = "ask" | "guide" | "about";
+/** news：新着の知らせ（0-2v）。押すとその画面へ行く */
+export type PartnerLineKind = "ask" | "guide" | "about" | "news";
 export type TimeOfDay = "morning" | "noon" | "afterschool" | "night";
 
 export interface PartnerLine {

@@ -3253,56 +3253,6 @@ html[data-avatar="hide"] .burst-speaker {
   font-weight: 700;
 }
 
-/* 届いた返事の知らせ。窓の上に短く出す。文字は 14px 以上（docs/ui-audit.md） */
-.reply-toast {
-  position: absolute;
-  z-index: 3;
-  top: 8px;
-  left: 8px;
-  right: 8px;
-  display: grid;
-  gap: 2px;
-  min-height: 44px;
-  padding: 0.55rem 0.8rem;
-  border-radius: 12px;
-  background: var(--ink);
-  color: var(--on-accent);
-  box-shadow: 0 6px 18px rgb(0 0 0 / 28%);
-  font-size: 0.875rem;
-  text-decoration: none;
-}
-
-.reply-toast-body {
-  display: -webkit-box;
-  overflow: hidden;
-  overflow-wrap: anywhere;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  font-size: 0.95rem;
-}
-
-.reply-toast small {
-  font-size: 0.875rem;
-  opacity: 0.85;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .reply-toast {
-    animation: toast-in 0.25s ease-out;
-  }
-}
-
-@keyframes toast-in {
-  from {
-    opacity: 0;
-    transform: translateY(-8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
 .inbox-replies ul {
   margin: 0;
   padding: 0;
@@ -3318,4 +3268,22 @@ html[data-avatar="hide"] .burst-speaker {
   color: inherit;
   text-decoration: none;
   overflow-wrap: anywhere;
+}
+
+/* ---- 0-2q(5)：受信箱 ---- */
+
+/* 届いた返事の名前は「野田／翔さ／ん」と折らない（本文は折れてよい） */
+.inbox-replies a > strong {
+  overflow-wrap: normal;
+  word-break: keep-all;
+}
+
+/* 広い画面でも1列にまとめ、空のときの一言が右に浮かないようにする */
+@media (min-width: 768px) {
+  main.page-shell.inbox-page {
+    display: flex;
+    flex-direction: column;
+    max-width: 40rem;
+    align-items: stretch;
+  }
 }

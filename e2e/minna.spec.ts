@@ -155,15 +155,14 @@ test("並びは桜 → チャネルの札 → 投稿で、入口はいちばん�
   await expect(dock).toBeInViewport({ ratio: 1 });
 
   const items = dock.locator(":scope > *");
-  await expect(items).toHaveCount(5);
+  // 0-2q(6)：Teams につないでいない（テストは Teams オフ）ので、Teams は帯に置かない
+  await expect(items).toHaveCount(4);
   await expect(dock.getByRole("button", { name: "今日の3人" })).toBeVisible();
   await expect(dock.getByRole("link", { name: /受信箱/ })).toHaveAttribute("href", "/inbox");
   await expect(dock.getByRole("link", { name: /自習室/ })).toHaveAttribute("href", "/study/room");
   await expect(dock.getByRole("link", { name: "校内の知恵" })).toHaveAttribute("href", "/chie");
-  // Teams はアプリの中の画面ではなく、本物の Teams を新しいタブで開く
-  const teams = dock.getByRole("link", { name: "Teams を開く" });
-  await expect(teams).toHaveAttribute("href", /^https:\/\/teams\.microsoft\.com\//);
-  await expect(teams).toHaveAttribute("target", "_blank");
+  // Teams につないでいるときだけ、本物の Teams を新しいタブで開く入口を置く（src/app/minna/teams-link.test.ts）
+  await expect(dock.getByRole("link", { name: "Teams を開く" })).toHaveCount(0);
   // 上の札の列に、今日の3人と受信箱の札はない
   await expect(page.locator(".minna-chip-row").getByRole("link", { name: /受信箱/ })).toHaveCount(0);
   await expect(page.locator(".minna-chip-row").getByRole("button", { name: "今日の3人" })).toHaveCount(0);
@@ -180,6 +179,8 @@ test("並びは桜 → チャネルの札 → 投稿で、入口はいちばん�
 
 test("イベントは桜の木のそばのメガホンで知らせ、押すと小さなカードが出て、外を押すと閉じる", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
+  // 0-2q(4)：重なりはレトロ（生徒の初期）で出ていたので、レトロで見る
+  await page.context().addCookies([{ name: "koekata_theme", value: "retro", domain: "127.0.0.1", path: "/" }]);
   await page.goto("/minna");
   // はじめての春の見通しは閉じておく（e2e/sakura.spec.ts で確かめる）
   await page.getByRole("note", { name: "春の見通し" }).getByRole("button", { name: "閉じる" }).click();
@@ -208,6 +209,9 @@ test("イベントは桜の木のそばのメガホンで知らせ、押すと�
   const small = (await megaphone.boundingBox())!;
   expect(small.x + small.width).toBeGreaterThan(band.x + band.width - 24);
   expect(Math.abs(small.y + small.height / 2 - (band.y + band.height / 2))).toBeLessThan(8);
+  // 0-2q(4)：レトロでも帯の右はメガホンの分だけ空き、「桜を開く」がメガホンに重ならない
+  const right = await page.getByRole("button", { name: "桜を大きく開く" }).evaluate((element) => parseFloat(getComputedStyle(element).paddingRight));
+  expect(band.width - right).toBeLessThanOrEqual(small.x - band.x + 1);
   await megaphone.click();
   await expect(card).toBeVisible();
   await page.keyboard.press("Escape");

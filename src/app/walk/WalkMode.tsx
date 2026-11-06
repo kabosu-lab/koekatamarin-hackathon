@@ -9,7 +9,7 @@ import { TRIAL_SAFETY_SPEECH } from "@/lib/trial";
 import { SafetyCard, type SafetyNotice } from "../SafetyCard";
 import { useTrial } from "../TrialContext";
 import { SendBurst } from "../SendBurst";
-import { playSendSound } from "../sound";
+import { playSendSound, soundAllowed } from "../sound";
 import { isSpeechSupported, startSession, type ListeningSession } from "../speech";
 
 /** 間のあとに頼みごとを読む長さ。言い終わりを待つ */
@@ -31,10 +31,6 @@ type Finished = {
 };
 
 const storageKey = (viewerId: string) => `koekata-walk-${viewerId}`;
-
-function soundIsOn(): boolean {
-  return document.documentElement.dataset.sound !== "off";
-}
 
 async function postJson(url: string, body: unknown) {
   const response = await fetch(url, {
@@ -129,7 +125,7 @@ export function WalkMode({ viewer, viewerId }: { viewer: { name: string; label: 
 
   /** 声で返す。読み上げの間はマイクを止めて、自分の声を拾わない。声を消す設定なら読み上げない。 */
   const speak = useCallback(async (words: string) => {
-    if (!soundIsOn() || typeof speechSynthesis === "undefined" || speakingRef.current) return;
+    if (!soundAllowed() || typeof speechSynthesis === "undefined" || speakingRef.current) return;
     speakingRef.current = true;
     session.current?.pause();
     await new Promise<void>((resolve) => {

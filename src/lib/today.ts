@@ -157,10 +157,27 @@ export function listTodayCards(
   }
 
   // 最初の3人はランダム。そこから先は、関係の深い順に。関係のない人もそのあとに続く
-  const first = shuffled.slice(0, FIRST_RANDOM);
-  const rest = shuffled.slice(FIRST_RANDOM);
+  // 0-2q(3)：カードは人ごとに1枚。同じ人が2回出ないよう、最初の3人は別の人から選ぶ
+  const first: typeof shuffled = [];
+  for (const post of shuffled) {
+    if (first.length >= FIRST_RANDOM) break;
+    if (!first.some((p) => p.authorId === post.authorId)) first.push(post);
+  }
   const weight = (id: string) => related.get(id)?.weight ?? 0;
-  const ordered = [...first, ...rest.map((post, index) => ({ post, index })).sort((a, b) => weight(b.post.id) - weight(a.post.id) || a.index - b.index).map(({ post }) => post)];
+  // 同じ人の中では、関係の深い投稿（できた投稿など）を残す
+  for (let i = 0; i < first.length; i += 1) {
+    const best = shuffled.filter((post) => post.authorId === first[i].authorId).reduce((a, b) => (weight(b.id) > weight(a.id) ? b : a), first[i]);
+    first[i] = best;
+  }
+  const rest = shuffled.filter((post) => !first.includes(post));
+  const sortedRest = rest.map((post, index) => ({ post, index })).sort((a, b) => weight(b.post.id) - weight(a.post.id) || a.index - b.index).map(({ post }) => post);
+  const usedAuthors = new Set(first.map((post) => post.authorId));
+  const ordered = [...first];
+  for (const post of sortedRest) {
+    if (usedAuthors.has(post.authorId)) continue;
+    usedAuthors.add(post.authorId);
+    ordered.push(post);
+  }
   return ordered.slice(0, MAX_CARDS).map((post) => ({
     ...toCard(post),
     ...(related.has(post.id) ? { relatedReason: related.get(post.id)!.reason } : {}),

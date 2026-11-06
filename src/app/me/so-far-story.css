@@ -1,7 +1,9 @@
 /*
- * 0-2b 第3段：「これまで」のインフォグラフィック。
+ * 0-2t：「これまで」のインフォグラフィック。全部のグラフを1画面に並べ、スクロールさせない。
+ * （0-2b 第3段の6場面を、1枚の画面にまとめ直した）
  * 色は背景・文字・--accent・薄い下地の4つ。紙吹雪や星は使わない。
  * 動かすのは transform と opacity だけ：棒は scaleY、線は scaleX、点と葉は scale。
+ * 動くのは前に見たときから増えた項目だけ（data-grew / data-fresh）。
  * 標準 cubic-bezier(0.2, 0.8, 0.2, 1)、ばね cubic-bezier(0.34, 1.56, 0.64, 1)。
  */
 .so-far-story .bottom-sheet-panel {
@@ -13,7 +15,7 @@
   color: var(--ink);
 }
 
-/* せり上がりは 220ms、暗幕は 160ms（案のとおり） */
+/* せり上がりは 220ms、暗幕は 160ms */
 .so-far-story .bottom-sheet[data-state="open"] .bottom-sheet-panel {
   transition:
     transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1),
@@ -27,41 +29,12 @@
 .so-far-story .bottom-sheet-body {
   display: flex;
   flex-direction: column;
+  padding-bottom: 0.5rem;
 }
 
-.so-far-scene {
-  display: flex;
-  flex: 1 1 auto;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 16px;
-  min-height: 0;
-  padding: 8px 0 16px;
-  text-align: center;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.so-far-scene h2 {
-  margin: 0;
-  color: var(--muted);
-  font-size: 1rem;
-  letter-spacing: 0.08em;
-}
-
-.so-far-hint {
-  margin: 0;
-  color: var(--muted);
-  font-size: 0.8rem;
-  opacity: 0.7;
-}
-
-.so-far-big {
-  margin: 0;
-  font-size: clamp(1.8rem, 6dvh, 2.6rem);
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
+.so-far-story .bottom-sheet-footer {
+  padding-top: 0.5rem;
+  padding-bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px));
 }
 
 .so-far-actions {
@@ -87,54 +60,48 @@
   text-decoration: none;
 }
 
-/* 共通の出方：下から 8px、200ms 標準 */
-.so-far-rise {
-  animation: so-far-rise 200ms cubic-bezier(0.2, 0.8, 0.2, 1) var(--at, 0ms) both;
-}
-
-.so-far-pop {
-  animation: so-far-pop 220ms cubic-bezier(0.34, 1.56, 0.64, 1) var(--at, 600ms) both;
-}
-
-@keyframes so-far-rise {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-
-@keyframes so-far-pop {
-  from {
-    opacity: 0;
-    transform: scale(0.6);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-/* ① はじまり：卵から今の姿へ点線が伸びる */
-.so-far-begin,
-.so-far-first {
+/* 1枚の画面：上に「いつから」、下に全部のグラフ */
+.so-far-board {
   display: grid;
-  gap: 18px;
-  justify-items: center;
+  flex: 1 1 auto;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 8px;
+  width: 100%;
+  max-width: 72rem;
+  min-height: 0;
+  margin: 0 auto;
+}
+
+.so-far-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 36px;
+}
+
+.so-far-since {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.so-far-since strong {
+  color: var(--ink);
+  font-size: 1.4rem;
+  font-variant-numeric: tabular-nums;
 }
 
 .so-far-path {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 
 .so-far-egg {
-  width: 40px;
-  height: 50px;
+  width: 26px;
+  height: 32px;
   fill: var(--surface, #fff);
   stroke: var(--accent);
   stroke-width: 2;
@@ -142,64 +109,145 @@
 
 .so-far-dash {
   display: block;
-  width: 120px;
+  width: 48px;
   height: 0;
   border-top: 3px dotted var(--accent);
-  transform-origin: 0 50%;
-  animation: so-far-grow-x 600ms cubic-bezier(0.2, 0.8, 0.2, 1) 200ms both;
 }
 
-@keyframes so-far-grow-x {
-  from {
-    transform: scaleX(0);
+/* スマホと iPad 縦：積み上がりを横いっぱいに、残りを2列 */
+.so-far-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: minmax(0, 1.25fr) minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+  min-height: 0;
+}
+
+.so-far-grid[data-empty] {
+  grid-template-rows: minmax(0, 0.7fr) minmax(0, 1fr);
+}
+
+.so-far-panel[data-panel="bars"] {
+  grid-column: 1 / -1;
+}
+
+/* iPad 横（と広い画面）：3列×2段 */
+@media (min-width: 900px) and (orientation: landscape) {
+  .so-far-grid,
+  .so-far-grid[data-empty] {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-rows: repeat(2, minmax(0, 1fr));
   }
-  to {
-    transform: scaleX(1);
+
+  .so-far-panel[data-panel="bars"] {
+    grid-column: span 2;
+  }
+
+  .so-far-grid[data-empty] .so-far-panel[data-panel="first"] {
+    grid-column: span 2;
+  }
+
+  .so-far-grid[data-empty] .so-far-panel[data-panel="words"] {
+    grid-column: 3;
+    grid-row: 1;
   }
 }
 
-/* ② 積み上がる棒：1マス＝1回。右の3本（人の役に立った数）は薄い下地で区切る */
+.so-far-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  min-height: 0;
+  padding: 8px 10px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--ink) 4%, transparent);
+  overflow: hidden;
+}
+
+.so-far-panel h2 {
+  flex: none;
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+}
+
+/* 中身はこの箱の大きさ（cqw・cqh）に合わせて縮む */
+.so-far-panel-body {
+  display: grid;
+  flex: 1 1 auto;
+  place-items: center;
+  min-height: 0;
+  container-type: size;
+  text-align: center;
+}
+
+.so-far-later {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.so-far-center {
+  padding: 0 4px;
+}
+
+.so-far-big {
+  margin: 0;
+  font-size: clamp(1.4rem, 18cqh, 2.4rem);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 積み上がり：高さは値に合わせる。0 の項目は棒も下地もなし。右の3本（人の役に立った数）の前に細い区切り */
 .so-far-bars {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 6px;
-  width: min(100%, 28rem);
-  align-items: end;
+  gap: 2px;
+  width: 100%;
+  height: 100cqh;
 }
 
 .so-far-bar {
   display: grid;
-  gap: 4px;
+  grid-template-rows: minmax(0, 1fr) auto auto;
   justify-items: center;
-  padding: 6px 2px;
-  border-radius: 10px;
+  gap: 2px;
+  min-width: 0;
 }
 
-.so-far-bar[data-helped] {
-  background: color-mix(in srgb, var(--accent) 8%, transparent);
+.so-far-bar[data-helped-first] {
+  box-shadow: inset 1px 0 0 color-mix(in srgb, var(--ink) 12%, transparent);
 }
 
-.so-far-cells {
-  display: flex;
-  flex-direction: column-reverse;
-  gap: 3px;
-  justify-content: flex-start;
-  height: calc(12 * 15px);
-  width: 70%;
+.so-far-track {
+  position: relative;
+  width: min(60%, 2.6rem);
+  height: 100%;
 }
 
-.so-far-cells i {
+.so-far-fill {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
   display: block;
-  height: 12px;
-  border-radius: 3px;
+  height: calc(var(--ratio) * 100%);
+  min-height: 6px;
+  border-radius: 6px 6px 3px 3px;
   background: var(--accent);
   transform-origin: 50% 100%;
-  animation: so-far-grow-y 160ms cubic-bezier(0.2, 0.8, 0.2, 1) var(--at, 0ms) both;
 }
 
-@keyframes so-far-grow-y {
+.so-far-fill[data-grew] {
+  animation: so-far-fill 900ms cubic-bezier(0.2, 0.8, 0.2, 1) 260ms both;
+}
+
+@keyframes so-far-fill {
   from {
-    transform: scaleY(0);
+    transform: scaleY(var(--from, 0));
   }
   to {
     transform: scaleY(1);
@@ -207,48 +255,44 @@
 }
 
 .so-far-bar strong {
-  font-size: 1.1rem;
+  font-size: clamp(0.9rem, 4.6cqw, 1.4rem);
   font-variant-numeric: tabular-nums;
+  line-height: 1.3;
   white-space: nowrap;
 }
 
-.so-far-bar strong[data-zero] {
-  color: var(--muted);
-  font-size: 0.7rem;
-  font-weight: 700;
-  line-height: 1.6rem;
+.so-far-bar strong.so-far-later {
+  font-size: clamp(0.6rem, 2.6cqw, 0.8rem);
+  line-height: 1.3rem;
 }
 
 .so-far-bar small {
-  font-size: 0.75rem;
+  font-size: clamp(0.6rem, 2.9cqw, 0.85rem);
   white-space: nowrap;
 }
 
-/* ③ 届いた日の点：週×曜日。色は1色、週末も同じ。連続を強調しない */
+/* 届いた日の点：週×曜日。色は1色、週末も同じ。連続を強調しない */
 .so-far-days-wrap {
   display: grid;
-  gap: 14px;
+  gap: 4px;
   justify-items: center;
+  width: 100%;
 }
 
 .so-far-days {
   display: grid;
   grid-auto-flow: column;
-  grid-template-rows: repeat(7, 12px);
-  grid-auto-columns: 12px;
-  gap: 4px;
-  max-width: 100%;
+  grid-template-rows: repeat(7, auto);
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 2px;
+  width: min(100cqw, (100cqh - 2.6rem) * var(--weeks) / 7);
 }
 
 .so-far-days i {
   display: block;
+  aspect-ratio: 1;
   border-radius: 50%;
   background: color-mix(in srgb, var(--ink) 10%, transparent);
-}
-
-.so-far-days i[data-reached],
-.so-far-days i[data-study] {
-  animation: so-far-dot 200ms cubic-bezier(0.34, 1.56, 0.64, 1) var(--at, 0ms) both;
 }
 
 .so-far-days i[data-reached] {
@@ -257,6 +301,10 @@
 
 .so-far-days i[data-study] {
   background: color-mix(in srgb, var(--accent) 40%, transparent);
+}
+
+.so-far-days i[data-fresh] {
+  animation: so-far-dot 260ms cubic-bezier(0.34, 1.56, 0.64, 1) var(--at, 0ms) both;
 }
 
 @keyframes so-far-dot {
@@ -268,22 +316,23 @@
   }
 }
 
-.so-far-after {
+.so-far-after,
+.so-far-leaves {
   margin: 0;
-  font-size: 1.15rem;
+  font-size: clamp(0.85rem, 6cqw, 1.2rem);
   font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
 
-.so-far-after small {
+.so-far-note {
   color: var(--muted);
-  font-size: 0.75rem;
-  font-weight: 400;
+  font-size: 0.62rem;
 }
 
-/* ④ つながりの線：線は自分の側から scaleX で伸び、着いたら名前がばねで止まる */
+/* つながりの線：新しい人の線だけ、自分の側から scaleX で伸び、名前がばねで止まる */
 .so-far-web {
   position: relative;
-  width: min(100%, 22rem, 46dvh);
+  width: min(100cqw - 1rem, 100cqh - 0.5rem);
   aspect-ratio: 1;
 }
 
@@ -291,12 +340,15 @@
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 30%;
+  width: 26%;
   height: 2px;
   background: var(--accent);
   transform-origin: 0 50%;
   transform: rotate(var(--angle)) scaleX(1);
-  animation: so-far-line 260ms cubic-bezier(0.2, 0.8, 0.2, 1) var(--at, 0ms) both;
+}
+
+.so-far-line[data-fresh] {
+  animation: so-far-line 600ms cubic-bezier(0.2, 0.8, 0.2, 1) 260ms both;
 }
 
 @keyframes so-far-line {
@@ -310,12 +362,18 @@
 
 .so-far-person {
   position: absolute;
-  max-width: 7.5em;
-  font-size: 0.85rem;
+  max-width: 5.5em;
+  overflow: hidden;
+  font-size: clamp(0.6rem, 5cqw, 0.85rem);
   font-weight: 700;
-  line-height: 1.3;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   translate: -50% -50%;
-  animation: so-far-arrive 260ms cubic-bezier(0.34, 1.56, 0.64, 1) var(--at, 0ms) both;
+}
+
+.so-far-person[data-fresh] {
+  animation: so-far-arrive 300ms cubic-bezier(0.34, 1.56, 0.64, 1) 760ms both;
 }
 
 @keyframes so-far-arrive {
@@ -339,41 +397,43 @@
   left: 50%;
   display: grid;
   place-items: center;
-  width: 64px;
-  height: 64px;
+  width: 30%;
+  aspect-ratio: 1;
   border-radius: 50%;
   background: var(--surface, #fff);
   box-shadow: 0 0 0 2px var(--accent);
+  font-size: clamp(0.6rem, 4.5cqw, 0.85rem);
   font-weight: 800;
   translate: -50% -50%;
 }
 
 .so-far-me img {
-  width: 56px;
-  height: 56px;
+  width: 80%;
+  height: 80%;
+  object-fit: contain;
 }
 
 .so-far-more-people {
   position: absolute;
   right: 0;
-  bottom: -8px;
+  bottom: 0;
   margin: 0;
   color: var(--muted);
-  font-size: 0.85rem;
+  font-size: 0.65rem;
 }
 
-/* ⑤ 桜とパートナー：葉が1枚ずつ枝へ飛んで着く */
+/* 桜とパートナー：新しい葉だけ、1枚ずつ枝へ飛んで着く */
 .so-far-tree,
 .so-far-tree-text {
   display: grid;
-  gap: 12px;
+  gap: 4px;
   justify-items: center;
-  width: min(100%, 26rem);
+  width: 100%;
 }
 
 .so-far-branch {
   width: 100%;
-  height: auto;
+  max-height: 42cqh;
   overflow: visible;
 }
 
@@ -389,13 +449,16 @@
   rotate: -30deg;
   transform-box: fill-box;
   transform-origin: 50% 50%;
+}
+
+.so-far-leaf[data-fresh] {
   animation: so-far-leaf 600ms cubic-bezier(0.2, 0.8, 0.2, 1) var(--at, 0ms) both;
 }
 
 @keyframes so-far-leaf {
   from {
     opacity: 0;
-    translate: 0 60px;
+    translate: 0 40px;
     scale: 0.4;
   }
   to {
@@ -408,31 +471,98 @@
 .so-far-stages {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
+}
+
+.so-far-stages img {
+  width: min(36px, 22cqh);
+  height: min(36px, 22cqh);
+  object-fit: contain;
 }
 
 .so-far-trophies,
 .so-far-words {
   display: grid;
-  gap: 10px;
+  gap: 6px;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
+.so-far-trophies li {
+  font-size: 0.72rem;
+  line-height: 1.3;
+}
+
+.so-far-words {
+  width: 100%;
+  text-align: left;
+}
+
 .so-far-words li {
-  font-size: 1.1rem;
-  line-height: 1.6;
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: clamp(0.72rem, 5.2cqw, 1rem);
+  line-height: 1.4;
   overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
 }
 
 .so-far-words small {
-  display: block;
   color: var(--muted);
-  font-size: 0.85rem;
+  font-size: 0.8em;
 }
 
-/* データ0の人：枝に光る空の場所が呼吸する */
+.so-far-words[data-grew] li {
+  animation: so-far-rise 300ms cubic-bezier(0.2, 0.8, 0.2, 1) 260ms both;
+}
+
+@keyframes so-far-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* データ0の人：枝に光る空の場所 */
+.so-far-first {
+  display: grid;
+  gap: 6px;
+  justify-items: center;
+}
+
+.so-far-first p {
+  margin: 0;
+}
+
+.so-far-first .so-far-path {
+  width: min(100%, 18rem);
+  min-width: 0;
+}
+
+.so-far-first .so-far-path > * {
+  flex: 0 0 auto;
+}
+
+.so-far-first .so-far-path > .so-far-branch {
+  flex: 1 1 0;
+  min-width: 0;
+  max-height: 24cqh;
+}
+
+.so-far-first .so-far-big {
+  font-size: clamp(1.2rem, 14cqh, 2.4rem);
+}
+
+.so-far-first .so-far-egg {
+  height: min(32px, 20cqh);
+}
+
 .so-far-empty-leaf {
   fill: none;
   stroke: var(--accent);
@@ -455,19 +585,9 @@
   }
 }
 
-/* 動きを減らす設定：全部の場面を静止で縦に並べ、スクロールで読む */
-.so-far-still {
-  display: grid;
-  gap: 28px;
-  padding-bottom: 16px;
-}
-
-.so-far-still .so-far-scene {
-  cursor: default;
-}
-
-.so-far-story[data-reduced] *,
-.so-far-story[data-reduced] *::before {
+/* 動きを減らす設定：何も動かさず、最初から今の値 */
+.so-far-board[data-reduced] *,
+.so-far-board[data-reduced] *::before {
   animation: none !important;
 }
 
@@ -475,4 +595,16 @@
   .so-far-story * {
     animation: none !important;
   }
+}
+
+/* ---- 0-2q(7)：0 の項目の薄い下地が、1 のある棒より目立たないように ----
+   人の役に立った3本の区切りは、棒の柱ではなく下の名前の札だけに付ける（まだ 0 でも縦長の柱を作らない） */
+.so-far-bar[data-helped] {
+  background: none;
+}
+
+.so-far-bar[data-helped] small {
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
 }

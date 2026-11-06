@@ -251,6 +251,12 @@ test("0-2n：生徒には、くだけた「新しい話にする？」で聞く"
 test("0-2a：話す前は、パートナーを触るたびに一言が替わり、弾む", async ({ page }) => {
   // パートナーを見せる（ほかのテストでは隠している）
   await page.context().clearCookies({ name: "koekata_avatar" });
+  // 新着がある人（最初の人にはお願いが届いている）は、最初の一言が知らせになり、押すとその画面へ行く（0-2v）。
+  // お願いの届かない人で、受信箱・ありがとう・コレクションを開いて新着をなくしてから見る
+  await page.context().addCookies([{ name: "koekata_person", value: "ogawara", domain: "127.0.0.1", path: "/" }]);
+  await page.goto("/inbox");
+  await page.goto("/me?open=thanks");
+  await page.goto("/me?open=partner");
   await page.goto("/");
   const partner = page.getByRole("button", { name: "パートナー。触ると次の一言" });
   await expect(partner).toBeVisible();
