@@ -63,6 +63,43 @@ test("詳しくないことはパスでき、相手の受信箱に届く", async
   await expect(page.getByRole("region").filter({ hasText: words }).locator(".passed")).toContainText("佐伯 みどりさんからのパス");
 });
 
+test("0-2l(2)：返事とつなぐは押した瞬間に済みになり、送れなかったら言葉と欄を開いたまま戻す", async ({ page }) => {
+  const words = `送れない相談 ${test.info().testId}`;
+  await askTeacher(page, words);
+  let release: () => void = () => {};
+  const held = new Promise<void>((done) => (release = done));
+  await page.route("**/api/inbox/reply", async (route) => {
+    await held;
+    await route.fulfill({ status: 503, json: { error: "x" } });
+  });
+  await page.route("**/api/inbox/pass", (route) => route.fulfill({ status: 503, json: { error: "x" } }));
+
+  await page.goto("/inbox");
+  const card = page.getByRole("region").filter({ hasText: words });
+  const answer = `声に出して読みます ${test.info().testId}`;
+  await card.getByLabel("話したこと").fill(answer);
+  await card.getByRole("button", { name: "文章にする" }).click();
+  await expect(card.getByLabel("返信の文章")).toHaveValue(answer);
+  await card.getByRole("button", { name: "本人として返信する" }).click();
+  // 結果を待たずに済みの見た目になる
+  await expect(page.getByText("解決！")).toBeVisible({ timeout: 1000 });
+  release();
+  // 送れなかったら、確かめた言葉のまま戻り、そのまま送り直せる
+  await expect(card.getByLabel("返信の文章")).toHaveValue(answer);
+  await expect(card.locator(".notice")).toContainText("まだ届いていません");
+  await expect(card.getByRole("button", { name: "本人として返信する" })).toBeEnabled();
+
+  await card.getByText("もっと詳しい人につなぐ").click();
+  await card.getByLabel("つなぐ相手").selectOption({ label: OTHER });
+  const passWords = card.getByLabel("元の投稿への返事（相手に @ で届きます）");
+  await expect(passWords).toHaveValue(/どうですか/);
+  await card.getByRole("button", { name: "つなぐ" }).click();
+  await expect(card.locator(".notice")).toContainText("まだつなげていません");
+  // 欄は畳まれず、言葉も残る
+  await expect(passWords).toBeVisible();
+  await expect(passWords).toHaveValue(/どうですか/);
+});
+
 test("声で話して返せる", async ({ page }) => {
   const words = `声で返す相談 ${test.info().testId}`;
   await page.addInitScript((text) => {

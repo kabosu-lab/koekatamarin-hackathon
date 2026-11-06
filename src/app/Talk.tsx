@@ -5,7 +5,7 @@ import { type FormEvent, Fragment, type KeyboardEvent, useEffect, useRef, useSta
 import type { Review } from "@/lib/claude/compose";
 import type { DraftStreamEvent } from "@/lib/compose-request";
 import type { ChatMessage } from "@/lib/claude/types";
-import type { ChannelView, PersonView } from "@/lib/destination/types";
+import { type ChannelView, type PersonView, POST_SCOPES } from "@/lib/destination/types";
 import type { KnowledgeResult } from "@/lib/knowledge";
 import { PROMISE_FULL, PROMISE_SHORT, promiseCookieName } from "@/lib/promise-cookie";
 import { TRIAL_PROMISE_SHORT } from "@/lib/trial";
@@ -406,14 +406,25 @@ export function Talk({
   /** 下書きの流れの世代。取り消しや作り直しのあと、古い流れが新しい下書きに混ざらないようにする */
   const composeRun = useRef(0);
   const [composeKey, setComposeKey] = useState(0);
+  // 流れている下書きを止める合図。止めるとサーバーも Claude の呼び出しをやめる
+  const composeAbort = useRef<AbortController | null>(null);
+  // 裏で送っている間は、新しい下書きを作らない（送れなかった下書きが戻る場所を残す）
+  const [publishing, setPublishing] = useState(false);
+  useEffect(() => () => composeAbort.current?.abort(), []);
 
   function stopCompose() {
     composeRun.current += 1;
+    composeAbort.current?.abort();
+    composeAbort.current = null;
     setPreparing(false);
   }
 
   // 0-2l：押した瞬間にシートを開き、見出しと Teams の見え方を先に出す。本文は流れてくるそばから書く
   async function startCompose(asked?: { id: string; name: string }, goal = goalForPost) {
+    if (publishing) return;
+    composeAbort.current?.abort();
+    const abort = new AbortController();
+    composeAbort.current = abort;
     const run = ++composeRun.current;
     const live = () => composeRun.current === run;
     setPreparing(true);
@@ -447,6 +458,7 @@ export function Talk({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ history: messages.slice(-MAX_HISTORY), askedPersonId: asked?.id, attachmentId: attachment?.id }),
+        signal: abort.signal,
       });
       if (!response.ok || !response.body) throw new Error(`status ${response.status}`);
       const reader = response.body.getReader();
@@ -473,9 +485,10 @@ export function Talk({
             attachment: current.attachment && event.notices ? { ...current.attachment, notices: event.notices } : current.attachment,
           }));
         } else if (event.type === "review") {
-          update((current) => ({ ...current, review: event.review }));
+          // 確かめに失敗したときは、下書きを残して確かめ直しのボタンを出す
+          update((current) => ({ ...current, review: event.review, reviewFailed: event.failed === true }));
         } else {
-          fail("下書きを作れませんでした。もう一度押してください。");
+          fail(event.error || "下書きを作れませんでした。もう一度押してください。");
         }
       };
       for (;;) {
@@ -497,13 +510,20 @@ export function Talk({
     } catch {
       fail("下書きを作れませんでした。もう一度押してください。");
     } finally {
-      if (live()) setPreparing(false);
+      if (live()) {
+        setPreparing(false);
+        composeAbort.current = null;
+      }
     }
   }
 
   // 0-2l(2)：「本人として送る」は押した瞬間に送ったあとの動きを始め、送信は裏で進める。失敗したときだけ、あとから知らせる
   function sendInBackground(start: ComposeStart, { channel, words, isPublic, review, body }: ComposeSend) {
     stopCompose();
+    // 送れなかったときは、とどけるの光と段を元に戻す
+    const before = { deliveredAt, level: levelRef.current, popStep: popStep.current };
+    const run = composeRun.current;
+    setPublishing(true);
     setSheetOpen(false);
     setComposing(null);
     setSentTo(null);
@@ -522,27 +542,41 @@ export function Talk({
         body: JSON.stringify(body),
       }).catch(() => null);
       const data = ((await response?.json().catch(() => null)) ?? {}) as { postId?: string; teams?: TeamsDelivery; error?: string; review?: Review };
+      setPublishing(false);
       if (response?.ok && typeof data.postId === "string") {
         setSentTo({ channel, postId: data.postId, isPublic, teams: data.teams });
         setGoalForPost(null);
         setAttachment(null);
         return;
       }
-      // 下書きは、本人が直した言葉と送り先のまま残す。とどけるで開き直して、もう一度送れる
-      setComposeKey((key) => key + 1);
-      setComposing({
-        ...start,
-        writing: false,
-        draft: { ...start.draft, text: words, channelId: channel.id },
-        review: response?.status === 422 && data.review ? data.review : review,
-      });
-      setNotice(
+      const message =
         response?.status === 422
           ? "この内容は送れませんでした。とどけるから開いて、言い方を一緒に考えましょう。"
           : response?.status === 400 && data.error
             ? `まだ届いていません。${data.error} 下書きは残してあります。`
-            : "まだ届いていません。下書きは残してあります。とどけるから、もう一度送ってください。",
-      );
+            : "まだ届いていません。下書きは残してあります。とどけるから、もう一度送ってください。";
+      // 送っている間に新しく話した・作り直したときは、下書きを戻さず知らせるだけにする
+      if (composeRun.current !== run) {
+        setNotice("さっきの言葉は、まだ届いていません。もう一度とどけてください。");
+        return;
+      }
+      setDeliveredAt(before.deliveredAt);
+      levelRef.current = before.level;
+      setLevel(before.level);
+      popStep.current = before.popStep;
+      // 下書きは、本人が直した言葉と送り先・見える範囲のまま残す。とどけるで開き直して、もう一度送れる
+      const scope = POST_SCOPES.find((value) => value === body.scope);
+      setComposeKey((key) => key + 1);
+      setComposing({
+        ...start,
+        writing: false,
+        reviewFailed: false,
+        draft: { ...start.draft, text: words, channelId: channel.id },
+        review: response?.status === 422 && data.review ? data.review : review,
+        scope,
+        scopePersonId: typeof body.scopePersonId === "string" ? body.scopePersonId : undefined,
+      });
+      setNotice(message);
     })();
   }
 
@@ -1241,7 +1275,7 @@ export function Talk({
             data-mode={hasTyped ? "send" : "deliver"}
             data-ready={readyToDeliver}
             data-level={readyToDeliver ? level || 1 : undefined}
-            disabled={listening || sending || (!hasTyped && !canCompose)}
+            disabled={listening || sending || (!hasTyped && (!canCompose || publishing))}
             onClick={() => {
               if (hasTyped) void send(draft);
               else if (composing) setSheetOpen(true);
@@ -1306,7 +1340,7 @@ export function Talk({
       {cards}
 
       {!device && canCompose && !listening && (
-        <button type="button" className="compose-start" disabled={sending || preparing} onClick={() => void startCompose(askTarget ?? undefined)}>
+        <button type="button" className="compose-start" disabled={sending || preparing || publishing} onClick={() => void startCompose(askTarget ?? undefined)}>
           <Icon name="send" />
           {preparing ? "言葉にしています…" : "言葉にして送る"}
         </button>
