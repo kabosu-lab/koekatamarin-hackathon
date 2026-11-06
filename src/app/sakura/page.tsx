@@ -8,10 +8,20 @@ import { getViewer } from "@/lib/current-person";
 import { getDatabase } from "@/lib/db";
 import { activeEvents } from "@/lib/events";
 import { showsRewards } from "@/lib/rewards-view";
-import { getSakura, isBloomingSeason, parseSeason, type Season, timeOfDay } from "@/lib/sakura";
+import {
+  bloomExplanation,
+  bloomLine,
+  bloomProgress,
+  getSakura,
+  isBloomingSeason,
+  parseSeason,
+  SAKURA_STORY,
+  type Season,
+  timeOfDay,
+} from "@/lib/sakura";
 import { Avatar } from "../Avatar";
-import { RoomBackdrop } from "../study/room/RoomBackdrop";
-import "../study/room/room.css";
+import { SakuraScene } from "../minna/SakuraScene";
+import "../minna/minna.css";
 
 export const metadata: Metadata = { title: "校内の桜｜こえかた" };
 export const dynamic = "force-dynamic";
@@ -23,42 +33,57 @@ const SEASON_LABEL: [Season, string][] = [
   ["fuyu", "冬"],
 ];
 
-/** 校内の桜の詳しい画面。季節と、まわりのパートナーを見る。 */
-export default async function SakuraPage({ searchParams }: { searchParams: Promise<{ season?: string | string[] }> }) {
+/**
+ * 校内の桜の詳しい画面。季節と、まわりのパートナーを見る。
+ * 動画用：`/sakura?hayaokuri=1` で、葉が 0 から満開まで集まり春に咲く早回しを流す（データは変えない）。
+ */
+export default async function SakuraPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ season?: string | string[]; hayaokuri?: string | string[] }>;
+}) {
   const { people } = await getViewer();
-  const { season: requested } = await searchParams;
+  const { season: requested, hayaokuri } = await searchParams;
   const db = getDatabase();
   const now = new Date();
   const sakura = getSakura(db, now, parseSeason(requested) ?? undefined);
   const store = await cookies();
   const rewards = showsRewards(readAppearance((name) => store.get(name)?.value));
   const inEvent = rewards && activeEvents(now).length > 0;
+  const petals = isBloomingSeason(sakura.season) || inEvent ? (inEvent ? 18 : 10) : 0;
 
   return (
-    <main className="home">
+    <main className="home sakura-page">
       <BackLink href="/minna">みんなへもどる</BackLink>
       <header>
         <h1>校内の桜</h1>
       </header>
-      <section
-        className="sakura-scene"
-        data-time={timeOfDay(now)}
-        aria-label="校内の桜"
+      <SakuraScene
+        as="section"
+        ariaLabel="校内の桜"
+        season={sakura.season}
+        time={timeOfDay(now)}
+        leaves={sakura.leaves}
+        petals={petals}
+        fastForward={hayaokuri === "1"}
       >
-        <RoomBackdrop place="garden" label="校庭の桜の木" season={sakura.season} />
-        {(isBloomingSeason(sakura.season) || inEvent) &&
-          Array.from({ length: inEvent ? 18 : 10 }, (_, i) => (
-            <span
-              key={i}
-              className="petal"
-              aria-hidden="true"
-              style={{ left: `${inEvent ? (i * 37) % 95 : 5 + i * 9}%`, animationDelay: `${i * (inEvent ? 0.4 : 0.7)}s` }}
-            />
-          ))}
         <p className="caption">
           {sakura.message}（今年の葉 {sakura.leaves} 枚）
         </p>
-      </section>
+      </SakuraScene>
+      {/* 0-1j(1)：一行の説明と満開までの進み。0-1j(3)：春の見通し */}
+      <p className="sakura-story">{SAKURA_STORY}</p>
+      <p className="sakura-progress">
+        <span className="minna-sakura-meter" aria-hidden="true">
+          <span style={{ transform: `scaleX(${bloomProgress(sakura.leaves)})` }} />
+        </span>
+        <span className="minna-sakura-rest">{bloomLine(sakura.leaves)}</span>
+      </p>
+      <ul className="muted sakura-forecast" aria-label="春の見通し">
+        {bloomExplanation(sakura.leaves).map((line) => (
+          <li key={line}>{line}</li>
+        ))}
+      </ul>
       <p className="muted">投稿、返信、ありがとう、いいね、一緒の勉強で葉が増えます。パートナーと話すだけでは増えません。</p>
       {rewards && (
         <section className="card" aria-label="桜のまわりのパートナーたち">

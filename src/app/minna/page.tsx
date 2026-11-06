@@ -6,7 +6,7 @@ import { readAppearance } from "@/lib/appearance";
 import { getViewer } from "@/lib/current-person";
 import { getDatabase } from "@/lib/db";
 import { getDestination } from "@/lib/destination/current";
-import { recentFeed, shortAgo } from "@/lib/minna-feed";
+import { feedChannels, recentFeed, shortAgo } from "@/lib/minna-feed";
 import { syncFromTeamsIfStale } from "@/lib/destination/teams-bridge";
 import { activeEvents } from "@/lib/events";
 import { listGiftEggs } from "@/lib/gift-eggs";
@@ -18,15 +18,20 @@ import { listAlertsFor } from "@/lib/safety";
 import { getSakura, isBloomingSeason, leavesThisWeek, timeOfDay } from "@/lib/sakura";
 import { counselorId, schoolName } from "@/lib/seed-data";
 import { isTrialMode } from "@/lib/trial";
-import { DeviceFrame } from "../DeviceFrame";
-import { RoomBackdrop } from "../study/room/RoomBackdrop";
-import "../study/room/room.css";
+import { ChannelChips, ChannelFilter, FilteredItem, FilteredList } from "./ChannelChips";
+import { MinnaFrame } from "./MinnaFrame";
+import { ReplyField } from "./ReplyField";
+import "./minna.css";
 
 export const metadata: Metadata = { title: "みんな｜こえかた" };
 export const dynamic = "force-dynamic";
 
-export default async function MinnaPage() {
+/** みんなの画面に並べる投稿の数。本文は切らずに全部出す（0-1k(4)） */
+const FEED_LIMIT = 20;
+
+export default async function MinnaPage({ searchParams }: { searchParams: Promise<{ hayaokuri?: string | string[] }> }) {
   const { viewer } = await getViewer();
+  const { hayaokuri } = await searchParams;
   const db = getDatabase();
   await syncFromTeamsIfStale(db);
   const now = new Date();
@@ -40,83 +45,90 @@ export default async function MinnaPage() {
   const hasAlerts = !isTrialMode() && viewer.role !== "student" && (viewer.id === counselorId || listAlertsFor(db, viewer.id).length > 0);
   const grown = leavesThisWeek(db, now);
   const destination = getDestination(db);
-  const feed = recentFeed(destination.listChannels(viewer.id), (channelId) => destination.listPosts(viewer.id, channelId), 6);
+  const channels = destination.listChannels(viewer.id);
+  const feed = recentFeed(channels, (channelId) => destination.listPosts(viewer.id, channelId), FEED_LIMIT);
 
   return (
-    <DeviceFrame
-      label="みんな"
-      dot={2}
-      screen={
-        // 上の窓は、校内の桜。触ると詳しい画面へ
-        <Link className="sakura-scene minna-sakura" data-time={timeOfDay(now)} href="/sakura" aria-label="桜の木を大きく見る">
-          <RoomBackdrop place="garden" label="校庭の桜の木" season={sakura.season} />
-          {isBloomingSeason(sakura.season) &&
-            Array.from({ length: 6 }, (_, i) => (
-              <span key={i} className="petal" aria-hidden="true" style={{ left: `${8 + i * 15}%`, animationDelay: `${i * 0.9}s` }} />
+    <ChannelFilter>
+      <MinnaFrame
+        title="みんな"
+        subtitle={schoolName}
+        season={sakura.season}
+        time={timeOfDay(now)}
+        leaves={sakura.leaves}
+        grown={grown}
+        message={sakura.message}
+        petals={isBloomingSeason(sakura.season) ? 6 : 0}
+        fastForward={hayaokuri === "1"}
+        chips={<ChannelChips channels={feedChannels(channels, feed).map(({ id, name }) => ({ id, name }))} />}
+        entrances={
+          // 0-1f：「今日の3人」と「受信箱」の入口は、札の列の右端に小さく
+          <nav className="minna-entrances" aria-label="みんなの入口">
+            <Link href="/today">
+              <Icon name="heart" />
+              <span className="minna-entrance-text">今日の3人</span>
+            </Link>
+            <Link href="/inbox">
+              <Icon name="inbox" />
+              <span className="minna-entrance-text">受信箱</span>
+              {waiting + knowledgeTasks > 0 && <span className="minna-entrance-badge">{waiting + knowledgeTasks}</span>}
+            </Link>
+          </nav>
+        }
+      >
+        {feed.length > 0 ? (
+          <FilteredList label="最近の投稿と返事">
+            {feed.map(({ post, channel, activeAt }) => (
+              <FilteredItem key={post.id} channelId={channel.id}>
+                <article className="minna-post" aria-label={`${post.authorName}さんの投稿`}>
+                  <header className="minna-post-head">
+                    <strong>{post.authorName}</strong>
+                    <span className="minna-post-role">{post.authorLabel}</span>
+                    <small>
+                      {channel.name}・{shortAgo(activeAt, now)}
+                    </small>
+                  </header>
+                  {/* 本文は途中で切らず、全部出す */}
+                  <p className="minna-post-body">{post.body}</p>
+                  {post.attachment && <p className="minna-post-note">写真や資料が付いています</p>}
+                  {post.replies.length > 0 && (
+                    <ul className="minna-post-replies" aria-label="返事">
+                      {post.replies.map((reply) => (
+                        <li key={reply.id}>
+                          <span className="minna-post-head">
+                            <strong>{reply.authorName}</strong>
+                            <small>{shortAgo(reply.createdAt, now)}</small>
+                          </span>
+                          <p className="minna-post-body">{reply.body}</p>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  <ReplyField
+                    postId={post.id}
+                    authorName={post.authorName}
+                    own={post.authorId === viewer.id}
+                    likeCount={post.likeCount}
+                    liked={post.likedByViewer}
+                    replyCount={post.replies.length}
+                  />
+                  <Link className="minna-post-open" href={`/teams?channel=${channel.id}#post-${post.id}`}>
+                    {channel.name}で見る
+                  </Link>
+                </article>
+              </FilteredItem>
             ))}
-          <span className="caption">今年の葉 {sakura.leaves} 枚</span>
-        </Link>
-      }
-    >
-      <main className="home">
-        <header>
-          <h1>みんな</h1>
-          <p>{schoolName}</p>
-        </header>
-
-        {/* 0-1f：前は下の丸ボタンにあった入口。中身のいちばん上に置く */}
-        <nav className="minna-tiles" aria-label="みんなの入口">
-          <Link href="/today">
-            <Icon name="heart" />
-            今日の3人
-          </Link>
-          <Link href="/inbox">
-            <Icon name="inbox" />
-            受信箱{waiting + knowledgeTasks > 0 && <span className="me-tile-badge">{waiting + knowledgeTasks}</span>}
-          </Link>
-        </nav>
-
-
-        {feed.length > 0 && (
-          <section className="minna-feed" aria-label="最近の投稿と返事">
-            <h2>最近の投稿と返事</h2>
-            <ul>
-              {feed.map(({ post, channel, activeAt }) => {
-                const lastReply = post.replies.at(-1);
-                return (
-                  <li key={post.id}>
-                    <Link href={`/teams?channel=${channel.id}#post-${post.id}`}>
-                      <span className="minna-feed-head">
-                        <strong>{post.authorName}</strong>
-                        <small>
-                          {channel.name}・{shortAgo(activeAt, now)}
-                        </small>
-                      </span>
-                      <span className="minna-feed-body">{post.body}</span>
-                      {lastReply && (
-                        <span className="minna-feed-reply">
-                          ↳ {lastReply.authorName}：{lastReply.body}
-                          {post.replies.length > 1 && <small>（返事 {post.replies.length} 件）</small>}
-                        </span>
-                      )}
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          </section>
+          </FilteredList>
+        ) : (
+          <p className="minna-post-empty">まだ投稿はありません。話す画面から、パートナーと一緒に最初の一言を。</p>
         )}
 
-        {/* 校内の桜。個人を比べず、責めない。控えめでも枯れない */}
-        <Link className="sakura-line" href="/sakura" aria-label="校内の桜">
-          <strong>校内の桜</strong>
-          <span>{sakura.message}</span>
-          <small>
-            今週 {grown} 枚の葉が増えました（今年 {sakura.leaves} 枚）
-          </small>
+        {/* 新しい投稿の欄は置かない。新しく話すのは「話す」画面から */}
+        <Link className="minna-talk-link" href="/">
+          新しく話す →
         </Link>
 
-        <nav className="quick-links" aria-label="届いているもの">
+        <nav className="minna-more" aria-label="届いているもの">
           <Link href="/inbox">
             <Icon name="inbox" />
             受信箱
@@ -143,11 +155,7 @@ export default async function MinnaPage() {
           )}
         </nav>
 
-        <div className="hub-links">
-          <Link href="/today">
-            <Icon name="heart" />
-            今日の3人
-          </Link>
+        <nav className="minna-more" aria-label="ほかの場所">
           <Link href="/teams">
             <Icon name="chat" />
             校内チャネル（Teams）
@@ -164,16 +172,18 @@ export default async function MinnaPage() {
             <Icon name="idea" />
             校内の知恵
           </Link>
-        </div>
+        </nav>
 
         {events.map((event) => (
-          <section className="event-banner" key={event.id} aria-label="期間限定のイベント">
+          <section className="minna-event" key={event.id} aria-label="期間限定のイベント">
             <strong>{event.name}</strong>
             <span>{event.message}</span>
-            <small>期間限定のトロフィー「{event.ribbon.name}」：{event.ribbon.description}と届きます</small>
+            <small>
+              期間限定のトロフィー「{event.ribbon.name}」：{event.ribbon.description}と届きます
+            </small>
           </section>
         ))}
-      </main>
-    </DeviceFrame>
+      </MinnaFrame>
+    </ChannelFilter>
   );
 }
