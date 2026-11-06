@@ -3,8 +3,9 @@ import { join } from "node:path";
 import { defineConfig, devices } from "@playwright/test";
 import { PROMISE_SEEN } from "./e2e/promise-seen";
 
-const PORT = 3100;
-const TRIAL_PORT = 3101;
+// 並べて作る担当が同時に動かせるよう、番号は外から変えられる（KOEKATA_E2E_PORT。試用はその次の番号）
+const PORT = Number(process.env.KOEKATA_E2E_PORT ?? 3100);
+const TRIAL_PORT = PORT + 1;
 
 export default defineConfig({
   testDir: "./e2e",

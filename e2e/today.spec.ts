@@ -80,7 +80,7 @@ async function fakeSpeech(page: import("@playwright/test").Page, spoken: string)
 for (const theme of ["pop", "modern"] as const) {
   test(`${theme}：カードから声で話すと返信の下書きができ、本人が確かめて送れる`, async ({ browser }) => {
     const context = await browser.newContext({ viewport: { width: 412, height: 860 } });
-    await context.addCookies([{ name: "koekata_theme", value: theme, url: "http://127.0.0.1:3100" }]);
+    await context.addCookies([{ name: "koekata_theme", value: theme, url: `http://127.0.0.1:${process.env.KOEKATA_E2E_PORT ?? 3100}` }]);
     const page = await context.newPage();
     const words = `声のカード返信 ${theme} ${test.info().testId}`;
     await fakeSpeech(page, words);

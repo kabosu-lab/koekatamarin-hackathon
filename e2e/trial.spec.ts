@@ -109,9 +109,9 @@ test("外の URL から開いても、サーバーの処理と API を拒まな�
   // 一時 URL のホストが、そのまま届く場合
   expect((await replay("abc.trycloudflare.com", "https://abc.trycloudflare.com")).status()).toBeLessThan(400);
   // ホストが書き換わって届いても、KOEKATA_ALLOWED_ORIGINS に合えば通る
-  expect((await replay("127.0.0.1:3101", "https://abc.trycloudflare.com")).status()).toBeLessThan(400);
+  expect((await replay(`127.0.0.1:${Number(process.env.KOEKATA_E2E_PORT ?? 3100) + 1}`, "https://abc.trycloudflare.com")).status()).toBeLessThan(400);
   // 許していない場所からは通さない
-  expect((await replay("127.0.0.1:3101", "https://other.example.com")).status()).toBeGreaterThanOrEqual(400);
+  expect((await replay(`127.0.0.1:${Number(process.env.KOEKATA_E2E_PORT ?? 3100) + 1}`, "https://other.example.com")).status()).toBeGreaterThanOrEqual(400);
 
   const api = await page.request.post("/api/converse", {
     headers: { host: "abc.trycloudflare.com", origin: "https://abc.trycloudflare.com" },
@@ -121,7 +121,7 @@ test("外の URL から開いても、サーバーの処理と API を拒まな�
 });
 
 test("外の URL から開いたときの入力画面への案内は、Mac の住所に飛ばさない", async ({ playwright }) => {
-  const outside = await playwright.request.newContext({ baseURL: "http://127.0.0.1:3101" });
+  const outside = await playwright.request.newContext({ baseURL: `http://127.0.0.1:${Number(process.env.KOEKATA_E2E_PORT ?? 3100) + 1}` });
   const response = await outside.get("/", { headers: { host: "abc.trycloudflare.com" }, maxRedirects: 0 });
   expect(response.status()).toBe(303);
   expect(response.headers().location).not.toContain("127.0.0.1");
@@ -255,7 +255,7 @@ test("改善点は投稿にも他の画面にも出ず、入口は履歴と設�
 });
 
 test("改善点は合言葉がないと送れず、同じ端末の連打を止める", async ({ page, playwright }) => {
-  const outside = await playwright.request.newContext({ baseURL: "http://127.0.0.1:3101" });
+  const outside = await playwright.request.newContext({ baseURL: `http://127.0.0.1:${Number(process.env.KOEKATA_E2E_PORT ?? 3100) + 1}` });
   expect((await outside.post("/api/feedback", { data: { kind: "よかった" } })).status()).toBe(401);
   await outside.dispose();
 

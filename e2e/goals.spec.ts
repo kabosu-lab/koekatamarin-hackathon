@@ -83,7 +83,7 @@ test("頑張りたいことは他の人に見えず、足す、直す、消す�
 
 test("モダンでも使え、横にはみ出さない", async ({ browser }) => {
   const context = await browser.newContext();
-  await context.addCookies([{ name: "koekata_theme", value: "modern", url: "http://127.0.0.1:3100" }]);
+  await context.addCookies([{ name: "koekata_theme", value: "modern", url: `http://127.0.0.1:${process.env.KOEKATA_E2E_PORT ?? 3100}` }]);
   const page = await context.newPage();
   await page.goto("/me?open=goals");
   await expect(page.getByRole("region", { name: "頑張りたいこと" })).toBeVisible();
