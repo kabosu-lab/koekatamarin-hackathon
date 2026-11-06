@@ -32,6 +32,16 @@ export function BottomSheet({ open, onClose, label, children, footer }: Props) {
   // 閉じる動きが終わるまでは見せておき、終わったら隠す
   const [shown, setShown] = useState(open);
   if (open && !shown) setShown(true);
+  // 隠していた状態から出すときは、表示した次のコマで「開く」にする（同じコマだとせり上がりが走らない）
+  const [entered, setEntered] = useState(open);
+  useEffect(() => {
+    if (!open) {
+      setEntered(false);
+      return;
+    }
+    const frame = requestAnimationFrame(() => setEntered(true));
+    return () => cancelAnimationFrame(frame);
+  }, [open]);
 
   useEffect(() => {
     if (open || !shown) return;
@@ -86,7 +96,7 @@ export function BottomSheet({ open, onClose, label, children, footer }: Props) {
   }
 
   return (
-    <div className="bottom-sheet" data-state={open ? "open" : "closed"} hidden={!open && !shown} inert={!open}>
+    <div className="bottom-sheet" data-state={open && entered ? "open" : "closed"} hidden={!open && !shown} inert={!open}>
       <div className="bottom-sheet-scrim" aria-hidden="true" onClick={onClose} />
       <div
         ref={panelRef}
