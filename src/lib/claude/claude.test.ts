@@ -280,3 +280,15 @@ describe("調べものの出典（0-1s）", () => {
     expect(withSources("本文\n[[出典:あやしい|javascript:alert(1)]]")).toBe("本文");
   });
 });
+
+describe("台本の日報", () => {
+  it("前の日報の項目（項目：の行）を残し、増えた分を足す", async () => {
+    const { text } = await createScriptedClaude().complete({
+      task: "daily",
+      system: "",
+      messages: [{ role: "user", content: "<前の日報>\n項目：朝の会で声を小さくした\n</前の日報>\n<増えた分>\n本人：放課後に面談した\n</増えた分>" }],
+      maxTokens: 100,
+    });
+    expect(JSON.parse(text).items).toEqual(["朝の会で声を小さくした", "放課後に面談した"]);
+  });
+});
