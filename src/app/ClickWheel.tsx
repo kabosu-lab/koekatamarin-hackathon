@@ -8,12 +8,15 @@ import { type PointerEvent, type ReactNode, useRef } from "react";
  * カリの音はカルーセルの側で鳴らす（二重に鳴らさない）。
  */
 export function ClickWheel({
+  invite = false,
   onRotate,
   onPoint,
   onRelease,
   onAbort,
   children,
 }: {
+  /** 押してほしい場所を、輪の呼吸で目で示す（0-1g(2)） */
+  invite?: boolean;
   /** なぞった角度の差（度） */
   onRotate(degrees: number): void;
   /** 指の位置（輪の中心からの差と、輪とマイクの半径）。離すとやめる場所かを決めるのに使う */
@@ -38,6 +41,7 @@ export function ClickWheel({
     <div
       className="click-wheel"
       data-noswipe
+      data-invite={invite ? "breathe" : undefined}
       onPointerDown={(event) => {
         if (event.target !== event.currentTarget) return;
         event.currentTarget.setPointerCapture?.(event.pointerId);

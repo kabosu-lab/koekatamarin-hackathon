@@ -89,3 +89,16 @@ test("0-1l：新しく話すと、前の話は話の履歴に残り、大きな�
   await page.goto("/me?open=talk");
   await expect(page.getByText(words)).toBeVisible();
 });
+
+test("0-2a：話す前は、パートナーを触るたびに一言が替わり、弾む", async ({ page }) => {
+  // パートナーを見せる（ほかのテストでは隠している）
+  await page.context().clearCookies({ name: "koekata_avatar" });
+  await page.goto("/");
+  const partner = page.getByRole("button", { name: "パートナー。触ると次の一言" });
+  await expect(partner).toBeVisible();
+  const bubble = page.locator(".lcd-companion");
+  await page.waitForTimeout(1500);
+  const first = await bubble.innerText();
+  await partner.click();
+  await expect.poll(async () => bubble.innerText(), { timeout: 5000 }).not.toBe(first);
+});

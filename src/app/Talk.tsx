@@ -10,6 +10,9 @@ import { PROMISE_FULL, PROMISE_SHORT, promiseCookieName } from "@/lib/promise-co
 import { TRIAL_PROMISE_SHORT } from "@/lib/trial";
 import { useKeepsWords, useTrial } from "./TrialContext";
 import { HeardLine } from "./HeardLine";
+import { PartnerGreeting, usePartnerInvite } from "./PartnerGreeting";
+import { usePartnerTap } from "./partner-tap";
+import { inviteLine, nextPartnerLine, partnerHour, type PartnerLine } from "@/lib/partner-lines";
 import { useRouter } from "next/navigation";
 import { WheelCarousel, type WheelCarouselHandle } from "./WheelCarousel";
 import type { ChipItem } from "./Chip";
@@ -128,6 +131,21 @@ export function Talk({
   const [listening, setListening] = useState(false);
   // 0-1l：新しく話すと、大きな姿が戻ってくる（戻る動きを一度だけ見せる）
   const [returning, setReturning] = useState(false);
+  // 0-2a：パートナーの話しかけ。Claude は呼ばず、時刻・立場・頑張りたいことで手元の一覧から選ぶ
+  const lineBase = { role: (viewer.role ?? "teacher") as "student" | "teacher" | "admin", firstTime: !promiseSeen, goal: initialGoal?.text ?? null };
+  const [tapCount, setTapCount] = useState(0);
+  const [recentLines, setRecentLines] = useState<string[]>([]);
+  const [line, setLine] = useState<PartnerLine>(() =>
+    question ? { text: question, kind: "ask" } : nextPartnerLine({ ...lineBase, hour: partnerHour(new Date()), tapCount: 0 }),
+  );
+  const [greetingTyped, setGreetingTyped] = useState(false);
+  const partnerTap = usePartnerTap(messages.length > 0);
+  const invite = usePartnerInvite({ typed: greetingTyped, spoken: messages.length > 0 || listening || draft.trim() !== "" });
+  // 数秒触られなければ、操作の案内をそっと添える（0-1g(2)）。一度話したら出さない
+  useEffect(() => {
+    if (invite.nudge && messages.length === 0) setLine({ text: inviteLine(lineBase.role), kind: "guide" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [invite.nudge]);
   const [heard, setHeard] = useState("");
   // 電波が弱くて文字がまとめて届いても、少しずつなめらかに出す
   const [sending, setSending] = useState(false);
@@ -618,12 +636,35 @@ export function Talk({
 
   // 0-1l：話す画面の窓は LINE のような会話。左にアイコン付きのパートナー、右に自分。最新の言葉は頭から全部見える
   const icon = <PartnerIcon image={companionImage} color={companionColor} shape={companionShape} />;
+  const companionFigure = companionImage ? (
+    <div className="dolphin" data-state={listening ? "listening" : sending ? "thinking" : "idle"}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img className="dolphin-still" src={companionImage} alt={companionAlt} />
+    </div>
+  ) : (
+    <VoiceLump alt={companionAlt ?? ""} color={companionColor} shape={companionShape} state={listening ? "listening" : sending ? "thinking" : "idle"} replyCount={replyCount} />
+  );
+  /** パートナーを触る。話す前は一言が次へ替わり、会話のあとは弾むだけ（0-2a (5)） */
+  function tapPartner() {
+    partnerTap.onTap();
+    if (messages.length > 0) return;
+    const recent = [...recentLines, line.text].slice(-3);
+    setRecentLines(recent);
+    setLine(nextPartnerLine({ ...lineBase, hour: partnerHour(new Date()), tapCount: tapCount + 1, recent }));
+    setTapCount(tapCount + 1);
+  }
   const chatList = (
     <>
       {messages.map((message, index) =>
         message.role === "assistant" ? (
           <div className="chat-row partner" key={index} data-index={index}>
-            {messages[index - 1]?.role === "assistant" ? <span className="chat-icon chat-icon-space" aria-hidden="true" /> : <span className="chat-icon" aria-hidden="true">{icon}</span>}
+            {messages[index - 1]?.role === "assistant" ? (
+              <span className="chat-icon chat-icon-space" aria-hidden="true" />
+            ) : (
+              <span className="chat-icon" aria-hidden="true" data-react={index === lastAssistantIndex ? (partnerTap.reaction ?? undefined) : undefined} onClick={tapPartner} onAnimationEnd={partnerTap.onAnimationEnd}>
+                {icon}
+              </span>
+            )}
             <p className="bubble assistant">
               <span className="visually-hidden">パートナー：</span>
               {message.content}
@@ -863,20 +904,27 @@ export function Talk({
               </button>
             </div>
           )}
-          {companionAlt && (
+          {(companionAlt || (acknowledged && messages.length === 0 && !listening && !sending)) && (
             <div className="lcd-companion">
-              {companionImage ? (
-                <div className="dolphin" data-state={listening ? "listening" : sending ? "thinking" : "idle"}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img className="dolphin-still" src={companionImage} alt={companionAlt} />
-                </div>
+              {acknowledged && messages.length === 0 && !listening && !sending ? (
+                // 0-1g(1)・0-2a：最初の問いかけはパートナーの上の吹き出し。触るたびに一言が替わり、弾む
+                <PartnerGreeting
+                  text={line.text}
+                  kind={line.kind}
+                  delayMs={300}
+                  onTap={tapPartner}
+                  onTyped={() => setGreetingTyped(true)}
+                  reaction={partnerTap.reaction}
+                  onAnimationEnd={partnerTap.onAnimationEnd}
+                >
+                  {companionAlt ? companionFigure : null}
+                </PartnerGreeting>
               ) : (
-                <VoiceLump alt={companionAlt} color={companionColor} shape={companionShape} state={listening ? "listening" : sending ? "thinking" : "idle"} replyCount={replyCount} />
+                companionFigure
               )}
             </div>
           )}
           <div className="log" role="log" aria-label="パートナーとの会話" ref={logRef} data-noswipe-landscape>
-            {acknowledged && messages.length === 0 && !listening && !sending && question && <p className="daily-question">{question}</p>}
             {messages.length > 0 && !listening && !sending && (
               // 0-1l：前の話は「話の履歴」に残して畳み、大きなパートナーに戻る
               <button
@@ -965,6 +1013,7 @@ export function Talk({
           </label>
 
           <ClickWheel
+            invite={invite.breathing}
             onRotate={(degrees) => carouselRef.current?.turn(degrees)}
             onPoint={(dx, dy, wheelRadius, micRadius) => carouselRef.current?.setCancelHint(isCancelPoint(dx, dy, wheelRadius, micRadius))}
             onRelease={() => carouselRef.current?.release()}
