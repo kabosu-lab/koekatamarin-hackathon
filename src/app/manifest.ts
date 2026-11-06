@@ -8,6 +8,8 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "話すだけで、できることが増える。",
     start_url: "/",
     display: "standalone",
+    // 0-2y (5)：iPhone は縦向きだけで使う（iPad とパソコンは画面の向きに合わせて使える）
+    orientation: "portrait",
     theme_color: "#e9ebee",
     background_color: "#f3f5f7",
     icons: [

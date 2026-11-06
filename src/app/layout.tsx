@@ -11,6 +11,8 @@ import { SwipeNav } from "./SwipeNav";
 import { EmbedMark } from "./WidePanels";
 import { TrialProvider } from "./TrialContext";
 import { ViewportFit } from "./ViewportFit";
+import { RotateHint } from "./RotateHint";
+import { wideBootScript } from "@/lib/wide";
 import "./globals.css";
 import "./modern.css";
 import "./usability.css";
@@ -40,7 +42,11 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   const { theme, size, sound } = appearance;
   const trial = isTrialMode();
   return (
-    <html lang="ja" data-theme={theme} data-size={size} data-sound={sound} data-avatar={showsRewards(appearance) ? "show" : "hide"}>
+    <html lang="ja" data-theme={theme} data-size={size} data-sound={sound} data-avatar={showsRewards(appearance) ? "show" : "hide"} suppressHydrationWarning>
+      <head>
+        {/* 0-2y：描く前に、欄の中かどうかと、広い画面で奥の画面を開いたときの行き先を決める */}
+        <script dangerouslySetInnerHTML={{ __html: wideBootScript() }} />
+      </head>
       <body>
         {/* 試用版の注意は、操作の前に1回だけカードで出す。消したあとは試用の印を出さない */}
         {trial && <TrialNotice text={trialNotice()} feedbackHint={trialFeedbackHint()} />}
@@ -51,6 +57,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
           <SwipeNav />
           <EmbedMark />
           <ViewportFit />
+          <RotateHint />
         </TrialProvider>
       </body>
     </html>

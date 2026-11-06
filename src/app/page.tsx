@@ -17,13 +17,14 @@ import { listNewRibbons, syncRibbons } from "@/lib/ribbons";
 import { showsRewards } from "@/lib/rewards-view";
 import { Talk } from "./Talk";
 import { WidePanel } from "./WidePanels";
+import { columnSrc } from "@/lib/wide";
 
 export const dynamic = "force-dynamic";
 
 const SEND_PROMPT = "届けたいことを話してね。下書きにするよ。送るのは、確かめてから。";
 
-export default async function HomePage({ searchParams }: { searchParams: Promise<{ ask?: string | string[]; goal?: string | string[]; talk?: string | string[] }> }) {
-  const { ask, goal, talk } = await searchParams;
+export default async function HomePage({ searchParams }: { searchParams: Promise<{ ask?: string | string[]; goal?: string | string[]; talk?: string | string[]; left?: string | string[]; right?: string | string[] }> }) {
+  const { ask, goal, talk, left, right } = await searchParams;
   const { viewer, people } = await getViewer();
   const db = getDatabase();
   await syncFromTeamsIfStale(db);
@@ -49,7 +50,8 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
   // 全員同じ1画面。ほかの画面へはスワイプと、下の小さな印から移る
   return (
     <div className="device-row">
-    <WidePanel src="/me" title="履歴と設定" />
+    {/* 0-2y：広い画面の左右の列。奥の画面を直接開いたときは ?left= / ?right= でその列の中に開く */}
+    <WidePanel src={columnSrc("left", left)} title="履歴と設定" side="left" />
     <main className="retro-home">
       <h1 className="visually-hidden">こえかた</h1>
       {rewards && <RibbonMoment key={`ribbon-${viewer.id}`} ribbons={listNewRibbons(db, viewer.id)} />}
@@ -70,7 +72,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
         initialAsk={askPerson ? { id: askPerson.id, name: askPerson.name } : null}
       />
     </main>
-    <WidePanel src="/minna" title="みんな" />
+    <WidePanel src={columnSrc("right", right)} title="みんな" side="right" />
     </div>
   );
 }

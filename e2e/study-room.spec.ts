@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { openScreen } from "./helpers";
 
 const SCENES = [
   ["morning", "library", "朝の図書館"],
@@ -37,21 +38,23 @@ for (const [width, height, name] of [
   test(`${name}（${width}px）で、どの景色も横にはみ出さず、パートナーが机ごと収まる`, async ({ page }, info) => {
     await page.setViewportSize({ width, height });
     for (const [time] of SCENES) {
-      await page.goto(`/study/room?time=${time}`);
-      const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+      // 0-2y：iPad の横では、3列の右の列の中に開く。列の幅で確かめる
+      const screen = await openScreen(page, `/study/room?time=${time}`);
+      const overflow = await screen.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
       expect(overflow, time).toBe(0);
+      const inner = await screen.evaluate(() => innerWidth);
 
-      const scene = await page.locator(".room-scene").boundingBox();
+      const scene = await screen.locator(".room-scene").boundingBox();
       // 広い画面でも、景色が細い列に押し込められない（横のナビの 160px と余白を除いた幅）
-      if (width >= 768) expect(scene!.width, time).toBeGreaterThan((width - 160) * 0.8);
-      const desks = await page.locator(".room-desk").all();
+      if (inner >= 768) expect(scene!.width, time).toBeGreaterThan((inner - 160) * 0.8);
+      const desks = await screen.locator(".room-desk").all();
       expect(desks.length).toBeGreaterThan(0);
       for (const desk of desks) {
         const box = await desk.boundingBox();
         expect(box!.x).toBeGreaterThanOrEqual(scene!.x);
         expect(box!.x + box!.width).toBeLessThanOrEqual(scene!.x + scene!.width + 0.5);
       }
-      await expect(page.getByRole("img", { name: "勉強中のパートナー" }).first()).toBeVisible();
+      await expect(screen.getByRole("img", { name: "勉強中のパートナー" }).first()).toBeVisible();
       await page.screenshot({ path: info.outputPath(`${width}-${time}.png`), fullPage: true });
     }
   });
@@ -130,14 +133,15 @@ for (const [width, height, name] of [
 ] as const) {
   test(`${name}で、新しい形にそろっている：下のタブのナビも「デモ用：使う人」もなく、中だけのスクロールも切れる文もない`, async ({ page }, info) => {
     await page.setViewportSize({ width, height });
-    await page.goto("/study/room?time=evening");
-    await expect(page.getByRole("heading", { name: "自習室" })).toBeVisible();
-    await expect(page.getByRole("link", { name: /みんな/ }).first()).toBeVisible();
-    await expect(page.getByRole("navigation", { name: "画面の切り替え" })).toBeHidden();
-    await expect(page.getByText("デモ用：使う人")).toBeHidden();
-    await expect(page.locator("select:visible")).toHaveCount(0);
+    // 0-2y：iPad の横では、3列の右の列の中
+    const screen = await openScreen(page, "/study/room?time=evening");
+    await expect(screen.getByRole("heading", { name: "自習室" })).toBeVisible();
+    await expect(screen.getByRole("link", { name: /みんな/ }).first()).toBeVisible();
+    await expect(screen.getByRole("navigation", { name: "画面の切り替え" })).toBeHidden();
+    await expect(screen.getByText("デモ用：使う人")).toBeHidden();
+    await expect(screen.locator("select:visible")).toHaveCount(0);
 
-    const problems = await page.evaluate(() =>
+    const problems = await screen.evaluate(() =>
       [...document.querySelectorAll("main *")].flatMap((element) => {
         const style = getComputedStyle(element);
         const found: string[] = [];

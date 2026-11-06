@@ -1,4 +1,5 @@
-import { expect, type Page, test } from "@playwright/test";
+import { expect, type Frame, type Page, test } from "@playwright/test";
+import { openScreen } from "./helpers";
 
 /** 声の聞き取りと読み上げを偽物にする。`hear` で話したことにする。 */
 async function fakeVoice(page: Page) {
@@ -56,7 +57,7 @@ async function fakeVoice(page: Page) {
   });
 }
 
-const hear = (page: Page, text: string) =>
+const hear = (page: Page | Frame, text: string) =>
   page.evaluate((words) => (window as unknown as { current: { hear(text: string): void } }).current.hear(words), text);
 
 const spokenWords = (page: Page) => page.evaluate(() => (window as unknown as { spokenWords: string[] }).spokenWords);
@@ -147,10 +148,13 @@ for (const [name, width] of [["スマホ", 412], ["iPad", 768], ["PC", 1280]] as
   test(`${name}の幅で横にはみ出さない`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     await fakeVoice(page);
-    await page.goto("/walk");
-    await page.getByRole("button", { name: "話し始める" }).click();
-    await hear(page, "とても長い話を続けています".repeat(20));
-    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
-    expect(overflow).toBe(0);
+    // 0-2y：PC の幅では、3列の左の列の中に開く
+    const screen = await openScreen(page, "/walk");
+    await screen.getByRole("button", { name: "話し始める" }).click();
+    await hear(screen, "とても長い話を続けています".repeat(20));
+    for (const where of [page, screen]) {
+      const overflow = await where.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+      expect(overflow).toBe(0);
+    }
   });
 }

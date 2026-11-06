@@ -3,6 +3,7 @@
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { isDeep, SWIPE_HOME, SWIPE_SCREENS, swipeTarget } from "@/lib/swipe-nav";
+import { WIDE_QUERY } from "@/lib/wide";
 
 /**
  * 操作の途中の指の動きを、画面の移動にしない場所。
@@ -34,6 +35,8 @@ type Arrival = { from: "left" | "right"; ms: number; rest: number };
 
 const reducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 const page = () => document.querySelector<HTMLElement>("body > main, main");
+/** スワイプは狭い画面だけ（0-2y (3)）。広い画面は3列が並び、欄（iframe）の中の奥の画面は「戻る」で閉じる */
+const swipes = () => document.documentElement.dataset.embed !== "true" && !window.matchMedia(WIDE_QUERY).matches;
 
 /** 指を置いた所から外へ向かって、横にスクロールできる入れ物（カルーセル、チップの列）があるか */
 function insideSideScroller(target: Element | null): boolean {
@@ -146,8 +149,8 @@ export function SwipeNav() {
       const blocked =
         event.touches.length !== 1 ||
         root.dataset.theme !== "retro" ||
-        // 広い画面の左右の欄（iframe）の中でホームへ移ると、欄の中が話す画面になってしまう
-        (deep && root.dataset.embed === "true") ||
+        // 広い画面と、その左右の欄（iframe）の中では移らない。欄の中でホームへ移ると、欄の中が話す画面になってしまう
+        !swipes() ||
         target?.closest(NO_SWIPE) ||
         (landscape && !deep && target?.closest(NO_SWIPE_LANDSCAPE)) ||
         insideSideScroller(target) ||
@@ -230,7 +233,7 @@ export function SwipeNav() {
     // 部品からの「ホームへ戻して」（今日の3人の端の先へのめくり）。受けたら preventDefault で知らせる
     const onHomeRequest = (event: Event) => {
       const root = document.documentElement;
-      if (root.dataset.theme !== "retro" || root.dataset.embed === "true") return;
+      if (root.dataset.theme !== "retro" || !swipes()) return;
       event.preventDefault();
       const { forward, layer } = (event as CustomEvent<SwipeHomeRequest>).detail ?? { forward: true };
       const animate = !reducedMotion();

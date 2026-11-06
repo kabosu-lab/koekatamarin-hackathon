@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
-import { switchPerson } from "./helpers";
+import { openScreen, switchPerson } from "./helpers";
 
 // 0-1k：みんなの画面。ページ全体が1つのスクロール、桜は上で帯に縮み、返信はその場で
 
@@ -115,8 +115,9 @@ test("チャネルの札で投稿を絞れ、教職員だけの札は生徒に�
   await expect(page.getByRole("group", { name: "チャネルで絞る" }).getByRole("button", { name: "職員室" })).toHaveCount(0);
 });
 
-test("iPad の横向きと PC では、左に桜、右に投稿の2列で、桜は縮まない", async ({ page }) => {
-  await page.setViewportSize({ width: 1180, height: 820 });
+// 0-2y：幅 1024px 以上（iPad の横・PC）は3列になり、みんなは右の列の中。1画面のまま広い横長（幅 900〜1023px）で2列を確かめる
+test("横長の1画面（幅 900px 以上）では、左に桜、右に投稿の2列で、桜は縮まない", async ({ page }) => {
+  await page.setViewportSize({ width: 1000, height: 700 });
   await page.goto("/minna");
   const scroller = page.getByRole("region", { name: "みんな" });
   const link = page.getByRole("link", { name: "校内の桜" });
@@ -327,11 +328,13 @@ test.describe("今日の3人のモーダル", () => {
   ]) {
     test(`iPad（${viewport.width}×${viewport.height}）でも画面の中に収まり、はみ出さない`, async ({ page }) => {
       await page.setViewportSize(viewport);
-      await page.goto("/minna");
-      const modal = page.getByRole("dialog", { name: "今日の3人" });
+      // 0-2y：iPad の横では、みんなは3列の右の列の中。列の中ではモーダルは自動で出ないので、入口から開く
+      const screen = await openScreen(page, "/minna");
+      const modal = screen.getByRole("dialog", { name: "今日の3人" });
+      if (screen !== page) await screen.getByRole("navigation", { name: "みんなの入口" }).getByRole("button", { name: "今日の3人" }).click();
       await expect(modal).toBeInViewport({ ratio: 1 });
       expect((await modal.boundingBox())!.width).toBeLessThanOrEqual(26 * 16 + 1);
-      expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0);
+      expect(await screen.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0);
       await modal.getByRole("button", { name: "みんなを見る" }).click();
       await expect(modal).toHaveCount(0);
     });
