@@ -87,3 +87,28 @@ test("みんなの画面の上に受信箱への入口がある", async ({ page 
   await page.goto("/minna");
   await expect(page.getByRole("link", { name: /受信箱/ }).first()).toBeVisible();
 });
+
+test("届いた日報と日記は受信箱の中の段にまとまり、投稿の流れには混ざらない。前の入口は受信箱へ送る", async ({ page }) => {
+  const words = `小テストの見直しをした ${test.info().testId}`;
+  await page.goto("/");
+  await switchPerson(page, "青木 ひより（2年）");
+  await page.getByLabel("パートナーに書く").fill(words);
+  await page.getByRole("button", { name: "パートナーへ送る" }).click();
+  await expect(page.getByRole("log").locator(".bubble.assistant").last()).toBeVisible();
+  await page.goto("/daily");
+  await page.getByRole("checkbox", { name: words }).click();
+  await expect(page.getByRole("checkbox", { name: words })).toBeChecked();
+
+  await page.goto("/");
+  await switchPerson(page, TEACHER);
+  await page.goto("/daily/received");
+  await expect(page).toHaveURL(/\/inbox/);
+  const received = page.getByRole("region", { name: "届いた日報と日記" });
+  await expect(received.getByRole("heading", { name: /届いた日報と日記（\d+）/ })).toBeVisible();
+  const report = received.getByRole("article", { name: "青木 ひよりさんから" });
+  await expect(report).toContainText(words);
+  await expect(page.locator(".inbox-list")).not.toContainText(words);
+  await report.getByLabel("一言かえす").fill("よく見直しましたね");
+  await report.getByRole("button", { name: "一言を送る" }).click();
+  await expect(report.locator(".response-card")).toContainText("よく見直しましたね");
+});

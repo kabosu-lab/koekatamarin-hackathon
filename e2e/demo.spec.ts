@@ -111,7 +111,6 @@ test("先生の一日：話しかける、返す、パス、サンクス、日�
   // 夕方：日報が届き、チェックを付けて管理職へ
   await page.goto("/me?open=records");
   await page.getByRole("link", { name: "今日の日報" }).click();
-  await page.getByRole("button", { name: "今日の日報を作る" }).click();
   const box = page.getByRole("checkbox", { name: /作文の一言/ });
   await expect(box).not.toBeChecked();
   await box.click();
@@ -121,7 +120,7 @@ test("先生の一日：話しかける、返す、パス、サンクス、日�
   // 一言が返る
   await page.goto("/");
   await switchPerson(page, ADMIN);
-  await page.goto("/daily/received");
+  await page.goto("/inbox");
   const report = page.getByRole("article", { name: "佐伯 みどりさんから" });
   await expect(report).toContainText("作文の一言");
   await expect(report).not.toContainText("私は嫌やわ");
@@ -140,14 +139,13 @@ test("先生の一日：話しかける、返す、パス、サンクス、日�
   await switchPerson(page, STUDENT);
   await say(page, "過去問が半分解けた");
   await page.goto("/daily");
-  await page.getByRole("button", { name: "今日の日記を作る" }).click();
   const diary = page.getByRole("checkbox", { name: /過去問が半分解けた/ });
   await diary.click();
   await expect(diary).toBeChecked();
 
   await page.goto("/");
   await switchPerson(page, TEACHER);
-  await page.goto("/daily/received");
+  await page.goto("/inbox");
   await expect(page.getByRole("article", { name: "青木 ひよりさんから" })).toContainText("過去問が半分解けた");
   await shot(page, "09-生徒の日記");
 
