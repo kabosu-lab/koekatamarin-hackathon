@@ -2,7 +2,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { RoomScene } from "./RoomScene";
-import { ROOM_PLACES, roomMoment, roomTables } from "./scene";
+import { ROOM_PLACES, ROOM_SEATS, roomCrowd, roomMoment, roomPeople, roomTables } from "./scene";
 
 const at = (time: string) => new Date(`2026-11-05T${time}:00+09:00`);
 
@@ -39,6 +39,35 @@ describe("机", () => {
     expect(roomTables([])).toEqual([]);
     expect(roomTables(["a"])).toEqual([["a"]]);
     expect(roomTables(["a", "b", "c"])).toEqual([["a", "b"], ["c"]]);
+  });
+});
+
+describe("人数（0-2s）", () => {
+  const presence = { count: 2, tokens: ["a", "b"] };
+
+  it("?people= で人数を変えて見られ、いまいるパートナーの絵をくり返す", () => {
+    expect(roomPeople(presence, "5")).toEqual({ count: 5, tokens: ["a", "b", "a", "b", "a"] });
+    expect(roomPeople(presence, "0").count).toBe(1);
+    expect(roomPeople(presence, "999").count).toBe(60);
+  });
+
+  it("知らない値や誰もいない部屋では、そのまま", () => {
+    for (const unknown of [undefined, "", "-1", "3.5", "abc", ["3"]]) expect(roomPeople(presence, unknown)).toBe(presence);
+    const empty = { count: 0, tokens: [] };
+    expect(roomPeople(empty, "3")).toBe(empty);
+  });
+
+  it("増えるほど段が上がる", () => {
+    expect([1, 3, 8, 12].map(roomCrowd)).toEqual(["few", "some", "many", "full"]);
+  });
+
+  it("12人を超えた分は座らせず、奥のぼかした影にする。文字は描かない", () => {
+    const tokens = Array.from({ length: 30 }, (_, index) => `t${index % 3}`);
+    const html = render(tokens, { time: "morning", late: false });
+    expect(html.match(/class="study-buddy /g)).toHaveLength(ROOM_SEATS);
+    expect(html.match(/class="room-shadow"/g)).toHaveLength(8);
+    expect(html).toContain('data-crowd="full"');
+    expect(html.replace(/<[^>]*>/g, "")).toBe("");
   });
 });
 

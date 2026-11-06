@@ -15,7 +15,7 @@ test("自習室は人数とパートナーだけで、Teams のタブの画面�
 test("「一緒に勉強する」は自習室と1つの画面で、前の入口から来ても自習室に着く", async ({ page }) => {
   await page.goto("/study");
   await expect(page).toHaveURL(/\/study\/room$/);
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("自習室（一緒に勉強する）");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("自習室");
   await expect(page.getByRole("link", { name: "‹ みんな" })).toBeVisible();
   // 景色とタイマーと曲が、同じ画面にそろう
   await expect(page.getByRole("region", { name: "自習室" })).toContainText("人が勉強しています");
