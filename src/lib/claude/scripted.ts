@@ -1,6 +1,14 @@
 import { FEEDBACK_MARK, openingLines } from "./persona";
 import type { ClaudeClient } from "./types";
 
+/** 0-2l：できた下書きの本文を、決まった速さで少しずつ渡す（流せない Claude と台本で、書いていく様子を見せる） */
+export async function dripText(text: string, onText: (chunk: string) => void, chars = 2, ms = 30): Promise<void> {
+  for (let i = 0; i < text.length; i += chars) {
+    onText(text.slice(i, i + chars));
+    if (i + chars < text.length) await new Promise((done) => setTimeout(done, ms));
+  }
+}
+
 /** 段つきの印。パートナーの指示の決まり（`[[とどけられる:1]]`〜`[[とどけられる:3]]`）と同じ形 */
 const readyMark = (level: 1 | 2 | 3) => `[[とどけられる:${level}]]`;
 
