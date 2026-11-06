@@ -26,7 +26,7 @@ import { SafetyCard, type SafetyNotice } from "./SafetyCard";
 import { AttachmentPreview } from "./AttachmentPreview";
 import { Avatar } from "./Avatar";
 import { playSendSound, SendBurst } from "./SendBurst";
-import { audioOutput, playCommitPop, playReadyChord } from "./sound";
+import { audioOutput, playCommitRun, playReadyChord } from "./sound";
 import { raiseLevel, type DeliverLevel } from "@/lib/send-sound";
 import type { AttachmentView } from "@/lib/attachment";
 import { archiveTalk, loadArchive, loadTalk, saveTalk } from "./talk-storage";
@@ -498,13 +498,11 @@ export function Talk({
       onFinal: (text) => {
         const rest = lockedTalk.finish(text).trim();
         if (discardHeard.current || !rest) return;
+        // 0-2m：話している間は鳴らさず、離して送ったときに、話した回数の分だけ上がっていく鈴の音
+        popStep.current += 1;
+        playCommitRun(popStep.current);
         const typed = latest.current.draft.trim();
         latest.current.send(typed ? `${typed}\n${rest}` : rest);
-      },
-      // 0-1g(4)：声が1区切り固まるたびに、やわらかいポン。音階が1段ずつ上がる
-      onCommitted: () => {
-        popStep.current += 1;
-        playCommitPop(popStep.current);
       },
       onError: setNotice,
       onEnd: () => {
