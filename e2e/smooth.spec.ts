@@ -56,3 +56,39 @@ test("スワイプで画面ごと動く間は、機器の大きな影を消す",
   await page.evaluate(() => (document.documentElement.dataset.swiping = "true"));
   await expect(home).toHaveCSS("box-shadow", "none");
 });
+
+test("会話の前は上の端を勾配で消し、会話中は消さない（mask を使わない）", async ({ page }) => {
+  await page.goto("/");
+  const log = page.getByRole("log");
+  const edge = () => log.evaluate((element) => {
+    const style = getComputedStyle(element, "::before");
+    return { display: style.display, position: style.position, height: style.height };
+  });
+  expect(await edge()).toEqual({ display: "block", position: "sticky", height: "14px" });
+  await page.getByLabel("パートナーに書く").fill("こんにちは、ちょっと相談があるんだけど");
+  await page.getByRole("button", { name: "パートナーへ送る" }).click();
+  await expect(log.locator(".bubble.assistant:not(.waiting)")).toHaveCount(1);
+  expect((await edge()).display).toBe("none");
+});
+
+for (const reducedMotion of ["no-preference", "reduce"] as const) {
+  test(`窓の 3D は大きさが変わったときだけ測り直して描く（動きを減らす：${reducedMotion}）`, async ({ page }) => {
+    const errors: string[] = [];
+    page.on("pageerror", (error) => errors.push(error.message));
+    await page.emulateMedia({ reducedMotion });
+    // 自動テストでは静止画になるので、3D を明示して描かせる
+    await page.addInitScript(() => localStorage.setItem("koekata_3d", "on"));
+    await page.goto("/");
+    await expect(page.locator(".dolphin").first()).toBeVisible();
+    const canvas = page.locator(".dolphin canvas");
+    await canvas.waitFor({ timeout: 5_000 }).catch(() => undefined);
+    // WebGL2 が使えない環境では静止画に戻るので確かめられない
+    test.skip((await canvas.count()) === 0, "WebGL2 が使えない");
+    const size = () => canvas.evaluate((element: HTMLCanvasElement) => element.width);
+    await expect.poll(size).toBeGreaterThan(1);
+    const before = await size();
+    await page.setViewportSize({ width: 820, height: 1180 });
+    await expect.poll(size).not.toBe(before);
+    expect(errors).toEqual([]);
+  });
+}

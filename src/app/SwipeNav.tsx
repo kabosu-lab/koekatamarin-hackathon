@@ -170,7 +170,9 @@ export function SwipeNav() {
         leaving.style.transform = `translateX(${forward ? "-" : ""}${width}px)`;
         // 新しい画面に入れ替わらなかったときのために戻す
         setTimeout(() => {
-          if (!dragging) delete document.documentElement.dataset.swiping;
+          // 移れたなら古い画面はもう無く、今の状態は新しい画面のもの。触らない
+          if (!leaving.isConnected) return;
+          delete document.documentElement.dataset.swiping;
           leaving.style.transition = "";
           leaving.style.transform = "";
           leaving.style.willChange = "";
