@@ -22,7 +22,7 @@ for (const [time, place, label] of SCENES) {
     await expect(room.getByRole("img", { name: label })).toBeVisible();
     await expect(room.getByRole("img", { name: "勉強中のパートナー" }).first()).toBeVisible();
     await expect(room.locator("button, a, input, textarea, video, audio")).toHaveCount(0);
-    // 画面の外枠には、デモ用の使う人の切り替えがあるので、自習室の中だけを見る
+    // 景色の中に、人の名前や順位を出さない
     await expect(room.getByText(/順位|ランキング|青木|中村/)).toHaveCount(0);
     expect(external).toEqual([]);
   });
@@ -122,3 +122,33 @@ test("音を鳴らすものも、カメラやマイクを使うものもない",
   await expect(page.locator("audio, video")).toHaveCount(0);
   expect(await page.evaluate(() => (window as unknown as { mediaCalls: number }).mediaCalls)).toBe(0);
 });
+
+for (const [width, height, name] of [
+  [390, 844, "スマホ"],
+  [768, 1024, "iPad の縦"],
+  [1024, 768, "iPad の横"],
+] as const) {
+  test(`${name}で、新しい形にそろっている：下のタブのナビも「デモ用：使う人」もなく、中だけのスクロールも切れる文もない`, async ({ page }, info) => {
+    await page.setViewportSize({ width, height });
+    await page.goto("/study/room?time=evening");
+    await expect(page.getByRole("heading", { name: "自習室" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "みんなへもどる" })).toBeVisible();
+    await expect(page.getByRole("navigation", { name: "画面の切り替え" })).toBeHidden();
+    await expect(page.getByText("デモ用：使う人")).toBeHidden();
+    await expect(page.locator("select:visible")).toHaveCount(0);
+
+    const problems = await page.evaluate(() =>
+      [...document.querySelectorAll("main *")].flatMap((element) => {
+        const style = getComputedStyle(element);
+        const found: string[] = [];
+        // 入れ物の中だけのスクロール
+        if (/(auto|scroll)/.test(style.overflowY) && element.scrollHeight > element.clientHeight + 1) found.push(`中だけのスクロール: ${element.className}`);
+        // 途中で切れる文
+        if (style.textOverflow === "ellipsis" || (style.webkitLineClamp && style.webkitLineClamp !== "none")) found.push(`切れる文: ${element.className}`);
+        return found;
+      }),
+    );
+    expect(problems).toEqual([]);
+    await page.screenshot({ path: info.outputPath(`new-form-${width}.png`), fullPage: true });
+  });
+}
