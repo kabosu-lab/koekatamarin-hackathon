@@ -10,6 +10,10 @@ import { PROMISE_FULL, PROMISE_SHORT, promiseCookieName } from "@/lib/promise-co
 import { TRIAL_PROMISE_SHORT } from "@/lib/trial";
 import { useKeepsWords, useTrial } from "./TrialContext";
 import { HeardLine } from "./HeardLine";
+import { useRouter } from "next/navigation";
+import { WheelCarousel, type WheelCarouselHandle } from "./WheelCarousel";
+import type { ChipItem } from "./Chip";
+import { isCancelPoint } from "@/lib/wheel-carousel";
 import { BottomSheet } from "./BottomSheet";
 import { PartnerIcon } from "./PartnerIcon";
 import { KnowledgeResults } from "./chie/KnowledgeResults";
@@ -41,7 +45,21 @@ const MIN_HOLD_MS = 300;
 const LOCK_DISTANCE_PX = 56;
 /** 歩きながら話す間は黙っていることもあるので、長めに待つ */
 const LISTEN_SILENCE_LIMIT_MS = 10 * 60 * 1000;
-const WHEEL_PIXELS_PER_DEGREE = 2.2;
+/**
+ * 0-1g(3)：輪をなぞると出るチップ。「話す」画面からは左右にスワイプしないと行けない場所。
+ * 同じ入口を2か所に置かない決まりに合わせ、ここに並べるのは画面の行き先だけ。
+ */
+const WHEEL_CHIPS: (ChipItem & { href: string })[] = [
+  { id: "minna", label: "みんな", code: "M-01", icon: "people", href: "/minna" },
+  { id: "today", label: "今日の3人", code: "T-03", icon: "heart", href: "/today" },
+  { id: "inbox", label: "受信箱", code: "I-02", icon: "inbox", href: "/inbox" },
+  { id: "room", label: "自習室", code: "S-04", icon: "book", href: "/study/room" },
+  { id: "chie", label: "校内の知恵", code: "K-05", icon: "idea", href: "/chie" },
+  { id: "goals", label: "頑張りたいこと", code: "G-06", icon: "flag", href: "/me?open=goals" },
+  { id: "talk", label: "話の履歴", code: "H-07", icon: "chat", href: "/me?open=talk" },
+  { id: "records", label: "記録", code: "R-08", icon: "note", href: "/me?open=records" },
+  { id: "settings", label: "設定", code: "C-09", icon: "settings", href: "/me?open=settings" },
+];
 const MAX_HISTORY = 40;
 /** 話の途中で声をかけないよう、少なくとも2往復してから確かめる */
 const CONNECT_MIN_MESSAGES = 4;
@@ -159,6 +177,8 @@ export function Talk({
   const endRef = useRef<HTMLDivElement>(null);
 
   const logRef = useRef<HTMLDivElement>(null);
+  const carouselRef = useRef<WheelCarouselHandle>(null);
+  const router = useRouter();
   const pressedAt = useRef<number | null>(null);
   const discardHeard = useRef(false);
   const pressY = useRef<number | null>(null);
@@ -820,6 +840,14 @@ export function Talk({
           {composeView}
         </BottomSheet>
         <section className="lcd" aria-label="パートナーの画面">
+          <WheelCarousel
+            ref={carouselRef}
+            items={WHEEL_CHIPS}
+            onOpen={(item) => {
+              const chip = WHEEL_CHIPS.find((candidate) => candidate.id === item.id);
+              if (chip) router.push(chip.href);
+            }}
+          />
           <ReplyToast initial={notices} paused={listening} pollMs={noticePollMs} />
           {lockedTalk.locked && (
             <div className="lock-banner">
@@ -909,9 +937,10 @@ export function Talk({
           </label>
 
           <ClickWheel
-            onRotate={(degrees) => {
-              if (logRef.current) logRef.current.scrollTop += degrees * WHEEL_PIXELS_PER_DEGREE;
-            }}
+            onRotate={(degrees) => carouselRef.current?.turn(degrees)}
+            onPoint={(dx, dy, wheelRadius, micRadius) => carouselRef.current?.setCancelHint(isCancelPoint(dx, dy, wheelRadius, micRadius))}
+            onRelease={() => carouselRef.current?.release()}
+            onAbort={() => carouselRef.current?.reset()}
           >
             <button
               type="button"

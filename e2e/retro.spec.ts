@@ -50,7 +50,7 @@ test("書いてパートナーと話し、とどけるで下書きを確かめ�
   await noOverflow(page);
 });
 
-test("やり取りは液晶の中だけで動き、ホイールを回すと読み返せる", async ({ page }) => {
+test("やり取りは液晶の中だけで動き、窓を指でなでると読み返せる", async ({ page }) => {
   await asPerson(page, "aoki");
   await page.goto("/");
   for (let i = 0; i < 4; i += 1) {
@@ -58,24 +58,38 @@ test("やり取りは液晶の中だけで動き、ホイールを回すと読�
     await expect(page.getByRole("log").locator(".bubble.assistant")).toHaveCount(i + 1);
   }
   const log = page.getByRole("log");
-  const pageScroll = await page.evaluate(() => document.scrollingElement!.scrollTop);
-  expect(pageScroll).toBe(0);
-  const before = await log.evaluate((element) => element.scrollTop);
-  expect(before).toBeGreaterThan(0);
+  expect(await page.evaluate(() => document.scrollingElement!.scrollTop)).toBe(0);
+  expect(await log.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+});
 
+/** 輪の上をなぞる（角度の並びを順にたどる） */
+async function traceWheel(page: Page, degrees: number[], end?: { x: number; y: number }) {
   const wheel = (await page.locator(".click-wheel").boundingBox())!;
   const cx = wheel.x + wheel.width / 2;
   const cy = wheel.y + wheel.height / 2;
-  const r = wheel.width * 0.46;
-  // 輪の上を反時計回りに動かす
-  await page.mouse.move(cx + r, cy);
+  const r = wheel.width * 0.44;
+  const at = (deg: number) => ({ x: cx + r * Math.cos((deg * Math.PI) / 180), y: cy + r * Math.sin((deg * Math.PI) / 180) });
+  await page.mouse.move(at(degrees[0]).x, at(degrees[0]).y);
   await page.mouse.down();
-  for (const degrees of [-20, -40, -60, -80, -100]) {
-    const radians = (degrees * Math.PI) / 180;
-    await page.mouse.move(cx + r * Math.cos(radians), cy + r * Math.sin(radians));
-  }
+  for (const deg of degrees.slice(1)) await page.mouse.move(at(deg).x, at(deg).y, { steps: 2 });
+  if (end) await page.mouse.move(cx + end.x, cy + end.y, { steps: 2 });
   await page.mouse.up();
-  await expect.poll(() => log.evaluate((element) => element.scrollTop)).toBeLessThan(before);
+}
+
+test("0-1g(3)：輪をなぞると機能のチップが出て、離すと真ん中の機能が開く", async ({ page }) => {
+  await asPerson(page, "aoki");
+  await page.goto("/");
+  await traceWheel(page, [0, 20, 40, 60]);
+  await expect(page).not.toHaveURL(/127\.0\.0\.1:\d+\/$/, { timeout: 5000 });
+});
+
+test("0-1g(3)：真ん中のマイクの上で離すと、何も開かずにやめる", async ({ page }) => {
+  await asPerson(page, "aoki");
+  await page.goto("/");
+  await traceWheel(page, [0, 20, 40, 60], { x: 0, y: 0 });
+  await page.waitForTimeout(600);
+  await expect(page).toHaveURL(/127\.0\.0\.1:\d+\/$/);
+  await expect(page.locator(".wheel-carousel")).toHaveAttribute("data-state", "idle");
 });
 
 test("命や安全の案内はレトロでも液晶の中に見える", async ({ page }) => {
