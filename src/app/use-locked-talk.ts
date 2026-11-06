@@ -12,8 +12,9 @@ const CHECK_EVERY_CHARS = 400;
 const SPEAK_TIMEOUT_MS = 20_000;
 const MAX_ASK_TEXT = 2000;
 
+/** 音を鳴らすかは sound.ts と同じく、"on" のときだけ（0-1m の食い違いを直す） */
 function soundIsOn(): boolean {
-  return document.documentElement.dataset.sound !== "off";
+  return document.documentElement.dataset.sound === "on";
 }
 
 /**
