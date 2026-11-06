@@ -236,7 +236,7 @@ export default async function MePage({ searchParams }: { searchParams: Promise<{
             </section>
             <section className="card appearance" aria-label="見た目">
               <h2>見た目</h2>
-              {APPEARANCE_OPTIONS.filter((group) => group.name !== "theme" && group.name !== "sound")
+              {APPEARANCE_OPTIONS.filter((group) => group.name !== "theme")
                 .filter((group) => group.name !== "avatar" || appearance.theme !== "modern")
                 .map((group) => (
                   <form action={setAppearance} key={group.name}>
@@ -258,7 +258,7 @@ export default async function MePage({ searchParams }: { searchParams: Promise<{
                     </div>
                   </form>
                 ))}
-              {appearance.sound === "on" && <SoundTest />}
+              <SoundTest />
             </section>
             <MemoryList key={`${viewer.id}-memory`} initial={listMemories(db, getDestination(db), viewer.id)} />
             <HiddenPeople key={`${viewer.id}-hidden`} initial={listHiddenPeople(db, viewer.id)} />

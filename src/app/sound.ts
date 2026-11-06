@@ -111,39 +111,7 @@ export function playSendSound(words: string): void {
   }
 }
 
-/** 人に届いた瞬間の小さな音（応援、返信、ありがとう）。音を消している人には鳴らさない。 */
-/** リボンが贈られた瞬間のファンファーレ。短く、同じ調で上がる。 */
-export function playRibbonSound(): void {
-  const output = audioOutput();
-  if (!output) return;
-  try {
-    const { audio, out } = output;
-    const t0 = audio.currentTime + 0.02;
-    [
-      [0, 72, 0.4],
-      [0.1, 76, 0.42],
-      [0.2, 79, 0.45],
-      [0.32, 84, 0.5],
-      [0.32, 76, 0.3],
-      [0.52, 88, 0.42],
-    ].forEach(([delay, note, volume]) => schedulePop(audio, out, t0 + delay, note, volume));
-  } catch {
-    // 音が出せなくても、操作には関係ない
-  }
-}
-
-/** ホイールを回したときの小さな音。 */
-export function playWheelTick(): void {
-  const output = audioOutput();
-  if (!output) return;
-  try {
-    const { audio, out } = output;
-    schedulePop(audio, out, audio.currentTime + 0.005, 96, 0.08);
-  } catch {
-    // 音が出せなくても、操作には関係ない
-  }
-}
-
+/** 人に届いた瞬間の小さな音（応援、返信、ありがとう）。 */
 export function playReachedSound(): void {
   const output = audioOutput();
   if (!output) return;
@@ -159,8 +127,8 @@ export function playReachedSound(): void {
 
 /**
  * 声が1区切り固まったときのやわらかい「ポン」。step（1 から）ごとに音階が1段上がる。
- * 木琴の音色で、ホイールの「カリ」とは別。音の設定が「on」のときだけ鳴る。
- * 0-2m で、話している間の音は playCommitRun（話し終えたあとにまとめて鳴らす）へ移す。本体が移し終えたら消してよい。
+ * 木琴の音色で、ホイールの「カリ」とは別。
+ * 話す画面は 0-2m で playCommitRun（話し終えたあとにまとめて鳴らす）へ移した。これは「これまで」の積み上がりで使う。
  */
 export function playCommitPop(step: number): void {
   const output = audioOutput();

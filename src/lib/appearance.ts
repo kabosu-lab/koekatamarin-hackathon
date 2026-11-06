@@ -29,13 +29,6 @@ export const APPEARANCE_OPTIONS = [
       { value: "hide", label: "隠す" },
     ],
   },
-  {
-    // 0-1v：アプリの中で音を消す設定はなくした。音は初めから鳴らし、切るのは端末の消音や音量で。
-    // 値の形だけ残す（前に「音なし」を選んだ人の cookie があっても、もう効かない）
-    name: "sound",
-    label: "音",
-    options: [{ value: "on", label: "音あり" }],
-  },
 ] as const;
 
 export type AppearanceName = (typeof APPEARANCE_OPTIONS)[number]["name"];
@@ -44,11 +37,10 @@ export type Appearance = Record<AppearanceName, string>;
 export const APPEARANCE_COOKIES: Record<AppearanceName, string> = {
   theme: "koekata_theme",
   size: "koekata_size",
-  sound: "koekata_sound",
   avatar: "koekata_avatar",
 };
 
-const DEFAULTS: Appearance = { theme: "retro", size: "normal", sound: "on", avatar: "show" };
+const DEFAULTS: Appearance = { theme: "retro", size: "normal", avatar: "show" };
 
 export function isAppearanceValue(name: string, value: string): name is AppearanceName {
   const group = APPEARANCE_OPTIONS.find((g) => g.name === name);
@@ -61,5 +53,5 @@ export function readAppearance(read: (cookie: string) => string | undefined): Ap
     const value = read(APPEARANCE_COOKIES[name]);
     return value !== undefined && isAppearanceValue(name, value) ? value : DEFAULTS[name];
   };
-  return { theme: DEFAULTS.theme, size: get("size"), sound: DEFAULTS.sound, avatar: get("avatar") };
+  return { theme: DEFAULTS.theme, size: get("size"), avatar: get("avatar") };
 }

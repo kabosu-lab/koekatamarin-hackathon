@@ -37,10 +37,10 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   const store = await cookies();
   const { viewer } = await getViewer();
   const appearance = readAppearance((name) => store.get(name)?.value);
-  const { theme, size, sound } = appearance;
+  const { theme, size } = appearance;
   const trial = isTrialMode();
   return (
-    <html lang="ja" data-theme={theme} data-size={size} data-sound={sound} data-avatar={showsRewards(appearance) ? "show" : "hide"}>
+    <html lang="ja" data-theme={theme} data-size={size} data-avatar={showsRewards(appearance) ? "show" : "hide"}>
       <body>
         {/* 試用版の注意は、操作の前に1回だけカードで出す。消したあとは試用の印を出さない */}
         {trial && <TrialNotice text={trialNotice()} feedbackHint={trialFeedbackHint()} />}
