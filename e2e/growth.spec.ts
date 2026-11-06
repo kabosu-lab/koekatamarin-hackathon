@@ -30,8 +30,9 @@ test("サンクスカードが相手に届き、他の人には見えない", as
   await switchPerson(page, "青木 ひより（2年）");
   await page.goto("/me?open=thanks");
   const form = page.getByRole("region", { name: "サンクスカードを送る" });
-  await form.getByLabel("送る相手").selectOption({ label: "野田 翔（情報・ものづくり部顧問）" });
-  await form.getByLabel("ありがとうの言葉").fill(words);
+  await form.getByLabel("名前で探す").fill("野田");
+  await form.getByRole("list", { name: "見つかった人" }).getByRole("button", { name: /野田 翔さん/ }).click();
+  await form.getByLabel("届けることば").fill(words);
   await form.getByRole("button", { name: "サンクスカードを送る" }).click();
   await expect(form).toContainText("ありがとうが届きました");
 

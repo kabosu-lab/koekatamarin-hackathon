@@ -14,6 +14,8 @@ import { KnowledgeTasks } from "../chie/KnowledgeTasks";
 import { listReceived } from "@/lib/daily";
 import { InboxCard } from "./InboxCard";
 import { ReceivedReports } from "./ReceivedReports";
+import { replyAuthors } from "@/lib/thanks-people";
+import { ThanksEntry } from "../thanks/ThanksCard";
 
 import { PageShell } from "@/app/ui/PageShell";
 export const metadata: Metadata = { title: "受信箱｜こえかた" };
@@ -27,6 +29,10 @@ export default async function InboxPage() {
   const teams = getDestination(db);
   const items = listInbox(db, viewer.id);
   const replies = listRecentReplies(db, viewer.id);
+  const repliers = replyAuthors(
+    db,
+    replies.map((reply) => reply.replyId),
+  );
   const { goals, assists } = countContributions(db, viewer.id);
 
   return (
@@ -69,6 +75,8 @@ export default async function InboxPage() {
                   <strong>{reply.authorName}さん</strong>
                   <span>{reply.body}</span>
                 </Link>
+                {/* 0-2j：助けてもらった場所に「ありがとう」。押すとこの人宛てのカードが開く */}
+                <ReplierThanks person={repliers.get(reply.replyId)} />
               </li>
             ))}
           </ul>
@@ -94,4 +102,8 @@ export default async function InboxPage() {
       </div>
     </PageShell>
   );
+}
+
+function ReplierThanks({ person }: { person: { id: string; name: string; label: string } | undefined }) {
+  return person ? <ThanksEntry person={person} /> : null;
 }

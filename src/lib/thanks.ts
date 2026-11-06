@@ -3,9 +3,11 @@ import type { DatabaseSync } from "node:sqlite";
 import { reviewPost } from "./claude/compose";
 import type { ClaudeClient } from "./claude/types";
 import { MAX_BODY_LENGTH } from "./destination/types";
+import { readThanksKind, type ThanksKind } from "./thanks-kind";
 import { cleanTitle, offerTitle } from "./titles";
 
-export type ThanksCard = { id: string; fromName: string; message: string; createdAt: string };
+/** kind は保存せず、言葉から毎回読み取る（ありがとう・がんばったね・おめでとう） */
+export type ThanksCard = { id: string; fromName: string; message: string; createdAt: string; kind: ThanksKind };
 
 export function listThanks(db: DatabaseSync, personId: string): ThanksCard[] {
   const rows = db
@@ -15,7 +17,13 @@ export function listThanks(db: DatabaseSync, personId: string): ThanksCard[] {
        WHERE t.to_person_id = ? ORDER BY t.created_at DESC, t.rowid DESC`,
     )
     .all(personId) as { id: string; from_name: string; message: string; created_at: string }[];
-  return rows.map((row) => ({ id: row.id, fromName: row.from_name, message: row.message, createdAt: row.created_at }));
+  return rows.map((row) => ({
+    id: row.id,
+    fromName: row.from_name,
+    message: row.message,
+    createdAt: row.created_at,
+    kind: readThanksKind(row.message),
+  }));
 }
 
 /** ありがとうを送る。受け取る人だけに見える。投稿と同じく、確かめられないときは送らない。 */
