@@ -23,12 +23,15 @@ export function LogView({ viewerName }: { viewerName: string }) {
   }, [viewerName]);
 
   if (messages.length === 0) return <p>まだ話していません。話すと、ここで読み返せます。</p>;
+  // 0-1q：話す画面の会話（0-1l）と同じ、LINE のような吹き出し。左にパートナー、右に自分
   return (
-    <ol className="retro-log-list">
+    <ol className="log-chat">
       {messages.map((message, index) => (
-        <li key={index} data-role={message.role}>
-          <strong>{message.role === "user" ? "あなた" : "パートナー"}</strong>
-          <p>{message.content}</p>
+        <li key={index} className={`log-chat-row ${message.role === "user" ? "me" : "partner"}`}>
+          <p className="log-chat-bubble">
+            <span className="visually-hidden">{message.role === "user" ? "あなた：" : "パートナー："}</span>
+            {message.content}
+          </p>
         </li>
       ))}
     </ol>

@@ -105,6 +105,7 @@ export default async function MePage({ searchParams }: { searchParams: Promise<{
           )}
           {appearance.theme !== "modern" && appearance.avatar === "hide" && <p className="muted">パートナーは隠しています。裏で育っています。</p>}
           {evolution !== null && rewards && <EvolutionCard key={evolution} />}
+          <Link className="me-sub-link" href="/yousu">ようす（パートナーの姿と、これまでの数）</Link>
           {rewards && photoState.status === "pending" && <ArtRefresher />}
           {rewards && photoState.canUsePhoto && <AvatarFromPhoto label={photos.label} failed={photoState.status === "failed"} eggImage={`/api/avatar/art/${roomToken(db, viewer.id)}/egg`} />}
           {rewards && !avatar.family && (
@@ -125,15 +126,6 @@ export default async function MePage({ searchParams }: { searchParams: Promise<{
           <h2>パートナーとの話</h2>
           <p className="muted">この話はあなただけのものです。タブを閉じると消えます。</p>
           <LogView viewerName={viewer.name} />
-          <nav aria-label="履歴から行ける画面">
-            <ul>
-              <li><Link href="/walk">歩きながら話す</Link></li>
-              <li><Link href="/daily">一日のまとめ</Link></li>
-              <li><Link href="/lookback">ふりかえり</Link></li>
-              <li><Link href="/portfolio">ポートフォリオ</Link></li>
-              <li><Link href="/yousu">ようす</Link></li>
-            </ul>
-          </nav>
         </section>
       ),
     },

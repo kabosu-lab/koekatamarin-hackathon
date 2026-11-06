@@ -27,7 +27,7 @@ export default async function YousuPage() {
   const memories = listMemories(db, getDestination(db), viewer.id).length;
 
   return (
-    <PageShell back={{ href: "/me?open=talk", label: "話の履歴" }} title="ようす" className="yousu">
+    <PageShell back={{ href: "/me?open=partner", label: "パートナー" }} title="ようす" className="yousu">
       {rewards && <Avatar image={avatar.image} alt={`${viewer.name}さんのパートナー`} size={200} />}
       <dl>
         <div>

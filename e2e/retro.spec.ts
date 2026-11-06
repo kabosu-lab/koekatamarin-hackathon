@@ -128,10 +128,10 @@ test("横画面では左に液晶と入力欄、右にマイクで、はみ出�
   await context.close();
 });
 
-test("ようすはログから開き、姿と数を1画面で見せ、気分の推定は出さない", async ({ page }) => {
+test("ようすは「パートナー」のタイルから開き、姿と数を1画面で見せ、気分の推定は出さない", async ({ page }) => {
   await asPerson(page, "kinoshita");
-  await page.goto("/log");
-  await page.getByRole("link", { name: "ようす" }).click();
+  await page.goto("/me?open=partner");
+  await page.getByRole("link", { name: /ようす/ }).click();
   const list = page.locator(".yousu dl");
   for (const term of ["すがた", "ありがとう", "つないだ", "覚えたこと"]) await expect(list.getByText(term)).toBeVisible();
   await expect(page.locator("main")).not.toContainText("気分");

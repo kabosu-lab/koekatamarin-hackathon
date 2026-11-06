@@ -1610,3 +1610,50 @@ html[data-swiping] .retro-home,
 html[data-swiping] .wide-panel {
   box-shadow: none;
 }
+
+/* 0-1q：話の履歴も、話す画面と同じ LINE のような吹き出し */
+.log-chat {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.log-chat-row {
+  display: flex;
+}
+
+.log-chat-row.me {
+  justify-content: flex-end;
+}
+
+.log-chat-bubble {
+  max-width: 82%;
+  margin: 0;
+  padding: 0.5em 0.8em;
+  border-radius: 1.1em;
+  background: var(--surface);
+  color: var(--ink);
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  box-shadow: 0 1px 1px rgb(0 0 0 / 8%);
+}
+
+.log-chat-row.partner .log-chat-bubble {
+  border-bottom-left-radius: 0.3em;
+}
+
+.log-chat-row.me .log-chat-bubble {
+  border-bottom-right-radius: 0.3em;
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.me-sub-link {
+  display: inline-block;
+  margin-top: 8px;
+  font-weight: 700;
+}
