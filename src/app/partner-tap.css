@@ -1,0 +1,239 @@
+/* パートナーをタップしたときの反応・話す前の吹き出し・マイクの輪の呼吸（0-2a、0-1g(1)(2)）。
+   設計書の決まり：動かすのは transform と opacity だけ。時間は 手応え 60〜120ms / 移動 160〜260ms / 祝い 600〜800ms。
+   イージングは 標準 cubic-bezier(0.2, 0.8, 0.2, 1) と ばね cubic-bezier(0.34, 1.56, 0.64, 1)、消えるときだけ ease-in */
+
+.partner-greeting {
+  --partner-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --partner-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* 吹き出し：しっぽの根元から、ばねで出る（§2-1-A） */
+.partner-greeting .partner-bubble {
+  transform-origin: 50% 100%;
+  animation: partner-bubble-in 220ms var(--partner-spring) both;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+
+/* まだ出ていない字。場所だけ取って、吹き出しの形が途中で揺れないようにする */
+.partner-greeting .partner-bubble-rest {
+  opacity: 0;
+}
+
+/* しっぽはパートナーを指す。吹き出しと一緒に出る */
+.partner-greeting .partner-tail {
+  animation: partner-fade-in 160ms var(--partner-ease) both;
+}
+
+@keyframes partner-bubble-in {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes partner-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+/* タップできるパートナー。見た目はそのまま、ボタンの飾りを消す */
+.partner-tap {
+  display: block;
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transform-origin: 50% 100%;
+}
+
+.partner-tap:focus-visible {
+  outline: 3px solid var(--accent, currentColor);
+  outline-offset: 4px;
+  border-radius: 12px;
+}
+
+/* 動いている間だけ will-change を付ける（原則3） */
+.partner-tap[data-react] {
+  will-change: transform;
+}
+
+/* 弾む：押して沈み、ばねで上へ（手応え 80ms + ばね 200ms） */
+.partner-tap[data-react="bounce"] {
+  animation: partner-bounce 260ms var(--partner-spring);
+}
+
+@keyframes partner-bounce {
+  0% {
+    transform: none;
+  }
+  30% {
+    transform: translateY(2px) scale(1.04, 0.96);
+  }
+  65% {
+    transform: translateY(-10px) scale(0.98, 1.03);
+  }
+  100% {
+    transform: none;
+  }
+}
+
+/* つぶれて戻る（スクワッシュ＆ストレッチ） */
+.partner-tap[data-react="squash"] {
+  animation: partner-squash 260ms var(--partner-spring);
+}
+
+@keyframes partner-squash {
+  0% {
+    transform: none;
+  }
+  35% {
+    transform: scale(1.12, 0.86);
+  }
+  70% {
+    transform: scale(0.95, 1.06);
+  }
+  100% {
+    transform: none;
+  }
+}
+
+/* まばたき：一瞬だけ縦に縮む（目を閉じたように見える、手応えの速さ）。
+   前提：本物の目のまばたきは VoiceLump の uBlink で、外からは動かせないため、体ごとの小さな縮みで表す */
+.partner-tap[data-react="blink"] {
+  animation: partner-blink 120ms ease-in-out;
+}
+
+@keyframes partner-blink {
+  50% {
+    transform: scale(1.02, 0.92);
+  }
+}
+
+/* 耳や尾が揺れる：根元を軸に左右へ小さく揺れる */
+.partner-tap[data-react="wiggle"] {
+  animation: partner-wiggle 260ms var(--partner-ease);
+}
+
+@keyframes partner-wiggle {
+  0% {
+    transform: none;
+  }
+  25% {
+    transform: rotate(-6deg);
+  }
+  55% {
+    transform: rotate(5deg);
+  }
+  80% {
+    transform: rotate(-2deg);
+  }
+  100% {
+    transform: none;
+  }
+}
+
+/* 目を回す：何度も続けて押したときだけの小さなお楽しみ（祝いの長さ） */
+.partner-tap[data-react="dizzy"] {
+  animation: partner-dizzy 720ms var(--partner-ease);
+}
+
+@keyframes partner-dizzy {
+  0% {
+    transform: none;
+  }
+  40% {
+    transform: rotate(200deg) scale(0.94);
+  }
+  75% {
+    transform: rotate(350deg) scale(1.02);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* 吹き出しの字が出ている間、小さく弾み続ける（話している感じ。§2-1-A の 3） */
+.partner-tap[data-react="talking"] {
+  animation: partner-talking 280ms var(--partner-ease) infinite alternate;
+}
+
+@keyframes partner-talking {
+  from {
+    transform: none;
+  }
+  to {
+    transform: translateY(-3px) scale(1.01, 0.99);
+  }
+}
+
+/* マイクの外側の輪の呼吸（§2-1-B）。本体がマイクのまわり（.talk か .click-wheel）に data-invite="breathe" を付けている間だけ。
+   ボタン本体は動かさない（押す場所が動くと狙いにくい）。2.8s を2回だけ */
+[data-invite="breathe"] .click-wheel::after,
+.click-wheel[data-invite="breathe"]::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border: 3px solid var(--accent, currentColor);
+  border-radius: 50%;
+  opacity: 0;
+  pointer-events: none;
+  animation: partner-ring-breathe 2800ms ease-in-out 2 both;
+}
+
+@keyframes partner-ring-breathe {
+  0%,
+  100% {
+    opacity: 0;
+    transform: none;
+  }
+  50% {
+    opacity: 0.55;
+    transform: scale(1.04);
+  }
+}
+
+/* 動きを減らす設定：意味は残し、動きだけ消す（原則6）。
+   吹き出しは即出し（字も一度に＝PartnerGreeting 側）、跳ねない、タップは薄くなって戻るだけ、輪は動かない細い線 */
+@media (prefers-reduced-motion: reduce) {
+  .partner-greeting .partner-bubble,
+  .partner-greeting .partner-tail {
+    animation: none;
+  }
+
+  .partner-tap[data-react] {
+    will-change: auto;
+    animation: partner-dim 120ms ease-in-out;
+  }
+
+  .partner-tap[data-react="talking"] {
+    animation: none;
+  }
+
+  [data-invite="breathe"] .click-wheel::after,
+  .click-wheel[data-invite="breathe"]::after {
+    animation: none;
+    opacity: 0.4;
+  }
+}
+
+@keyframes partner-dim {
+  50% {
+    opacity: 0.7;
+  }
+}
