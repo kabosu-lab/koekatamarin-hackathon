@@ -44,7 +44,7 @@ test("先生の一日：話しかける、返す、パス、サンクス、日�
   await page.context().addCookies(PROMISE_SEEN);
   await switchPerson(page, TEACHER);
   await say(page, "私は嫌やわ");
-  await expect(page.getByRole("log").locator(".bubble.assistant")).toContainText("無理に使わんでええ");
+  await expect(page.getByRole("log").locator(".bubble.assistant")).toContainText("無理に使わなくて大丈夫");
   await shot(page, "01-話しかける");
   await say(page, "今日は作文の一言のことを相談された");
 

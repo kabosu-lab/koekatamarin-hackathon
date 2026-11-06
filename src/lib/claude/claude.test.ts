@@ -3,7 +3,7 @@ import { createAnthropicClaude, MODEL, type MessagesApi } from "./anthropic";
 import { converse, splitReady, withSources } from "./converse";
 import { createClaude } from "./index";
 import { companionSystemPrompt, openingLines, READY_MARK, readyMark, refusalReply, trialCompanionSystemPrompt } from "./persona";
-import { createScriptedClaude } from "./scripted";
+import { createScriptedClaude, isTeacherSpeaking } from "./scripted";
 
 function stubApi(response: { content: unknown[]; stop_reason: string }) {
   const create = vi.fn().mockResolvedValue(response);
@@ -131,6 +131,75 @@ describe("最初の一言", () => {
   });
 });
 
+describe("先生にはいつもやわらかい丁寧語（0-2c）", () => {
+  const TEACHER = "話している人：先生";
+  const STUDENT = "話している人：生徒";
+  // ため口の言い終わり。先生への台本の返事には出さない
+  const CASUAL = /(やで|やん|やった|へん|しよう?|よう|ったね|てん|たん|るん|(?<!ませ)んね|かあ|んや|みて|ある？|そう？|みる？)[。？！]?$|ええ|いつやるん|どこでやるん/;
+  const sentences = (text: string) => text.replace(/\[\[[^\]]*\]\]/g, "").split(/(?<=[。？！])/).map((s) => s.trim()).filter(Boolean);
+
+  it("「話している人」の行から先生かどうかを見分ける", () => {
+    expect(isTeacherSpeaking(TEACHER)).toBe(true);
+    expect(isTeacherSpeaking(`覚えていること\n\n${TEACHER}`)).toBe(true);
+    expect(isTeacherSpeaking(STUDENT)).toBe(false);
+    expect(isTeacherSpeaking("")).toBe(false);
+    expect(isTeacherSpeaking(undefined)).toBe(false);
+  });
+
+  it("パートナーの指示に、先生にはです・ます調を崩さない決まりがある", () => {
+    expect(companionSystemPrompt).toContain("先生と話すとき");
+    expect(companionSystemPrompt).toContain("です・ます調のやわらかい丁寧語");
+    expect(companionSystemPrompt).toContain("くだけた言葉やため口に崩さない");
+    expect(companionSystemPrompt).toContain("硬すぎない");
+    expect(companionSystemPrompt).toContain("まとめの一言も、です・ます調");
+    // 生徒には今までどおりトーンを合わせる
+    expect(companionSystemPrompt).toContain("トーンを相手に合わせるのは、生徒のときと、その行がないとき");
+    expect(trialCompanionSystemPrompt).toContain("先生と話すとき");
+  });
+
+  // 台本の会話を、決めた言葉の順に話す
+  async function talkThrough(lines: string[], who: string) {
+    const scripted = createScriptedClaude();
+    const history: { role: "user" | "assistant"; content: string }[] = [];
+    const replies: string[] = [];
+    for (const line of lines) {
+      const { reply } = await converse(scripted, history, line, who);
+      history.push({ role: "user", content: line }, { role: "assistant", content: reply });
+      replies.push(reply);
+    }
+    return replies;
+  }
+
+  const flows = [
+    [...openingLines],
+    ["まじしんどいわー", "それな", "ありがと、もういいわ"],
+    ["今日の授業、急に静かになった瞬間があって", "声を小さくしたんだ", "そしたらみんな聞いてくれた", "若い先生にも役立ちそう"],
+    ["放課後に勉強会を開きたい", "金曜の16時から", "情報室で"],
+  ];
+
+  it("先生には、くだけて話されても台本の返事がです・ます調", async () => {
+    for (const flow of flows) {
+      for (const reply of await talkThrough(flow, TEACHER)) {
+        for (const sentence of sentences(reply)) expect(sentence, reply).not.toMatch(CASUAL);
+        expect(reply).toMatch(/(です|ます|ません|ください|ましょう|でした|ですか|ますか|でしたか|ね)[。？！]/);
+      }
+    }
+  });
+
+  it("生徒には、今までどおり相手のトーンに合わせる", async () => {
+    const [, what, nope] = await talkThrough([...openingLines], STUDENT);
+    expect(what).toContain("得意やで");
+    expect(nope).toContain("無理に使わんでええ");
+    const story = await talkThrough(flows[2], STUDENT);
+    expect(story[0]).toContain("その少し前、何してたん");
+    expect(story[1]).toContain("コツかもしれんね");
+    // 見分けの物差しが、生徒へのため口をちゃんと拾えている
+    for (const flow of [flows[0].slice(1), flows[2], flows[3]]) {
+      for (const reply of await talkThrough(flow, STUDENT)) expect(sentences(reply).some((s) => CASUAL.test(s)), reply).toBe(true);
+    }
+  });
+});
+
 describe("とどけるを光らせる印", () => {
   it("印を返事から取り除き、あったかどうかを返す", () => {
     expect(splitReady(`いいね、それ届けてみよう。
@@ -209,5 +278,17 @@ describe("調べものの出典（0-1s）", () => {
 
   it("URL でないものは出典にしない", () => {
     expect(withSources("本文\n[[出典:あやしい|javascript:alert(1)]]")).toBe("本文");
+  });
+});
+
+describe("台本の日報", () => {
+  it("前の日報の項目（項目：の行）を残し、増えた分を足す", async () => {
+    const { text } = await createScriptedClaude().complete({
+      task: "daily",
+      system: "",
+      messages: [{ role: "user", content: "<前の日報>\n項目：朝の会で声を小さくした\n</前の日報>\n<増えた分>\n本人：放課後に面談した\n</増えた分>" }],
+      maxTokens: 100,
+    });
+    expect(JSON.parse(text).items).toEqual(["朝の会で声を小さくした", "放課後に面談した"]);
   });
 });

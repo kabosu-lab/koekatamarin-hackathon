@@ -21,13 +21,13 @@ test("告知を話すと足りないことだけ聞かれ、本人が確かめ�
 
   await input.fill(`放課後に勉強会を開きたい ${id}`);
   await input.press("Enter");
-  await expect(assistant.last()).toContainText("いつやるん");
+  await expect(assistant.last()).toContainText("いつ開きますか");
   await input.fill("金曜の16時から");
   await input.press("Enter");
-  await expect(assistant.last()).toContainText("どこでやるん");
+  await expect(assistant.last()).toContainText("どこで開きますか");
   await input.fill("情報室で");
   await input.press("Enter");
-  await expect(assistant.last()).toContainText("そろったね");
+  await expect(assistant.last()).toContainText("そろいましたね");
 
   await page.getByRole("button", { name: /とどける/ }).click();
   await expect(page.getByLabel("投稿の文章")).toHaveValue(new RegExp(id));
