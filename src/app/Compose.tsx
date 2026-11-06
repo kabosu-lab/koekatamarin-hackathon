@@ -2,11 +2,12 @@
 
 import type { TeamsDelivery } from "@/lib/destination/teams-bridge";
 import { Icon } from "./Icon";
-import { useState } from "react";
+import { type KeyboardEvent, useLayoutEffect, useRef, useState } from "react";
 import type { Draft, Review } from "@/lib/claude/compose";
 import type { AttachmentNotice, AttachmentNoticeKind, AttachmentView } from "@/lib/attachment";
 import type { ChannelView, PersonView, PostScope } from "@/lib/destination/types";
 import { AttachmentPreview } from "./AttachmentPreview";
+import "./compose.css";
 
 export type ComposeStart = {
   draft: Draft;
@@ -77,6 +78,30 @@ export function Compose({
   const [scopePersonId, setScopePersonId] = useState("");
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
+  const bodyRef = useRef<HTMLTextAreaElement>(null);
+
+  // 本文は中身に合わせて伸ばし、途中で切らない（0-1d・0-1o）。
+  // 閉じたシートの中で高さが 0 のときは測らず、見えたときに測り直す。
+  useLayoutEffect(() => {
+    const body = bodyRef.current;
+    if (!body) return;
+    const fit = () => {
+      if (body.getClientRects().length === 0) return;
+      body.style.height = "auto";
+      // border-box なので、上下のふちの太さを足す（レトロはふちが太い）
+      body.style.height = `${body.scrollHeight + body.offsetHeight - body.clientHeight}px`;
+    };
+    fit();
+    if (typeof ResizeObserver === "undefined") return;
+    let width = body.clientWidth;
+    const observer = new ResizeObserver(() => {
+      if (body.clientWidth === width) return;
+      width = body.clientWidth;
+      fit();
+    });
+    observer.observe(body);
+    return () => observer.disconnect();
+  }, [text]);
 
   const channel = channels.find((c) => c.id === channelId) ?? channels[0];
   const checked = text.trim() === reviewedText.trim();
@@ -144,7 +169,7 @@ export function Compose({
   }
 
   return (
-    <section className="compose-card" aria-label="言葉にして送る">
+    <section className="compose-card compose-sheet" aria-label="言葉にして送る">
       <h2>こんな言葉でどうかな？</h2>
       <div className="preview">
         <p className="preview-title">Teams にはこう見えます（{channel.name}）。文章はここで直せます</p>
@@ -153,9 +178,10 @@ export function Compose({
         </p>
         {asked && <p className="preview-asked">{asked.name}さんへ</p>}
         <textarea
-          className="preview-body"
+          ref={bodyRef}
+          className="preview-body compose-body"
           aria-label="投稿の文章"
-          rows={4}
+          rows={2}
           maxLength={MAX_LENGTH}
           value={text}
           onChange={(event) => setText(event.target.value)}
@@ -225,28 +251,20 @@ export function Compose({
         </div>
       )}
 
-      <label className="channel">
-        送り先のチャネル
-        <select value={channelId} onChange={(event) => setChannelId(event.target.value)}>
-          {channels.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
-      </label>
+      <ChipGroup
+        label="送り先のチャネル"
+        value={channelId}
+        options={channels.map((c) => ({ value: c.id, label: c.name }))}
+        onChange={setChannelId}
+      />
 
       {!asked && (
-        <label className="channel">
-          見える範囲
-          <select value={scope} onChange={(event) => setScope(event.target.value as PostScope)}>
-            {SCOPE_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </label>
+        <ChipGroup
+          label="見える範囲"
+          value={scope}
+          options={SCOPE_OPTIONS}
+          onChange={(value) => setScope(value as PostScope)}
+        />
       )}
       {scope === "person" && (
         <label className="channel">
@@ -268,7 +286,7 @@ export function Compose({
         </p>
       )}
 
-      <div className="compose-actions">
+      <div className="compose-actions compose-sheet-actions">
         <button type="button" className="secondary" disabled={busy} onClick={onCancel}>
           <Icon name="cancel" />
           取り消す
@@ -279,5 +297,59 @@ export function Compose({
         </button>
       </div>
     </section>
+  );
+}
+
+/** 小さな選択の箱のかわりに、押しやすい札で1つ選ぶ。矢印キーでも動かせる。 */
+function ChipGroup({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  options: { value: string; label: string }[];
+  onChange(value: string): void;
+}) {
+  function move(event: KeyboardEvent<HTMLDivElement>) {
+    const step = event.key === "ArrowRight" || event.key === "ArrowDown" ? 1 : event.key === "ArrowLeft" || event.key === "ArrowUp" ? -1 : 0;
+    if (step === 0 || options.length === 0) return;
+    event.preventDefault();
+    const index = Math.max(
+      0,
+      options.findIndex((option) => option.value === value),
+    );
+    const next = options[(index + step + options.length) % options.length];
+    onChange(next.value);
+    const buttons = event.currentTarget.querySelectorAll<HTMLButtonElement>("[role=radio]");
+    buttons[(index + step + options.length) % options.length]?.focus();
+  }
+
+  return (
+    <div className="compose-chip-field">
+      <p className="compose-chip-label" aria-hidden="true">
+        {label}
+      </p>
+      <div className="compose-chips" role="radiogroup" aria-label={label} onKeyDown={move}>
+        {options.map((option, index) => {
+          const checked = option.value === value;
+          const focusable = checked || (index === 0 && !options.some((o) => o.value === value));
+          return (
+            <button
+              type="button"
+              role="radio"
+              aria-checked={checked}
+              tabIndex={focusable ? 0 : -1}
+              className="compose-chip"
+              key={option.value}
+              onClick={() => onChange(option.value)}
+            >
+              {option.label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
   );
 }

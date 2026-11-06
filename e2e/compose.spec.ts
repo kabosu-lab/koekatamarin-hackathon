@@ -104,8 +104,60 @@ test("生徒の送り先に職員室は出ない", async ({ page }) => {
   await switchPerson(page, "青木 ひより（2年）");
   await say(page, "過去問を解いた");
   await page.getByRole("button", { name: "とどける" }).click();
-  await expect(page.getByLabel("送り先のチャネル").locator("option", { hasText: "職員室" })).toHaveCount(0);
+  const channels = page.getByRole("radiogroup", { name: "送り先のチャネル" });
+  await expect(channels.getByRole("radio").first()).toBeVisible();
+  await expect(channels.getByRole("radio", { name: /職員室/ })).toHaveCount(0);
 });
+
+test("送り先と見える範囲は札で選べ、矢印キーでも動かせる", async ({ page }) => {
+  await page.goto("/");
+  await say(page, "札で送り先を選ぶ");
+  await page.getByRole("button", { name: "とどける" }).click();
+
+  const channels = page.getByRole("radiogroup", { name: "送り先のチャネル" });
+  const radios = channels.getByRole("radio");
+  expect(await radios.count()).toBeGreaterThan(1);
+  await expect(channels.locator("[aria-checked=true]")).toHaveCount(1);
+  const second = radios.nth(1);
+  await second.click();
+  await expect(second).toHaveAttribute("aria-checked", "true");
+  await expect(page.locator(".preview-title")).toContainText((await second.textContent()) ?? "");
+
+  const scope = page.getByRole("radiogroup", { name: "見える範囲" });
+  await expect(scope.getByRole("radio", { name: "チャネルのみんな" })).toHaveAttribute("aria-checked", "true");
+  await scope.getByRole("radio", { name: "チャネルのみんな" }).focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(scope.getByRole("radio", { name: "特定の人だけ" })).toHaveAttribute("aria-checked", "true");
+  await expect(scope.getByRole("radio", { name: "特定の人だけ" })).toBeFocused();
+});
+
+for (const size of [
+  { name: "iPhone", width: 390, height: 844 },
+  { name: "iPad 縦", width: 820, height: 1180 },
+  { name: "iPad 横", width: 1180, height: 820 },
+]) {
+  test(`${size.name}の幅でも、長い下書きの本文は途中で切れず、送るボタンは見えている`, async ({ page }) => {
+    await page.setViewportSize({ width: size.width, height: size.height });
+    await page.goto("/");
+    await say(page, "長い話をしたい");
+    await page.getByRole("button", { name: "とどける" }).click();
+
+    const body = page.getByLabel("投稿の文章");
+    const long = Array.from({ length: 14 }, (_, i) => `${i + 1}行目：今日の部活で気づいたことを、少し長めに書いておきます。`).join("\n");
+    await body.fill(long);
+    // 欄の中でスクロールしないと読めない、ということがない
+    await expect
+      .poll(() => body.evaluate((el) => el.scrollHeight - el.clientHeight))
+      .toBeLessThanOrEqual(1);
+    const lineHeight = await body.evaluate((el) => parseFloat(getComputedStyle(el).lineHeight));
+    expect((await body.boundingBox())!.height).toBeGreaterThan(lineHeight * 14);
+
+    // ボタン列は画面の下に見えたまま
+    const sendButton = page.getByRole("button", { name: "本人として送る" });
+    await expect(sendButton).toBeInViewport();
+    await expect(page.getByRole("button", { name: "取り消す" })).toBeInViewport();
+  });
+}
 
 test("まだ中身がない会話は、下書きにせず聞き返す", async ({ page }) => {
   await page.goto("/");

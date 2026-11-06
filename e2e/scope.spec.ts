@@ -15,7 +15,8 @@ test("「自分だけ」を選ぶと、Teams の見え方でも伝え、他の�
   await switchPerson(page, "木下 蓮（3年・ものづくり部）");
   await draft(page, words);
 
-  await page.getByLabel("見える範囲").selectOption({ label: "自分だけ" });
+  await page.getByRole("radiogroup", { name: "見える範囲" }).getByRole("radio", { name: "自分だけ" }).click();
+  await expect(page.getByRole("radio", { name: "自分だけ" })).toHaveAttribute("aria-checked", "true");
   await expect(page.locator(".preview-scope")).toHaveText("あなただけに見えます");
   await page.getByRole("button", { name: "本人として送る" }).click();
   await page.getByRole("link", { name: "校内チャネルで見る" }).click();
@@ -33,7 +34,7 @@ test("「特定の人だけ」は相手を選ぶまで送れない", async ({ pa
   await page.goto("/");
   await draft(page, words);
 
-  await page.getByLabel("見える範囲").selectOption({ label: "特定の人だけ" });
+  await page.getByLabel("見える範囲").getByRole("radio", { name: "特定の人だけ" }).click();
   await expect(page.getByRole("button", { name: "本人として送る" })).toBeDisabled();
   await page.getByLabel("見せる相手").selectOption({ label: "大河原 誠（英語・学年主任）" });
   await expect(page.locator(".preview-scope")).toContainText("大河原 誠さんとあなただけ");
