@@ -3,6 +3,13 @@ import type { DatabaseSync } from "node:sqlite";
 
 export const FEEDBACK_KINDS = ["分かりにくい", "動かない", "こうしたい", "よかった"] as const;
 export type FeedbackKind = (typeof FEEDBACK_KINDS)[number];
+/** 種類を選ばずに送ったもの */
+export const FEEDBACK_UNSORTED = "感想";
+/** 話す画面で、パートナーが聞いて本人がいいと言ったもの */
+export const FEEDBACK_FROM_TALK = "話の中で";
+/** 保存する種類。選べるもの＋選ばなかったもの＋話の中で預かったもの */
+export type StoredFeedbackKind = FeedbackKind | typeof FEEDBACK_UNSORTED | typeof FEEDBACK_FROM_TALK;
+const STORED_KINDS: readonly StoredFeedbackKind[] = [...FEEDBACK_KINDS, FEEDBACK_UNSORTED, FEEDBACK_FROM_TALK];
 export const MAX_FEEDBACK_LENGTH = 1000;
 
 const MAX_PATH_LENGTH = 200;
@@ -12,16 +19,22 @@ const LIMIT_PER_DEVICE = 10;
 /** 端末の印がまだない人をまとめて数える。みんなの最初の1件を止めないよう、広めにする */
 const LIMIT_WITHOUT_DEVICE = 60;
 
-export type FeedbackInput = { kind: FeedbackKind; body: string; path: string; screenWidth: number | null };
+export type FeedbackInput = { kind: StoredFeedbackKind; body: string; path: string; screenWidth: number | null };
 
-/** 送られた値を確かめる。道は問い合わせの部分を落とし、読めない値は「不明」にする。 */
+/**
+ * 送られた値を確かめる。道は問い合わせの部分を落とし、読めない値は「不明」にする。
+ * 種類は選ばなくてよい（そのときは本文が要る）。from が "talk" なら、話す画面で預かった本文。
+ */
 export function parseFeedback(input: unknown): FeedbackInput | null {
   if (typeof input !== "object" || input === null) return null;
-  const { kind, body, path, screenWidth } = input as Record<string, unknown>;
-  const known = FEEDBACK_KINDS.find((k) => k === kind);
-  if (!known) return null;
+  const { kind, body, path, screenWidth, from } = input as Record<string, unknown>;
+  const chosen = kind === undefined || kind === null || kind === "" ? null : FEEDBACK_KINDS.find((k) => k === kind);
+  if (chosen === undefined) return null;
   const text = typeof body === "string" ? body.trim() : body === undefined ? "" : null;
   if (text === null || text.length > MAX_FEEDBACK_LENGTH) return null;
+  // 種類も本文もなければ、送るものがない
+  if (!chosen && !text) return null;
+  const known: StoredFeedbackKind = from === "talk" && text ? FEEDBACK_FROM_TALK : (chosen ?? FEEDBACK_UNSORTED);
   const pathname = typeof path === "string" && path.startsWith("/") ? path.split(/[?#]/)[0].slice(0, MAX_PATH_LENGTH) : "不明";
   const width =
     typeof screenWidth === "number" && Number.isInteger(screenWidth) && screenWidth > 0 && screenWidth <= MAX_SCREEN_WIDTH
@@ -86,7 +99,7 @@ export function feedbackToMarkdown(db: DatabaseSync): string {
     .prepare("SELECT kind, body, path, screen_width, created_at FROM trial_feedback ORDER BY created_at, rowid")
     .all() as FeedbackRow[];
   const lines = ["# 生徒からの改善点", "", `全 ${rows.length} 件`];
-  for (const kind of FEEDBACK_KINDS) lines.push(`- ${kind}：${rows.filter((r) => r.kind === kind).length} 件`);
+  for (const kind of STORED_KINDS) lines.push(`- ${kind}：${rows.filter((r) => r.kind === kind).length} 件`);
   for (const row of rows) {
     const width = row.screen_width === null ? "幅 不明" : `幅 ${row.screen_width}`;
     lines.push("", `## ${row.kind}｜${JST.format(new Date(row.created_at))}｜${escapeFeedbackText(row.path).slice(2)}｜${width}`);

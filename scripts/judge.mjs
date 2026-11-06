@@ -126,7 +126,7 @@ export function siteEnv(site, base, { slot, code }) {
   delete env.KOEKATA_TRIAL_TEAMS_AS;
   delete env.KOEKATA_TEAMS_WEBHOOK_URL;
   if (site.name === "judge") {
-    Object.assign(env, { KOEKATA_ACCESS_CODE: code, KOEKATA_TRIAL_AUDIENCE: "teacher", KOEKATA_CLAUDE_PER_HOUR: PER_HOUR });
+    Object.assign(env, { KOEKATA_ACCESS_CODE: code, KOEKATA_TRIAL_AUDIENCE: "teacher", KOEKATA_CLAUDE_PER_HOUR: PER_HOUR, KOEKATA_FEEDBACK: "off" });
   } else {
     // みんな用は Claude を呼ばない。キーそのものを渡さない
     delete env.ANTHROPIC_API_KEY;

@@ -4,8 +4,9 @@ import type { ReactNode } from "react";
 import { readAppearance } from "@/lib/appearance";
 import { showsRewards } from "@/lib/rewards-view";
 import { getViewer } from "@/lib/current-person";
-import { isTrialMode, keepsSpokenWords, trialNotice } from "@/lib/trial";
+import { collectsFeedback, isTrialMode, keepsSpokenWords, trialFeedbackHint, trialNotice } from "@/lib/trial";
 import { TrialNotice } from "./TrialNotice";
+import { FeedbackSheet } from "./FeedbackSheet";
 import { SwipeNav } from "./SwipeNav";
 import { EmbedMark } from "./WidePanels";
 import { TrialProvider } from "./TrialContext";
@@ -37,9 +38,11 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
     <html lang="ja" data-theme={theme} data-size={size} data-sound={sound} data-avatar={showsRewards(appearance) ? "show" : "hide"}>
       <body>
         {/* 試用版の注意は、操作の前に1回だけカードで出す。消したあとは試用の印を出さない */}
-        {trial && <TrialNotice text={trialNotice()} />}
+        {trial && <TrialNotice text={trialNotice()} feedbackHint={trialFeedbackHint()} />}
         <TrialProvider trial={trial} keepsWords={keepsSpokenWords()}>
           {children}
+          {/* 試用中の感想の入口（0-2h）。審査員用・本番・みんな用では出さない */}
+          {collectsFeedback() && <FeedbackSheet />}
           <SwipeNav />
           <EmbedMark />
         </TrialProvider>

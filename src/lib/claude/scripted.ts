@@ -1,4 +1,4 @@
-import { openingLines } from "./persona";
+import { FEEDBACK_MARK, openingLines } from "./persona";
 import type { ClaudeClient } from "./types";
 
 /** 段つきの印。パートナーの指示の決まり（`[[とどけられる:1]]`〜`[[とどけられる:3]]`）と同じ形 */
@@ -23,6 +23,20 @@ const teacherReplies: Record<(typeof openingLines)[number], string> = {
 /** 話している人が先生か。パートナーへの指示に添えた「話している人」の行（talk-request.ts の speakerForPrompt）で見分ける */
 export function isTeacherSpeaking(system: string | undefined): boolean {
   return /^話している人：先生$/m.test(system ?? "");
+}
+
+/**
+ * 試用版で感想を集めているときの例（0-2h）。アプリへの感想が出たら、作っている人に届けてよいか聞いて印を付ける。
+ * 聞いたあとの返事には短くお礼だけ言う（届けるかは画面が本人の返事で決める）。
+ */
+function feedbackReply(spoken: string, previous: string, teacher = false): string | null {
+  if (/このアプリ|こえかた/.test(spoken) && /使いにく|分かりにく|わかりにく|動かない|してほしい|欲しい|ほしい|よかった|いい/.test(spoken)) {
+    return teacher
+      ? `教えてくださってありがとうございます。それ、作っている人に届けてもいいですか？ お名前は届きません。\n${FEEDBACK_MARK}`
+      : `教えてくれてありがとう。それ、作っている人に届けてもいい？ 名前は届かないよ。\n${FEEDBACK_MARK}`;
+  }
+  if (/作っている人に届けてもいい/.test(previous)) return teacher ? "わかりました、ありがとうございます！" : "わかった、ありがとう！";
+  return null;
 }
 
 /** キーなしで見どころを通すための架空の例。話した本人が自分のコツに気づく流れ。先生には丁寧語で返す */
@@ -237,6 +251,7 @@ export function createScriptedClaude(): ClaudeClient {
       const talk = messages.filter((message) => message.role === "user").map((message) => String(message.content)).join("\n");
       const teacher = isTeacherSpeaking(system);
       const text =
+        (system.includes(FEEDBACK_MARK) ? feedbackReply(last, String(messages.at(-2)?.content ?? ""), teacher) : null) ??
         storyReply(last, talk, teacher) ??
         ((teacher ? teacherReplies : replies) as Record<string, string>)[last] ??
         (teacher ? teacherFallbackReply : fallbackReply);

@@ -1,10 +1,37 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { type PointerEvent, useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
+import { BottomSheet } from "./BottomSheet";
+import { Icon } from "./Icon";
+import { isSpeechSupported, type ListeningSession, startSession } from "./speech";
+import "./feedback-sheet.css";
 
 const KINDS = ["分かりにくい", "動かない", "こうしたい", "よかった"];
 const DRAFT_KEY = "koekata_feedback_draft";
+/** 最初の注意カードを閉じたとき、浮かぶアイコンを弾ませて場所を教える（TrialNotice が送る） */
+export const FEEDBACK_HINT_EVENT = "koekata:feedback-hint";
+/** 話す画面から感想を届けたとき、アイコンの横に「ありがとう」を出す */
+const FEEDBACK_SENT_EVENT = "koekata:feedback-sent";
+
+type FeedbackPayload = { kind?: string; body: string; from?: "talk" };
+
+/** 感想を送る。名前も人物も送らない。送れたら true、連打で止められたら "busy" */
+export async function postFeedback(payload: FeedbackPayload, path: string): Promise<true | "busy" | false> {
+  try {
+    const response = await fetch("/api/feedback", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...payload, path, screenWidth: window.innerWidth }),
+    });
+    if (response.status === 429) return "busy";
+    if (!response.ok) return false;
+    if (payload.from === "talk") window.dispatchEvent(new Event(FEEDBACK_SENT_EVENT));
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 function readDraft(): { kind: string; body: string } {
   try {
@@ -24,21 +51,46 @@ function writeDraft(kind: string, body: string) {
   }
 }
 
-/** 試用のときだけ出す、改善点の入口とシート。誰が送ったかは送らない。 */
+/** 感想のアイコンの絵。浮かぶボタンと、注意カードの文の中で同じ絵を使う */
+export function FeedbackGlyph() {
+  return <Icon name="chat" />;
+}
+
+/**
+ * 試用中の感想の入口（0-2h）。どの画面でも右上に小さく浮かび、押すと下からシートが出る。
+ * 押し続けて声でも、打っても送れる。種類は選ばなくてよい。誰が送ったかは送らない。
+ */
 export function FeedbackSheet() {
-  const dialog = useRef<HTMLDialogElement>(null);
   const pathname = usePathname();
+  const [open, setOpen] = useState(false);
   const [kind, setKind] = useState("");
   const [body, setBody] = useState("");
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState("");
   const [thanks, setThanks] = useState(false);
+  const [bounce, setBounce] = useState(0);
+  const [voice, setVoice] = useState(false);
+  const [listening, setListening] = useState(false);
+  const [heard, setHeard] = useState("");
+  const session = useRef<ListeningSession | null>(null);
+  const latest = useRef({ kind: "", body: "" });
+  latest.current = { kind, body };
 
   useEffect(() => {
     // サーバーの描画と食い違わないよう、開いたあとで書きかけを戻す
     const draft = readDraft();
     setKind(draft.kind);
     setBody(draft.body);
+    setVoice(isSpeechSupported());
+    const hint = () => setBounce((n) => n + 1);
+    const sent = () => setThanks(true);
+    window.addEventListener(FEEDBACK_HINT_EVENT, hint);
+    window.addEventListener(FEEDBACK_SENT_EVENT, sent);
+    return () => {
+      window.removeEventListener(FEEDBACK_HINT_EVENT, hint);
+      window.removeEventListener(FEEDBACK_SENT_EVENT, sent);
+      session.current?.stop();
+    };
   }, []);
 
   useEffect(() => {
@@ -53,70 +105,138 @@ export function FeedbackSheet() {
     writeDraft(nextKind, nextBody);
   }
 
+  function close() {
+    session.current?.stop();
+    setOpen(false);
+  }
+
+  function startVoice(event: PointerEvent<HTMLButtonElement>) {
+    if (session.current || (event.pointerType === "mouse" && event.button !== 0)) return;
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+    setProblem("");
+    setHeard("");
+    try {
+      session.current = startSession({
+        onInterim: setHeard,
+        onFinal: (text) => {
+          const words = text.trim();
+          if (!words) return;
+          const { kind: k, body: b } = latest.current;
+          update(k, b ? `${b}\n${words}` : words);
+        },
+        onError: setProblem,
+        onEnd: () => {
+          session.current = null;
+          setListening(false);
+          setHeard("");
+        },
+      });
+      setListening(true);
+    } catch {
+      session.current = null;
+      setProblem("声が使えません。文字で書いてください。");
+    }
+  }
+
+  function stopVoice() {
+    session.current?.stop();
+  }
+
   async function send(event: React.FormEvent) {
     event.preventDefault();
-    if (!kind || busy) return;
+    if ((!kind && !body.trim()) || busy) return;
+    session.current?.stop();
     setBusy(true);
     setProblem("");
-    try {
-      const response = await fetch("/api/feedback", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ kind, body, path: pathname, screenWidth: window.innerWidth }),
-      });
-      if (response.status === 429) {
-        setProblem("少し待ってから送ってください。書いた内容は残っています。");
-        return;
-      }
-      if (!response.ok) throw new Error(`status ${response.status}`);
-      update("", "");
-      setThanks(true);
-      dialog.current?.close();
-    } catch {
-      setProblem("送れませんでした。書いた内容は残っています。もう一度押してください。");
-    } finally {
-      setBusy(false);
+    const result = await postFeedback({ kind: kind || undefined, body }, pathname);
+    setBusy(false);
+    if (result === "busy") {
+      setProblem("少し待ってから送ってください。書いた内容は残っています。");
+      return;
     }
+    if (!result) {
+      setProblem("送れませんでした。書いた内容は残っています。もう一度押してください。");
+      return;
+    }
+    update("", "");
+    setThanks(true);
+    setOpen(false);
   }
 
   return (
     <>
-      <button type="button" className="feedback-open" onClick={() => dialog.current?.showModal()}>
-        感想を送る
+      <button
+        type="button"
+        key={bounce}
+        className="feedback-fab"
+        data-bounce={bounce > 0 ? "true" : undefined}
+        aria-label="感想を送る"
+        title="感想を送る"
+        onClick={() => setOpen(true)}
+      >
+        <FeedbackGlyph />
       </button>
       {thanks && (
         <span className="feedback-thanks" role="status">
           ありがとう
         </span>
       )}
-      <dialog ref={dialog} className="feedback-sheet" aria-label="感想を送る">
-        <form onSubmit={(event) => void send(event)}>
+      <BottomSheet
+        open={open}
+        onClose={close}
+        label="感想を送る"
+        footer={
+          <div className="feedback-actions">
+            <button type="button" onClick={close}>
+              閉じる
+            </button>
+            <button type="submit" form="feedback-form" disabled={(!kind && !body.trim()) || busy}>
+              {busy ? "送っています…" : "送る"}
+            </button>
+          </div>
+        }
+      >
+        <form id="feedback-form" className="feedback-form" onSubmit={(event) => void send(event)}>
           <h2>感想を送る</h2>
           <p>名前は書かないでください。ここは相談先ではありません。困っていることは先生に直接話してください。</p>
+          {voice && (
+            <button
+              type="button"
+              className="feedback-mic"
+              data-listening={listening ? "true" : undefined}
+              onPointerDown={startVoice}
+              onPointerUp={stopVoice}
+              onPointerCancel={stopVoice}
+              onContextMenu={(event) => event.preventDefault()}
+            >
+              <Icon name="talk" />
+              {listening ? "離すと文字になる" : "押しながら話す"}
+            </button>
+          )}
+          {heard && <p className="feedback-heard">{heard}</p>}
+          <label className="feedback-body">
+            くわしく{voice ? "（話しても、打ってもいい）" : ""}
+            <textarea value={body} maxLength={1000} rows={3} onChange={(event) => update(kind, event.target.value)} />
+          </label>
           <fieldset>
-            <legend>どんなことですか</legend>
+            <legend>どんなこと？（選ばなくても送れます）</legend>
             {KINDS.map((name) => (
               <label key={name} className={kind === name ? "chosen" : undefined}>
-                <input type="radio" name="feedback-kind" checked={kind === name} onChange={() => update(name, body)} />
+                <input
+                  type="radio"
+                  name="feedback-kind"
+                  checked={kind === name}
+                  onChange={() => update(name, body)}
+                  // もう一度押すと外せる（選ばなくても送れる）
+                  onClick={() => kind === name && update("", body)}
+                />
                 {name}
               </label>
             ))}
           </fieldset>
-          <label className="feedback-body">
-            くわしく（書かなくても送れます）
-            <textarea value={body} maxLength={1000} rows={4} onChange={(event) => update(kind, event.target.value)} />
-          </label>
           {problem && <p role="alert">{problem}</p>}
-          <div className="feedback-actions">
-            <button type="button" onClick={() => dialog.current?.close()}>
-              閉じる
-            </button>
-            <button type="submit" disabled={!kind || busy}>
-              {busy ? "送っています…" : "送る"}
-            </button>
-          </div>
         </form>
-      </dialog>
+      </BottomSheet>
     </>
   );
 }

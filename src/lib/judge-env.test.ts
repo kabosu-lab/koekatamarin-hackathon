@@ -18,6 +18,8 @@ describe("審査用のサーバーに渡す設定", () => {
     expect(env.KOEKATA_TRIAL_TEAMS_AS).toBeUndefined();
     expect(env.KOEKATA_TEAMS_WEBHOOK_URL).toBeUndefined();
     expect(env.KOEKATA_CLAUDE_PER_HOUR).toMatch(/^\d+$/);
+    // 審査員用は合言葉つきの試用で動くが、感想の入口は出さない（0-2h）
+    expect(env.KOEKATA_FEEDBACK).toBe("off");
   });
 
   it("みんな用は合言葉なし・台本モードで、キーそのものを渡さない", () => {

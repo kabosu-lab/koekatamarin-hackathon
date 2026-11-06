@@ -33,6 +33,8 @@ import { archiveTalk, loadTalk, saveTalk } from "./talk-storage";
 import { isSpeechSupported, type ListeningSession, SLOW_NOTICE, startSession } from "./speech";
 import { useLockedTalk } from "./use-locked-talk";
 import { Icon } from "./Icon";
+import { postFeedback } from "./FeedbackSheet";
+import { isFeedbackConsent } from "@/lib/feedback-consent";
 import { ClickWheel } from "./ClickWheel";
 import { ReplyToast } from "./ReplyToast";
 import { VoiceLump } from "./VoiceLump";
@@ -210,6 +212,8 @@ export function Talk({
   const sessionRef = useRef<ListeningSession | null>(null);
   const messagesRef = useRef<ChatMessage[]>([]);
   messagesRef.current = messages;
+  /** 0-2h：パートナーが作っている人に届けてよいか聞いた、本人の言葉（試用版だけ） */
+  const askedFeedback = useRef<string | null>(null);
   const lockedTalk = useLockedTalk({
     session: sessionRef,
     history: () => messagesRef.current.slice(-MAX_HISTORY),
@@ -274,6 +278,10 @@ export function Talk({
     if (!text || sending) return;
 
     const history = messages.slice(-MAX_HISTORY);
+    // 0-2h：パートナーが「作っている人に届けてもいい？」と聞いたあと、本人がいいと言ったら、その前の本人の言葉だけを届ける
+    const askedAbout = askedFeedback.current;
+    askedFeedback.current = null;
+    if (trial && askedAbout && isFeedbackConsent(text)) void postFeedback({ body: askedAbout, from: "talk" }, window.location.pathname);
     setMessages([...messages, { role: "user", content: text }]);
     setDraft("");
     setNotice("");
@@ -284,13 +292,16 @@ export function Talk({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ history, text }),
       });
-      const { reply, mode, ready, level: incoming, safety: notice } = (await response.json().catch(() => ({}))) as {
+      const { reply, mode, ready, level: incoming, safety: notice, feedback } = (await response.json().catch(() => ({}))) as {
         reply?: string;
         mode?: string;
         ready?: boolean;
         level?: number;
         safety?: SafetyNotice;
+        feedback?: boolean;
       };
+      // 届けてよいか聞かれた言葉を覚えておく（次の本人の返事で決める）。命や安全の案内のときは預からない
+      if (trial && feedback === true && !notice && response.ok && reply) askedFeedback.current = text;
       // 返事が作れなくても、相談室に伝えたことは必ず本人に知らせる
       if (notice) setSafety(notice);
       if (!response.ok || !reply) throw new Error(`status ${response.status}`);
@@ -932,6 +943,7 @@ export function Talk({
                 className="new-talk"
                 onClick={() => {
                   archiveTalk(viewer.name, messages);
+                  askedFeedback.current = null;
                   setMessages([]);
                   setReadyAt(null);
                   setDeliveredAt(0);

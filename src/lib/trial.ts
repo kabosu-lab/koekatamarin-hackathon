@@ -50,6 +50,28 @@ export function trialNotice(): string {
   return `試用版です。名前や個人の情報は書かないでね。書いたことは、試している人どうしで見えます。${teams}相談室には届かないので、本当に困ったことは先生や近くの大人へ。`;
 }
 
+/**
+ * 試用中の感想を集めるか（0-2h）。審査員用は合言葉つきの試用で動くが、感想は集めない（KOEKATA_FEEDBACK=off）。
+ * 本番（合言葉なし）とみんな用でも集めない。
+ */
+export function collectsFeedback(): boolean {
+  return isTrialMode() && process.env.KOEKATA_FEEDBACK?.trim() !== "off";
+}
+
+/** 注意の文の中で、浮かぶ感想のアイコンを小さく描く場所 */
+export const FEEDBACK_ICON_SLOT = "{感想のアイコン}";
+
+/**
+ * 最初の注意カードの文のあとに足す、感想の誘い（0-2h (4b)）。先生にはです・ます調。
+ * 感想を集めないときは出さない。アイコンは FEEDBACK_ICON_SLOT の場所に画面が描く。
+ */
+export function trialFeedbackHint(): string | null {
+  if (!collectsFeedback()) return null;
+  return trialAudience() === "teacher"
+    ? `お気づきのことを、ぜひ教えてください。右上の ${FEEDBACK_ICON_SLOT} から、声でも送れます。`
+    : `気づいたことを、ぜひ教えてね。右上の ${FEEDBACK_ICON_SLOT} から、声でも送れるよ。`;
+}
+
 export const TRIAL_PROMISE_FULL =
   "試用なので、ここで話したことは相談室にも先生にも届きません。ただし、投稿やパートナーに覚えさせたことは、試している人に見えることがあります。本当に困ったことは、先生や近くの大人に直接話してください。";
 
