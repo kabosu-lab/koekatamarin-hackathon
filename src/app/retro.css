@@ -1657,3 +1657,55 @@ html[data-swiping] .wide-panel {
   margin-top: 8px;
   font-weight: 700;
 }
+
+/* 0-1l：新しく話す。前の話は畳み、大きなパートナーがばねで戻る */
+html[data-theme="retro"] .talk.device .new-talk {
+  order: -1;
+  align-self: center;
+  min-height: 30px;
+  margin: 0 0 4px;
+  padding: 2px 14px;
+  border: 1px solid rgb(31 41 51 / 18%);
+  border-radius: 999px;
+  background: rgb(255 255 255 / 85%);
+  color: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  box-shadow: none;
+}
+
+.talk.device[data-returning] .lcd-companion {
+  animation: companion-return 320ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes companion-return {
+  from {
+    transform: translate(-30%, -30%) scale(0.25);
+    opacity: 0;
+  }
+}
+
+/* 会話が始まった瞬間、左のアイコンが受け止めて少し膨らむ（吸い込まれた先） */
+.talk.device .chat-row.partner:first-of-type .chat-icon:not(.chat-icon-space) {
+  animation: icon-arrive 200ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes icon-arrive {
+  from {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .talk.device[data-returning] .lcd-companion,
+  .talk.device .chat-row.partner:first-of-type .chat-icon {
+    animation: none;
+  }
+}
+
+.log-chat-all .log-chat + .log-chat {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px dashed rgb(31 41 51 / 20%);
+}

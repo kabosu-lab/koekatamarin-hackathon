@@ -75,3 +75,17 @@ test("0-1n：下書きを待つ間は、下書きの形が光り、とどける�
   await expect(skeleton).toContainText("下書きを作っています", { timeout: 5000 });
   await expect(page.getByLabel("投稿の文章")).toBeVisible({ timeout: 15000 });
 });
+
+test("0-1l：新しく話すと、前の話は話の履歴に残り、大きなパートナーに戻る", async ({ page }) => {
+  await page.goto("/");
+  const input = page.getByLabel("パートナーに書く");
+  const words = `前の話 ${test.info().testId}`;
+  await input.fill(words);
+  await input.press("Enter");
+  await expect(page.getByRole("log").locator(".bubble.assistant:not(.waiting)")).toHaveCount(1);
+  await page.getByRole("button", { name: "新しく話す" }).click();
+  await expect(page.getByRole("log").locator(".chat-row")).toHaveCount(0);
+  await expect(page.locator(".talk.device")).toHaveAttribute("data-talking", "false");
+  await page.goto("/me?open=talk");
+  await expect(page.getByText(words)).toBeVisible();
+});

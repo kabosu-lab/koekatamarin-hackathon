@@ -26,7 +26,7 @@ import { playSendSound, SendBurst } from "./SendBurst";
 import { audioOutput, playCommitPop, playReadyChord } from "./sound";
 import { raiseLevel, type DeliverLevel } from "@/lib/send-sound";
 import type { AttachmentView } from "@/lib/attachment";
-import { loadTalk, saveTalk } from "./talk-storage";
+import { archiveTalk, loadTalk, saveTalk } from "./talk-storage";
 import { isSpeechSupported, type ListeningSession, SLOW_NOTICE, startSession } from "./speech";
 import { useLockedTalk } from "./use-locked-talk";
 import { Icon } from "./Icon";
@@ -53,7 +53,7 @@ const WHEEL_CHIPS: (ChipItem & { href: string })[] = [
   { id: "minna", label: "みんな", code: "M-01", icon: "people", href: "/minna" },
   { id: "today", label: "今日の3人", code: "T-03", icon: "heart", href: "/today" },
   { id: "inbox", label: "受信箱", code: "I-02", icon: "inbox", href: "/inbox" },
-  { id: "room", label: "自習室", code: "S-04", icon: "book", href: "/study/room" },
+  { id: "room", label: "自習室（一緒に勉強する）", code: "S-04", icon: "book", href: "/study/room" },
   { id: "chie", label: "校内の知恵", code: "K-05", icon: "idea", href: "/chie" },
   { id: "goals", label: "頑張りたいこと", code: "G-06", icon: "flag", href: "/me?open=goals" },
   { id: "talk", label: "話の履歴", code: "H-07", icon: "chat", href: "/me?open=talk" },
@@ -101,7 +101,7 @@ export function Talk({
   companionShape,
   companionImage,
 }: {
-  viewer: { name: string; label: string };
+  viewer: { name: string; label: string; role?: string };
   question: string | null;
   initialAsk?: { id: string; name: string } | null;
   viewerId: string;
@@ -126,6 +126,8 @@ export function Talk({
   const [draft, setDraft] = useState("");
   const [writing, setWriting] = useState(false);
   const [listening, setListening] = useState(false);
+  // 0-1l：新しく話すと、大きな姿が戻ってくる（戻る動きを一度だけ見せる）
+  const [returning, setReturning] = useState(false);
   const [heard, setHeard] = useState("");
   // 電波が弱くて文字がまとめて届いても、少しずつなめらかに出す
   const [sending, setSending] = useState(false);
@@ -194,6 +196,7 @@ export function Talk({
     session: sessionRef,
     history: () => messagesRef.current.slice(-MAX_HISTORY),
     onSafety: setSafety,
+    polite: viewer.role !== undefined && viewer.role !== "student",
     onExchange: (asked, reply, ready) =>
       setMessages((current) => {
         const updated: ChatMessage[] = [...current, { role: "user", content: asked }, { role: "assistant", content: reply }];
@@ -833,6 +836,7 @@ export function Talk({
         data-viewer={viewer.name}
         data-state={listening ? "listening" : sending ? "thinking" : "idle"}
         data-talking={messages.length > 0 || sending}
+        data-returning={returning || undefined}
       >
         {burst && <SendBurst words={burst} avatarImage={avatarImage} onDone={() => setBurst(null)} />}
         {promiseCard}
@@ -873,6 +877,30 @@ export function Talk({
           )}
           <div className="log" role="log" aria-label="パートナーとの会話" ref={logRef} data-noswipe-landscape>
             {acknowledged && messages.length === 0 && !listening && !sending && question && <p className="daily-question">{question}</p>}
+            {messages.length > 0 && !listening && !sending && (
+              // 0-1l：前の話は「話の履歴」に残して畳み、大きなパートナーに戻る
+              <button
+                type="button"
+                className="new-talk"
+                onClick={() => {
+                  archiveTalk(viewer.name, messages);
+                  setMessages([]);
+                  setReadyAt(null);
+                  setDeliveredAt(0);
+                  levelRef.current = 0;
+                  setLevel(0);
+                  popStep.current = 0;
+                  setSentTo(null);
+                  setSuggestion(null);
+                  setComposing(null);
+                  setSheetOpen(false);
+                  setReturning(true);
+                  window.setTimeout(() => setReturning(false), 700);
+                }}
+              >
+                新しく話す
+              </button>
+            )}
             {chatList}
             {preparing && (
               // 0-1n：下書きができるまで、出る場所に下書きカードの形を出し、光の帯を流す

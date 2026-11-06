@@ -21,3 +21,29 @@ export function loadTalk(viewerName: string): ChatMessage[] {
     return [];
   }
 }
+
+function archiveKey(viewerName: string): string {
+  return `koekata-talk-archive-${viewerName}`;
+}
+
+const MAX_ARCHIVE = 10;
+
+/** 「新しく話す」で畳んだ前の話。これもタブの中だけに置く（新しいものが後ろ） */
+export function archiveTalk(viewerName: string, messages: ChatMessage[]): void {
+  if (messages.length === 0) return;
+  try {
+    const past = loadArchive(viewerName);
+    sessionStorage.setItem(archiveKey(viewerName), JSON.stringify([...past, messages].slice(-MAX_ARCHIVE)));
+  } catch {
+    // 残せなくても、新しく話せる
+  }
+}
+
+export function loadArchive(viewerName: string): ChatMessage[][] {
+  try {
+    const value: unknown = JSON.parse(sessionStorage.getItem(archiveKey(viewerName)) ?? "[]");
+    return Array.isArray(value) ? (value as ChatMessage[][]) : [];
+  } catch {
+    return [];
+  }
+}

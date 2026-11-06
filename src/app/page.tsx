@@ -58,7 +58,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
         device
         noticePollMs={teamsSyncMs()}
         notices={isNoticeHours(new Date()) ? listReplyNotices(db, viewer.id) : []}
-        viewer={{ name: viewer.name, label: viewer.label }}
+        viewer={{ name: viewer.name, label: viewer.label, role: viewer.role }}
         viewerId={viewer.id}
         promiseSeen={promiseSeen}
         companionAlt={rewards ? `${viewer.name}さんのパートナー` : undefined}

@@ -21,7 +21,12 @@ export function voiceReply(reply: string): string {
   const sentences = reply.match(/[^。！？!?]+[。！？!?]?/g) ?? [reply];
   return sentences.slice(0, 2).join("").trim() || reply;
 }
-const READY_VOICE = "今の話、みんなに届けられそう。あとで画面で確かめてね。";
+/** 0-2c：先生には、いつもやわらかい丁寧語で話す。生徒にはくだけた言い方 */
+const VOICE = {
+  ready: { casual: "今の話、みんなに届けられそう。あとで画面で確かめてね。", polite: "今のお話、みんなに届けられそうです。あとで画面で確かめてくださいね。" },
+  failed: { casual: "ごめん、今うまく返せへんかった。続けて話してね。", polite: "すみません、今うまくお返事できませんでした。続けてお話しください。" },
+  offline: { casual: "ごめん、つながらへんかった。続けて話してね。", polite: "すみません、つながりませんでした。続けてお話しください。" },
+};
 
 /** 音を鳴らすかは sound.ts の1か所で決める（0-1v） */
 const soundIsOn = soundAllowed;
@@ -35,12 +40,16 @@ export function useLockedTalk({
   history,
   onSafety,
   onExchange,
+  polite = false,
 }: {
   session: RefObject<ListeningSession | null>;
   history: () => ChatMessage[];
   onSafety(notice: SafetyNotice): void;
   onExchange(asked: string, reply: string, ready: boolean): void;
+  /** 先生のときは丁寧語で話す（0-2c） */
+  polite?: boolean;
 }) {
+  const tone = polite ? "polite" : "casual";
   const [locked, setLocked] = useState(false);
   const [screenNote, setScreenNote] = useState("");
   const lockedRef = useRef(false);
@@ -105,16 +114,16 @@ export function useLockedTalk({
       const body = (await response.json().catch(() => ({}))) as { reply?: string; safety?: SafetyNotice; ready?: boolean };
       if (body.safety) onSafety(body.safety);
       if (!response.ok || !body.reply) {
-        await speak("ごめん、今うまく返せへんかった。続けて話してね。");
+        await speak(VOICE.failed[tone]);
         return;
       }
       onExchange(asked, body.reply, body.ready === true);
       // 歩きながらは送らない。光ったことは声で知らせるだけ（0-1t (d)）
-      await speak(body.ready === true ? `${voiceReply(body.reply)}${READY_VOICE}` : voiceReply(body.reply));
+      await speak(body.ready === true ? `${voiceReply(body.reply)}${VOICE.ready[tone]}` : voiceReply(body.reply));
     } catch {
-      await speak("ごめん、つながらへんかった。続けて話してね。");
+      await speak(VOICE.offline[tone]);
     }
-  }, [history, onExchange, onSafety, speak]);
+  }, [history, onExchange, onSafety, speak, tone]);
 
   const clearTimers = () => {
     clearTimeout(commandTimer.current);
