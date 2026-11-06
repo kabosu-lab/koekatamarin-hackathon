@@ -77,14 +77,24 @@ test("全部のグラフを1画面に並べ、初めて見るときは 0 から�
   }
   await page.screenshot({ path: test.info().outputPath("so-far-board.png") });
   const posts = await barValue(story, "posts");
+  const before = new Map<string, number>();
+  for (const bar of await bars.all()) before.set(String(await bar.getAttribute("data-key")), Number(await bar.getAttribute("data-to")));
   await closeStory(story);
 
-  // もう一度開いても、増えていなければ何も動かない（最初から今の値）
+  // もう一度開いても、増えていなければ何も動かない（最初から今の値）。
+  // 同じ人を使うほかのテストが並んで動くので、その間に本当に増えた項目だけは伸びてよい
   await page.goto("/me");
   story = await openStory(page);
   await expect(story.locator(".so-far-board")).toHaveAttribute("data-settled", "");
-  await expect(story.locator("[data-grew]")).toHaveCount(0);
-  await expect(story.locator("[data-fresh]")).toHaveCount(0);
+  for (const bar of await story.locator(".so-far-bar[data-grew]").all()) {
+    const key = String(await bar.getAttribute("data-key"));
+    expect(Number(await bar.getAttribute("data-from")), key).toBe(before.get(key));
+    expect(Number(await bar.getAttribute("data-to")), key).toBeGreaterThan(before.get(key) ?? 0);
+  }
+  for (const bar of await story.locator(".so-far-bar:not([data-grew])").all()) {
+    const key = String(await bar.getAttribute("data-key"));
+    expect(Number(await bar.getAttribute("data-to")), key).toBe(before.get(key));
+  }
   const comments = await barValue(story, "comments");
   await closeStory(story);
 
