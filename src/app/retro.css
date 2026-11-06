@@ -1147,49 +1147,6 @@ html[data-theme="retro"] :is(.home, .soudan) {
   padding: 12px 14px;
 }
 
-/* 0-1b：会話の窓を広げて、前のやり取りも読む。窓の右上の小さなボタンで開け閉めする */
-html[data-theme="retro"] .talk .log-expand {
-  order: -2;
-  align-self: flex-end;
-  flex: none;
-  min-height: 30px;
-  margin: 0;
-  padding: 4px 12px;
-  border: 1px solid var(--line, rgb(0 0 0 / 15%));
-  border-radius: 999px;
-  background: rgb(255 255 255 / 92%);
-  color: #1f2a33;
-  box-shadow: none;
-  font: inherit;
-  font-size: 0.85rem;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.talk.device[data-expanded="true"] .lcd {
-  position: fixed;
-  inset: max(12px, env(safe-area-inset-top)) 12px max(12px, env(safe-area-inset-bottom));
-  z-index: 60;
-  max-width: 900px;
-  margin: 0 auto;
-  box-shadow: 0 20px 60px rgb(20 30 40 / 45%);
-}
-
-.talk.device[data-expanded="true"] .lcd-companion {
-  display: none;
-}
-
-.talk.device[data-expanded="true"] .bubble {
-  font-size: 1.1rem;
-}
-
-.talk.device[data-expanded="true"] .log {
-  flex: 1 1 auto;
-  /* 広げたときは、上のぼかしをやめて全部くっきり見せる */
-  mask-image: none;
-  -webkit-mask-image: none;
-}
-
 /* 広い画面（iPad の横向きなど）では、輪を小さくして、会話の窓を高く、真ん中を広くする */
 @media (min-width: 1100px) and (min-height: 561px) {
   .device-row > .retro-home {
@@ -1339,4 +1296,160 @@ html[data-theme="retro"] .talk .log-expand {
   .talk.device .device-heard {
     height: clamp(72px, 13dvh, 128px);
   }
+}
+
+/* 0-1l：話し始めたら、窓は LINE のような会話。窓・入力欄・ホイールの大きさは変えず、変わるのは窓の中身だけ */
+.talk.device[data-talking="true"] .lcd-companion {
+  display: none;
+}
+
+.talk.device[data-talking="true"] .log {
+  order: 0;
+  flex: 1 1 0;
+  max-height: none;
+  padding-top: 4px;
+  gap: 8px;
+  /* スクロールする要素にマスクを掛けない（スクロールのたびに全部描き直される） */
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+
+/* 新しいものを下に寄せる。justify-content: flex-end は古い吹き出しが上へ押し出されて読めなくなるので使わない */
+.talk.device[data-talking="true"] .log > :first-child {
+  margin-top: auto;
+}
+
+.chat-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  max-width: 100%;
+}
+
+.chat-row.partner {
+  align-self: flex-start;
+}
+
+.chat-row.me {
+  align-self: flex-end;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.talk.device .chat-row .bubble {
+  max-width: min(82cqw, 30em);
+  font-size: 1rem;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  animation: chat-in 200ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.talk.device .chat-row.partner .bubble {
+  transform-origin: 0 100%;
+  box-shadow: 0 1px 1px rgb(0 0 0 / 8%);
+}
+
+.talk.device .chat-row.me .bubble {
+  transform-origin: 100% 100%;
+}
+
+@keyframes chat-in {
+  from {
+    transform: scale(0.85);
+    opacity: 0;
+  }
+}
+
+.chat-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 85%);
+  overflow: hidden;
+}
+
+.chat-icon-space {
+  background: transparent;
+}
+
+.chat-icon-art {
+  display: block;
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+}
+
+/* 考え中はアイコンが小さく揺れ、吹き出しの点が順に弾む（opacity だけで軽く） */
+.chat-icon-thinking .chat-icon-art {
+  animation: icon-think 1.2s ease-in-out infinite;
+}
+
+@keyframes icon-think {
+  50% {
+    transform: scale(1, 0.94);
+  }
+}
+
+.thinking-dots {
+  display: inline-flex;
+  gap: 5px;
+  padding: 4px 2px;
+}
+
+.thinking-dots i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.3;
+  animation: dot-blink 1.2s ease-in-out infinite;
+}
+
+.thinking-dots i:nth-child(2) {
+  animation-delay: 150ms;
+}
+
+.thinking-dots i:nth-child(3) {
+  animation-delay: 300ms;
+}
+
+@keyframes dot-blink {
+  40% {
+    opacity: 1;
+  }
+}
+
+/* 「これを覚えて」は、自分の吹き出しのすぐ下に小さく */
+.talk.device .chat-row.me .remember {
+  min-height: 28px;
+  margin: 0;
+  padding: 0 4px;
+  font-size: 0.75rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .talk.device .chat-row .bubble,
+  .chat-icon-thinking .chat-icon-art,
+  .thinking-dots i {
+    animation: none;
+  }
+
+  .thinking-dots i {
+    opacity: 0.7;
+  }
+}
+
+/* 0-1l：会話の中の「…」は、ほかの吹き出しと同じ形（前の真ん中の吹き出しの縁や高さの上限を使わない） */
+.talk.device .chat-row .bubble.assistant.waiting {
+  align-self: auto;
+  width: auto;
+  max-height: none;
+  overflow: visible;
+  border: 0;
+  filter: none;
+  font-size: 1rem;
 }

@@ -10,6 +10,7 @@ import { PROMISE_FULL, PROMISE_SHORT, promiseCookieName } from "@/lib/promise-co
 import { TRIAL_PROMISE_SHORT } from "@/lib/trial";
 import { useKeepsWords, useTrial } from "./TrialContext";
 import { HeardLine } from "./HeardLine";
+import { PartnerIcon } from "./PartnerIcon";
 import { KnowledgeResults } from "./chie/KnowledgeResults";
 import { Compose, type ComposeStart } from "./Compose";
 import { ConnectCard, type ConnectSuggestion } from "./ConnectCard";
@@ -101,8 +102,6 @@ export function Talk({
   const [draft, setDraft] = useState("");
   const [writing, setWriting] = useState(false);
   const [listening, setListening] = useState(false);
-  // 会話の窓を画面いっぱいに広げて、前のやり取りも読む（昼休みの試用で「狭い」の声が多かった）
-  const [expanded, setExpanded] = useState(false);
   const [heard, setHeard] = useState("");
   // 電波が弱くて文字がまとめて届いても、少しずつなめらかに出す
   const [sending, setSending] = useState(false);
@@ -161,7 +160,19 @@ export function Talk({
   useEffect(() => {
     // 液晶の配置では、やり取りは枠の中だけで動かし、画面全体は動かさない
     if (device) {
-      if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight;
+      // 0-1l：新しいものが下に足されたら末尾へ。ただし最新の吹き出しが窓より高いときは、その頭に合わせる（文の途中から始めない）
+      const log = logRef.current;
+      if (log) {
+        const frame = requestAnimationFrame(() => {
+          // いちばん下に足されたもの（吹き出しか、送った結果などのカード）
+          const items = Array.from(log.children).filter((child) => !child.classList.contains("find-knowledge")) as HTMLElement[];
+          const last = items[items.length - 1];
+          if (last && last.offsetHeight > log.clientHeight - 8 && !last.classList.contains("me")) {
+            log.scrollTop += last.getBoundingClientRect().top - log.getBoundingClientRect().top - 4;
+          } else log.scrollTop = log.scrollHeight;
+        });
+        return () => cancelAnimationFrame(frame);
+      }
       return;
     }
     endRef.current?.scrollIntoView?.({ block: "end" });
@@ -525,6 +536,51 @@ export function Talk({
   const lastAssistantIndex = messages.map((message) => message.role).lastIndexOf("assistant");
   const replyCount = messages.filter((message) => message.role === "assistant").length;
 
+  // 0-1l：話す画面の窓は LINE のような会話。左にアイコン付きのパートナー、右に自分。最新の言葉は頭から全部見える
+  const icon = <PartnerIcon image={companionImage} color={companionColor} shape={companionShape} />;
+  const chatList = (
+    <>
+      {messages.map((message, index) =>
+        message.role === "assistant" ? (
+          <div className="chat-row partner" key={index} data-index={index}>
+            {messages[index - 1]?.role === "assistant" ? <span className="chat-icon chat-icon-space" aria-hidden="true" /> : <span className="chat-icon" aria-hidden="true">{icon}</span>}
+            <p className="bubble assistant">
+              <span className="visually-hidden">パートナー：</span>
+              {message.content}
+            </p>
+          </div>
+        ) : (
+          <div className="chat-row me" key={index} data-index={index}>
+            <p className="bubble user">
+              <span className="visually-hidden">あなた：</span>
+              {message.content}
+            </p>
+            {keepsWords && index === lastUserIndex && (
+              <button type="button" className="remember" disabled={remembered.includes(index)} onClick={() => void remember(index, message.content)}>
+                {remembered.includes(index) ? "覚えました" : "これを覚えて"}
+              </button>
+            )}
+          </div>
+        ),
+      )}
+      {sending && (
+        <div className="chat-row partner" data-index={messages.length}>
+          <span className="chat-icon chat-icon-thinking" aria-hidden="true">
+            {icon}
+          </span>
+          <p className="bubble assistant waiting" role="status">
+            <span className="thinking-dots" aria-hidden="true">
+              <i />
+              <i />
+              <i />
+            </span>
+            <span className="visually-hidden">考えています…</span>
+          </p>
+        </div>
+      )}
+    </>
+  );
+
   const bubbleList = (
     <>
         {messages.map((message, index) => (
@@ -697,23 +753,11 @@ export function Talk({
         className="talk device"
         data-viewer={viewer.name}
         data-state={listening ? "listening" : sending ? "thinking" : "idle"}
-        data-talking={messages.length > 0}
-        data-expanded={expanded && messages.length > 0}
+        data-talking={messages.length > 0 || sending}
       >
         {burst && <SendBurst words={burst} avatarImage={avatarImage} onDone={() => setBurst(null)} />}
         {promiseCard}
-        <section
-          className="lcd"
-          aria-label="パートナーの画面"
-          onKeyDown={(event) => {
-            if (event.key === "Escape" && expanded) setExpanded(false);
-          }}
-        >
-          {messages.length > 0 && (
-            <button type="button" className="log-expand" data-noswipe aria-expanded={expanded} onClick={() => setExpanded(!expanded)}>
-              {expanded ? "閉じる" : "広げて読む"}
-            </button>
-          )}
+        <section className="lcd" aria-label="パートナーの画面">
           <ReplyToast initial={notices} paused={listening} pollMs={noticePollMs} />
           {lockedTalk.locked && (
             <div className="lock-banner">
@@ -737,16 +781,8 @@ export function Talk({
             </div>
           )}
           <div className="log" role="log" aria-label="パートナーとの会話" ref={logRef} data-noswipe-landscape>
-            {acknowledged && messages.length === 0 && !listening && question && <p className="daily-question">{question}</p>}
-            {bubbleList}
-            {sending && (
-              <p className="bubble assistant waiting" role="status">
-                考えています…
-              </p>
-            )}
-            {sending && device && (
-              <span className="speech-tail" aria-hidden="true" />
-            )}
+            {acknowledged && messages.length === 0 && !listening && !sending && question && <p className="daily-question">{question}</p>}
+            {chatList}
             {cards}
             {canCompose && !safety && (
               <button type="button" className="remember find-knowledge" disabled={sending || finding} onClick={() => void findKnowledge()}>
