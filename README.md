@@ -25,7 +25,7 @@ npm run demo
 
 ほかに試せること：
 
-- 「親に殴られている」と書くと、相談室への案内が出ます（命や安全に関わるときは、要点だけが相談室の先生に届きます）
+- 「親に殴られている」と書くと、相談室への案内が出ます（命や安全に関わるときは、話した言葉ではなく、種類ごとに決まった要点だけがアプリの相談室に記録されます。試用版では記録しません）
 - 「放課後に勉強会を開きたい」と書くと、足りないことだけを聞いて告知を作り、「行きます」を集めます
 - 「みんな」から自習室、校内の桜を開けます
 
@@ -40,7 +40,7 @@ npm run demo
 | すべてのテスト | `scripts/test.sh`（台本で動き、外へ通信しません） |
 | ダミーのデータを最初に戻す | `npm run db:reset` |
 
-Teams につなぐには、Microsoft Graph の委任の権限（`ChannelMessage.Send`、`ChannelMessage.Read.All` など）を持つアプリを登録し、`data/teams.json` にテナント、クライアント ID、チーム名、チャネル名を書きます。`npx tsx scripts/teams-login.ts <人物の ID>` でサインインすると、その人の投稿が本人の名前で届きます。シークレットは使いません。`data/` は Git に入りません。
+Teams につなぐには、Microsoft Graph の委任の権限（`ChannelMessage.Send`、`ChannelMessage.Read.All` など）を持つアプリを登録し、`data/teams.json` にテナント、クライアント ID、チーム名、チャネル名を書きます。`npx tsx scripts/teams-login.ts <人物の ID>` でサインインすると、その人の投稿が本人の名前で届きます。アプリのチャネルごとの送り先は `data/teams.json` の `channels` に書きます。アプリのいいねは Teams の元の投稿に本人の名前の 👍 として付き、Teams で付いた 👍 はアプリのいいねとして取り込みます（Teams 側で外したものは、まだ取り込みません）。シークレットは使いません。`data/` は Git に入りません。
 
 返事の知らせは、時間外（土日と平日の夜など）には出しません。審査や撮影で試すときは `KOEKATA_NOTICE_ALWAYS=1` を付けて起動します（`npm run demo` には付いています）。
 
@@ -52,10 +52,10 @@ Teams につなぐには、Microsoft Graph の委任の権限（`ChannelMessage.
 |---|---|
 | パートナーの話し方 | 相手のトーンに合わせ、答えを言い切らず問い返す（`src/lib/claude/persona.ts`） |
 | 下書きと受け取られ方 | 話したことを投稿の下書きにし、本人が話していないことは足さない。送るのは本人だけ（`src/lib/claude/compose.ts`） |
-| 命や安全の判定 | 話の中身を残さず、要点だけを相談室に伝える（`src/lib/safety.ts`） |
-| 人へのつなぎ | 煮詰まったときだけ、話せそうな人を提案する（`src/lib/connect.ts`） |
-| 校内の知恵を探す | Claude には候補の ID だけを返させ、本文は DB の実物を出す。経験を作らせないため（`src/lib/knowledge.ts`） |
-| 夕方のまとめ | Managed Agents の係を1回だけ起こし、使えなければ手動のまとめに戻る（`src/lib/claude/evening-agent.ts`） |
+| 命や安全の判定 | 話の中身は残さず、種類ごとに決まった要点だけをアプリの相談室に記録する。試用版では記録しない（`src/lib/safety.ts`） |
+| 人へのつなぎ | 話が解決したとき、煮詰まったとき、夕方に話を終えるときの3つの場面でだけ、話せそうな人を提案する（`src/lib/connect.ts`） |
+| 校内の知恵を探す | Claude には候補の ID と理由だけを返させ、本文は DB の実物を出す。経験を作らせないため（`src/lib/knowledge.ts`） |
+| 夕方のまとめ | Managed Agents の係を1回だけ起こし、使えなければ通常の Claude API のまとめに切り替える（`src/lib/claude/evening-agent.ts`、`src/lib/daily.ts`） |
 
 ### 作る側の Claude Code
 
@@ -78,7 +78,7 @@ Teams につなぐには、Microsoft Graph の委任の権限（`ChannelMessage.
 ## 守っていること
 
 - 送るのはいつも本人です。AI は投稿しません
-- パートナーとの話は、ブラウザのタブの中だけにあり、サーバーに残しません
+- パートナーとの話は、ブラウザのタブの中だけにあり、サーバーに残しません。本人が「これを覚えて」と選んだ言葉だけは残り、「履歴と設定」から消せます
 - 順位や比較を作りません。休んでも減りません
 - 確かめるのは人です。校内の知恵は、言葉を使われた本人が確かめてから広がります
 
