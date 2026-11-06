@@ -289,7 +289,8 @@ export default async function MePage({ searchParams }: { searchParams: Promise<{
         </Link>
       }
     >
-      <main className="home" data-me={opened ? opened.key : "tiles"}>
+      {/* タイルを開いた状態は奥の画面。左右どちらへ払ってもホームへ戻る（0-2p） */}
+      <main className="home" data-me={opened ? opened.key : "tiles"} data-swipe-home={opened ? "" : undefined}>
         {opened ? (
           <>
             <header className="me-open-head">

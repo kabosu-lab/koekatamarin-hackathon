@@ -24,7 +24,23 @@ describe("swipeTarget", () => {
     expect(swipeTarget("/minna", -120, 0, false)).toBe("/me");
   });
 
-  it("並びにない画面では移動しない", () => {
-    expect(swipeTarget("/inbox", -120, 0, false)).toBeNull();
+  it("奥の画面では、左右どちらへ払ってもホームへ戻る（0-2p）", () => {
+    expect(swipeTarget("/inbox", -120, 0, false)).toBe("/");
+    expect(swipeTarget("/chie/abc", 120, 0, false)).toBe("/");
+    // 横画面でも左右で戻る（上下は中身のスクロール）
+    expect(swipeTarget("/study/room", -120, 0, true)).toBe("/");
+    expect(swipeTarget("/study/room", 0, -120, true)).toBeNull();
+  });
+
+  it("3枚の上でも、奥の状態を開いているときは、左右どちらでもホームへ戻る", () => {
+    expect(swipeTarget("/me", 120, 0, false, true)).toBe("/");
+    expect(swipeTarget("/me", -120, 0, false, true)).toBe("/");
+    expect(swipeTarget("/minna", -120, 0, false, true)).toBe("/");
+  });
+
+  it("奥の画面でも、短い動きや縦のスクロールでは戻らない", () => {
+    expect(swipeTarget("/inbox", -40, 0, false)).toBeNull();
+    expect(swipeTarget("/inbox", -100, 90, false)).toBeNull();
+    expect(swipeTarget("/inbox", 10, 300, false)).toBeNull();
   });
 });

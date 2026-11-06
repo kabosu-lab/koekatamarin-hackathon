@@ -3,6 +3,7 @@
 import { Icon } from "@/app/Icon";
 import { createContext, type CSSProperties, type KeyboardEvent, type PointerEvent, type ReactNode, useContext, useEffect, useRef, useState } from "react";
 import { Avatar } from "../Avatar";
+import { SWIPE_HOME_EVENT, type SwipeHomeRequest } from "../SwipeNav";
 import { ThanksEntry } from "../thanks/ThanksCard";
 import { ReplyField } from "./ReplyField";
 import { TODAY_SEEN_COOKIE } from "./today-seen";
@@ -148,6 +149,19 @@ export function TodayModal({ cards }: { cards: TodayModalCard[] }) {
 
   const go = (next: number) => setIndex(Math.min(last, Math.max(0, next)));
 
+  /**
+   * 端の先へめくったとき（0-2p）。カードのめくりを先にし、端からさらに払ったら奥の画面としてホームへ戻る。
+   * ホームへの移動はスワイプの受け持ち（SwipeNav）に頼む。受け持ちがない見た目では、最後の先だけ閉じる。
+   */
+  const pastEdge = (forward: boolean) => {
+    const request = new CustomEvent<SwipeHomeRequest>(SWIPE_HOME_EVENT, {
+      cancelable: true,
+      detail: { forward, layer: sheet.current?.parentElement },
+    });
+    const handled = !window.dispatchEvent(request);
+    if (!handled && forward) close();
+  };
+
   const setVar = (element: HTMLElement | null, name: string, value: number) => element?.style.setProperty(name, `${Math.round(value)}px`);
 
   const onPointerDown = (event: PointerEvent<HTMLDivElement>) => {
@@ -209,8 +223,13 @@ export function TodayModal({ cards }: { cards: TodayModalCard[] }) {
     if (state.axis === "x") {
       const dx = event.clientX - state.x;
       const width = track.current?.offsetWidth ?? 320;
-      if (dx < -width * FLIP_RATIO || state.vx < -FLIP_SPEED) go(index + 1);
-      else if (dx > width * FLIP_RATIO || state.vx > FLIP_SPEED) go(index - 1);
+      if (dx < -width * FLIP_RATIO || state.vx < -FLIP_SPEED) {
+        if (index === last) pastEdge(true);
+        else go(index + 1);
+      } else if (dx > width * FLIP_RATIO || state.vx > FLIP_SPEED) {
+        if (index === 0) pastEdge(false);
+        else go(index - 1);
+      }
       return;
     }
     const dy = event.clientY - state.y;
