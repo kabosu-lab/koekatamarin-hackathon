@@ -32,12 +32,8 @@ import { GiftEggs } from "./GiftEggs";
 import { listCompanions, listGiftEggs, syncGiftEggs } from "@/lib/gift-eggs";
 import { RibbonMoment } from "../RibbonMoment";
 import { Ribbons } from "./Ribbons";
-<<<<<<< C:/Users/harum/AppData/Local/Temp/claude/2dd7a7ccf66de468/82501433-ca21-4982-9d0b-62e56bc1bf68/scratchpad/m30/t.2
-import { listNewRibbons, listTrophyShelves, syncRibbonsOnOpen } from "@/lib/ribbons";
-=======
 import { BackdropCollection } from "./BackdropCollection";
-import { listNewRibbons, listTrophyShelves, syncRibbons } from "@/lib/ribbons";
->>>>>>> C:/Users/harum/AppData/Local/Temp/claude/2dd7a7ccf66de468/82501433-ca21-4982-9d0b-62e56bc1bf68/scratchpad/m30/t.3
+import { listNewRibbons, listTrophyShelves, syncRibbonsOnOpen } from "@/lib/ribbons";
 import { showsRewards } from "@/lib/rewards-view";
 import { ArtRefresher, AvatarFromPhoto, AvatarQuiz, MemoryList, ProfileEditor, ThanksForm } from "./MeActions";
 
