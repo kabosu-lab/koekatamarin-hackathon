@@ -31,6 +31,21 @@ function setup() {
   return shared;
 }
 
+/**
+ * ほかの部品が自分の音を鳴らすための口（ホイールのカリ、ポン、和音）。
+ * 音の設定が「on」のときだけ返す。判定はここに1つにまとめる（0-1m：判定の食い違いをなくす）。
+ */
+export function audioOutput(): { audio: AudioContext; out: AudioNode } | null {
+  if (typeof document === "undefined" || document.documentElement.dataset.sound !== "on") return null;
+  try {
+    const output = setup();
+    void output.audio.resume();
+    return output;
+  } catch {
+    return null;
+  }
+}
+
 // スマホでは、指で触れた時に音を起こしておかないと、通信のあとに鳴らせない
 if (typeof document !== "undefined") {
   document.addEventListener(
