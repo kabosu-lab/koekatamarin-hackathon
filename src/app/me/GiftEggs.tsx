@@ -95,7 +95,7 @@ export function GiftEggs({ eggs, companions }: { eggs: GiftEggView[]; companions
 
   return (
     <section className="card gift-eggs" aria-label="贈り物の卵">
-      <h2>贈り物の卵</h2>
+      <h2>卵</h2>
       {eggs.length > 0 ? (
         <>
           <p>誰かの役に立ったので、卵が届きました。</p>
