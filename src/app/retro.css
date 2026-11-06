@@ -1146,3 +1146,63 @@ html[data-theme="retro"] :is(.home, .soudan) {
   box-sizing: border-box;
   padding: 12px 14px;
 }
+
+/* 0-1b：会話の窓を広げて、前のやり取りも読む。窓の右上の小さなボタンで開け閉めする */
+html[data-theme="retro"] .talk .log-expand {
+  order: -2;
+  align-self: flex-end;
+  flex: none;
+  min-height: 30px;
+  margin: 0;
+  padding: 4px 12px;
+  border: 1px solid var(--line, rgb(0 0 0 / 15%));
+  border-radius: 999px;
+  background: rgb(255 255 255 / 92%);
+  color: #1f2a33;
+  box-shadow: none;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.talk.device[data-expanded="true"] .lcd {
+  position: fixed;
+  inset: max(12px, env(safe-area-inset-top)) 12px max(12px, env(safe-area-inset-bottom));
+  z-index: 60;
+  max-width: 900px;
+  margin: 0 auto;
+  box-shadow: 0 20px 60px rgb(20 30 40 / 45%);
+}
+
+.talk.device[data-expanded="true"] .lcd-companion {
+  display: none;
+}
+
+.talk.device[data-expanded="true"] .bubble {
+  font-size: 1.1rem;
+}
+
+.talk.device[data-expanded="true"] .log {
+  flex: 1 1 auto;
+  /* 広げたときは、上のぼかしをやめて全部くっきり見せる */
+  mask-image: none;
+  -webkit-mask-image: none;
+}
+
+/* 広い画面（iPad の横向きなど）では、輪を小さくして、会話の窓を高く、真ん中を広くする */
+@media (min-width: 1100px) and (min-height: 561px) {
+  .device-row > .retro-home {
+    width: min(48vw, calc((100dvh - 48px) * 0.8));
+  }
+
+  .talk.device .click-wheel {
+    width: min(46cqw, 24dvh);
+  }
+}
+
+@media (orientation: landscape) and (min-width: 600px) and (max-width: 1099px) and (min-height: 561px) {
+  .talk.device .click-wheel {
+    width: min(44cqw, 22dvh);
+  }
+}

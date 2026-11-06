@@ -101,6 +101,8 @@ export function Talk({
   const [draft, setDraft] = useState("");
   const [writing, setWriting] = useState(false);
   const [listening, setListening] = useState(false);
+  // 会話の窓を画面いっぱいに広げて、前のやり取りも読む（昼休みの試用で「狭い」の声が多かった）
+  const [expanded, setExpanded] = useState(false);
   const [heard, setHeard] = useState("");
   // 電波が弱くて文字がまとめて届いても、少しずつなめらかに出す
   const shownHeard = useSmoothText(heard);
@@ -675,9 +677,26 @@ export function Talk({
 
   if (device) {
     return (
-      <div className="talk device" data-viewer={viewer.name} data-state={listening ? "listening" : sending ? "thinking" : "idle"} data-talking={messages.length > 0}>
+      <div
+        className="talk device"
+        data-viewer={viewer.name}
+        data-state={listening ? "listening" : sending ? "thinking" : "idle"}
+        data-talking={messages.length > 0}
+        data-expanded={expanded && messages.length > 0}
+      >
         {burst && <SendBurst words={burst} avatarImage={avatarImage} onDone={() => setBurst(null)} />}
-        <section className="lcd" aria-label="パートナーの画面">
+        <section
+          className="lcd"
+          aria-label="パートナーの画面"
+          onKeyDown={(event) => {
+            if (event.key === "Escape" && expanded) setExpanded(false);
+          }}
+        >
+          {messages.length > 0 && (
+            <button type="button" className="log-expand" data-noswipe aria-expanded={expanded} onClick={() => setExpanded(!expanded)}>
+              {expanded ? "閉じる" : "広げて読む"}
+            </button>
+          )}
           <ReplyToast initial={notices} paused={listening} pollMs={noticePollMs} />
           {lockedTalk.locked && (
             <div className="lock-banner">
