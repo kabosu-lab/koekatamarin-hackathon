@@ -164,8 +164,13 @@ export function Talk({
     session: sessionRef,
     history: () => messagesRef.current.slice(-MAX_HISTORY),
     onSafety: setSafety,
-    onExchange: (asked, reply) =>
-      setMessages((current) => [...current, { role: "user", content: asked }, { role: "assistant", content: reply }]),
+    onExchange: (asked, reply, ready) =>
+      setMessages((current) => {
+        const updated: ChatMessage[] = [...current, { role: "user", content: asked }, { role: "assistant", content: reply }];
+        // 歩きながらでも、光ったことは画面に残す（送るのは画面で確かめてから）
+        if (ready) setReadyAt(updated.length);
+        return updated;
+      }),
   });
   // 声が確定したときは、そのときの会話と入力欄で送る
   const latest = useRef({ send: (_text: string) => {}, draft: "" });
@@ -774,10 +779,11 @@ export function Talk({
           <ReplyToast initial={notices} paused={listening} pollMs={noticePollMs} />
           {lockedTalk.locked && (
             <div className="lock-banner">
-              <p role="status">固定中</p>
+              {/* 0-1t：止まった・失敗に見えないよう、やわらかい帯で */}
+              <p role="status">歩きながら ─ 手を離しても聞いています</p>
               {lockedTalk.screenNote && <small>{lockedTalk.screenNote}</small>}
               <button type="button" onClick={() => stopRef.current?.()}>
-                止めて送る
+                話し終えて送る
               </button>
             </div>
           )}
@@ -898,7 +904,7 @@ export function Talk({
               }}
             >
               <Icon name="talk" />
-              {lockedTalk.locked ? "止めて送る" : listening ? "離すと送る" : "押し続けて話す"}
+              {lockedTalk.locked ? "話し終えて送る" : listening ? "離すと送る" : "押し続けて話す"}
             </button>
             {listening && lift !== null && !lockedTalk.locked && (
               // 押している間だけ、どの向きへずらしても固定になることを目で見せる

@@ -1,7 +1,7 @@
 "use client";
 
 import { type RefObject, useCallback, useEffect, useRef, useState } from "react";
-import { AIZUCHI_INTERVAL_MS, PAUSE_MS, aizuchiAt, detectCommand, withoutEndWord } from "@/lib/walk-command";
+import { AIZUCHI_INTERVAL_MS, aizuchiAt, detectCommand, withoutEndWord } from "@/lib/walk-command";
 import type { ChatMessage } from "@/lib/claude/types";
 import type { SafetyNotice } from "./SafetyCard";
 import type { ListeningSession } from "./speech";
@@ -11,6 +11,16 @@ const COMMAND_WAIT_MS = 1200;
 const CHECK_EVERY_CHARS = 400;
 const SPEAK_TIMEOUT_MS = 20_000;
 const MAX_ASK_TEXT = 2000;
+/** 0-1t：話の切れ目（これだけ黙った）で、自動でパートナーへ送る */
+export const AUTO_SEND_MS = 1500;
+/** 自動で送るのは、これだけ話してから（「えっと」だけでは送らない） */
+const AUTO_SEND_MIN_CHARS = 4;
+/** 声の返事は画面より短く。最初の2文まで */
+export function voiceReply(reply: string): string {
+  const sentences = reply.match(/[^。！？!?]+[。！？!?]?/g) ?? [reply];
+  return sentences.slice(0, 2).join("").trim() || reply;
+}
+const READY_VOICE = "今の話、みんなに届けられそう。あとで画面で確かめてね。";
 
 function soundIsOn(): boolean {
   return document.documentElement.dataset.sound !== "off";
@@ -29,7 +39,7 @@ export function useLockedTalk({
   session: RefObject<ListeningSession | null>;
   history: () => ChatMessage[];
   onSafety(notice: SafetyNotice): void;
-  onExchange(asked: string, reply: string): void;
+  onExchange(asked: string, reply: string, ready: boolean): void;
 }) {
   const [locked, setLocked] = useState(false);
   const [screenNote, setScreenNote] = useState("");
@@ -47,14 +57,14 @@ export function useLockedTalk({
   const keepScreenOn = useCallback(async () => {
     const lock = (navigator as Navigator & { wakeLock?: { request(type: "screen"): Promise<{ release(): Promise<void> }> } }).wakeLock;
     if (!lock) {
-      setScreenNote("画面が消えると止まります");
+      setScreenNote("画面はつけたままでね");
       return;
     }
     try {
       wake.current = await lock.request("screen");
       setScreenNote("");
     } catch {
-      setScreenNote("画面が消えると止まります");
+      setScreenNote("画面はつけたままでね");
     }
   }, []);
 
@@ -92,14 +102,15 @@ export function useLockedTalk({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ history: history(), text: asked }),
       });
-      const body = (await response.json().catch(() => ({}))) as { reply?: string; safety?: SafetyNotice };
+      const body = (await response.json().catch(() => ({}))) as { reply?: string; safety?: SafetyNotice; ready?: boolean };
       if (body.safety) onSafety(body.safety);
       if (!response.ok || !body.reply) {
         await speak("ごめん、今うまく返せへんかった。続けて話してね。");
         return;
       }
-      onExchange(asked, body.reply);
-      await speak(body.reply);
+      onExchange(asked, body.reply, body.ready === true);
+      // 歩きながらは送らない。光ったことは声で知らせるだけ（0-1t (d)）
+      await speak(body.ready === true ? `${voiceReply(body.reply)}${READY_VOICE}` : voiceReply(body.reply));
     } catch {
       await speak("ごめん、つながらへんかった。続けて話してね。");
     }
@@ -137,13 +148,19 @@ export function useLockedTalk({
         if (command === "end") session.current?.stop();
         else if (command === "ask") void ask();
       }, COMMAND_WAIT_MS);
+      // 0-1t：話の切れ目で自動で送り、返事を声で読む。長く話し続けているときは、ときどき小さな相づち
       pauseTimer.current = setTimeout(() => {
-        if (speakingRef.current || detectCommand(textRef.current.slice(usedRef.current))) return;
+        const pending = textRef.current.slice(usedRef.current);
+        if (speakingRef.current || detectCommand(pending)) return;
+        if (pending.trim().length >= AUTO_SEND_MIN_CHARS) {
+          void ask();
+          return;
+        }
         if (Date.now() - lastAizuchi.current < AIZUCHI_INTERVAL_MS) return;
         lastAizuchi.current = Date.now();
         aizuchiCount.current += 1;
         void speak(aizuchiAt(aizuchiCount.current));
-      }, PAUSE_MS);
+      }, AUTO_SEND_MS);
     },
     [ask, onSafety, session, speak],
   );

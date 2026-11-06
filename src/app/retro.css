@@ -1533,3 +1533,20 @@ html[data-theme="retro"] :is(.home, .soudan) {
 html[data-theme="retro"] .talk .device-side[data-busy="true"]:disabled {
   opacity: 1;
 }
+
+/* 0-1t：「歩きながら」の帯。赤（止まった・失敗に見える）をやめ、パートナーの色のやわらかい帯に */
+.talk.device .lock-banner {
+  background: rgb(225 244 240 / 96%);
+  color: #1f3a3a;
+  box-shadow: 0 2px 8px rgb(31 111 120 / 18%);
+}
+
+.talk.device .lock-banner p {
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+html[data-theme="retro"] .talk .lock-banner button {
+  background: #1f6f78;
+  color: #fff;
+}
