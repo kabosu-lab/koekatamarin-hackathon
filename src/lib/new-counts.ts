@@ -5,6 +5,7 @@ import { listHiddenIds } from "./hidden-people";
 import { isNoticeHours, listInbox } from "./inbox";
 import { listKnowledgeTasks } from "./knowledge";
 import { listReplyNotices, markRepliesSeen } from "./reply-notices";
+import { THANKS_REVEAL_HREF } from "./thanks-kind";
 import { FIRST_RANDOM, listTodayCards } from "./today";
 
 /**
@@ -53,8 +54,13 @@ function seenReportIds(db: DatabaseSync, viewerId: string): Set<string> {
   }
 }
 
+/** 「ありがとう」を最後に開いた時刻（0-3a の封筒の演出も、これより後に届いたものを開ける） */
+export function thanksSeenSince(db: DatabaseSync, viewerId: string): string | null {
+  return readSeen(db, seenKey("thanks", viewerId));
+}
+
 function countNewThanks(db: DatabaseSync, viewerId: string): number {
-  const since = readSeen(db, seenKey("thanks", viewerId)) ?? "";
+  const since = thanksSeenSince(db, viewerId) ?? "";
   const hidden = listHiddenIds(db, viewerId);
   const rows = db
     .prepare("SELECT from_person_id FROM thanks WHERE to_person_id = ? AND created_at > ?")
@@ -127,7 +133,8 @@ export function newsLine(counts: NewCounts, role: string): NewsLine | null {
     if (counts.replies === counts.inbox) return { text: `${arrived("返事", counts.replies)}。${minna}`, href: "/inbox#replies" };
     return { text: `${polite ? `受信箱に${counts.inbox}件届いています` : `受信箱に${counts.inbox}件届いてるよ`}。${minna}`, href: "/inbox" };
   }
-  if (counts.thanks > 0) return { text: `${arrived("ありがとう", counts.thanks)}。${me}`, href: "/me?open=thanks" };
+  // 0-3a：ありがとうは、パートナーが封筒を抱えて知らせ、押すとその場で封筒が開く（履歴と設定へは行かない）
+  if (counts.thanks > 0) return { text: polite ? "ありがとうが届いています" : "ありがとうが届いてるよ", href: THANKS_REVEAL_HREF };
   if (counts.collection > 0)
     return {
       text: polite ? `コレクションに新しいものが${counts.collection}個あります。${me}` : `コレクションに新しいのが${counts.collection}個あるよ。${me}`,

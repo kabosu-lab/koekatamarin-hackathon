@@ -41,6 +41,7 @@ import { isFeedbackConsent } from "@/lib/feedback-consent";
 import { ClickWheel } from "./ClickWheel";
 import { VoiceLump } from "./VoiceLump";
 import type { NewsLine } from "@/lib/new-counts";
+import { THANKS_REVEAL_EVENT, THANKS_REVEAL_HREF } from "@/lib/thanks-kind";
 import type { LumpShapeName } from "@/lib/lump-shapes";
 import type { TeamsDelivery } from "@/lib/destination/teams-bridge";
 
@@ -149,6 +150,23 @@ export function Talk({
     news ? { text: news.text, kind: "news" } : question ? { text: question, kind: "ask" } : nextPartnerLine({ ...lineBase, hour: partnerHour(new Date()), tapCount: 0 }),
   );
   const [greetingTyped, setGreetingTyped] = useState(false);
+  // 0-3a：新着の知らせが変わったら（封筒を開け終えたなど）、一言も替える。最初の表示ではそのまま
+  const newsText = news?.text ?? null;
+  const shownNews = useRef(newsText);
+  useEffect(() => {
+    if (shownNews.current === newsText) return;
+    shownNews.current = newsText;
+    setLine((current) =>
+      newsText
+        ? { text: newsText, kind: "news" }
+        : current.kind !== "news"
+          ? current
+          : question
+            ? { text: question, kind: "ask" }
+            : nextPartnerLine({ ...lineBase, hour: partnerHour(new Date()), tapCount: 0 }),
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [newsText]);
   const partnerTap = usePartnerTap(messages.length > 0);
   const invite = usePartnerInvite({ typed: greetingTyped, spoken: messages.length > 0 || listening || draft.trim() !== "" });
   // 数秒触られなければ、操作の案内をそっと添える（0-1g(2)）。一度話したら出さない
@@ -851,7 +869,9 @@ export function Talk({
     if (messages.length > 0) return;
     // 0-2v：新着の知らせは、押すとその画面へ（帯やバナーは別に出さない）
     if (line.kind === "news" && news) {
-      router.push(news.href);
+      // 0-3a：ありがとうは、その場で封筒を開ける
+      if (news.href === THANKS_REVEAL_HREF) window.dispatchEvent(new CustomEvent(THANKS_REVEAL_EVENT));
+      else router.push(news.href);
       return;
     }
     const recent = [...recentLines, line.text].slice(-3);
@@ -1134,7 +1154,7 @@ export function Talk({
             </div>
           )}
           {(companionAlt || (acknowledged && messages.length === 0 && !listening && !sending)) && (
-            <div className="lcd-companion">
+            <div className="lcd-companion" data-envelope={line.kind === "news" && news?.href === THANKS_REVEAL_HREF ? "" : undefined}>
               {acknowledged && messages.length === 0 && !listening && !sending ? (
                 // 0-1g(1)・0-2a：最初の問いかけはパートナーの上の吹き出し。触るたびに一言が替わり、弾む
                 <PartnerGreeting

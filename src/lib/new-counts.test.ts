@@ -100,8 +100,10 @@ describe("パートナーの最初の一言", () => {
     });
   });
 
-  it("ありがとうとコレクションは、履歴と設定へ行く", () => {
-    expect(newsLine({ ...empty, thanks: 1 }, "student")?.href).toBe("/me?open=thanks");
+  it("コレクションは履歴と設定へ行き、ありがとうはその場で開ける", () => {
+    // 0-3a：ありがとうは、その場で封筒を開ける
+    expect(newsLine({ ...empty, thanks: 1 }, "student")).toEqual({ text: "ありがとうが届いてるよ", href: "#thanks-reveal" });
+    expect(newsLine({ ...empty, thanks: 2 }, "teacher")?.text).toBe("ありがとうが届いています");
     expect(newsLine({ ...empty, collection: 1 }, "student")?.href).toBe("/me?open=partner");
   });
 
