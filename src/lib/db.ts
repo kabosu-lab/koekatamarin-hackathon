@@ -370,6 +370,11 @@ const MIGRATIONS: readonly string[] = [
      track TEXT NOT NULL,
      changed_at INTEGER NOT NULL
    ) STRICT;`,
+  // 日報の足し算（0-1z）。どこまで含めたか（やり取りの時刻と、話の指紋）、夕方の係が走ったか、本人が直した項目
+  `ALTER TABLE daily_reports ADD COLUMN included_until TEXT;
+   ALTER TABLE daily_reports ADD COLUMN talk_seen TEXT NOT NULL DEFAULT '[]';
+   ALTER TABLE daily_reports ADD COLUMN evening_at TEXT;
+   ALTER TABLE report_items ADD COLUMN edited INTEGER NOT NULL DEFAULT 0 CHECK (edited IN (0, 1));`,
 ];
 
 export const SCHEMA_VERSION

@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { getViewer } from "@/lib/current-person";
 import { listReceived } from "@/lib/daily";
 import { getDatabase } from "@/lib/db";
