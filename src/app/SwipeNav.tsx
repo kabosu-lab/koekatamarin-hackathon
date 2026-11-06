@@ -2,14 +2,19 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { SWIPE_SCREENS, swipeTarget } from "@/lib/swipe-nav";
+import { isDeep, SWIPE_HOME, SWIPE_SCREENS, swipeTarget } from "@/lib/swipe-nav";
 
 /**
  * 操作の途中の指の動きを、画面の移動にしない場所。
  * ボタンやリンクの上から始めても移れるようにする（動かした指ではボタンは押されない）。
  * 押し続けて話すボタンとホイール、文字を打つ欄は除く。
  */
-const NO_SWIPE = "[data-noswipe], .device-mic, input, textarea, select, dialog";
+const NO_SWIPE = "[data-noswipe], .device-mic, input, textarea, select, dialog, [contenteditable]";
+/** 3枚の上で、奥の状態（タイルを開いた・今日の3人を出した）を開いている印。あれば左右どちらでもホームへ戻る（0-2p） */
+const DEEP_STATE = "[data-swipe-home]";
+/** 奥の画面の部品が「ホームへ戻して」と頼む知らせ（今日の3人の、端の先へのめくり）。detail は SwipeHomeRequest */
+export const SWIPE_HOME_EVENT = "koekata:swipe-home";
+export type SwipeHomeRequest = { forward: boolean; layer?: HTMLElement | null };
 /** 横画面は上下で移るので、上下にスクロールする液晶の中では移らない */
 const LANDSCAPE = "(orientation: landscape) and (max-height: 560px)";
 const NO_SWIPE_LANDSCAPE = "[data-noswipe-landscape]";
@@ -30,7 +35,54 @@ type Arrival = { from: "left" | "right"; ms: number; rest: number };
 const reducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 const page = () => document.querySelector<HTMLElement>("body > main, main");
 
-/** レトロの画面をスワイプで行き来する。指に付いて動き、離すと次の画面がすべり込む。下のナビからも同じ画面へ行ける。 */
+/** 指を置いた所から外へ向かって、横にスクロールできる入れ物（カルーセル、チップの列）があるか */
+function insideSideScroller(target: Element | null): boolean {
+  for (let node = target; node && node !== document.body; node = node.parentElement) {
+    if (node.scrollWidth <= node.clientWidth + 1) continue;
+    const overflow = getComputedStyle(node).overflowX;
+    if (overflow === "auto" || overflow === "scroll") return true;
+  }
+  return false;
+}
+
+/** 文字を選んでいる途中か（選んだ範囲を指で広げているときに、画面を移さない） */
+const selecting = () => {
+  const selection = window.getSelection();
+  return Boolean(selection && !selection.isCollapsed && selection.toString().trim());
+};
+
+/** 出ていく画面を、払った向きへ流す。新しい画面に入れ替わらなかったときは元に戻す */
+function slideOut(elements: HTMLElement[], forward: boolean, ms: number) {
+  const width = window.innerWidth || 1;
+  for (const leaving of elements) {
+    // 位置だけを transform で動かす（透明度は動かさない。iPhone では画面全体の重ね直しが重い）
+    leaving.style.willChange = "transform";
+    leaving.style.transition = `transform ${ms}ms ${EASE}`;
+    leaving.style.transform = `translateX(${forward ? "-" : ""}${width}px)`;
+    setTimeout(() => {
+      // 移れたなら古い画面はもう無く、今の状態は新しい画面のもの。触らない
+      if (!leaving.isConnected) return;
+      delete document.documentElement.dataset.swiping;
+      leaving.style.transition = "";
+      leaving.style.transform = "";
+      leaving.style.willChange = "";
+    }, 1500);
+  }
+}
+
+function saveArrival(arrival: Arrival) {
+  try {
+    sessionStorage.setItem(DIRECTION_KEY, JSON.stringify(arrival));
+  } catch {
+    // 残せなくても移れる
+  }
+}
+
+/**
+ * レトロの画面をスワイプで行き来する。指に付いて動き、離すと次の画面がすべり込む。下のナビからも同じ画面へ行ける。
+ * 奥の画面（3枚のどれでもない画面と、3枚の上で開いた奥の状態）では、左右どちらへ払ってもホーム（話す）へ戻る（0-2p）。
+ * 画面ごとには作らず、ここ1か所で受け持つ。
+ */
 export function SwipeNav() {
   const pathname = usePathname();
   const router = useRouter();
@@ -39,7 +91,7 @@ export function SwipeNav() {
   useEffect(() => {
     if (SWIPE_SCREENS.includes(pathname as (typeof SWIPE_SCREENS)[number])) {
       for (const screen of SWIPE_SCREENS) if (screen !== pathname) router.prefetch(screen);
-    }
+    } else router.prefetch(SWIPE_HOME);
   }, [pathname, router]);
 
   // 移ってきた画面を、指を動かした向きからすべり込ませる
@@ -68,6 +120,8 @@ export function SwipeNav() {
     let main: HTMLElement | null = null;
     // 横画面か・動きを減らす設定かは、指を置いたときに1回だけ調べる（動かすたびに matchMedia しない）
     let landscape = false;
+    // 奥の画面か。奥では横画面でも左右で戻る
+    let deep = false;
     let still = false;
     // 速さを出すための、直近2回の指の位置と時刻
     let recent: { x: number; t: number }[] = [];
@@ -87,18 +141,25 @@ export function SwipeNav() {
       const target = event.target as Element | null;
       landscape = window.matchMedia(LANDSCAPE).matches;
       still = reducedMotion();
+      deep = isDeep(pathname, document.querySelector(DEEP_STATE) !== null);
+      const root = document.documentElement;
       const blocked =
         event.touches.length !== 1 ||
-        document.documentElement.dataset.theme !== "retro" ||
+        root.dataset.theme !== "retro" ||
+        // 広い画面の左右の欄（iframe）の中でホームへ移ると、欄の中が話す画面になってしまう
+        (deep && root.dataset.embed === "true") ||
         target?.closest(NO_SWIPE) ||
-        (landscape && target?.closest(NO_SWIPE_LANDSCAPE));
+        (landscape && !deep && target?.closest(NO_SWIPE_LANDSCAPE)) ||
+        insideSideScroller(target) ||
+        selecting();
       start = blocked ? null : { x: event.touches[0].clientX, y: event.touches[0].clientY };
       recent = start ? [{ x: start.x, t: event.timeStamp }] : [];
       dragging = false;
     };
 
     const onMove = (event: TouchEvent) => {
-      if (!start || landscape || still) return;
+      // 横画面の3枚は上下で移るので、指には付けない。奥の画面は横画面でも左右に付いて動く
+      if (!start || (landscape && !deep) || still) return;
       const point = { x: event.touches[0].clientX, t: event.timeStamp };
       recent = recent.length ? [recent[recent.length - 1], point] : [point];
       const dx = event.touches[0].clientX - start.x;
@@ -125,8 +186,9 @@ export function SwipeNav() {
       if (!start) return;
       const touch = event.changedTouches[0];
       const dx = touch.clientX - start.x;
-      const next = swipeTarget(pathname, dx, touch.clientY - start.y, landscape);
-      const forward = (landscape ? touch.clientY - start.y : dx) < 0;
+      const next = swipeTarget(pathname, dx, touch.clientY - start.y, landscape, deep);
+      const sideways = !landscape || deep;
+      const forward = (sideways ? dx : touch.clientY - start.y) < 0;
       start = null;
       if (!next) {
         // 届かなければ、ばねで1回だけ元の位置へ戻す
@@ -155,36 +217,31 @@ export function SwipeNav() {
       const moved = leaving ? Math.abs(new DOMMatrixReadOnly(getComputedStyle(leaving).transform).m41) : 0;
       const remaining = Math.max(0, width - moved);
       const ms = Math.round(Math.min(MAX_MS, Math.max(MIN_MS, remaining / speed)));
-      const animate = Boolean(leaving) && !still && !landscape;
-      try {
-        // 次の画面は、指を動かした向きの反対側から、出ていった画面の残りの距離と同じ時間で入ってくる
-        const arrival: Arrival = { from: forward ? "right" : "left", ms, rest: animate ? remaining / width : 0.28 };
-        sessionStorage.setItem(DIRECTION_KEY, JSON.stringify(arrival));
-      } catch {
-        // 残せなくても移れる
-      }
-      if (leaving && animate) {
-        // 位置だけを transform で動かす（透明度は動かさない。iPhone では画面全体の重ね直しが重い）
-        leaving.style.willChange = "transform";
-        leaving.style.transition = `transform ${ms}ms ${EASE}`;
-        leaving.style.transform = `translateX(${forward ? "-" : ""}${width}px)`;
-        // 新しい画面に入れ替わらなかったときのために戻す
-        setTimeout(() => {
-          // 移れたなら古い画面はもう無く、今の状態は新しい画面のもの。触らない
-          if (!leaving.isConnected) return;
-          delete document.documentElement.dataset.swiping;
-          leaving.style.transition = "";
-          leaving.style.transform = "";
-          leaving.style.willChange = "";
-        }, 1500);
-      }
+      const animate = Boolean(leaving) && !still && sideways;
+      // 次の画面は、指を動かした向きの反対側から、出ていった画面の残りの距離と同じ時間で入ってくる
+      saveArrival({ from: forward ? "right" : "left", ms, rest: animate ? remaining / width : 0.28 });
+      if (leaving && animate) slideOut([leaving], forward, ms);
       // 離した瞬間に次の画面を読み込み始める。出ていく動きの終わりを待たない
       router.push(next);
       main = null;
       dragging = false;
     };
 
+    // 部品からの「ホームへ戻して」（今日の3人の端の先へのめくり）。受けたら preventDefault で知らせる
+    const onHomeRequest = (event: Event) => {
+      const root = document.documentElement;
+      if (root.dataset.theme !== "retro" || root.dataset.embed === "true") return;
+      event.preventDefault();
+      const { forward, layer } = (event as CustomEvent<SwipeHomeRequest>).detail ?? { forward: true };
+      const animate = !reducedMotion();
+      saveArrival({ from: forward ? "right" : "left", ms: MAX_MS, rest: animate ? 1 : 0.28 });
+      const leaving = [page(), layer].filter((element): element is HTMLElement => Boolean(element));
+      if (animate) slideOut(leaving, forward, MAX_MS);
+      router.push(SWIPE_HOME);
+    };
+
     document.addEventListener("touchstart", onStart, { passive: true });
+    window.addEventListener(SWIPE_HOME_EVENT, onHomeRequest);
     document.addEventListener("touchmove", onMove, { passive: true });
     document.addEventListener("touchend", onEnd, { passive: true });
     document.addEventListener("touchcancel", reset, { passive: true });
@@ -193,6 +250,7 @@ export function SwipeNav() {
       document.removeEventListener("touchmove", onMove);
       document.removeEventListener("touchend", onEnd);
       document.removeEventListener("touchcancel", reset);
+      window.removeEventListener(SWIPE_HOME_EVENT, onHomeRequest);
       reset();
     };
   }, [pathname, router]);
