@@ -1,11 +1,12 @@
 /**
- * 0-2y：パソコンと iPad の横では、どの画面でも3列（左＝履歴と設定、中央＝話す、右＝みんな）。
+ * 0-2y：横向きでは、どの画面でも3列（左＝履歴と設定、中央＝話す、右＝みんな）。
  * 奥の画面は、それが属する列の中で開く。
  *
- * 3列にする幅の決まり。CSS の @media にも同じ式を書いている（retro.css の「0-2y」）。変えるときは両方を変える。
+ * 3列にするかの決まり（0-2y (6)）。幅では決めず、横向きで高さが 600px 以上なら必ず3列。
+ * 判定の元は retro.css の末尾の「0-2y (6)」の @media 1か所で、ここはそれと同じ式（JS で読むときに使う）。変えるときは両方を変える。
  * iPhone の横（844×390）は高さが足りないので3列にしない（縦にして使ってもらう）。
  */
-export const WIDE_QUERY = "(min-width: 1024px) and (min-height: 600px)";
+export const WIDE_QUERY = "(orientation: landscape) and (min-height: 600px)";
 
 export type WideSide = "left" | "right";
 

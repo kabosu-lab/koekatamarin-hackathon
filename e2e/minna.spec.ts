@@ -115,21 +115,7 @@ test("チャネルの札で投稿を絞れ、教職員だけの札は生徒に�
   await expect(page.getByRole("group", { name: "チャネルで絞る" }).getByRole("button", { name: "職員室" })).toHaveCount(0);
 });
 
-// 0-2y：幅 1024px 以上（iPad の横・PC）は3列になり、みんなは右の列の中。1画面のまま広い横長（幅 900〜1023px）で2列を確かめる
-test("横長の1画面（幅 900px 以上）では、左に桜、右に投稿の2列で、桜は縮まない", async ({ page }) => {
-  await page.setViewportSize({ width: 1000, height: 700 });
-  await page.goto("/minna");
-  const scroller = page.getByRole("region", { name: "みんな" });
-  const link = page.getByRole("link", { name: "校内の桜" });
-  const post = scroller.getByRole("article").first();
-  const sakura = await link.boundingBox();
-  const first = await post.boundingBox();
-  expect(sakura!.x + sakura!.width).toBeLessThanOrEqual(first!.x + 1);
-  await page.locator(".minna-column").evaluate((column) => column.scrollTo(0, 800));
-  await expect(scroller).toHaveAttribute("data-shrunk", "false");
-  await expect(link).toBeInViewport();
-  expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0);
-});
+// 0-2y (6)：横向きは必ず3列で、みんなは右の列の中（e2e/wide-columns.spec.ts）。前の「横長の1画面で桜と投稿の2列」は、もう出ない
 
 // 0-1y・0-2f：みんなは投稿が主役。上はチャネルの札だけ、入口はいちばん下のアイコンの帯だけ、下の縦の一覧はない
 

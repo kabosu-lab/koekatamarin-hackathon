@@ -27,9 +27,14 @@ async function expectThreeColumns(page: Page) {
   expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0);
 }
 
+// 0-2y (6)：幅では決めない。横向きで高さ 600px 以上なら、どの幅でも必ず3列
 for (const viewport of [
   { width: 1280, height: 800 },
   { width: 1180, height: 820 },
+  { width: 1133, height: 744 },
+  { width: 1024, height: 768 },
+  { width: 900, height: 640 },
+  { width: 1920, height: 1080 },
 ]) {
   test.describe(`${viewport.width}×${viewport.height}`, () => {
     test.beforeEach(async ({ page }) => {
@@ -82,6 +87,40 @@ for (const viewport of [
       await expectThreeColumns(page);
     });
 
+    test("ホイールのチップで選んだ画面は、外側ごと移らず、属する列の中で開く", async ({ page }) => {
+      await page.goto("/");
+      await expect(page.locator(".wide-panel[data-side=right] iframe")).toBeAttached();
+      const wheel = (await page.locator(".click-wheel").boundingBox())!;
+      const cx = wheel.x + wheel.width / 2;
+      const cy = wheel.y + wheel.height / 2;
+      const r = wheel.width * 0.44;
+      const at = (deg: number) => ({ x: cx + r * Math.cos((deg * Math.PI) / 180), y: cy + r * Math.sin((deg * Math.PI) / 180) });
+      await page.mouse.move(at(0).x, at(0).y);
+      await page.mouse.down();
+      const chip = page.locator(".wheel-carousel-slot").filter({ hasText: "受信箱" });
+      for (let deg = 10; deg <= 360 && (await chip.count()) === 0; deg += 10) await page.mouse.move(at(deg).x, at(deg).y, { steps: 2 });
+      await expect(chip.first()).toBeVisible();
+      await page.mouse.up();
+      // 離したときに真ん中にいたチップ（受信箱かその隣）が、右の列の中で開く。外側は話す画面のまま
+      await expect(page.locator(".wide-panel[data-side=right] iframe")).toHaveAttribute("src", /^\/(inbox|today|study\/room|chie)/);
+      await expect(page.frameLocator(".wide-panel[data-side=right] iframe").locator("main h1").first()).toBeVisible();
+      await expect(page).toHaveURL(/127\.0\.0\.1:\d+\/$/);
+      await expectThreeColumns(page);
+    });
+
+    test("話す画面のシートは、真ん中の列の幅に収まる", async ({ page }) => {
+      await page.goto("/");
+      const sizes = await page.evaluate(() => {
+        const panel = document.createElement("div");
+        panel.className = "bottom-sheet-panel";
+        document.body.append(panel);
+        const width = panel.getBoundingClientRect().width;
+        panel.remove();
+        return { panel: width, center: document.querySelector("main.retro-home")!.getBoundingClientRect().width };
+      });
+      expect(sizes.panel).toBeLessThanOrEqual(sizes.center + 1);
+    });
+
     test("広い画面ではスワイプでホームへ戻らない（列の中の奥の画面は「戻る」で閉じる）", async ({ page }) => {
       await page.goto("/");
       const right = page.frameLocator('iframe[title="みんな"]');
@@ -125,8 +164,11 @@ test("動きを減らす設定では、縦にしての絵は回らない", async
   await context.close();
 });
 
-test("iPad の縦（820×1180）では1画面のまま。絵も3列も出ない", async ({ page }) => {
-  await page.setViewportSize({ width: 820, height: 1180 });
+for (const viewport of [
+  { width: 820, height: 1180 },
+  { width: 1024, height: 1366 },
+]) test(`iPad の縦（${viewport.width}×${viewport.height}）では1画面のまま。絵も3列も出ない`, async ({ page }) => {
+  await page.setViewportSize(viewport);
   await page.goto("/inbox");
   await expect(page).toHaveURL(/\/inbox$/);
   await expect(page.getByRole("heading", { name: "受信箱" })).toBeVisible();

@@ -36,6 +36,6 @@ describe("wideHomeUrl と columnSrc", () => {
   });
 
   it("描く前のスクリプトは、同じメディアクエリを使う", () => {
-    expect(wideBootScript()).toContain("(min-width: 1024px) and (min-height: 600px)");
+    expect(wideBootScript()).toContain("(orientation: landscape) and (min-height: 600px)");
   });
 });

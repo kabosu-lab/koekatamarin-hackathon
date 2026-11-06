@@ -1,9 +1,9 @@
 import { expect, type Frame, type Page } from "@playwright/test";
 
-/** 0-2y：3列にする広さか（src/lib/wide.ts の WIDE_QUERY と同じ） */
+/** 0-2y (6)：3列にする形か（横向きで高さ 600px 以上。src/lib/wide.ts の WIDE_QUERY と同じ） */
 export function isWideViewport(page: Page) {
   const size = page.viewportSize();
-  return Boolean(size && size.width >= 1024 && size.height >= 600);
+  return Boolean(size && size.width > size.height && size.height >= 600);
 }
 
 /**

@@ -114,21 +114,6 @@ body:has(.retro-home) > :is(.bottom-nav, .demo-switcher) {
   border: 0;
 }
 
-@media (min-width: 1024px) and (min-height: 600px) {
-  /* 左右の列は、いちばん小さなスマホ（320px）より狭くしない。足りない分は真ん中の話す画面が縮む */
-  .wide-panel {
-    display: block;
-    min-width: 300px;
-  }
-
-
-  /* 広い画面の外側では、ホームの3列のほかは描かない。奥の画面は列の中へ移すので、1列だけの形は見せない */
-  html:not([data-embed]) body:not(:has(.device-row)),
-  html[data-wide-away] body {
-    visibility: hidden;
-  }
-}
-
 /* 0-2y (5)：低い横画面（iPhone の横など）では、縦にして使ってもらう */
 .rotate-hint {
   display: none;
@@ -1285,26 +1270,6 @@ html[data-theme="retro"] :is(.home, .soudan) {
   padding: 12px 14px;
 }
 
-/* 広い画面（iPad の横向きなど）では、輪を小さくして、会話の窓を高く、真ん中を広くする */
-@media (min-width: 1024px) and (min-height: 600px) {
-  .device-row > .retro-home {
-    width: min(48vw, calc((100dvh - 48px) * 0.8));
-    /* 0-2y：左右の列に場所を譲って縮む */
-    flex: 0 1 auto;
-    min-width: 0;
-  }
-
-  .talk.device .click-wheel {
-    width: min(46cqw, 24dvh);
-  }
-}
-
-@media (orientation: landscape) and (min-width: 600px) and (max-width: 1023px) and (min-height: 561px) {
-  .talk.device .click-wheel {
-    width: min(44cqw, 22dvh);
-  }
-}
-
 /* 0-1e：履歴と設定の真ん中は、ホーム画面のようなタイル。スクロールなしで全部見える */
 .me-screen small {
   display: block;
@@ -1949,13 +1914,6 @@ html[data-theme="retro"] .talk .device-mic {
   white-space: nowrap;
 }
 
-/* (9) 広い画面で左右に欄が出ているときは、同じ入口になる下のスワイプの印と点を出さない */
-@media (min-width: 1024px) and (min-height: 600px) {
-  .device-row .swipe-mark {
-    visibility: hidden;
-  }
-}
-
 /* (10) 「校内の知恵を探す」は「新しく話す」の札の下にそろえて、真ん中に置く */
 .talk.device .log > .find-knowledge {
   align-self: center;
@@ -2026,4 +1984,59 @@ html[data-theme="retro"] .talk .device-mic {
   color: #5b6672;
   font-size: 1.1rem;
   font-weight: 700;
+}
+
+/*
+ * ===== 0-2y (6)：横向きは必ず3列（左＝履歴と設定、中央＝話す、右＝みんな） =====
+ * 3列にするかどうかの判定は、ここ1か所だけ（src/lib/wide.ts の WIDE_QUERY と同じ式。JS はそれを読むだけ）。
+ * 幅では決めない。横向きで高さが 600px 以上なら、iPad の横もパソコンも必ず3列。低い横向き（iPhone の横）は「縦にして」の絵。
+ * 奥の画面・モーダル・シートは、属する列（iframe）の中で開くので、列からはみ出さない。
+ */
+@media (orientation: landscape) and (min-height: 600px) {
+  /* 真ん中の列の幅。左右の列（下の min-width）と、外の余白 24px×2・列の間 16px×2 を除いた残りを超えない */
+  :root {
+    --wide-center: min(48vw, calc((100dvh - 48px) * 0.8), calc(100vw - 80px - 2 * min(300px, 28vw)));
+  }
+
+  /* 左右の列は、なるべくいちばん小さなスマホ（320px）に近い幅を残す。足りない分は真ん中の話す画面が縮む */
+  .wide-panel {
+    display: block;
+    min-width: min(300px, 28vw);
+  }
+
+  .device-row > .retro-home {
+    flex: 0 1 auto;
+    width: var(--wide-center);
+    min-width: 0;
+  }
+
+  /* とどけるのシートや感想のシートは、真ん中の列の幅に収める（列の中のシートは、列の iframe に収まる） */
+  html:not([data-embed]) .bottom-sheet-panel {
+    width: min(100%, 40rem, var(--wide-center));
+  }
+
+  /* 輪を小さくして、会話の窓を高くする */
+  .talk.device .click-wheel {
+    width: min(46cqw, 24dvh);
+  }
+
+  /* 左右に列が出ているので、同じ入口になる下のスワイプの印と点は出さない */
+  .device-row .swipe-mark {
+    visibility: hidden;
+  }
+
+  /* 外側では、ホームの3列のほかは描かない。奥の画面は列の中へ移すので、1列だけの形は見せない */
+  html:not([data-embed]) body:not(:has(.device-row)),
+  html[data-wide-away] body {
+    visibility: hidden;
+  }
+}
+
+/* 0-2y：細い列（横向きの3列の左）でも、試す人の切り替えの選択が矢印だけに潰れない。入らなければ名前の下へ回す */
+.home .switcher label {
+  flex-wrap: wrap;
+}
+
+.home .switcher select {
+  flex: 1 1 10rem;
 }

@@ -1,6 +1,6 @@
-import { expect, type Locator, type Page, test } from "@playwright/test";
+import { expect, type Frame, type Locator, type Page, test } from "@playwright/test";
 import { PROMISE_SEEN } from "./promise-seen";
-import { switchPerson } from "./helpers";
+import { openScreen, switchPerson } from "./helpers";
 
 // 0-2b：履歴と設定の「これまで」。帯（第2段）と、押すと開くインフォグラフィック（0-2t で1画面に作り直し）
 
@@ -30,9 +30,9 @@ test("「これまで」の帯は、前に見たときから増えた数だけ�
   await expect(page.locator(".me-so-far[data-rolling]")).toHaveCount(0, { timeout: 5000 });
 });
 
-async function openStory(page: Page) {
+async function openStory(page: Page | Frame) {
   // トロフィーの知らせが出ていたら閉じる（押すとコレクションへ移るので Esc）
-  if (await page.locator(".trophy-toast").isVisible().catch(() => false)) await page.keyboard.press("Escape");
+  if (await page.locator(".trophy-toast").isVisible().catch(() => false)) await page.locator(".trophy-toast").press("Escape");
   await page.getByRole("region", { name: "これまで" }).getByRole("button").click();
   const story = page.getByRole("dialog", { name: "これまで" });
   await expect(story).toBeVisible();
@@ -180,8 +180,9 @@ for (const person of ["青木 ひより（2年）", "川村 陽菜（理科・1�
       await page.goto("/");
       await switchPerson(page, person);
       await page.setViewportSize({ width: viewport.width, height: viewport.height });
-      await page.goto("/me");
-      const story = await openStory(page);
+      // 0-2y (6)：横向きでは、履歴と設定は3列の左の列の中。インフォグラフィックも列の中に収まる
+      const screen = await openScreen(page, "/me");
+      const story = await openStory(screen);
       await expect(story.locator(".so-far-board")).toHaveAttribute("data-settled", "", { timeout: 5000 });
       await page.screenshot({ path: test.info().outputPath(`so-far-${viewport.width}x${viewport.height}.png`) });
       const fit = await story.evaluate((dialog) => {
