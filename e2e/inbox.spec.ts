@@ -141,6 +141,9 @@ test("届いた日報と日記は受信箱の中の段にまとまり、投稿�
   await page.goto("/daily");
   await page.getByRole("checkbox", { name: words }).click();
   await expect(page.getByRole("checkbox", { name: words })).toBeChecked();
+  // チェックは選ぶだけ。下の「届ける」を押して初めて届く（0-2u）
+  await page.getByRole("button", { name: /先生に届ける（1件）$/ }).click();
+  await expect(page).toHaveURL(/\/me$/);
 
   await page.goto("/");
   await switchPerson(page, TEACHER);

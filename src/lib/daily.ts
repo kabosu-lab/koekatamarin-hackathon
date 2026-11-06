@@ -406,6 +406,32 @@ export function handleCheck(db: DatabaseSync, personId: string, input: unknown):
   return { status: 200, body: { ok: true } };
 }
 
+/**
+ * 0-2u：選んだ項目を、まとめて届ける。チェックを付けるだけでは届かず、ここで初めて届く（checked = 届いた）。
+ * もう届いた項目は数えない。届けたあとに増えた項目は、次に押したとき、その分だけ届く。
+ */
+export function handleSend(db: DatabaseSync, personId: string, input: unknown, now: Date = new Date()): Outcome {
+  const { itemIds } = fields(input);
+  if (
+    !Array.isArray(itemIds) ||
+    itemIds.length === 0 ||
+    itemIds.length > MAX_ITEMS * 4 ||
+    !itemIds.every((id) => typeof id === "string")
+  ) {
+    return { status: 400, body: { error: "依頼が正しくありません" } };
+  }
+  const sent = inTransaction(db, () => {
+    const update = db.prepare(
+      `UPDATE report_items SET checked = 1
+       WHERE id = ? AND checked = 0 AND report_id IN (SELECT id FROM daily_reports WHERE person_id = ?)`,
+    );
+    let count = 0;
+    for (const id of new Set(itemIds as string[])) count += Number(update.run(id, personId).changes);
+    return count;
+  });
+  return { status: 200, body: { sent, report: getReport(db, personId, japanDate(now)) } };
+}
+
 /** 本人が項目を直す。直した項目は、あとで足し算で整え直しても上書きしない。 */
 export function handleEdit(db: DatabaseSync, personId: string, input: unknown): Outcome {
   const { itemId, text } = fields(input);
@@ -474,6 +500,7 @@ export async function handleDaily(
   if (action === "sync") return handleSync(claude, db, viewerId, input, new Date(), agent);
   if (action === "evening") return handleEvening(agent, db, viewerId);
   if (action === "check") return handleCheck(db, viewerId, input);
+  if (action === "send") return handleSend(db, viewerId, input);
   if (action === "edit") return handleEdit(db, viewerId, input);
   if (action === "respond") return handleRespond(claude, db, viewerId, input);
   return { status: 400, body: { error: "依頼が正しくありません" } };
