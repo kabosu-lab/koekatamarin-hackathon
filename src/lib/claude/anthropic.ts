@@ -1,5 +1,4 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { takeCall } from "./limit";
 import { sourceMark } from "./persona";
 import type { ChatMessage, ClaudeAttachment, ClaudeClient, ClaudeRequest } from "./types";
 
@@ -20,27 +19,46 @@ export type WebSearchOptions = {
   enabled: boolean;
   perHour: number;
   now: () => number;
-  /** 調べものの返事を作った時刻。サーバーの中だけに置き、誰が調べたかは持たない */
+  /** 調べた時刻（1回の検索ごとに1つ）。サーバーの中だけに置き、誰が調べたかは持たない */
   log: number[];
 };
 
 const webSearchLog: number[] = [];
 
-/** 環境から調べものの設定を決める。KOEKATA_WEB_SEARCH=off で止められる */
+/**
+ * 環境から調べものの設定を決める。KOEKATA_WEB_SEARCH=off で止められる。
+ * 上限は、試用版と審査員用（合言葉があるとき）だけ。KOEKATA_WEB_SEARCH_PER_HOUR で変えられる
+ */
 export function webSearchOptionsFromEnv(env: Record<string, string | undefined> = process.env): WebSearchOptions {
+  const trial = Boolean(env.KOEKATA_ACCESS_CODE?.trim());
   return {
     enabled: env.KOEKATA_WEB_SEARCH !== "off",
-    perHour: Number(env.KOEKATA_WEB_SEARCH_PER_HOUR) || DEFAULT_WEB_SEARCHES_PER_HOUR,
+    perHour: Number(env.KOEKATA_WEB_SEARCH_PER_HOUR) || (trial ? DEFAULT_WEB_SEARCHES_PER_HOUR : Infinity),
     now: Date.now,
     log: webSearchLog,
   };
 }
 
+const HOUR_MS = 60 * 60 * 1000;
+
+/** この1時間に調べた回数に、まだ空きがあるか。数えるのは実際に調べたあと（recordSearches） */
+function hasSearchRoom(options: WebSearchOptions): boolean {
+  const { log } = options;
+  const now = options.now();
+  while (log.length > 0 && log[0] <= now - HOUR_MS) log.shift();
+  return log.length < options.perHour;
+}
+
+/** 実際に調べた回数だけ記録する */
+function recordSearches(options: WebSearchOptions, count: number): void {
+  const now = options.now();
+  for (let i = 0; i < count; i++) options.log.push(now);
+}
+
 /** パートナーとの会話だけに、調べものの道具を渡す。JSON で返させる呼び出しや、上限を超えたときは渡さない */
 function webSearchTools(request: ClaudeRequest, options: WebSearchOptions): Anthropic.Beta.BetaToolUnion[] | undefined {
   if (!options.enabled || request.task !== "converse" || request.jsonSchema) return undefined;
-  // 上限は、道具を渡す回数で数える（実際に調べたかどうかは返事が来るまで分からないため、多めに数える）
-  if (!takeCall(options.now(), options.perHour, options.log)) return undefined;
+  if (!hasSearchRoom(options)) return undefined;
   // 新しい web_search_20260209 は中で絞り込みのコードを動かすため遅く、返事に出典（citations）が付かない。
   // 声の会話で待たせず、出典を必ず返したいので、基本の版を使う
   return [
@@ -118,6 +136,7 @@ export function createAnthropicClaude(api: MessagesApi, webSearch: WebSearchOpti
           fallbacks: "default",
         });
         content.push(...response.content);
+        recordSearches(webSearch, response.usage?.server_tool_use?.web_search_requests ?? 0);
         if (response.stop_reason === "refusal") return { text: "", refused: true };
         // 調べものが長くて途中で止まったら、続きをさせる（言葉は足さず、そのまま送り返す）
         if (response.stop_reason !== "pause_turn" || attempt >= MAX_RESUMES) break;

@@ -34,19 +34,27 @@ describe("調べもの（Web 検索）", () => {
     expect(create.mock.calls[1][0].tools).toBeUndefined();
   });
 
-  it("1時間の上限を超えたら、道具を渡さずにふつうに話す", async () => {
-    const { api, create } = stubApi(ok, ok, ok);
-    const claude = createAnthropicClaude(api, options({ perHour: 2 }));
+  it("上限は実際に調べた回数で数え、超えたら道具を渡さずにふつうに話す。1時間たてば戻る", async () => {
+    const searched = { ...ok, usage: { server_tool_use: { web_search_requests: 2 } } };
+    const { api, create } = stubApi(ok, ok, searched, ok, ok);
+    let now = 0;
+    const claude = createAnthropicClaude(api, options({ perHour: 2, now: () => now }));
+    await claude.complete(converseRequest); // 調べていない回は数えない
     await claude.complete(converseRequest);
+    await claude.complete(converseRequest); // ここで2回調べた
     await claude.complete(converseRequest);
+    now = 60 * 60 * 1000 + 1;
     await claude.complete(converseRequest);
-    expect(create.mock.calls[1][0].tools).toBeDefined();
-    expect(create.mock.calls[2][0].tools).toBeUndefined();
+    expect(create.mock.calls[2][0].tools).toBeDefined();
+    expect(create.mock.calls[3][0].tools).toBeUndefined();
+    expect(create.mock.calls[4][0].tools).toBeDefined();
   });
 
-  it("止める指定があれば渡さない", async () => {
+  it("上限は試用版・審査員用だけ。止める指定があれば渡さない", async () => {
+    expect(webSearchOptionsFromEnv({}).perHour).toBe(Infinity);
+    expect(webSearchOptionsFromEnv({ KOEKATA_ACCESS_CODE: "x" }).perHour).toBe(30);
+    expect(webSearchOptionsFromEnv({ KOEKATA_ACCESS_CODE: "x", KOEKATA_WEB_SEARCH_PER_HOUR: "5" }).perHour).toBe(5);
     expect(webSearchOptionsFromEnv({ KOEKATA_WEB_SEARCH: "off" }).enabled).toBe(false);
-    expect(webSearchOptionsFromEnv({ KOEKATA_WEB_SEARCH_PER_HOUR: "5" }).perHour).toBe(5);
     const { api, create } = stubApi(ok);
     await createAnthropicClaude(api, options({ enabled: false })).complete(converseRequest);
     expect(create.mock.calls[0][0].tools).toBeUndefined();
