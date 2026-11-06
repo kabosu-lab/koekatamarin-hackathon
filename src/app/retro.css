@@ -1550,3 +1550,24 @@ html[data-theme="retro"] .talk .lock-banner button {
   background: #1f6f78;
   color: #fff;
 }
+
+/* 0-1w：履歴と設定のタイルを大きく。どの幅でも3列で、窓とタイルがスクロールなしで収まる最大に。大きな画面は上限で止める */
+.me-tiles {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(12px, 2.6dvh, 28px) 10px;
+  padding: clamp(8px, 2dvh, 20px) 2px;
+}
+
+.me-tile-face {
+  width: min(25cqw, 15dvh, 128px);
+  border-radius: 24%;
+}
+
+.me-tile-face svg {
+  width: 46%;
+  height: 46%;
+}
+
+.me-tile-label {
+  font-size: clamp(0.85rem, 2.1dvh, 1.1rem);
+}
