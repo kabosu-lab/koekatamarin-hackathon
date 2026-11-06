@@ -37,6 +37,7 @@ import { ArtRefresher, AvatarFromPhoto, AvatarQuiz, MemoryList, ProfileEditor, T
 import { DeviceFrame } from "../DeviceFrame";
 import { type MeTileKey, resolveOpenKey } from "./tiles";
 import { Reflection } from "./Reflection";
+import { SoFar } from "./SoFar";
 import { PersonSwitcher } from "../PersonSwitcher";
 import { selectablePeople } from "@/lib/people";
 import { isTrialMode, onlyStudentsSelectable } from "@/lib/trial";
@@ -286,16 +287,18 @@ export default async function MePage({ searchParams }: { searchParams: Promise<{
                 </Link>
               ))}
             </nav>
-            <section className="card me-so-far" aria-label="これまで">
-              <p className="counts">
-                <span>届けた {counts.posts}</span>
-                <span>返した {counts.comments}</span>
-                <span>応援した {counts.cheers}</span>
-                <span>解決 {counts.goals}</span>
-                <span>つないだ {counts.assists}</span>
-                <span>ありがとう {counts.thanksReceived}</span>
-              </p>
-            </section>
+            <SoFar
+              key={viewer.id}
+              personId={viewer.id}
+              counts={{
+                posts: counts.posts,
+                comments: counts.comments,
+                cheers: counts.cheers,
+                goals: counts.goals,
+                assists: counts.assists,
+                thanks: counts.thanksReceived,
+              }}
+            />
           </>
         )}
         {rewards && <RibbonMoment key={`${viewer.id}-moment`} ribbons={listNewRibbons(db, viewer.id)} />}

@@ -1,0 +1,158 @@
+/*
+ * 0-2b 第2段：「これまで」の帯。色は文字色と --accent の2つ、絵なし。
+ * 動かすのは transform と opacity だけ（桁の帯は translateY、札は scale）。
+ */
+.me-so-far {
+  margin: 0;
+  padding: 0;
+}
+
+.device-body .me-so-far.card {
+  padding: 0;
+}
+
+/* ボタンの共通の見た目（色の地・影・太字）より強く当てる */
+html .me-so-far button.so-far-band {
+  position: relative;
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  min-height: 0;
+  margin: 0;
+  padding: clamp(8px, 1.4dvh, 14px) 34px clamp(8px, 1.4dvh, 14px) 14px;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  box-shadow: none;
+  color: var(--ink);
+  font: inherit;
+  font-weight: 400;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html .me-so-far button.so-far-band:active {
+  box-shadow: none;
+  transform: scale(0.985);
+}
+
+.so-far-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 14px;
+  font-size: clamp(0.85rem, 1.9dvh, 1rem);
+}
+
+.so-far-row[data-helped] {
+  color: var(--accent);
+}
+
+.so-far-item {
+  position: relative;
+  white-space: nowrap;
+}
+
+.so-far-item[data-zero] {
+  opacity: 0.45;
+}
+
+.so-far-num {
+  display: inline-block;
+  font-size: 1.4em;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+  vertical-align: -0.1em;
+}
+
+.so-far-more {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  color: var(--muted);
+  font-size: 1.4rem;
+  line-height: 1;
+  transform: translateY(-50%);
+}
+
+/* 桁の帯：0〜9 を縦に並べ、translateY で動かす（文字は ::before に置き、読み上げと textContent に入れない） */
+.so-far-digits {
+  display: inline-flex;
+}
+
+.so-far-digit {
+  display: inline-block;
+  overflow: hidden;
+  width: 1ch;
+  height: 1.1em;
+}
+
+.so-far-digit > span {
+  display: block;
+  transform: translateY(calc(var(--to) * -1.1em));
+}
+
+.so-far-digit > span::before {
+  content: "0\A 1\A 2\A 3\A 4\A 5\A 6\A 7\A 8\A 9";
+  display: block;
+  line-height: 1.1em;
+  white-space: pre;
+}
+
+.so-far-digit[data-roll] > span {
+  animation: so-far-roll 600ms cubic-bezier(0.2, 0.8, 0.2, 1) var(--delay, 0ms) both;
+}
+
+@keyframes so-far-roll {
+  from {
+    transform: translateY(calc(var(--from) * -1.1em));
+  }
+  to {
+    transform: translateY(calc(var(--to) * -1.1em));
+  }
+}
+
+/* 着いた瞬間の ▲+N：ばね 220ms で出て、1.5 秒で消える */
+.so-far-up {
+  display: inline-block;
+  margin-left: 3px;
+  color: var(--accent);
+  font-size: 0.75em;
+  font-weight: 700;
+  animation:
+    so-far-up-in 220ms cubic-bezier(0.34, 1.56, 0.64, 1) var(--landing, 0ms) both,
+    so-far-up-out 200ms ease-in calc(var(--landing, 0ms) + 1500ms) forwards;
+}
+
+@keyframes so-far-up-in {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes so-far-up-out {
+  to {
+    opacity: 0;
+  }
+}
+
+/* 動きを減らす設定：数字は最後の値をすぐ出し、札は動かさずに3秒で消す */
+.me-so-far[data-reduced] .so-far-up {
+  animation: so-far-up-out 1ms linear 3000ms forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .so-far-digit[data-roll] > span {
+    animation: none;
+  }
+
+  html .me-so-far button.so-far-band:active {
+    transform: none;
+  }
+}
