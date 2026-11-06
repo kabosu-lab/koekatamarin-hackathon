@@ -9,7 +9,7 @@ import { getDestination } from "@/lib/destination/current";
 import { listMemories } from "@/lib/memory";
 import { PIXEL_STAGE_LABELS, pixelStageFor } from "@/lib/pixel-companion";
 import { showsRewards } from "@/lib/rewards-view";
-import { BackLink } from "../BackLink";
+import { PageShell } from "../ui/PageShell";
 import { Avatar } from "../Avatar";
 
 export const metadata: Metadata = { title: "ようす｜こえかた" };
@@ -27,9 +27,7 @@ export default async function YousuPage() {
   const memories = listMemories(db, getDestination(db), viewer.id).length;
 
   return (
-    <main className="yousu">
-      <BackLink href="/">もどる</BackLink>
-      <h1>ようす</h1>
+    <PageShell back={{ href: "/me?open=talk", label: "話の履歴" }} title="ようす" className="yousu">
       {rewards && <Avatar image={avatar.image} alt={`${viewer.name}さんのパートナー`} size={200} />}
       <dl>
         <div>
@@ -54,6 +52,6 @@ export default async function YousuPage() {
           <Link href="/me">履歴と設定の画面で、パートナーを選べます。</Link>
         </p>
       )}
-    </main>
+    </PageShell>
   );
 }

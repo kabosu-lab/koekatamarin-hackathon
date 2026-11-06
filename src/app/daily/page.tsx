@@ -5,7 +5,7 @@ import { getReport, japanDate, recipientsOf } from "@/lib/daily";
 import { getDatabase } from "@/lib/db";
 import { DailyPanel } from "./DailyPanel";
 
-import { BackLink } from "@/app/BackLink";
+import { PageShell } from "@/app/ui/PageShell";
 export const metadata: Metadata = { title: "今日のまとめ｜こえかた" };
 export const dynamic = "force-dynamic";
 
@@ -15,11 +15,7 @@ export default async function DailyPage() {
   const noun = viewer.role === "student" ? "日記" : "日報";
 
   return (
-    <main className="home">
-      <BackLink href="/me">履歴と設定へもどる</BackLink>
-      <header>
-        <h1>今日の{noun}</h1>
-      </header>
+    <PageShell back={{ href: "/me", label: "履歴と設定" }} title={`今日の${noun}`}>
       <DailyPanel
         key={viewer.id}
         initialReport={getReport(db, viewer.id, japanDate(new Date()))}
@@ -27,6 +23,6 @@ export default async function DailyPage() {
         viewerName={viewer.name}
         noun={noun}
       />
-    </main>
+    </PageShell>
   );
 }

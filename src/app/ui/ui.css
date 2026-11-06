@@ -1,0 +1,172 @@
+/*
+ * 奥の画面の共通の部品（0-1q）。見出し・戻る印・カード・余白・角の丸みを1か所で決める。
+ * 動きは設計書の決まりだけ：時間は3段（手応え 60〜120ms、移動 160〜260ms）、イージングは標準とばねの2本、
+ * 動かすのは transform と opacity だけ。動きを減らす設定では、動きだけ消して意味は残す。
+ */
+:root {
+  --ui-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ui-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ui-move: 200ms;
+  --ui-touch: 60ms;
+  --ui-radius: 14px;
+  --ui-gap: 12px;
+  --ui-gutter: 16px;
+}
+
+/* ---- 外枠：画面ごとスクロールし、入れ物の中だけをスクロールさせない ---- */
+main.page-shell {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 40rem;
+  margin-inline: auto;
+  padding: max(12px, env(safe-area-inset-top)) var(--ui-gutter) max(32px, env(safe-area-inset-bottom));
+  gap: var(--ui-gap);
+  overflow: visible;
+}
+
+/* 下のタブのナビの場所（広い画面の左の列）は、もう空けない */
+@media (min-width: 768px) {
+  body:has(> :is(main.page-shell, .teams)) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  body:has(> :is(main.page-shell, .teams)) > * {
+    grid-column: 1;
+  }
+
+  main.page-shell {
+    max-width: 62rem;
+    padding-inline: 28px;
+  }
+}
+
+/* ---- 見出し：左上に「‹ 行き先」、その下に見出しとひとこと ---- */
+main.page-shell > .page-head {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+main.page-shell .page-head h1 {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 800;
+  line-height: 1.3;
+  letter-spacing: 0;
+}
+
+main.page-shell .page-lead {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+main.page-shell .back-link,
+.teams > .back-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin: 0;
+  padding: 0 4px 0 0;
+  color: var(--ink);
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: transform var(--ui-touch) var(--ui-ease);
+}
+
+main.page-shell .back-link:active,
+.teams > .back-link:active {
+  transform: scale(0.96);
+}
+
+/* ---- カード：角の丸みと余白を全画面で同じにする ---- */
+main.page-shell :is(.card, .today-card, .compose-card, section.card) {
+  margin-top: 0;
+  border-radius: var(--ui-radius);
+}
+
+main.page-shell .card {
+  padding: 14px 16px;
+}
+
+/* ---- 文を途中で切らない。長い文は縦に伸ばす ---- */
+main.page-shell * {
+  -webkit-line-clamp: none;
+}
+
+/* ---- 選ぶ箱は小さくしない：幅いっぱい、指で押せる高さ、読める文字 ---- */
+main.page-shell select {
+  width: 100%;
+  min-height: 48px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  font-size: 1rem;
+}
+
+/* ---- 入ってくる動き：見出しはその場に、中身は下から 8px（原則7） ---- */
+main.page-shell > :not(.page-head) {
+  animation: ui-rise var(--ui-move) var(--ui-ease) backwards;
+}
+
+main.page-shell > :nth-child(3) {
+  animation-delay: 40ms;
+}
+
+main.page-shell > :nth-child(n + 4) {
+  animation-delay: 80ms;
+}
+
+@keyframes ui-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+/* 押した瞬間に見た目が変わる（原則4）。ボタンとリンクの札は 60ms で少し縮む */
+main.page-shell :is(button, .hub-links a, .today-tabs a, .portfolio-terms a):active {
+  transform: scale(0.97);
+  transition: transform var(--ui-touch) var(--ui-ease);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  main.page-shell > :not(.page-head) {
+    animation: none;
+  }
+
+  main.page-shell :is(button, .hub-links a, .today-tabs a, .portfolio-terms a, .back-link):active,
+  .teams > .back-link:active {
+    transform: none;
+  }
+}
+
+/* 校内チャネル（Teams に似せた画面）でも、戻る印は左に余白をとって同じ位置に */
+.teams > .back-link {
+  margin-inline: var(--ui-gutter);
+}
+
+/* ようす：太い線をやめ、カードと同じ細い線と角の丸みにそろえる */
+main.page-shell.yousu > svg,
+main.page-shell.yousu > img {
+  align-self: center;
+}
+
+main.page-shell.yousu dl {
+  padding: 0 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--ui-radius);
+  background: var(--surface);
+}
+
+main.page-shell.yousu dl div {
+  border-bottom: 1px solid var(--line);
+}
+
+main.page-shell.yousu dl div:last-child {
+  border-bottom: 0;
+}

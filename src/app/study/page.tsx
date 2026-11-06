@@ -5,7 +5,7 @@ import { getDatabase } from "@/lib/db";
 import { ensureDemoCompanions, findOwnSession, getPresence, isLateNight } from "@/lib/study";
 import { StudyTimer } from "./StudyTimer";
 
-import { BackLink } from "@/app/BackLink";
+import { PageShell } from "@/app/ui/PageShell";
 export const metadata: Metadata = { title: "一緒に勉強する｜こえかた" };
 export const dynamic = "force-dynamic";
 
@@ -16,18 +16,13 @@ export default async function StudyPage() {
   ensureDemoCompanions(db, now);
 
   return (
-    <main className="home">
-      <BackLink href="/minna">みんなへもどる</BackLink>
-      <header>
-        <h1>一緒に勉強する</h1>
-        <p>話さなくて大丈夫。誰かが頑張っている気配だけ。</p>
-      </header>
+    <PageShell back={{ href: "/minna", label: "みんな" }} title="一緒に勉強する" lead="話さなくて大丈夫。誰かが頑張っている気配だけ。">
       <StudyTimer
         key={viewer.id}
         initialSession={findOwnSession(db, viewer.id, now)}
         initialPresence={getPresence(db, now)}
         initialLateNight={isLateNight(now)}
       />
-    </main>
+    </PageShell>
   );
 }

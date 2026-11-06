@@ -11,6 +11,10 @@ const POSTS = 3;
 const KNOWLEDGE = 3;
 const GATHERING = 8;
 
+/**
+ * 0-1q の棚卸し：今はどの画面からも使っていない（広い画面は WidePanels が「みんな」「履歴と設定」を並べる）。
+ * コードは消さずに残す。docs/screens.md の「使われていない」を見る。
+ */
 /** 広い画面だけに出す（CSS）。校内のチャネルと知恵、パートナーと桜。どれも校内に公開されたものだけ。 */
 export function HomeAside({ db, viewerId, rewards }: { db: DatabaseSync; viewerId: string; rewards: boolean }) {
   const now = new Date();

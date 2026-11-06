@@ -6,7 +6,7 @@ import { getDestination } from "@/lib/destination/current";
 import { loadMaterial } from "@/lib/knowledge";
 import { KnowledgeNew } from "./KnowledgeNew";
 
-import { BackLink } from "@/app/BackLink";
+import { PageShell } from "@/app/ui/PageShell";
 export const metadata: Metadata = { title: "知恵に残す｜こえかた" };
 export const dynamic = "force-dynamic";
 
@@ -17,9 +17,7 @@ export default async function NewKnowledgePage({ searchParams }: { searchParams:
   const material = typeof post === "string" ? loadMaterial(db, getDestination(db), viewer.id, post) : null;
 
   return (
-    <main className="home chie">
-      <BackLink href="/chie">校内の知恵へもどる</BackLink>
-      <h1>知恵に残す</h1>
+    <PageShell back={{ href: "/chie", label: "校内の知恵" }} title="知恵に残す" className="chie">
       {material ? (
         <>
           <section className="card" aria-label="もとのやり取り">
@@ -37,6 +35,6 @@ export default async function NewKnowledgePage({ searchParams }: { searchParams:
       ) : (
         <p>このやり取りは知恵に残せません。校内に公開され、ほかの人の返事があるやり取りに関わった人が残せます。</p>
       )}
-    </main>
+    </PageShell>
   );
 }

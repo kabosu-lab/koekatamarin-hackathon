@@ -12,7 +12,7 @@ import { agreeKoho, declineKoho } from "../koho/actions";
 import { KnowledgeTasks } from "../chie/KnowledgeTasks";
 import { InboxCard } from "./InboxCard";
 
-import { BackLink } from "@/app/BackLink";
+import { PageShell } from "@/app/ui/PageShell";
 export const metadata: Metadata = { title: "受信箱｜こえかた" };
 export const dynamic = "force-dynamic";
 
@@ -25,12 +25,7 @@ export default async function InboxPage() {
   const { goals, assists } = countContributions(db, viewer.id);
 
   return (
-    <main className="home">
-      <BackLink href="/minna">みんなへもどる</BackLink>
-      <header>
-        <h1>受信箱</h1>
-        <p>話すだけで返せます。詳しくないことは、詳しい人につなげます。</p>
-      </header>
+    <PageShell back={{ href: "/minna", label: "みんな" }} title="受信箱" lead="話すだけで返せます。詳しくないことは、詳しい人につなげます。">
       <p className="inbox-counts">
         解決 {goals}・つないだ {assists}
       </p>
@@ -90,6 +85,6 @@ export default async function InboxPage() {
           ))
         )}
       </div>
-    </main>
+    </PageShell>
   );
 }

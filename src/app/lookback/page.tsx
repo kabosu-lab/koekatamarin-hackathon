@@ -6,7 +6,7 @@ import { getDestination } from "@/lib/destination/current";
 import { LOOKBACK_PERIODS } from "@/lib/lookback";
 import { LookbackPanel } from "./LookbackPanel";
 
-import { BackLink } from "@/app/BackLink";
+import { PageShell } from "@/app/ui/PageShell";
 export const metadata: Metadata = { title: "ふりかえり｜こえかた" };
 export const dynamic = "force-dynamic";
 
@@ -21,12 +21,8 @@ export default async function LookbackPage() {
   }));
 
   return (
-    <main className="home">
-      <BackLink href="/me">履歴と設定へもどる</BackLink>
-      <header>
-        <h1>ふりかえり</h1>
-      </header>
+    <PageShell back={{ href: "/me", label: "履歴と設定" }} title="ふりかえり">
       <LookbackPanel key={viewer.id} periods={periods} channels={channels} />
-    </main>
+    </PageShell>
   );
 }

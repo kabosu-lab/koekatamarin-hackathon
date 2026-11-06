@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { BackLink } from "@/app/BackLink";
+import { PageShell } from "@/app/ui/PageShell";
 import { getViewer } from "@/lib/current-person";
 import { getDatabase } from "@/lib/db";
 import { isKohoOfficer, listKohoAsked, listKohoCandidates } from "@/lib/koho";
@@ -14,22 +14,17 @@ export default async function KohoPage() {
   const db = getDatabase();
   if (!isKohoOfficer(viewer.id)) {
     return (
-      <main className="home">
-        <BackLink href="/minna">みんなへもどる</BackLink>
-        <h1>広報の候補</h1>
-        <p>この画面は広報の担当の先生のものです。</p>
-      </main>
+      <PageShell back={{ href: "/minna", label: "みんな" }} title="広報の候補" lead="この画面は広報の担当の先生のものです。" />
     );
   }
   const candidates = listKohoCandidates(db, viewer.id);
   const asked = listKohoAsked(db, viewer.id);
   return (
-    <main className="home">
-      <BackLink href="/minna">みんなへもどる</BackLink>
-      <header>
-        <h1>広報の候補</h1>
-        <p>校内で反応があった投稿です。外へ出すには、本人の確認が要ります。校外へ出すのは、学校が確かめたあと、学校の広報用アカウントからだけです。</p>
-      </header>
+    <PageShell
+      back={{ href: "/minna", label: "みんな" }}
+      title="広報の候補"
+      lead="校内で反応があった投稿です。外へ出すには、本人の確認が要ります。校外へ出すのは、学校が確かめたあと、学校の広報用アカウントからだけです。"
+    >
       <section className="card" aria-label="本人に確認したもの">
         <h2>本人に確認したもの</h2>
         {asked.length === 0 && <p className="muted">まだありません。</p>}
@@ -54,6 +49,6 @@ export default async function KohoPage() {
           </article>
         ))}
       </section>
-    </main>
+    </PageShell>
   );
 }

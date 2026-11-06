@@ -8,11 +8,15 @@ async function noOverflow(page: import("@playwright/test").Page, path: string) {
   expect(overflow, path).toBe(0);
 }
 
-test("スマホでは、広い画面の欄を出さず、タブは下にある", async ({ page }) => {
+test("スマホでは、広い画面の欄を出さず、下のタブのかわりにページの点で移る", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByRole("region", { name: "校内チャネルのようす" })).toHaveCount(0);
-  const nav = await page.getByRole("navigation", { name: "画面の切り替え" }).boundingBox();
-  expect(nav?.width).toBeGreaterThan(300);
+  // 0-1q：下の3つのタブは出さない。入口は左右のスワイプとページの点
+  await expect(page.locator(".bottom-nav")).toHaveCount(0);
+  const nav = page.getByRole("navigation", { name: "画面の切り替え" });
+  await expect(nav).toHaveCount(1);
+  await expect(nav.getByRole("link", { name: /みんな/ })).toBeVisible();
+  await expect(nav.getByRole("link", { name: /履歴と設定/ })).toBeVisible();
 });
 
 test("広い画面では、話す画面の左右に履歴と設定、みんなを並べ、欄の中のリンクは欄の中で動く", async ({ page }) => {

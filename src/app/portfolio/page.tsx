@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import Link from "next/link";
-import { BackLink } from "@/app/BackLink";
+import { PageShell } from "@/app/ui/PageShell";
 import { readAppearance } from "@/lib/appearance";
 import { getViewer } from "@/lib/current-person";
 import { getDatabase } from "@/lib/db";
@@ -33,11 +33,7 @@ export default async function PortfolioPage({ searchParams }: { searchParams: Pr
     .map(({ id, name }) => ({ id, name }));
 
   return (
-    <main className="home">
-      <BackLink href="/me">履歴と設定へもどる</BackLink>
-      <header>
-        <h1>ポートフォリオ</h1>
-      </header>
+    <PageShell back={{ href: "/me", label: "履歴と設定" }} title="ポートフォリオ">
       <p className="portfolio-note">
         {isTrialMode()
           ? "試用中なので、同じ人物を選んだ人にも見えます。実名や個人情報は入れないでください。"
@@ -59,6 +55,6 @@ export default async function PortfolioPage({ searchParams }: { searchParams: Pr
         noun={viewer.role === "student" ? "日記" : "日報"}
         rewards={rewards}
       />
-    </main>
+    </PageShell>
   );
 }
