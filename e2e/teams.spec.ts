@@ -1,9 +1,11 @@
 import { expect, type Page, test } from "@playwright/test";
+import { switchPerson } from "./helpers";
 
+// 人物の切り替えは「履歴と設定」の「設定」のタイルにだけある。切り替えたら元の画面へ戻る
 async function switchTo(page: Page, name: string) {
-  await page.getByLabel("使う人").selectOption({ label: name });
-  await page.getByRole("button", { name: "切り替え" }).click();
-  await expect(page.getByLabel("使う人")).toHaveValue(/.+/);
+  const back = page.url();
+  await switchPerson(page, name);
+  await page.goto(back);
 }
 
 test("先生が投稿すると、生徒の画面に届き、いいねと返信で応えられる", async ({ page }) => {
@@ -49,15 +51,7 @@ test("スマホ幅で横にはみ出さない", async ({ page }) => {
   expect(overflow).toBe(0);
 });
 
-test("スマホ幅でも、使う人の名前が読めて、選んだチャネルが画面に入っている", async ({ page }) => {
+test("スマホ幅でも、選んだチャネルが画面に入っている", async ({ page }) => {
   await page.goto("/teams?channel=staffroom");
-
-  const select = page.getByLabel("使う人");
-  const colors = await select.evaluate((element) => {
-    const style = getComputedStyle(element);
-    return { text: style.color, background: style.backgroundColor };
-  });
-  expect(colors.text).not.toBe(colors.background);
-
   await expect(page.getByRole("link", { name: "職員室" })).toBeInViewport({ ratio: 1 });
 });

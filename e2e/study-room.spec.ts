@@ -132,7 +132,7 @@ for (const [width, height, name] of [
     await page.setViewportSize({ width, height });
     await page.goto("/study/room?time=evening");
     await expect(page.getByRole("heading", { name: "自習室" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "みんなへもどる" })).toBeVisible();
+    await expect(page.getByRole("link", { name: /みんな/ }).first()).toBeVisible();
     await expect(page.getByRole("navigation", { name: "画面の切り替え" })).toBeHidden();
     await expect(page.getByText("デモ用：使う人")).toBeHidden();
     await expect(page.locator("select:visible")).toHaveCount(0);

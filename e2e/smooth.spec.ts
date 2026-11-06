@@ -40,9 +40,9 @@ test("話す画面：スクロールする要素にも 3D の窓にも filter・
 
 test("みんな：スクロールに filter・mask が無く、本文は行数で切らない", async ({ page }) => {
   await page.goto("/minna");
-  await expect(page.locator(".minna-feed-body").first()).toBeVisible();
+  await expect(page.locator(".minna-post-body").first()).toBeVisible();
   expect(await heavyScrollers(page)).toEqual([]);
-  const clamps = await page.locator(".minna-feed-body, .minna-feed-reply").evaluateAll((elements) =>
+  const clamps = await page.locator(".minna-post-body, .minna-post-replies").evaluateAll((elements) =>
     elements.map((element) => getComputedStyle(element).getPropertyValue("-webkit-line-clamp")),
   );
   expect(clamps.filter((value) => value !== "none")).toEqual([]);

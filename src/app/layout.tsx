@@ -4,12 +4,8 @@ import type { ReactNode } from "react";
 import { readAppearance } from "@/lib/appearance";
 import { showsRewards } from "@/lib/rewards-view";
 import { getViewer } from "@/lib/current-person";
-import { selectablePeople } from "@/lib/people";
-import { isTrialMode, keepsSpokenWords, onlyStudentsSelectable, trialNotice } from "@/lib/trial";
-import { BottomNav } from "./BottomNav";
+import { isTrialMode, keepsSpokenWords, trialNotice } from "@/lib/trial";
 import { TrialNotice } from "./TrialNotice";
-import { PersonSwitcher } from "./PersonSwitcher";
-import { GlobalSwitcher } from "./GlobalSwitcher";
 import { SwipeNav } from "./SwipeNav";
 import { EmbedMark } from "./WidePanels";
 import { TrialProvider } from "./TrialContext";
@@ -33,7 +29,7 @@ export const viewport: Viewport = {
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
   const store = await cookies();
-  const { viewer, people } = await getViewer();
+  const { viewer } = await getViewer();
   const appearance = readAppearance((name) => store.get(name)?.value);
   const { theme, size, sound } = appearance;
   const trial = isTrialMode();
@@ -44,10 +40,6 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         {trial && <TrialNotice text={trialNotice()} />}
         <TrialProvider trial={trial} keepsWords={keepsSpokenWords()}>
           {children}
-          <GlobalSwitcher>
-            <PersonSwitcher viewerId={viewer.id} people={selectablePeople(people, onlyStudentsSelectable())} />
-          </GlobalSwitcher>
-          <BottomNav />
           <SwipeNav />
           <EmbedMark />
         </TrialProvider>

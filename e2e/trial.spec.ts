@@ -178,7 +178,8 @@ test("サーバーの処理を直接呼んでも、先生には切り替えら�
   const body = (original.postDataBuffer() ?? Buffer.alloc(0)).toString("latin1");
   expect(body).toContain("kinoshita");
   const switchTo = (id: string) =>
-    page.request.post("/", {
+    // 切り替えは「履歴と設定」の「設定」のタイルにだけあるので、その画面へ同じ呼び方を送る
+    page.request.post("/me?open=settings", {
       headers: { ...headers },
       data: Buffer.from(body.replace("kinoshita", id), "latin1"),
       maxRedirects: 0,

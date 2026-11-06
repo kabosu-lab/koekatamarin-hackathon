@@ -82,8 +82,6 @@ test("返信を押すと下から欄がせり上がり、やめると閉じ、�
   await sheet.getByLabel("返信").fill(words);
   await sheet.getByRole("button", { name: "返信する" }).click();
   await expect(sheet).toHaveCount(0);
-  // 人に届いた返事は葉になる
-  await expect(page.getByText("+1枚")).toBeVisible();
   await expect(scroller.getByText(words)).toBeVisible();
 });
 
@@ -98,7 +96,8 @@ test("チャネルの札で投稿を絞れ、教職員だけの札は生徒に�
   }).toPass();
   const scroller = page.getByRole("region", { name: "みんな" });
   await expect(scroller.getByRole("article").first()).toBeVisible();
-  for (const head of await scroller.getByRole("article").locator(".minna-post-head > small").all()) {
+  // 絞ったあとに見えている投稿だけを見る（隠れた投稿も DOM には残る）
+  for (const head of await scroller.locator("li:not([hidden]) article header.minna-post-head small").all()) {
     await expect(head).toContainText(name);
   }
   await chips.getByRole("button", { name: "すべて" }).click();

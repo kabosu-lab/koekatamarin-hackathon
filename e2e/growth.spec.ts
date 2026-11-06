@@ -1,14 +1,12 @@
 import { expect, test } from "@playwright/test";
 import { switchPerson } from "./helpers";
 
-test("下の階層の画面でも、今どこにいるかが分かる", async ({ page }) => {
-  const current = page.getByRole("navigation", { name: "画面の切り替え" }).locator('[aria-current="page"]');
-  await page.goto("/today");
-  await expect(current).toHaveText("みんな");
-  await page.goto("/daily");
-  await expect(current).toHaveText("履歴と設定");
-  await page.goto("/inbox");
-  await expect(current).toHaveText("みんな");
+test("下の階層の画面でも、左上の戻る印で、どこから来たかが分かる（下のタブはもうない）", async ({ page }) => {
+  for (const path of ["/today", "/daily", "/inbox"]) {
+    await page.goto(path);
+    await expect(page.locator(".bottom-nav"), path).toHaveCount(0);
+    await expect(page.getByRole("link", { name: /^‹ / }).first(), path).toBeVisible();
+  }
 });
 
 test("最初の問いかけに答えると卵の系統が決まり、絵が読み込まれる", async ({ browser }) => {
