@@ -436,6 +436,10 @@ html[data-theme="retro"] main .minna-band,
   pointer-events: auto;
 }
 
+.minna-band[data-event] {
+  padding-right: 60px;
+}
+
 .minna-band::after {
   margin-left: auto;
   color: #b02f5c;
@@ -443,7 +447,11 @@ html[data-theme="retro"] main .minna-band,
   content: "桜を開く ⌃";
 }
 
+/* チャネルの札は、縮んだ帯のすぐ下に残る */
 .minna-chip-row {
+  position: sticky;
+  top: 48px;
+  z-index: 3;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -491,54 +499,81 @@ html[data-theme="retro"] main .minna-chips .minna-chip:active {
   transition-duration: 60ms;
 }
 
-.minna-entrances {
-  display: flex;
+/* 0-2f(5)：必要なときだけの入口（相談室への知らせ・広報・卵）は、札の列の端に小さく */
+html[data-theme="retro"] main .minna-extra,
+main .minna-extra,
+.minna-extra {
+  display: inline-grid;
   flex: none;
-  gap: 4px;
-}
-
-.minna-entrances a {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  min-height: 36px;
-  padding: 0 8px;
-  border-radius: 999px;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid #dfe3e8;
+  border-radius: 50%;
   background: #fff;
   color: #1d1c19;
-  font-size: 0.78rem;
+  text-decoration: none;
+}
+
+/* 0-2f(1)：入口は、いちばん下に固定したアイコンの帯の1か所だけ（Teams の下の帯のように） */
+.minna-dock {
+  display: grid;
+  flex: none;
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
+  gap: 2px;
+  padding: 2px 4px;
+  border-radius: 14px;
+  background: var(--window, #f4fafd);
+  border: 1px solid #dfe3e8;
+}
+
+html[data-theme="retro"] main .minna-dock-item,
+main .minna-dock-item,
+.minna-dock-item {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 1px;
+  min-width: 0;
+  min-height: 52px;
+  margin: 0;
+  padding: 4px 2px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: #1d1c19;
+  font: inherit;
+  font-size: 0.68rem;
+  line-height: 1.2;
   text-decoration: none;
   white-space: nowrap;
+  transition: transform 120ms var(--minna-spring);
 }
 
-/* 狭い幅では入口を絵だけにして、札に場所を譲る（読み上げの名前は残す） */
-@container (max-width: 560px) {
-  .minna-entrance-text {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
-  }
-
-  .minna-entrances a {
-    min-width: 40px;
-    justify-content: center;
-    font-size: 1rem;
-  }
+.minna-dock-item > span:not(.minna-dock-badge) {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.minna-entrance-badge {
-  min-width: 1.2rem;
-  margin-left: 2px;
+.minna-dock-item:active {
+  transform: scale(0.94);
+  transition-duration: 60ms;
+}
+
+.minna-dock-badge {
+  position: absolute;
+  top: 2px;
+  left: calc(50% + 6px);
+  min-width: 1.1rem;
   padding: 0 4px;
   border-radius: 999px;
   background: #ff5a3c;
   color: #fff;
-  font-size: 0.7rem;
-  line-height: 1.2rem;
+  font-size: 0.66rem;
+  line-height: 1.1rem;
   text-align: center;
 }
 
@@ -685,39 +720,6 @@ main a.minna-talk-link {
   font-weight: 700;
   text-align: right;
   text-decoration: none;
-}
-
-.minna-more {
-  display: grid;
-  gap: 6px;
-  margin-top: 12px;
-}
-
-main .minna-more a {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 44px;
-  padding: 0 12px;
-  border: 1px solid #dfe3e8;
-  border-radius: 12px;
-  background: #fff;
-  color: #1d1c19;
-  text-decoration: none;
-  overflow-wrap: anywhere;
-}
-
-.minna-event {
-  display: grid;
-  margin-top: 12px;
-  padding: 10px 12px;
-  border-radius: 14px;
-  background: #fff4cf;
-  color: #1d1c19;
-}
-
-.minna-event small {
-  color: #55526a;
 }
 
 /* ---- その場の返信（0-1k(5)）：下からせり上がる欄 ---- */
@@ -889,6 +891,10 @@ main .minna-more a {
     margin-top: 0;
   }
 
+  .minna-chip-row {
+    top: 0;
+  }
+
   html[data-theme="retro"] main .minna-scroll .minna-band,
   .minna-scroll .minna-band {
     display: none;
@@ -981,6 +987,402 @@ main .minna-more a {
   .minna-post-list[data-fading="true"],
   .minna-sakura-meter > span,
   .minna-chip {
+    transition: none;
+  }
+}
+
+/* ---- 0-1y(4)：イベントのメガホン。桜の木のそばに小さく、縮んだら帯の右端に ---- */
+
+html[data-theme="retro"] main .minna-megaphone,
+.minna-megaphone {
+  position: absolute;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 88%);
+  color: #b02f5c;
+  transform-origin: 30% 70%;
+  animation: minna-megaphone-wiggle 700ms var(--minna-ease) 600ms 2 both;
+}
+
+.minna-megaphone svg {
+  width: 24px;
+  height: 24px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* 木の右の肩あたり（樹冠は左右 26〜74%、上 6〜50%） */
+.minna-megaphone[data-place="scene"] {
+  top: 34%;
+  left: calc(76% + 2px);
+}
+
+/* 帯の右端。帯と同じく、縮んだときだけ押せる */
+.minna-megaphone[data-place="band"] {
+  top: 2px;
+  right: 8px;
+  background: transparent;
+  opacity: clamp(0, calc((var(--p) - 0.5) * 2), 1);
+  pointer-events: none;
+}
+
+.minna-scroll[data-shrunk="true"] .minna-megaphone[data-place="band"] {
+  pointer-events: auto;
+}
+
+/* お知らせありの小さな点 */
+.minna-megaphone-dot {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ff5a3c;
+}
+
+@keyframes minna-megaphone-wiggle {
+  0%,
+  100% {
+    transform: rotate(0);
+  }
+  25% {
+    transform: rotate(-12deg);
+  }
+  60% {
+    transform: rotate(9deg);
+  }
+}
+
+.minna-event-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 35;
+}
+
+.minna-event-scrim {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  opacity: 0.15;
+  animation: minna-event-scrim 160ms var(--minna-ease) both;
+}
+
+.minna-event-card {
+  position: absolute;
+  top: max(64px, env(safe-area-inset-top));
+  right: 16px;
+  left: 16px;
+  display: grid;
+  gap: 10px;
+  max-width: 22rem;
+  margin: 0 auto;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: #fff;
+  color: #1d1c19;
+  box-shadow: 0 8px 24px rgb(20 20 30 / 18%);
+  outline: none;
+  transform-origin: 70% 0;
+  animation: minna-pop-in 220ms var(--minna-spring) both;
+}
+
+.minna-event-item {
+  display: grid;
+  gap: 2px;
+}
+
+.minna-event-item small {
+  color: #55526a;
+}
+
+.minna-event-item p {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.minna-event-item .minna-event-ribbon {
+  color: #8a5a00;
+}
+
+@keyframes minna-pop-in {
+  from {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes minna-event-scrim {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 0.15;
+  }
+}
+
+/* ---- 0-1x：今日の3人のモーダル。後ろは暗く沈み、カードは指に付いてめくれ、閉じるときは下へ ---- */
+
+.minna-today-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+}
+
+.minna-today-scrim {
+  position: absolute;
+  inset: 0;
+  background: rgb(10 16 24);
+  opacity: 0.55;
+  animation: minna-today-scrim 160ms var(--minna-ease) both;
+}
+
+.minna-today-sheet {
+  --dy: 0px;
+  position: relative;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  min-width: 0;
+  width: min(100%, 26rem);
+  max-height: min(100%, 40rem);
+  padding: 8px 14px 12px;
+  border-radius: 20px;
+  background: #fff;
+  color: #1d1c19;
+  box-shadow: 0 12px 40px rgb(10 16 24 / 30%);
+  outline: none;
+  touch-action: none;
+  user-select: none;
+  transform: translateY(var(--dy));
+  transition: transform 200ms var(--minna-spring);
+  animation: minna-today-in 220ms var(--minna-ease) 60ms backwards;
+}
+
+.minna-today-sheet[data-dragging] {
+  transition: none;
+}
+
+.minna-today-layer[data-state="closing"] .minna-today-sheet {
+  transform: translateY(calc(var(--dy) + 100vh));
+  transition: transform 160ms ease-in;
+}
+
+.minna-today-layer[data-state="closing"] .minna-today-scrim {
+  opacity: 0;
+  transition: opacity 160ms ease-in;
+  animation: none;
+}
+
+.minna-today-handle {
+  justify-self: center;
+  width: 40px;
+  height: 4px;
+  border-radius: 999px;
+  background: #d5d8dd;
+}
+
+.minna-today-window {
+  min-width: 0;
+  min-height: 0;
+  overflow: clip;
+}
+
+.minna-today-track {
+  --dx: 0px;
+  display: flex;
+  height: 100%;
+  transform: translateX(calc(var(--i) * -100% + var(--dx)));
+  transition: transform 220ms var(--minna-ease);
+}
+
+.minna-today-sheet[data-dragging] .minna-today-track {
+  transition: none;
+}
+
+.minna-today-card {
+  display: grid;
+  flex: 0 0 100%;
+  align-content: start;
+  gap: 8px;
+  min-width: 0;
+  padding: 2px;
+}
+
+.minna-today-kind {
+  margin: 0;
+  color: #b02f5c;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.minna-today-who {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.minna-today-who .avatar-image {
+  flex: none;
+  border-radius: 50%;
+}
+
+.minna-today-who span {
+  display: grid;
+}
+
+.minna-today-who small {
+  color: #55526a;
+  font-size: 0.78rem;
+}
+
+.minna-today-reason {
+  margin: 0;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #fff3d6;
+  font-size: 0.82rem;
+  justify-self: start;
+}
+
+/* 長い本文だけは、カードの中で縦に読める（横になでるのはそのまま効く） */
+.minna-today-body {
+  max-height: 40dvh;
+  margin: 0;
+  overflow-y: auto;
+  font-size: 1rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  touch-action: pan-y;
+  user-select: text;
+}
+
+.minna-today-end {
+  place-content: center;
+  min-height: 12rem;
+  text-align: center;
+}
+
+.minna-today-end h2 {
+  margin: 0;
+  font-size: 1.3rem;
+}
+
+.minna-today-end p {
+  margin: 0;
+}
+
+.minna-today-foot {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+html[data-theme="retro"] main .minna-today-step,
+.minna-today-step,
+.minna-today-done {
+  min-width: 44px;
+  min-height: 44px;
+  margin: 0;
+  padding: 0 12px;
+  border: 1px solid #c9cfd6;
+  border-radius: 999px;
+  background: #fff;
+  color: #1d1c19;
+  font: inherit;
+  transition: transform 120ms var(--minna-spring);
+}
+
+.minna-today-step:disabled {
+  opacity: 0.35;
+}
+
+.minna-today-step:active,
+.minna-today-done:active {
+  transform: scale(0.94);
+  transition-duration: 60ms;
+}
+
+.minna-today-done {
+  margin-left: auto;
+  border-color: #1d1c19;
+  background: #1d1c19;
+  color: #fff;
+  font-weight: 700;
+}
+
+.minna-today-dots {
+  display: flex;
+  gap: 5px;
+}
+
+.minna-today-dots i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #d5d8dd;
+  transition: transform 120ms var(--minna-spring);
+}
+
+.minna-today-dots i[data-current] {
+  background: #1d1c19;
+  transform: scale(1.3);
+}
+
+@keyframes minna-today-in {
+  from {
+    transform: translateY(12px) scale(0.96);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes minna-today-scrim {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 0.55;
+  }
+}
+
+/* 動きを減らす設定：揺れ・出入りの動き・めくりの動きを消し、意味（点、暗幕、何枚目か）は残す */
+@media (prefers-reduced-motion: reduce) {
+  .minna-megaphone,
+  .minna-event-card,
+  .minna-event-scrim,
+  .minna-today-sheet,
+  .minna-today-scrim {
+    animation: none;
+  }
+
+  .minna-today-sheet,
+  .minna-today-track,
+  .minna-today-dots i,
+  .minna-dock-item {
     transition: none;
   }
 }

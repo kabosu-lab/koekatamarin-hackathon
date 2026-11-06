@@ -1,5 +1,10 @@
 import { expect, test } from "@playwright/test";
 
+// 今日の3人のモーダル（その日はじめての「みんな」で出る）は、出したことにしておく。モーダルは e2e/minna.spec.ts で確かめる
+test.beforeEach(async ({ context }) => {
+  await context.addCookies([{ name: "koekata_today_seen", value: "1", domain: "127.0.0.1", path: "/" }]);
+});
+
 const PAGES = ["/", "/minna", "/me", "/today", "/chie", "/inbox", "/teams", "/study", "/study/room", "/daily", "/lookback"];
 
 async function noOverflow(page: import("@playwright/test").Page, path: string) {
@@ -19,7 +24,9 @@ test("スマホでは、広い画面の欄を出さず、下のタブのかわ�
   await expect(nav.getByRole("link", { name: /履歴と設定/ })).toBeVisible();
 });
 
-test("広い画面では、話す画面の左右に履歴と設定、みんなを並べ、欄の中のリンクは欄の中で動く", async ({ page }) => {
+test("広い画面では、話す画面の左右に履歴と設定、みんなを並べ、欄の中のリンクは欄の中で動く", async ({ page, context }) => {
+  // 欄の中でモーダルが自動で出ないことも確かめるので、出した印は消しておく
+  await context.clearCookies({ name: "koekata_today_seen" });
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto("/");
   const minna = page.frameLocator('iframe[title="みんな"]');
@@ -30,6 +37,13 @@ test("広い画面では、話す画面の左右に履歴と設定、みんな�
   expect(mic?.x).toBeGreaterThan(400);
   await expect(page.locator(".retro-home")).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0);
+  // 欄の中では今日の3人のモーダルは自動で出ないが、下の帯から開ける
+  const today = minna.getByRole("dialog", { name: "今日の3人" });
+  await expect(today).toHaveCount(0);
+  await minna.getByRole("navigation", { name: "みんなの入口" }).getByRole("button", { name: "今日の3人" }).click();
+  await expect(today).toBeVisible();
+  await today.getByRole("button", { name: "みんなを見る" }).click();
+  await expect(today).toHaveCount(0);
   await minna.getByRole("link", { name: /受信箱/ }).first().click();
   await expect(minna.getByRole("heading", { name: "受信箱" })).toBeVisible();
   await expect(page).toHaveURL(/\/$/);
@@ -61,7 +75,8 @@ test("みんなと、履歴と設定は同じ本体で、ホイールを置か�
     await expect(page.getByRole("navigation", { name: "画面の切り替え" }).getByRole("link", { name: /話す/ })).toBeVisible();
   }
   await page.goto("/minna");
-  await expect(page.getByRole("navigation", { name: "みんなの入口" }).getByRole("link", { name: "今日の3人" })).toBeVisible();
+  // 0-1x：今日の3人はモーダルで開く
+  await expect(page.getByRole("navigation", { name: "みんなの入口" }).getByRole("button", { name: "今日の3人" })).toBeVisible();
   await expect(page.getByRole("navigation", { name: "みんなの入口" }).getByRole("link", { name: /受信箱/ })).toBeVisible();
 });
 
@@ -89,13 +104,15 @@ for (const viewport of [
   });
 }
 
-test("みんなの一番上に校内の桜があり、すぐ下に受信箱、自習室の入口もある", async ({ page }) => {
+test("みんなの一番上に校内の桜があり、すぐ下の入口の列に受信箱と自習室がある", async ({ page }) => {
   await page.goto("/minna");
   const sakura = await page.getByRole("link", { name: "校内の桜" }).boundingBox();
-  const inbox = await page.getByRole("navigation", { name: "届いているもの" }).boundingBox();
-  expect(sakura!.y).toBeLessThan(inbox!.y);
+  const entrances = page.getByRole("navigation", { name: "みんなの入口" });
+  const row = await entrances.boundingBox();
+  expect(sakura!.y).toBeLessThan(row!.y);
   await expect(page.getByRole("link", { name: "校内の桜" })).toContainText("今週");
-  await expect(page.getByRole("link", { name: "自習室" })).toBeVisible();
+  await expect(entrances.getByRole("link", { name: /受信箱/ })).toBeVisible();
+  await expect(entrances.getByRole("link", { name: /自習室/ })).toBeVisible();
   await page.getByRole("link", { name: "校内の桜" }).click();
   await expect(page.getByRole("heading", { name: "校内の桜" })).toBeVisible();
 });
