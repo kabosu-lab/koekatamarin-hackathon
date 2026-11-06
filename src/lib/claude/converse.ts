@@ -1,4 +1,5 @@
 import { assessWithoutClaude } from "../safety";
+import type { DeliverLevel } from "../send-sound";
 import { isTrialMode } from "../trial";
 import { companionSystemPrompt, refusalReply, trialCompanionSystemPrompt } from "./persona";
 import type { ChatMessage, ClaudeClient } from "./types";
@@ -14,7 +15,8 @@ export type ConverseResult = {
   level: ReadyLevel;
 };
 
-export type ReadyLevel = 0 | 1 | 2 | 3;
+/** 段の型は、画面の音と光（send-sound.ts）と同じものを使う */
+export type ReadyLevel = DeliverLevel;
 
 /** `[[とどけられる]]`（前の形、段1として読む）と `[[とどけられる:1]]`〜`[[とどけられる:3]]` */
 const READY_MARKS = /\[\[とどけられる(?:[:：]\s*(\d))?\]\]/g;
