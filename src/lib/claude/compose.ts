@@ -25,6 +25,9 @@ export type Review = {
 /** Claude の答えが使えなかったとき。投稿は止める側に倒す。 */
 export class ComposeError extends Error {}
 
+/** 0-2l：Claude が上限まで書いても下書きが終わらなかったとき。話を短くしてもらう */
+export class TooLongError extends ComposeError {}
+
 const POST_KINDS = ["trouble", "worry", "effort", "report"] as const;
 
 const draftSystemPrompt = `あなたは「こえかた」のパートナーです。本人とパートナーの会話から、校内のチャネルに本人の名前で出す投稿の下書きを作ります。投稿は本人の言葉として人に届くので、本人が読んで「これ、私の言いたかったことや」と思える文章にしてください。
@@ -167,6 +170,7 @@ export async function streamDraft(
   channels: DraftChannel[],
   progress: DraftProgress,
   askedName?: string,
+  signal?: AbortSignal,
 ): Promise<Draft> {
   const request = draftRequest(history, channels, askedName);
   if (!claude.stream) {
@@ -174,7 +178,7 @@ export async function streamDraft(
     const draft = toDraft(text, refused, channels);
     if (draft.ready) {
       progress.channel?.(draft.channelId);
-      await dripText(draft.text, progress.text);
+      await dripText(draft.text, progress.text, undefined, undefined, signal);
     }
     return draft;
   }
@@ -196,7 +200,7 @@ export async function streamDraft(
       progress.text(body.slice(shown));
       shown = body.length;
     }
-  });
+  }, signal);
   return toDraft(text, refused, channels);
 }
 

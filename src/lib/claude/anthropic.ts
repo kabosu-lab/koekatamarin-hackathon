@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { TooLongError } from "./compose";
 import { sourceMark } from "./persona";
 import type { ChatMessage, ClaudeAttachment, ClaudeClient, ClaudeRequest } from "./types";
 
@@ -145,7 +146,7 @@ export function createAnthropicClaude(api: MessagesApi, webSearch: WebSearchOpti
       return { text: textWithSources(content), refused: false };
     },
     // 0-2l：下書きの本文を流しながら見せるための呼び出し。調べものの道具は渡さない（JSON で返させる呼び出しだけで使う）
-    async stream(request, onText) {
+    async stream(request, onText, signal) {
       const { system, messages, maxTokens, jsonSchema, attachment } = request;
       const events = await api.create({
         model: MODEL,
@@ -159,8 +160,9 @@ export function createAnthropicClaude(api: MessagesApi, webSearch: WebSearchOpti
         },
         betas: ["server-side-fallback-2026-07-01"],
         fallbacks: "default",
-      });
+      }, signal ? { signal } : undefined);
       let text = "";
+      let truncated = false;
       let refused = false;
       for await (const event of events) {
         if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
@@ -168,9 +170,14 @@ export function createAnthropicClaude(api: MessagesApi, webSearch: WebSearchOpti
           onText(event.delta.text);
         } else if (event.type === "message_delta" && event.delta.stop_reason === "refusal") {
           refused = true;
+        } else if (event.type === "message_delta" && event.delta.stop_reason === "max_tokens") {
+          truncated = true;
         }
       }
-      return refused ? { text: "", refused: true } : { text, refused: false };
+      if (refused) return { text: "", refused: true };
+      // 書き切れなかった下書きは、壊れた JSON として扱わず、長すぎたと分けて知らせる
+      if (truncated) throw new TooLongError("下書きが長すぎて、書き切れませんでした");
+      return { text, refused: false };
     },
   };
 }

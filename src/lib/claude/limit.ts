@@ -29,9 +29,9 @@ export function limitClaude(
       return takeCall(now(), perHour, log) ? real.complete(request) : fallback.complete(request);
     },
     // 流す呼び出しも同じ数え方。超えたら台本で答える（台本は流せないので、まとめて渡す）
-    async stream(request, onText) {
+    async stream(request, onText, signal) {
       const allowed = takeCall(now(), perHour, log);
-      if (allowed && real.stream) return real.stream(request, onText);
+      if (allowed && real.stream) return real.stream(request, onText, signal);
       const response = await (allowed ? real : fallback).complete(request);
       onText(response.text);
       return response;
