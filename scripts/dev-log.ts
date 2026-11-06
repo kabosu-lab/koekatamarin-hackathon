@@ -1,6 +1,7 @@
 // 開発の足跡を、デモの Teams の「開発の足跡」チームに1件だけ投稿する。テストは「テストの結果」、push は「できたこと」へ。
 //   npx tsx scripts/dev-log.ts test <テストの出力のファイル>   scripts/test.sh が通ったとき（件数を拾う）
 //   npx tsx scripts/dev-log.ts push                            push したあと
+//   npx tsx scripts/dev-log.ts alert "<知らせ>"                 審査用の見張り（scripts/judge-watch.mjs）が落ちたのを見つけたとき
 // 設定（data/teams.json）やサインインがなければ、黙って飛ばす。失敗しても終わりの値は 0（テストを落とさない）。
 // 撮影用のチーム（teams.json の team）には出さない。名前は teams.json の devLog で変えられる。トークンと ID は画面に出さない。
 import { execFileSync } from "node:child_process";
@@ -9,7 +10,7 @@ import { getAccessToken, readGraphConfig } from "../src/lib/graph/auth";
 import { countsFromOutput, devLogMessage } from "../src/lib/dev-log";
 
 const GRAPH = "https://graph.microsoft.com/v1.0";
-const DEFAULTS = { team: "開発の足跡", test: "テストの結果", push: "できたこと" };
+const DEFAULTS = { team: "開発の足跡", test: "テストの結果", push: "できたこと", alert: "できたこと" };
 const TIMEOUT_MS = 10_000;
 
 const git = (...args: string[]) => {
@@ -30,7 +31,7 @@ function readLog(path: string | undefined): string {
 
 async function main() {
   const [kind, logFile] = process.argv.slice(2);
-  if (kind !== "test" && kind !== "push") return;
+  if (kind !== "test" && kind !== "push" && kind !== "alert") return;
   if (process.env.KOEKATA_DEV_LOG === "off") return;
   const config = readGraphConfig() as (ReturnType<typeof readGraphConfig> & { devLog?: Partial<typeof DEFAULTS> }) | null;
   if (!config) return;
@@ -56,11 +57,15 @@ async function main() {
     console.log(`「${channelName}」のチャネルがないので、足跡は送りませんでした`);
     return;
   }
-  const content = devLogMessage({
-    kind,
-    ...countsFromOutput(readLog(logFile)),
-    commit: git("log", "-1", "--format=%h %s"),
-  });
+  // 見張りの知らせは、渡された一文をそのまま（URL や合言葉は渡さない）
+  const content =
+    kind === "alert"
+      ? `【見張り】${String(logFile ?? "").slice(0, 300)}`
+      : devLogMessage({
+          kind,
+          ...countsFromOutput(readLog(logFile)),
+          commit: git("log", "-1", "--format=%h %s"),
+        });
   await call(`/teams/${team.id}/channels/${encodeURIComponent(channel.id)}/messages`, {
     method: "POST",
     body: JSON.stringify({ body: { contentType: "text", content } }),
