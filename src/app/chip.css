@@ -1,0 +1,86 @@
+/* 機能のチップ（0-1g(3) のカルーセルと 0-1e のタイルで共通）。こえかたの色と形で描く */
+.chip {
+  --chip-edge: var(--wheel, #f4f5f7);
+  --chip-edge-low: var(--wheel-low, #c9ced4);
+  position: relative;
+  display: grid;
+  grid-template-rows: 60% auto auto;
+  align-items: center;
+  justify-items: center;
+  box-sizing: border-box;
+  width: var(--chip-width, 112px);
+  aspect-ratio: 5 / 7;
+  padding: 8px 6px 7px;
+  border: 3px solid transparent;
+  border-radius: 12px;
+  /* 面は --surface、縁は灰の勾配を重ねて金属っぽく */
+  background:
+    linear-gradient(var(--surface, #fff), var(--surface, #fff)) padding-box,
+    linear-gradient(
+        155deg,
+        var(--chip-edge) 0%,
+        var(--chip-edge-low) 38%,
+        var(--chip-edge) 52%,
+        var(--chip-edge-low) 78%,
+        var(--chip-edge) 100%
+      )
+      border-box;
+  box-shadow:
+    0 1px 0 rgb(255 255 255 / 60%) inset,
+    0 6px 14px rgb(10 16 24 / 28%);
+  color: var(--ink, #1c2126);
+  text-align: center;
+  user-select: none;
+}
+
+/* 縁の内側に細い溝を1本（金属の板にはめ込んだ感じ） */
+.chip::before {
+  content: "";
+  position: absolute;
+  inset: 2px;
+  border-radius: 9px;
+  border: 1px solid color-mix(in srgb, var(--chip-edge-low) 70%, transparent);
+  pointer-events: none;
+}
+
+.chip-art {
+  display: grid;
+  place-items: center;
+  width: 64%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--accent, #1f6f78) 12%, var(--surface, #fff));
+  color: var(--accent, #1f6f78);
+  /* Icon は 1.25em。32px で 40px の絵になる */
+  font-size: 32px;
+}
+
+.chip-label {
+  font-weight: 700;
+  font-size: 15px;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.chip-code {
+  margin-top: 2px;
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: color-mix(in srgb, var(--ink, #1c2126) 55%, transparent);
+}
+
+/* 選ばれたチップ：細い内側の光。静的に付けるだけで、動かさない。
+   親に data-center="true" があっても同じ（カルーセルは React を描き直さずに印だけ付け替える） */
+.chip[data-selected="true"],
+[data-center="true"] > .chip {
+  box-shadow:
+    inset 0 0 0 2px var(--accent, #1f6f78),
+    0 0 0 2px color-mix(in srgb, var(--accent, #1f6f78) 35%, transparent),
+    0 8px 18px rgb(10 16 24 / 32%);
+}
+
+.chip[data-selected="true"] .chip-art,
+[data-center="true"] > .chip .chip-art {
+  background: color-mix(in srgb, var(--accent, #1f6f78) 22%, var(--surface, #fff));
+}

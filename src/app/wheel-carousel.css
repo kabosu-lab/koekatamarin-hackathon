@@ -1,0 +1,74 @@
+/*
+ * ホイールのカルーセル（0-1g(3)、設計書 §2-1-C）。
+ * 置き場所：パートナーの窓（position: relative の箱）の中に置く。帯は窓の縦の真ん中に横一列。
+ * 暗幕は画面全体（fixed）。窓より手前に出したいときは --wheel-carousel-z で重なりを上げる。
+ * 動くのは transform と opacity だけ。毎コマの位置は WheelCarousel.tsx が直接書く。
+ */
+.wheel-carousel {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 0;
+  z-index: var(--wheel-carousel-z, 30);
+  pointer-events: none;
+}
+
+.wheel-carousel[data-state="idle"] {
+  visibility: hidden;
+}
+
+/* 画面全体の暗幕。なぞりに入ると 160ms で沈み、開いたかやめたら 160ms で戻る */
+.wheel-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background: rgb(10 16 24 / 55%);
+  opacity: 0;
+  transition: opacity 160ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.wheel-carousel[data-state="turning"] .wheel-scrim,
+.wheel-carousel[data-state="opening"] .wheel-scrim {
+  opacity: 1;
+}
+
+/* 高さ 180px の帯。チップは帯の真ん中を基準に、JS が横へずらす */
+.wheel-carousel-band {
+  position: absolute;
+  left: 50%;
+  top: -90px;
+  z-index: 1;
+  width: 0;
+  height: 180px;
+  overflow: visible;
+  opacity: 0;
+  transition: opacity 120ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.wheel-carousel:not([data-state="idle"]) .wheel-carousel-band {
+  opacity: 1;
+}
+
+.wheel-carousel-slot {
+  position: absolute;
+  left: calc(var(--chip-width, 112px) / -2);
+  top: 50%;
+  margin-top: calc(var(--chip-width, 112px) * -0.7);
+  transform-origin: 50% 50%;
+  /* 動いている間だけ。暗転していないときは付けない */
+}
+
+.wheel-carousel:not([data-state="idle"]) .wheel-carousel-slot {
+  will-change: transform, opacity;
+}
+
+/* 動きを減らす設定：暗転なし、フェードなし、即切り替え（チップと真ん中の光は残す） */
+@media (prefers-reduced-motion: reduce) {
+  .wheel-scrim {
+    display: none;
+  }
+  .wheel-carousel-band {
+    transition: none;
+  }
+}
