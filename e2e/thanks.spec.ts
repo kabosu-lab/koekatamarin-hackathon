@@ -91,17 +91,21 @@ test("みんなの頑張りの投稿には「おめでとう」があり、届�
   // 今日の3人は自動で開かないようにしておく
   await context.addCookies([{ name: "koekata_today_seen", value: "1", domain: "127.0.0.1", path: "/" }]);
   await page.goto("/minna");
-  const entry = page.getByRole("button", { name: "中村 結衣さんにおめでとうを送る" }).first();
+  // ほかのテストが投稿を足すと種の投稿が上の20件から外れるので、いま並んでいる頑張りの投稿を使う
+  const entry = page.getByRole("button", { name: /さんにおめでとうを送る$/ }).first();
+  const to = ((await entry.getAttribute("aria-label")) ?? (await entry.innerText())).replace(/さんにおめでとうを送る$/, "").trim();
+  expect(to).not.toBe("");
   await entry.click();
-  const sheet = page.getByRole("dialog", { name: "中村 結衣さんへのサンクスカード" });
+  const sheet = page.getByRole("dialog", { name: `${to}さんへのサンクスカード` });
   await expect(sheet).toBeVisible();
   await sheet.getByLabel("届けることば").fill(words);
   await expect(sheet.locator(".thanks-kind-line")).toContainText("おめでとう");
   await sheet.getByRole("button", { name: "サンクスカードを送る" }).click();
   await expect(entry).toContainText("届きました");
 
-  await page.goto("/");
-  await switchPerson(page, "中村 結衣（1年・吹奏楽部）");
+  await page.goto("/me?open=settings");
+  const option = await page.getByLabel("試す人を切り替える").locator("option", { hasText: `${to}（` }).first().innerText();
+  await switchPerson(page, option.trim());
   await page.goto("/me?open=thanks");
   const card = page.getByRole("region", { name: "もらったありがとう" }).locator(".thanks-card").filter({ hasText: words });
   await expect(card).toHaveAttribute("data-kind", "congrats");
