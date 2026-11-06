@@ -31,7 +31,18 @@ export function splitReady(text: string): { reply: string; ready: boolean; level
     const value = match[1] === undefined ? 1 : Math.min(3, Math.max(1, Number(match[1])));
     level = Math.max(level, value);
   }
-  return { reply: text.replace(READY_MARKS, "").trim(), ready: level > 0, level: level as ReadyLevel };
+  return { reply: withSources(text.replace(READY_MARKS, "")).trim(), ready: level > 0, level: level as ReadyLevel };
+}
+
+/** 調べもの（0-1s）の出典の印 [[出典:題|URL]] を、印のまま見せず「出典：題 URL」の行にする */
+const SOURCE_MARKS = /\n?\[\[出典:([^|\]]*)\|([^\]]*)\]\]/g;
+export function withSources(text: string): string {
+  const sources: string[] = [];
+  const body = text.replace(SOURCE_MARKS, (_all, title: string, url: string) => {
+    if (/^https?:\/\//.test(url.trim())) sources.push(`出典：${title.trim()} ${url.trim()}`);
+    return "";
+  });
+  return sources.length > 0 ? `${body.trim()}\n\n${sources.join("\n")}` : body;
 }
 
 /** パートナーとの会話を1往復進める。履歴は呼び出し側が持つ。 */

@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import { createAnthropicClaude, MODEL, type MessagesApi } from "./anthropic";
-import { converse, splitReady } from "./converse";
+import { converse, splitReady, withSources } from "./converse";
 import { createClaude } from "./index";
-import { companionSystemPrompt, openingLines, READY_MARK, refusalReply, trialCompanionSystemPrompt } from "./persona";
+import { companionSystemPrompt, openingLines, READY_MARK, readyMark, refusalReply, trialCompanionSystemPrompt } from "./persona";
 import { createScriptedClaude } from "./scripted";
 
 function stubApi(response: { content: unknown[]; stop_reason: string }) {
@@ -173,9 +173,15 @@ ${READY_MARK}`)).toEqual({ reply: "いいね、それ届けてみよう。", rea
     expect(levels).toEqual([0, 1, 2, 3]);
   });
 
-  it("パートナーの指示に印の決まりがあり、試用の指示にも残る", () => {
-    expect(companionSystemPrompt).toContain(READY_MARK);
-    expect(trialCompanionSystemPrompt).toContain(READY_MARK);
+  it("パートナーの指示に段つきの印の決まりがあり、試用の指示にも残る", () => {
+    for (const prompt of [companionSystemPrompt, trialCompanionSystemPrompt]) {
+      expect(prompt).toContain(readyMark(1));
+      expect(prompt).toContain(readyMark(2));
+      expect(prompt).toContain(readyMark(3));
+      expect(prompt).toContain("前より低い段にはしない");
+      expect(prompt).toContain("命や安全に関わる話のときは付けない");
+    }
+    expect(readyMark(2)).toBe("[[とどけられる:2]]");
   });
 
   it("印だけの返事は、答えられなかったときの言葉にして、光らせない", async () => {
@@ -190,5 +196,18 @@ ${READY_MARK}`)).toEqual({ reply: "いいね、それ届けてみよう。", rea
     const result = await converse(claude, history, "声を小さくしたんだ");
     expect(result.ready).toBe(true);
     expect(result.reply).not.toContain(READY_MARK);
+  });
+});
+
+describe("調べものの出典（0-1s）", () => {
+  it("出典の印は画面に出さず、「出典：題 URL」の行にする", () => {
+    const { reply } = splitReady("標高は3,776メートルやで。\n[[出典:国土地理院|https://www.gsi.go.jp/]]\n\n[[とどけられる:1]]");
+    expect(reply).not.toContain("[[");
+    expect(reply).toContain("標高は3,776メートルやで。");
+    expect(reply).toContain("出典：国土地理院 https://www.gsi.go.jp/");
+  });
+
+  it("URL でないものは出典にしない", () => {
+    expect(withSources("本文\n[[出典:あやしい|javascript:alert(1)]]")).toBe("本文");
   });
 });
