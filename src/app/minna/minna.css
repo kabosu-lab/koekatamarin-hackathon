@@ -1147,11 +1147,6 @@ html[data-theme="retro"] main .minna-megaphone,
   padding: 16px;
 }
 
-/* 広い画面の左右の欄では出さない */
-html[data-embed="true"] .minna-today-layer {
-  display: none;
-}
-
 .minna-today-scrim {
   position: absolute;
   inset: 0;
