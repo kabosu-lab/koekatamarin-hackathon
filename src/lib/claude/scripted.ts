@@ -1,5 +1,8 @@
-import { openingLines, READY_MARK } from "./persona";
+import { openingLines } from "./persona";
 import type { ClaudeClient } from "./types";
+
+/** 段つきの印。パートナーの指示の決まり（`[[とどけられる:1]]`〜`[[とどけられる:3]]`）と同じ形 */
+const readyMark = (level: 1 | 2 | 3) => `[[とどけられる:${level}]]`;
 
 const fallbackReply = "なるほど、聞かせてくれてありがとう。もう少し詳しく教えてもらえますか？";
 
@@ -15,10 +18,16 @@ function storyReply(spoken: string, talk: string): string | null {
   if (/勉強会|ゼミ/.test(talk)) {
     if (!/\d+時|\d+日|曜/.test(talk)) return "ええやん、告知にしよ。いつやるん？";
     if (!/室|館|オンライン/.test(talk)) return "どこでやるん？";
-    return `そろったね。とどけるで確かめて、みんなに知らせよう。\n${READY_MARK}`;
+    return `そろったね。とどけるで確かめて、みんなに知らせよう。\n${readyMark(3)}`;
   }
-  // 何があったか（静かになった）、どうしたか（声を小さく）がそろったので、とどけるを光らせる
-  if (/声を小さく/.test(spoken)) return `それ、コツかもしれんね。ほかの先生にも届けてみる？\n${READY_MARK}`;
+  // とどけるの3段。話が進むほど上がる：静かになった（まだ）→ 声を小さく（段1）→ 聞いてくれた（段2）→ 誰の役に立つか（段3）
+  if (/声を小さく|聞いてくれた/.test(talk) && /若い先生|ほかの先生|新任|役に立|役立/.test(spoken)) {
+    return `それ、もうそのまま投稿にできそう。とどけるで確かめてみて。\n${readyMark(3)}`;
+  }
+  if (/声を小さく/.test(talk) && /聞いてくれた|うまくいった/.test(spoken)) {
+    return `それ、コツかもしれんね。ちゃんと効いたんや。どんな人に役立ちそう？\n${readyMark(2)}`;
+  }
+  if (/声を小さく/.test(spoken)) return `それ、コツかもしれんね。ほかの先生にも届けてみる？そのあと、どうなったん？\n${readyMark(1)}`;
   if (/静かになった/.test(spoken)) return "へえ、急に静かに。その少し前、何してたん？";
   return null;
 }

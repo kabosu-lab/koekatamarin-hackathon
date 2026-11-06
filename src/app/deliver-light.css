@@ -1,0 +1,179 @@
+/*
+ * 「とどける」の光の3段（0-1g(5)、設計書 §2-1-D の 4・5）。
+ * Talk.tsx が `.device-side` に data-level="0|1|2|3" を付ける。段は上がるだけ。届けたら 0 に戻す。
+ *   段1：淡い輪が静止      段2：暖かい色の輪が 2.4 秒で呼吸      段3：いちばん明るい輪が 1.6 秒で呼吸し、外へ脈打つ
+ * 色だけに頼らず、輪の太さ・動きの速さ・右上の点の数（1〜3）でも段が分かる。
+ * 動かすのは transform と opacity だけ（原則3）。段が上がった瞬間は、輪が scale(1.3)→1 のばねで締まる。
+ * 作っている間（data-busy="true"）は、回る輪（retro.css）を優先して、この光は出さない。
+ */
+
+.device-side[data-level="1"],
+.device-side[data-level="2"],
+.device-side[data-level="3"] {
+  --deliver-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --deliver-ring-1: color-mix(in srgb, var(--accent) 60%, transparent);
+  --deliver-ring-2: color-mix(in srgb, var(--accent) 50%, #e0a24a);
+  --deliver-ring-3: color-mix(in srgb, #e0a24a 75%, #fff2c2);
+  position: relative;
+}
+
+/* 光っている間は、box-shadow を動かす前の呼吸（retro.css の ready-breathe）を止める。描き直しが重いため */
+.talk .device-side[data-level="1"] .device-side-face,
+.talk .device-side[data-level="2"] .device-side-face,
+.talk .device-side[data-level="3"] .device-side-face {
+  position: relative;
+  animation: none;
+}
+
+/* 輪（::after）。段ごとに太さと色を変える */
+.device-side:is([data-level="1"], [data-level="2"], [data-level="3"]):not([data-busy="true"]) .device-side-face::after {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 2px solid var(--deliver-ring-1);
+  pointer-events: none;
+}
+
+.device-side[data-level="2"]:not([data-busy="true"]) .device-side-face::after {
+  inset: -4px;
+  border-width: 3px;
+  border-color: var(--deliver-ring-2);
+}
+
+.device-side[data-level="3"]:not([data-busy="true"]) .device-side-face::after {
+  inset: -5px;
+  border-width: 4px;
+  border-color: var(--deliver-ring-3);
+}
+
+/* 段3だけ、ふちの外にもう1本の薄い輪（::before）。動かす版では外へ広がり続ける */
+.device-side[data-level="3"]:not([data-busy="true"]) .device-side-face::before {
+  content: "";
+  position: absolute;
+  inset: -5px;
+  border-radius: 50%;
+  border: 2px solid var(--deliver-ring-3);
+  opacity: 0.35;
+  transform: scale(1.12);
+  pointer-events: none;
+}
+
+/* 段の数を示す小さな点。色の見分けにくい人にも段が分かるように */
+.device-side:is([data-level="1"], [data-level="2"], [data-level="3"])::after {
+  position: absolute;
+  top: -2px;
+  left: calc(50% + clamp(18px, 5.5cqw, 32px));
+  padding: 1px 4px;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--accent-deep);
+  font-size: 0.625rem;
+  line-height: 1.2;
+  letter-spacing: 1px;
+  pointer-events: none;
+}
+
+.device-side[data-level="1"]::after {
+  content: "•";
+  content: "•" / "";
+}
+
+.device-side[data-level="2"]::after {
+  content: "••";
+  content: "••" / "";
+}
+
+.device-side[data-level="3"]::after {
+  content: "•••";
+  content: "•••" / "";
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* 段ごとに名前の違う「締まる」動きにして、段が上がるたびに動きが始まり直すようにする */
+  .device-side[data-level="1"]:not([data-busy="true"]) .device-side-face::after {
+    animation: deliver-settle-1 260ms var(--deliver-spring) both;
+  }
+
+  .device-side[data-level="2"]:not([data-busy="true"]) .device-side-face::after {
+    animation:
+      deliver-settle-2 260ms var(--deliver-spring) both,
+      deliver-breathe 2.4s ease-in-out 260ms infinite;
+  }
+
+  .device-side[data-level="3"]:not([data-busy="true"]) .device-side-face::after {
+    animation:
+      deliver-settle-3 260ms var(--deliver-spring) both,
+      deliver-breathe 1.6s ease-in-out 260ms infinite;
+  }
+
+  .device-side[data-level="3"]:not([data-busy="true"]) .device-side-face::before {
+    animation: deliver-pulse 1.6s cubic-bezier(0.2, 0.8, 0.2, 1) 260ms infinite;
+  }
+}
+
+@keyframes deliver-settle-1 {
+  from {
+    transform: scale(1.3);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes deliver-settle-2 {
+  from {
+    transform: scale(1.3);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes deliver-settle-3 {
+  from {
+    transform: scale(1.3);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes deliver-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+@keyframes deliver-pulse {
+  from {
+    transform: scale(1);
+    opacity: 0.5;
+  }
+  to {
+    transform: scale(1.25);
+    opacity: 0;
+  }
+}
+
+/* 動きを減らす設定：動きは消し、段3は静止した太いふちと外の輪で示す（原則6） */
+@media (prefers-reduced-motion: reduce) {
+  .device-side:is([data-level="1"], [data-level="2"], [data-level="3"]) .device-side-face::after,
+  .device-side[data-level="3"] .device-side-face::before {
+    animation: none;
+  }
+
+  .device-side[data-level="3"]:not([data-busy="true"]) .device-side-face::after {
+    border-width: 5px;
+  }
+}

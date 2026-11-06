@@ -124,3 +124,62 @@ export function scheduleSendSound(audio: BaseAudioContext, out: AudioNode, t0: n
   schedulePiano(audio, out, t0 + timing.land + 0.26, 84, 0.16);
   schedulePop(audio, out, t0 + timing.land + 0.46, 84, 0.3);
 }
+
+/** ハ長調ペンタトニックの音（ド・レ・ミ・ソ・ラ）。上へ n 段たどる。 */
+const PENTATONIC = [0, 2, 4, 7, 9];
+export function pentatonicUp(note: number, steps: number): number {
+  const octave = Math.floor((note - 60) / 12);
+  const index = PENTATONIC.indexOf((((note - 60) % 12) + 12) % 12);
+  if (index < 0) throw new Error(`ペンタトニックの外の音です: ${note}`);
+  const position = index + steps;
+  return 60 + 12 * (octave + Math.floor(position / PENTATONIC.length)) + PENTATONIC[position % PENTATONIC.length];
+}
+
+/** 声が1区切り固まるたびの「ポン」の音階。言葉の音（WORD_NOTES）を2オクターブに延ばしたもの */
+export const COMMIT_NOTES = [72, 74, 76, 79, 81, 84, 86, 88, 91, 93];
+const COMMIT_VOLUME = 0.22;
+/** この段から、上に小さく音を重ねて豊かにする */
+const COMMIT_RICH_FROM = 6;
+
+/**
+ * step 段目（1 から数える）のポンで鳴らす音。段ごとに1つ上がり、上端で留まる。
+ * 6段目からは、ペンタトニックで3つ上（多くは5度上）を小さく重ねる。
+ */
+export function commitPopNotes(step: number): { note: number; volume: number }[] {
+  const index = Math.min(Math.max(Math.floor(step), 1), COMMIT_NOTES.length) - 1;
+  const note = COMMIT_NOTES[index];
+  const notes = [{ note, volume: COMMIT_VOLUME }];
+  if (index + 1 >= COMMIT_RICH_FROM) notes.push({ note: pentatonicUp(note, 3), volume: COMMIT_VOLUME * 0.4 });
+  return notes;
+}
+
+export function scheduleCommitPop(audio: BaseAudioContext, out: AudioNode, at: number, step: number) {
+  for (const { note, volume } of commitPopNotes(step)) schedulePop(audio, out, at, note, volume);
+}
+
+/** とどけるの段。0＝光らない、3 がいちばん */
+export type DeliverLevel = 0 | 1 | 2 | 3;
+
+const CHORD_VOLUME = 0.3;
+const CHORD_GAP = 0.06;
+
+/**
+ * とどけるの段が上がった瞬間の締めの和音（分散和音、0.06 秒ずつ）。段が上がるほど豊かになる。
+ * 段1＝ド・ソ、段2＝ド・ミ・ソ、段3＝ド・ミ・ソ・ドのあと、高いドをもう一度（主音に落ち着く）。
+ */
+export function readyChordNotes(level: DeliverLevel): { delay: number; note: number; volume: number }[] {
+  const chords: Record<DeliverLevel, number[]> = { 0: [], 1: [72, 79], 2: [72, 76, 79], 3: [72, 76, 79, 84] };
+  const notes = chords[level].map((note, index) => ({ delay: index * CHORD_GAP, note, volume: CHORD_VOLUME }));
+  if (level === 3) notes.push({ delay: notes.length * CHORD_GAP, note: 84, volume: CHORD_VOLUME });
+  return notes;
+}
+
+export function scheduleReadyChord(audio: BaseAudioContext, out: AudioNode, at: number, level: DeliverLevel) {
+  for (const { delay, note, volume } of readyChordNotes(level)) schedulePop(audio, out, at + delay, note, volume);
+}
+
+/** 段は上がるだけで下げない。下げてよいのは、届けたときと命や安全のとき（呼び出し側で 0 にする） */
+export function raiseLevel(current: DeliverLevel, incoming: number): DeliverLevel {
+  const next = Math.min(3, Math.max(0, Math.floor(Number.isFinite(incoming) ? incoming : 0)));
+  return Math.max(current, next) as DeliverLevel;
+}

@@ -11,6 +11,20 @@ describe("handleConverse", () => {
     expect(outcome.status).toBe(200);
     expect(outcome.body).toMatchObject({ mode: "scripted" });
     expect(JSON.stringify(outcome.body)).toContain("無理に使わんでええ");
+    expect(outcome.body).toMatchObject({ ready: false, level: 0 });
+  });
+
+  it("とどけるの段を返し、印は返事に出さない", async () => {
+    const history = [
+      { role: "user", content: "今日の授業、急に静かになった瞬間があって" },
+      { role: "assistant", content: "へえ" },
+      { role: "user", content: "声を小さくしたんだ" },
+      { role: "assistant", content: "コツかもね" },
+    ];
+    const outcome = await handleConverse(scripted, { history, text: "そしたらみんな聞いてくれた" });
+    expect(outcome.status).toBe(200);
+    expect(outcome.body).toMatchObject({ ready: true, level: 2 });
+    expect(JSON.stringify(outcome.body)).not.toContain("とどけられる");
   });
 
   it.each([
