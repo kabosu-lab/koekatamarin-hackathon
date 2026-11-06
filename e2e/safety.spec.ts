@@ -92,7 +92,7 @@ test("生徒には知らせの入口がなく、URL を開いても何も見え�
   await page.goto("/");
   await switchPerson(page, "青木 ひより（2年）");
   await page.goto("/me?open=settings");
-  await expect(page.getByLabel("使う人")).toHaveValue("aoki");
+  await expect(page.getByLabel("試す人を切り替える")).toHaveValue("aoki");
   await page.goto("/minna");
   await expect(page.getByRole("link", { name: "相談室への知らせを見る" })).toHaveCount(0);
 

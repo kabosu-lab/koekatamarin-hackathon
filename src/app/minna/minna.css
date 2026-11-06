@@ -1386,3 +1386,37 @@ html[data-theme="retro"] main .minna-today-step,
     transition: none;
   }
 }
+
+/* ---- 0-2i：夜の画面の確認で見つかった崩れ ---- */
+
+/* (2) 広い画面の右の欄のように桜の場面が細いときは、春の見通しの吹き出しを小さくまとめ、下の説明の文に重ねない */
+@container minna-stage (max-width: 320px) {
+  .koekata-forecast-card {
+    top: 4px;
+    right: 4px;
+    left: 4px;
+    padding: 4px 8px;
+    font-size: 0.72rem;
+    line-height: 1.4;
+  }
+
+  .koekata-forecast-card button {
+    min-height: 28px;
+    margin-top: 2px;
+  }
+}
+
+/* (7) 下の帯の名前は「…」で切らない。狭い欄では決めた所（今日の／3人、校内の／知恵）で2行に折る */
+.minna-dock-item > span:not(.minna-dock-badge) {
+  overflow: visible;
+  text-overflow: clip;
+  text-align: center;
+}
+
+@container (max-width: 360px) {
+  html[data-theme="retro"] main .minna-dock-item,
+  main .minna-dock-item {
+    white-space: normal;
+    word-break: keep-all;
+  }
+}

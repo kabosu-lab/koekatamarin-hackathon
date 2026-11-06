@@ -76,7 +76,11 @@ export function TodayEntrance() {
   return (
     <button type="button" className="minna-dock-item" aria-haspopup="dialog" onClick={show}>
       <Icon name="heart" />
-      <span>今日の3人</span>
+      {/* 狭い欄では「今日の」「3人」の2行に折る（途中で切らない。0-2i） */}
+      <span>
+        今日の<wbr />
+        3人
+      </span>
     </button>
   );
 }
