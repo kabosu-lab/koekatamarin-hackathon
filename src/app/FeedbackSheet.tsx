@@ -146,21 +146,24 @@ export function FeedbackSheet() {
     event.preventDefault();
     if ((!kind && !body.trim()) || busy) return;
     session.current?.stop();
+    // 0-2l(2)：押した瞬間に閉じて「ありがとう」を出し、送信は裏で進める。失敗したときだけ、書いた内容を戻して開き直す
+    const sent = { kind, body };
     setBusy(true);
     setProblem("");
-    const result = await postFeedback({ kind: kind || undefined, body }, pathname);
-    setBusy(false);
-    if (result === "busy") {
-      setProblem("少し待ってから送ってください。書いた内容は残っています。");
-      return;
-    }
-    if (!result) {
-      setProblem("送れませんでした。書いた内容は残っています。もう一度押してください。");
-      return;
-    }
     update("", "");
     setThanks(true);
     setOpen(false);
+    const result = await postFeedback({ kind: sent.kind || undefined, body: sent.body }, pathname);
+    setBusy(false);
+    if (result === true) return;
+    update(sent.kind, sent.body);
+    setThanks(false);
+    setProblem(
+      result === "busy"
+        ? "少し待ってから送ってください。書いた内容は残っています。"
+        : "送れませんでした。書いた内容は残っています。もう一度押してください。",
+    );
+    setOpen(true);
   }
 
   return (
