@@ -99,12 +99,18 @@ class RoomPlayer {
   }
 }
 
-/** 部屋に流れる曲。全員が同じ曲の同じ位置を聴く。音を出すかは一人ずつ選び、初めは出さない。 */
+/**
+ * 部屋に流れる曲。全員が同じ曲の同じ位置を聴く。音は初めから流す（0-1v）。
+ * 音がもう起きていれば開いたときから、まだなら画面のどこかを最初に触ったときから流れる（sound.ts がそのタップで音を起こす）。
+ * 自分の耳だけ止める小さなボタンを残す。音を切るのは端末の消音や音量で。
+ */
 export function RoomMusic({ initial }: { initial: Music }) {
   const [music, setMusic] = useState(initial);
-  const [playing, setPlaying] = useState(false);
+  /** 自分の耳で聴くか（止めるボタンで切り替える） */
+  const [listening, setListening] = useState(true);
+  /** 音が起きて、曲を鳴らせるか */
+  const [awake, setAwake] = useState(false);
   const [preparing, setPreparing] = useState(false);
-  const [silenced, setSilenced] = useState(false);
   const [notice, setNotice] = useState<{ text: string; key: number } | null>(null);
   const offset = useRef(initial.serverNow - Date.now());
   const trackId = useRef(initial.trackId);
@@ -145,21 +151,25 @@ export function RoomMusic({ initial }: { initial: Music }) {
   }, [notice]);
 
   useEffect(() => {
-    if (!playing) return;
-    // 本人が押してから音を作る（ブラウザの決まりでもある）。音の設定に従う
+    if (!listening) return;
     const output = audioOutput();
-    if (!output) {
-      setPlaying(false);
-      setSilenced(true);
-      return;
-    }
-    const room = new RoomPlayer(output.audio, output.out, () => Date.now() + offset.current);
+    if (!output) return;
+    const { audio } = output;
+    // 最初の注意カードの「わかった」などで音がもう起きていれば、すぐ流す。まだなら、最初のタップで起きたときに流す
+    const watch = () => setAwake(audio.state === "running");
+    watch();
+    audio.addEventListener("statechange", watch);
+    const room = new RoomPlayer(audio, output.out, () => Date.now() + offset.current);
     player.current = room;
     return () => {
+      audio.removeEventListener("statechange", watch);
       room.stop();
       player.current = null;
+      setAwake(false);
     };
-  }, [playing]);
+  }, [listening]);
+
+  const playing = listening && awake;
 
   useEffect(() => {
     const room = player.current;
@@ -182,16 +192,8 @@ export function RoomMusic({ initial }: { initial: Music }) {
         <span className="room-music-together">いま {music.listening} 人が一緒に聴いています</span>
       </div>
       <div className="room-music-actions">
-        <button
-          type="button"
-          className="room-music-play"
-          aria-pressed={playing}
-          onClick={() => {
-            setSilenced(false);
-            setPlaying((value) => !value);
-          }}
-        >
-          {playing ? "音を止める" : "音を出す"}
+        <button type="button" className="room-music-play" onClick={() => setListening((value) => !value)}>
+          {listening ? "音を止める" : "音を流す"}
         </button>
         <button
           type="button"
@@ -208,11 +210,11 @@ export function RoomMusic({ initial }: { initial: Music }) {
         </button>
       </div>
       <p className="room-music-note">
-        {silenced
-          ? "音の設定が「切」になっています。「履歴と設定」で変えられます"
+        {listening && !awake
+          ? "画面を触ると、曲が流れはじめます"
           : playing && preparing
             ? "音を用意しています…"
-            : "みんなで同じ曲を聴きます。誰かが変えると、全員の曲が変わります。音は自分だけ消せます"}
+            : "みんなで同じ曲を聴きます。誰かが変えると、全員の曲が変わります。音は自分だけ止められます"}
       </p>
       <p className="room-music-notice" role="status" aria-live="polite">
         {notice && (

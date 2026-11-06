@@ -1,8 +1,8 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import type { StudyPresence, StudySession } from "@/lib/study";
-import { PresenceView } from "./PresenceView";
+import type { StudySession } from "@/lib/study";
 
 const STUDY_CHANNEL = "study";
 
@@ -23,13 +23,13 @@ function format(ms: number): string {
 
 type Props = {
   initialSession: StudySession | null;
-  initialPresence: StudyPresence;
   initialLateNight: boolean;
 };
 
-export function StudyTimer({ initialSession, initialPresence, initialLateNight }: Props) {
+/** 自分の25分。人数とパートナーは上の景色に出るので、始めたり終えたりしたら画面を新しくして景色に映す。 */
+export function StudyTimer({ initialSession, initialLateNight }: Props) {
+  const router = useRouter();
   const [session, setSession] = useState(initialSession);
-  const [presence, setPresence] = useState(initialPresence);
   const [left, setLeft] = useState<number | null>(null);
   const [question, setQuestion] = useState<string | null>(null);
   const [lateNight, setLateNight] = useState(initialLateNight);
@@ -50,7 +50,7 @@ export function StudyTimer({ initialSession, initialPresence, initialLateNight }
       setLeft(null);
       setQuestion(data.question as string);
       setLateNight(data.lateNight === true);
-      setPresence(data.presence as StudyPresence);
+      router.refresh();
     } catch {
       setNotice("うまくいきませんでした。もう一度押してください。");
     } finally {
@@ -84,7 +84,7 @@ export function StudyTimer({ initialSession, initialPresence, initialLateNight }
       const { ok, data } = await postJson("/api/study", { action: "start" });
       if (!ok) throw new Error("start failed");
       setSession(data.session as StudySession);
-      setPresence(data.presence as StudyPresence);
+      router.refresh();
     } catch {
       setNotice("うまくいきませんでした。もう一度押してください。");
     } finally {
@@ -113,10 +113,6 @@ export function StudyTimer({ initialSession, initialPresence, initialLateNight }
 
   return (
     <>
-      <section className="card" aria-label="自習室">
-        <PresenceView presence={presence} />
-      </section>
-
       <section className="card" aria-label="タイマー">
         {session ? (
           <>

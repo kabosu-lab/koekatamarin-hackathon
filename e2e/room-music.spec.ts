@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 
 type Counted = { audioMade: number; loopsStarted: number };
 
-test("自習室の音は初めは出さず、押すと出る。曲はその場で作って継ぎ目なく回し、ファイルを読まない", async ({ page }) => {
+test("自習室の曲は初めから流れ（音がまだ起きていなければ最初のタップで）、自分だけ止められる。曲はその場で作って継ぎ目なく回し、ファイルを読まない", async ({ page }) => {
   await page.addInitScript(() => {
     const seen = window as unknown as Counted;
     seen.audioMade = 0;
@@ -31,17 +31,22 @@ test("自習室の音は初めは出さず、押すと出る。曲はその場�
   const music = page.getByRole("region", { name: "みんなで聴く曲" });
   await expect(music).toContainText("いまの曲");
   await expect(music).toContainText(/いま \d+ 人が一緒に聴いています/);
-  expect(await page.evaluate(() => (window as unknown as Counted).audioMade)).toBe(0);
-
-  await music.getByRole("button", { name: "音を出す" }).click();
-  // 押した瞬間に押した形になる（曲を作り終わるのを待たない）
-  await expect(music.getByRole("button", { name: "音を止める" })).toHaveAttribute("aria-pressed", "true");
-  expect(await page.evaluate(() => (window as unknown as Counted).audioMade)).toBe(1);
+  // 「音を出す」を押さなくても流す。音はアプリで1つだけ作る
+  await expect(music.getByRole("button", { name: "音を止める" })).toBeVisible();
+  await expect(music.getByRole("button", { name: "音を出す" })).toHaveCount(0);
+  await expect.poll(() => page.evaluate(() => (window as unknown as Counted).audioMade)).toBe(1);
+  // 端末によっては最初のタップまで音が起きない。ボタンでないところを触れば流れはじめる
+  await page.getByRole("heading", { name: "自習室" }).click();
   await expect.poll(() => page.evaluate(() => (window as unknown as Counted).loopsStarted)).toBe(1);
   await expect(music).not.toContainText("音を用意しています");
+  await expect(music).not.toContainText("音の設定");
+  expect(await page.evaluate(() => (window as unknown as Counted).audioMade)).toBe(1);
 
+  // 自分の耳だけ止めて、また流せる
   await music.getByRole("button", { name: "音を止める" }).click();
-  await expect(music.getByRole("button", { name: "音を出す" })).toBeVisible();
+  await music.getByRole("button", { name: "音を流す" }).click();
+  await expect.poll(() => page.evaluate(() => (window as unknown as Counted).loopsStarted)).toBe(2);
+  await expect(music.getByRole("button", { name: "音を止める" })).toBeVisible();
   expect(media).toEqual([]);
   expect(errors).toEqual([]);
 });
