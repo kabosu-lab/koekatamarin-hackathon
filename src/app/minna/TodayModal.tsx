@@ -84,7 +84,7 @@ export function TodayProvider({
   // 0-2v：一度開いたら、下の帯の数を消す
   const [opened, setOpened] = useState(initialOpen);
   useEffect(() => {
-    if (!openWhenShown || document.documentElement.dataset.pane !== "true") return;
+    if (!openWhenShown || (window.frameElement as HTMLElement | null)?.dataset.mode !== "pane") return;
     const onShown = () => {
       if (document.cookie.split("; ").some((pair) => pair.startsWith(`${TODAY_SEEN_COOKIE}=`))) return;
       markSeen();
@@ -98,6 +98,18 @@ export function TodayProvider({
     // 開いたときに1回だけ決める。帯で着いたときの読み直し（router.refresh）で、開いたモーダルを閉じたり印を付け直したりしない。
     // 欄（iframe）の中かどうかはクライアントで決める（サーバーの sec-fetch-dest は読み直しのときに iframe にならない）
     if (!initialOpen) return;
+    // 帯の裏で読み込んだだけの「みんな」では開かない。帯で見せたときに上の onShown が開く
+    let inPane = false;
+    try {
+      inPane = (window.frameElement as HTMLElement | null)?.dataset.mode === "pane";
+    } catch {
+      // 別の場所から埋め込まれたときは、欄として扱う
+    }
+    if (inPane) {
+      setOpen(false);
+      setOpened(false);
+      return;
+    }
     markSeen();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
