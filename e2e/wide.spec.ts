@@ -61,7 +61,8 @@ test("iPad の横向きでも話す画面が狭くなりすぎない", async ({ 
 test("iPad の縦向きでは1枚ずつで、欄を並べない", async ({ page }) => {
   await page.setViewportSize({ width: 820, height: 1180 });
   await page.goto("/");
-  await expect(page.locator("iframe")).toHaveCount(0);
+  // 0-2z：左右の画面は裏で読み込むが、列にはせず画面の外に置く
+  await expect(page.locator('[data-mode="column"]')).toHaveCount(0);
   await expect(page.getByRole("link", { name: "みんな ›" })).toBeVisible();
 });
 

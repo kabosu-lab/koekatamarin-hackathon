@@ -9,6 +9,19 @@ test.beforeEach(async ({ context }) => {
 const LEFT = ["/me", "/me?open=daily", "/me?open=lookback", "/me?open=goals", "/me?open=thanks", "/me?open=partner", "/me?open=settings", "/daily", "/lookback", "/yousu", "/walk", "/soudan"];
 const RIGHT = ["/minna", "/inbox", "/chie", "/chie/new", "/chie/knowledge-quick-quiz", "/today", "/study/room", "/people/ogawara", "/sakura", "/koho", "/teams"];
 
+/**
+ * 1画面のまま：列（data-mode="column"）は1つもなく、裏で読み込んだ左右の画面（pane）は画面の外にある（0-2z）
+ */
+async function expectSingleScreen(page: Page) {
+  await expect(page.locator('[data-mode="column"]')).toHaveCount(0);
+  const inside = await page.evaluate(() =>
+    [...document.querySelectorAll(".wide-panel")]
+      .map((panel) => panel.getBoundingClientRect())
+      .filter((box) => box.width > 0 && box.right > 1 && box.left < innerWidth - 1).length,
+  );
+  expect(inside).toBe(0);
+}
+
 /** 3列が並んでいる：左の列・真ん中の話す画面・右の列が、左から順に横に並ぶ */
 async function expectThreeColumns(page: Page) {
   await expect(page.locator(".device-row")).toBeVisible();
@@ -108,6 +121,26 @@ for (const viewport of [
       await expectThreeColumns(page);
     });
 
+    test("最初の約束のカードの暗幕は、左右の列にもかかり、カードは真ん中の列にある", async ({ page }) => {
+      await page.context().clearCookies({ name: /^koekata_promise_/ });
+      await page.goto("/");
+      const card = page.getByRole("dialog", { name: "最初にお伝えすること" });
+      await expect(card).toBeVisible();
+      const covered = await page.evaluate(() =>
+        [
+          [8, innerHeight / 2],
+          [innerWidth - 8, innerHeight / 2],
+        ].map(([x, y]) => document.elementFromPoint(x, y)?.closest(".first-card-backdrop") !== null),
+      );
+      expect(covered).toEqual([true, true]);
+      const box = (await card.boundingBox())!;
+      const center = (await page.locator("main.retro-home").boundingBox())!;
+      expect(box.x).toBeGreaterThanOrEqual(center.x - 1);
+      expect(box.x + box.width).toBeLessThanOrEqual(center.x + center.width + 1);
+      await card.getByRole("button").click();
+      await expect(card).toHaveCount(0);
+    });
+
     test("話す画面のシートは、真ん中の列の幅に収まる", async ({ page }) => {
       await page.goto("/");
       const sizes = await page.evaluate(() => {
@@ -148,19 +181,30 @@ test("iPhone の横（844×390）では「縦にして使ってね」の絵が�
   await expect(page).toHaveURL(/\/inbox$/);
   const hint = page.getByRole("status", { name: "縦にして使ってね" });
   await expect(hint).toBeVisible();
-  await expect(page.locator(".wide-panel").first()).toBeHidden();
   await page.goto("/");
   await expect(hint).toBeVisible();
-  await expect(page.locator(".wide-panel[data-side=left]")).toBeHidden();
-  await expect(page.locator("iframe")).toHaveCount(0);
+  await expectSingleScreen(page);
 });
 
 test("動きを減らす設定では、縦にしての絵は回らない", async ({ browser }) => {
-  const context = await browser.newContext({ viewport: { width: 844, height: 390 }, reducedMotion: "reduce" });
+  const context = await browser.newContext({ viewport: { width: 844, height: 390 }, hasTouch: true, isMobile: true, reducedMotion: "reduce" });
   const page = await context.newPage();
   await page.goto("/");
   await expect(page.getByRole("status", { name: "縦にして使ってね" })).toBeVisible();
   expect(await page.locator(".rotate-hint-phone").evaluate((element) => getComputedStyle(element).animationName)).toBe("none");
+  await context.close();
+});
+
+test("パソコンの低いウィンドウ（1280×560、マウス）では「縦にして」を出さず、1画面のまま使える", async ({ browser }) => {
+  const context = await browser.newContext({ viewport: { width: 1280, height: 560 }, hasTouch: false, isMobile: false });
+  const page = await context.newPage();
+  await page.goto("/inbox");
+  await expect(page).toHaveURL(/\/inbox$/);
+  await expect(page.getByRole("heading", { name: "受信箱", level: 1 })).toBeVisible();
+  await expect(page.getByRole("status", { name: "縦にして使ってね" })).toBeHidden();
+  await page.goto("/");
+  await expectSingleScreen(page);
+  await expect(page.getByRole("button", { name: "押し続けて話す" })).toBeVisible();
   await context.close();
 });
 
@@ -174,13 +218,12 @@ for (const viewport of [
   await expect(page.getByRole("heading", { name: "受信箱" })).toBeVisible();
   await expect(page.getByRole("status", { name: "縦にして使ってね" })).toBeHidden();
   await page.goto("/");
-  await expect(page.locator(".wide-panel[data-side=right]")).toBeHidden();
-  await expect(page.locator("iframe")).toHaveCount(0);
+  await expectSingleScreen(page);
   await expect(page.getByRole("button", { name: "押し続けて話す" })).toBeVisible();
 });
 
 test("スマホの縦では、絵も3列も出ない", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByRole("status", { name: "縦にして使ってね" })).toBeHidden();
-  await expect(page.locator("iframe")).toHaveCount(0);
+  await expectSingleScreen(page);
 });
