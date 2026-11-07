@@ -46,6 +46,9 @@ async function swipeWheel(page: Page, degrees: number) {
     const el = document.querySelector(".click-wheel");
     return el !== null && Object.keys(el).some((key) => key.startsWith("__reactProps"));
   });
+  // 狭い画面では、帯の左右の画面の準備ができてから（開くと、帯がみんなへ動いてその中で開く）。
+  // 準備の前に離すとみんなの画面ごと読み込むので、並んで動くテストで重いと、出るまでが長くなる
+  if (!isWideViewport(page)) await page.waitForFunction(() => document.documentElement.dataset.stripReady === "true", undefined, { timeout: 20_000 });
   const box = (await wheel.boundingBox())!;
   const cx = box.x + box.width / 2;
   const cy = box.y + box.height / 2;
