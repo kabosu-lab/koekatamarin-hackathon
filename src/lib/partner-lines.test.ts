@@ -7,6 +7,7 @@ import {
   type PartnerLine,
   type PartnerLineInput,
   partnerHour,
+  partnerLinePool,
   timeOfDay,
 } from "./partner-lines";
 
@@ -133,5 +134,17 @@ describe("パートナーの一言（0-2a）", () => {
     for (const line of [...allPartnerLines("student"), ...allPartnerLines("teacher")]) {
       expect(line.length, line).toBeLessThanOrEqual(36);
     }
+  });
+});
+
+describe("輪をなぞれることの一言（0-3i）", () => {
+  it("説明の一言の候補に混ざっている。先生にはです・ます調", () => {
+    expect(partnerLinePool({ hour: 9, role: "student" }, "guide")).toContain("輪をなぞると、いろいろ開けるよ");
+    expect(partnerLinePool({ hour: 9, role: "teacher" }, "guide")).toContain("輪をなぞると、いろいろ開けます");
+  });
+
+  it("初めての人がタップを続けると、いつかその一言が出る", () => {
+    const lines = run({ hour: 9, role: "student", firstTime: true }, 40).map((line) => line.text);
+    expect(lines).toContain("輪をなぞると、いろいろ開けるよ");
   });
 });
