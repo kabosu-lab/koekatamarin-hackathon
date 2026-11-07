@@ -165,6 +165,23 @@ export function Compose({
     return () => observer.disconnect();
   }, [text, writing]);
 
+  // 下に貼り付いたボタン列の高さを、シートの中身（スクロールする所）に伝える。
+  // 札へ移るとき（scrollIntoView・Tab）に、ボタン列の下へ隠さず、その上に出す
+  const actionsRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const actions = actionsRef.current;
+    const scroller = actions?.closest<HTMLElement>(".bottom-sheet-body");
+    if (!actions || !scroller || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(() => {
+      scroller.style.setProperty("--sticky-actions-height", `${actions.offsetHeight}px`);
+    });
+    observer.observe(actions);
+    return () => {
+      observer.disconnect();
+      scroller.style.removeProperty("--sticky-actions-height");
+    };
+  }, []);
+
   const channel: ChannelView | undefined = channels.find((c) => c.id === channelId);
   // 0-2k：送り先を誰が見るのかを、数と一文で見せる。肩書きが学年から始まる人は生徒（ダミーの決まり）
   const isStudent = (label: string) => /^[0-9０-９]年/.test(label);
@@ -448,7 +465,7 @@ export function Compose({
         </p>
       )}
 
-      <div className="compose-actions compose-sheet-actions">
+      <div className="compose-actions compose-sheet-actions" ref={actionsRef}>
         {/* 0-2k(3)：誰が見るかの一文は、送るボタンと一緒にいつも下に見える */}
         {!writing && audienceLine && (
           <p className="compose-audience" role="status">
