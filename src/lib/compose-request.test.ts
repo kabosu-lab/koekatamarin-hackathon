@@ -132,6 +132,12 @@ describe("prepareDraftStream（0-2l）", () => {
   it("0-3b：台本でも件名を付けて流す", async () => {
     const { events } = await collect(scripted, { history: [{ role: "user", content: "声を小さくしたら、教室が静かになった" }] });
     expect(events.find((event) => event.type === "subject")).toEqual({ type: "subject", subject: "【うまくいった】声を小さくしたら、教室が静かになった" });
+    // 20字を超える一文も「…」で切らず、最初の一文を全部件名にする
+    const long = await collect(scripted, { history: [{ role: "user", content: "今日の授業で、声を小さくしたら、教室が静かになりました。うれしかった" }] });
+    expect(long.events.find((event) => event.type === "subject")).toEqual({
+      type: "subject",
+      subject: "【うまくいった】今日の授業で、声を小さくしたら、教室が静かになりました",
+    });
   });
 
   it("0-3b：Claude の下書きの指示と形に件名があり、件名は本文の前に書かせる", async () => {

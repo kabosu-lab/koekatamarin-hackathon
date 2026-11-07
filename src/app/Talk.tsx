@@ -1163,6 +1163,7 @@ export function Talk({
         data-viewer={viewer.name}
         data-state={listening ? "listening" : sending ? "thinking" : "idle"}
         data-talking={messages.length > 0 || sending}
+        data-locked={lockedTalk.locked || undefined}
         data-returning={returning || undefined}
       >
         {burst && <SendBurst words={burst} avatarImage={avatarImage} onDone={() => setBurst(null)} />}

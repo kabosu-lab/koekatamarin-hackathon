@@ -9,6 +9,19 @@
   background: linear-gradient(transparent, var(--ground, #fff) 35%);
 }
 
+/* 届いた一言は流れの中に置く（下に貼り付けたままだと、続きの本文の上に重なる） */
+.daily-send-bar[data-done] {
+  position: static;
+  /* 2列に並ぶ広い画面でも、日報のすぐ下（同じ列）に出す */
+  grid-column: 1;
+  background: none;
+}
+
+/* 送って見せるとき、列の下の丸い縁に掛からないよう少し上に止める */
+.daily-send-bar[data-done] .daily-done {
+  scroll-margin-bottom: 32px;
+}
+
 .daily-send-bar > button {
   width: 100%;
   max-width: 28rem;

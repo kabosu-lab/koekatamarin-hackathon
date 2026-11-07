@@ -133,7 +133,7 @@ export default async function MePage({ searchParams }: { searchParams: Promise<{
       key: "goals",
       label: "頑張りたいこと",
       icon: "flag",
-      content: () => <GoalsPanel key={`${viewer.id}-goals`} initial={goals} initialNudge={getNudge(db, viewer.id)} />,
+      content: () => <GoalsPanel key={`${viewer.id}-goals`} initial={goals} initialNudge={getNudge(db, viewer.id)} polite={viewer.role !== "student"} />,
     },
     {
       key: "thanks",
@@ -295,7 +295,8 @@ export default async function MePage({ searchParams }: { searchParams: Promise<{
           )}
           <div>
             <small>いま頑張っていること</small>
-            <strong>{firstGoal?.text ?? "話してくれたら、ここに残すよ"}</strong>
+            {/* 先生には、です・ます（パートナーの口調の決まり） */}
+            <strong>{firstGoal?.text ?? (viewer.role === "student" ? "話してくれたら、ここに残すよ" : "話してくださったら、ここに残します")}</strong>
           </div>
         </Link>
       }
