@@ -134,3 +134,28 @@ test("今日の3人のカードの「ありがとう」からも、画面の中�
   await expect(sheet.getByLabel("届けることば")).toBeInViewport();
   await expect(sheet.locator("select")).toHaveCount(0);
 });
+
+test("0-2l：サンクスカードは押した瞬間に届いた知らせになり、届かなかったら言葉を戻して知らせる", async ({ page }) => {
+  const words = `助かりました ${test.info().testId}`;
+  let release = () => {};
+  const held = new Promise<void>((done) => (release = done));
+  await page.route("**/api/thanks", async (route) => {
+    if (route.request().method() !== "POST") return route.continue();
+    await held;
+    await route.fulfill({ status: 503, json: {} });
+  });
+  await page.goto("/");
+  await switchPerson(page, "青木 ひより（2年）");
+  await page.goto("/me?open=thanks");
+  const form = page.getByRole("region", { name: "サンクスカードを送る" });
+  await form.getByLabel("名前で探す").fill("木下");
+  await form.getByRole("list", { name: "見つかった人" }).getByRole("button", { name: /木下 蓮さん/ }).click();
+  await form.getByLabel("届けることば").fill(words);
+  await form.getByRole("button", { name: "サンクスカードを送る" }).click();
+  // 返事を待たずに届いた知らせ
+  await expect(form).toContainText("木下 蓮さんに、ありがとうが届きました");
+  release();
+  await expect(form.getByLabel("届けることば")).toHaveValue(words);
+  await expect(form).toContainText("まだ届いていません");
+  await expect(form).toContainText("木下 蓮さんへ");
+});

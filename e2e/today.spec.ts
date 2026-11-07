@@ -31,6 +31,25 @@ test("応援のきっかけが添えられ、押すと応援になる", async ({
   await expect(page.getByRole("button", { name: "応援しました" })).toBeDisabled();
 });
 
+test("0-2l：応援は押した瞬間に済みの形になり、届かなかったら戻して知らせる", async ({ page }) => {
+  let release = () => {};
+  const held = new Promise<void>((done) => (release = done));
+  await page.route("**/api/today/cheer", async (route) => {
+    await held;
+    await route.fulfill({ status: 503, json: { error: "x" } });
+  });
+  await page.goto("/today");
+  const button = page.getByRole("button", { name: /^応援/ }).first();
+  await expect(button).toBeVisible();
+  test.skip((await button.innerText()) !== "応援する", "このカードはもう応援してある");
+  await button.click();
+  // 返事を待たずに済みの形
+  await expect(page.getByRole("button", { name: "応援しました" })).toBeDisabled();
+  release();
+  await expect(page.getByRole("button", { name: "応援する" })).toBeEnabled();
+  await expect(page.getByText("応援を届けられませんでした")).toBeVisible();
+});
+
 test("カードで見ると、投稿した本人に誰が見たか伝わり、他の人には見えない", async ({ page }) => {
   const words = `見てもらう投稿 ${test.info().testId}`;
   await page.goto("/");
