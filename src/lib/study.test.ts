@@ -10,6 +10,7 @@ import {
   findOwnSession,
   finishStudy,
   getPresence,
+  getStudyMates,
   handleStudy,
   isExamPeriod,
   isLateNight,
@@ -132,5 +133,23 @@ describe("声と映像", () => {
     expect(code).not.toMatch(/getUserMedia|getDisplayMedia|RTCPeerConnection|MediaRecorder|SpeechRecognition|startListening/);
     expect(code).not.toContain("<video");
     expect(code).not.toContain("<audio");
+  });
+});
+
+describe("名札（0-3f）", () => {
+  it("勉強中の人の名前・肩書・勉強している分だけを、景色と同じ順で返す", () => {
+    ensureDemoCompanions(db, NOW);
+    startStudy(db, "noda", new Date(NOW.getTime() - 25 * 60 * 1000 + 1));
+    const mates = getStudyMates(db, NOW);
+    expect(mates.map((mate) => mate.id)).toEqual(["aoki", "nakamura", "noda"]);
+    expect(mates.length).toBe(getPresence(db, NOW).tokens.length);
+    expect(mates[0]).toEqual({ id: "aoki", name: "青木 ひより", label: "2年", minutes: 1 });
+    expect(mates[2]).toMatchObject({ name: "野田 翔", label: "情報・ものづくり部顧問", minutes: 24 });
+    for (const mate of mates) expect(Object.keys(mate).sort()).toEqual(["id", "label", "minutes", "name"]);
+  });
+
+  it("名札のコードは、Teams にも外にも何も送らない", () => {
+    const code = ["src/app/study/room/RoomPeople.tsx", "src/lib/study.ts"].map((file) => readFileSync(file, "utf-8")).join("\n");
+    expect(code).not.toMatch(/fetch\(|teams|graph/i);
   });
 });

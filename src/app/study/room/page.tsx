@@ -2,13 +2,14 @@ import type { Metadata } from "next";
 import { getViewer } from "@/lib/current-person";
 import { getDatabase } from "@/lib/db";
 import { seasonOf } from "@/lib/sakura";
-import { ensureDemoCompanions, findOwnSession, getPresence } from "@/lib/study";
+import { ensureDemoCompanions, findOwnSession, getPresence, getStudyMates } from "@/lib/study";
 import { getRoomMusic } from "@/lib/room-music";
 import { PageShell } from "@/app/ui/PageShell";
 import { StudyTimer } from "../StudyTimer";
 import { Refresher } from "./Refresher";
 import { RoomHint } from "./RoomHint";
 import { RoomMusic } from "./RoomMusic";
+import { RoomPeople } from "./RoomPeople";
 import { RoomScene } from "./RoomScene";
 import { ROOM_SEATS, roomMoment, roomPeople } from "./scene";
 import { isTrialMode } from "@/lib/trial";
@@ -39,20 +40,23 @@ export default async function StudyRoomPage({
   ensureDemoCompanions(db, now);
   const presence = roomPeople(getPresence(db, now), allowsPeopleOverride() ? people : undefined);
   const moment = roomMoment(now, requested);
-  const more = presence.tokens.length - Math.min(presence.tokens.length, ROOM_SEATS);
+  // 押したパートナーの名札（0-3f）。景色の並びと同じ順にそろえる（見せかけの人数のときは、いる人をくり返す）
+  const mates = getStudyMates(db, now);
+  const seatMates = mates.length === 0 ? [] : presence.tokens.map((_, index) => mates[index % mates.length]);
 
   return (
     <PageShell back={{ href: "/minna", label: "みんな" }} title="自習室" className="room-page room-fit">
       <div className="room-stage">
         {/* 大きさの入れ物は、残りの高さに広げた枠の中に絶対配置で置く（伸び縮みの段の入れ物では cqh が 0 になる） */}
         <div className="room-frame">
-          <section className="room-card" aria-label="自習室">
-            <p className="study-count room-chip">
-              いま {presence.count} 人<span className="visually-hidden">が勉強しています</span>
-            </p>
-            <RoomScene tokens={presence.tokens} moment={moment} season={seasonOf(now)} />
-          </section>
-          {more > 0 && <p className="room-chip room-more">ほか {more}人</p>}
+          <RoomPeople mates={seatMates} seats={ROOM_SEATS} viewerId={viewer.id}>
+            <section className="room-card" aria-label="自習室">
+              <p className="study-count room-chip">
+                いま {presence.count} 人<span className="visually-hidden">が勉強しています</span>
+              </p>
+              <RoomScene tokens={presence.tokens} moment={moment} season={seasonOf(now)} pressable />
+            </section>
+          </RoomPeople>
           <RoomHint text="話さなくて大丈夫。誰かが頑張っている気配だけ。" />
           <RoomMusic initial={getRoomMusic(db, now)} />
           {/* 夜遅くに休むのをすすめる文は、タイマーの中の1か所だけに出す */}
