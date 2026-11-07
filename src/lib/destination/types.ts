@@ -42,6 +42,8 @@ export type PostView = {
   sharedToStaff: boolean;
   /** 「○○さんに聞いてみる」で送った相手 */
   askedPersonName: string | null;
+  /** 0-3e：お願いの相手の ID（みんなの「おすすめ」で、自分へのメンションを先に出す） */
+  askedPersonId?: string | null;
   /** お願いをパスでつないだ人（古い順） */
   passedThrough: string[];
   /** お願いされた人が返信した（ゴール） */

@@ -33,6 +33,7 @@ type PostRow = {
   is_announcement: number;
   shared_to_staff: number;
   asked_person_name: string | null;
+  asked_person_id: string | null;
   answered: number;
   like_count: number;
   liked_by_viewer: number;
@@ -126,7 +127,7 @@ export function createDummyTeams(db: DatabaseSync): PostDestination {
       const posts = db
         .prepare(
           `SELECT p.id, p.channel_id, p.author_id, a.name AS author_name, a.label AS author_label,
-                  p.kind, p.subject, p.body, p.created_at, p.researched_with_ai, p.scope, p.scope_person_id, p.needs_look, p.shared_to_staff, p.is_announcement,
+                  p.kind, p.subject, p.body, p.created_at, p.researched_with_ai, p.scope, p.scope_person_id, p.needs_look, p.shared_to_staff, p.is_announcement, p.asked_person_id,
                   (SELECT q.name FROM people q WHERE q.id = p.asked_person_id) AS asked_person_name,
                   EXISTS (SELECT 1 FROM replies r WHERE r.post_id = p.id AND r.author_id = p.asked_person_id) AS answered,
                   (SELECT count(*) FROM post_likes l WHERE l.post_id = p.id) AS like_count,
@@ -175,6 +176,7 @@ export function createDummyTeams(db: DatabaseSync): PostDestination {
         needsLook: viewerIsStaff && p.author_id !== viewerId && p.needs_look === 1,
         sharedToStaff: viewerIsStaff && p.shared_to_staff === 1,
         askedPersonName: p.asked_person_name,
+        askedPersonId: p.asked_person_id,
         passedThrough: (selectPasses.all(p.id) as { name: string }[]).map((x) => x.name),
         answered: p.answered === 1,
         likeCount: p.like_count,

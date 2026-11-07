@@ -216,10 +216,8 @@ test("帯：左の画面で人を切り替えると、話す画面と右の画�
   // 帯が動いたあとはもう一度頼まない（着いている画面への go は false を返す）
   expect(await goStrip(page, "/minna")).toBe(true);
   await expect(page.locator('.device-row[data-pane="right"]')).toHaveCount(1);
-  // みんなの画面が見えている。チャネルの札は、最近の投稿が2つ以上のチャネルにあるときだけ出るので
-  // （ほかのテストの投稿で1つのチャネルだけになることがある）、札の有無ではなく、職員室が出ていないことで生徒の画面と確かめる
+  // みんなの画面が見えている。職員室の投稿が出ていないことで、生徒の画面と確かめる（0-3e：チャネルの札はない）
   await expect(right.getByRole("region", { name: "みんな" })).toBeInViewport();
-  await expect(right.getByRole("group", { name: "チャネルで絞る" }).getByRole("button", { name: "職員室" })).toHaveCount(0);
   await expect(right.locator(".minna-post-head small", { hasText: "職員室" })).toHaveCount(0);
   // 左の履歴と設定も新しい人
   await expect(page.frameLocator('.wide-panel[data-side="left"] iframe').getByRole("img", { name: "青木 ひよりさんのパートナー" }).first()).toBeAttached();

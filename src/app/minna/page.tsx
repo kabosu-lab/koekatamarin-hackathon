@@ -7,7 +7,7 @@ import { getAvatar } from "@/lib/avatar";
 import { getViewer } from "@/lib/current-person";
 import { getDatabase } from "@/lib/db";
 import { getDestination } from "@/lib/destination/current";
-import { feedChannels, recentFeed, shortAgo } from "@/lib/minna-feed";
+import { recommendedFeed, shortAgo } from "@/lib/minna-feed";
 import { syncFromTeamsIfStale } from "@/lib/destination/teams-bridge";
 import { activeEvents } from "@/lib/events";
 import { listGiftEggs } from "@/lib/gift-eggs";
@@ -21,11 +21,10 @@ import { getSakura, isBloomingSeason, leavesThisWeek, timeOfDay } from "@/lib/sa
 import { counselorId, schoolName } from "@/lib/seed-data";
 import { FIRST_RANDOM, listTodayCards, todayAffinity, viewerPublicWords } from "@/lib/today";
 import { isTrialMode } from "@/lib/trial";
-import { ChannelChips, ChannelFilter, FilteredItem, FilteredList } from "./ChannelChips";
 import { MinnaFrame } from "./MinnaFrame";
 import { ReplyField } from "./ReplyField";
 import { TodayEntrance, TodayModal, type TodayModalCard, TodayProvider } from "./TodayModal";
-import { teamsUrl } from "./teams-link";
+import { postChannelLinker, teamsUrl } from "./teams-link";
 import { TODAY_SEEN_COOKIE } from "./today-seen";
 import { ThanksEntry } from "../thanks/ThanksCard";
 import { thanksEntryLabel } from "@/lib/thanks-kind";
@@ -59,7 +58,9 @@ export default async function MinnaPage({ searchParams }: { searchParams: Promis
   // 0-2v：新着の数はホーム・履歴と設定・ホイールと同じ数え方（1か所）
   const counts = countNew(db, destination, viewer.id, now, { rewards, todaySeen: Boolean(store.get(TODAY_SEEN_COOKIE)) });
   const channels = destination.listChannels(viewer.id);
-  const feed = recentFeed(channels, (channelId) => destination.listPosts(viewer.id, channelId), FEED_LIMIT);
+  // 0-3e：チャネルで絞らず、パートナーが選んだ順の「おすすめ」の1本の流れ（自分に関係のあるもの → カード → 反応 → 新しいもの）
+  const feed = recommendedFeed(channels, (channelId) => destination.listPosts(viewer.id, channelId), viewer, FEED_LIMIT, now);
+  const channelLink = postChannelLinker();
 
   // 0-1x：今日の3人と、そのあとの関係のありそうな投稿。生徒には職員室の投稿は来ない（見えるチャネルからだけ選ぶ）
   const todayAll = listTodayCards(
@@ -102,142 +103,149 @@ export default async function MinnaPage({ searchParams }: { searchParams: Promis
 
   return (
     <TodayProvider initialOpen={showToday} openWhenShown={todayDue}>
-      <ChannelFilter>
-        <MinnaFrame
-          title="みんな"
-          subtitle={schoolName}
-          season={sakura.season}
-          time={timeOfDay(now)}
-          leaves={sakura.leaves}
-          grown={grown}
-          message={sakura.message}
-          petals={isBloomingSeason(sakura.season) ? 6 : 0}
-          fastForward={hayaokuri === "1"}
-          chips={
-            <ChannelChips
-              channels={feedChannels(channels, feed).map(({ id, name }) => ({
-                id,
-                name,
-              }))}
-            />
-          }
-          events={events.map(({ id, name, message, start, end, ribbon }) => ({
-            id,
-            name,
-            message,
-            start,
-            end,
-            ribbon: { name: ribbon.name, description: ribbon.description },
-          }))}
-          extras={
-            // 0-2f(5)：必要なときだけの入口は、札の列の端に小さく
-            <>
-              {eggs > 0 && (
-                <Link className="minna-extra" href="/me?open=collect" aria-label="贈り物の卵が届いています">
-                  <Icon name="gift" />
-                </Link>
-              )}
-              {hasAlerts && (
-                <Link className="minna-extra" href="/soudan" aria-label="相談室への知らせを見る">
-                  <Icon name="shield" />
-                </Link>
-              )}
-              {isKohoOfficer(viewer.id) && (
-                <Link className="minna-extra" href="/koho" aria-label="広報の候補">
-                  <Icon name="star" />
-                </Link>
-              )}
-            </>
-          }
-          dock={
-            // 0-2f(1)：入口は、いちばん下に固定したアイコンの帯の1か所だけ（Teams の下の帯のように）
-            <nav className="minna-dock" aria-label="みんなの入口" data-noswipe>
-              <TodayEntrance badge={counts.today} />
-              <Link className="minna-dock-item" href="/inbox">
-                <Icon name="inbox" />
-                <span>受信箱</span>
-                {counts.inbox > 0 && <span className="minna-dock-badge">{counts.inbox}</span>}
+      <MinnaFrame
+        title="みんな"
+        subtitle={schoolName}
+        season={sakura.season}
+        time={timeOfDay(now)}
+        leaves={sakura.leaves}
+        grown={grown}
+        message={sakura.message}
+        petals={isBloomingSeason(sakura.season) ? 6 : 0}
+        fastForward={hayaokuri === "1"}
+        heading={
+          // 0-3e：チャネルの札もタブも置かない。見出しは「おすすめ」の1語だけ
+          <h2 className="minna-feed-title" id="minna-feed-title">
+            おすすめ
+          </h2>
+        }
+        events={events.map(({ id, name, message, start, end, ribbon }) => ({
+          id,
+          name,
+          message,
+          start,
+          end,
+          ribbon: { name: ribbon.name, description: ribbon.description },
+        }))}
+        extras={
+          // 0-2f(5)：必要なときだけの入口は、札の列の端に小さく
+          <>
+            {eggs > 0 && (
+              <Link className="minna-extra" href="/me?open=collect" aria-label="贈り物の卵が届いています">
+                <Icon name="gift" />
               </Link>
-              <Link className="minna-dock-item" href="/study/room" aria-label="自習室（一緒に勉強する）">
-                <Icon name="book" />
-                <span>自習室</span>
+            )}
+            {hasAlerts && (
+              <Link className="minna-extra" href="/soudan" aria-label="相談室への知らせを見る">
+                <Icon name="shield" />
               </Link>
-              <Link className="minna-dock-item" href="/chie">
-                <Icon name="idea" />
-                <span>
-                  校内の<wbr />
-                  知恵
-                </span>
+            )}
+            {isKohoOfficer(viewer.id) && (
+              <Link className="minna-extra" href="/koho" aria-label="広報の候補">
+                <Icon name="star" />
               </Link>
-              {/* アプリの中の校内チャネルの画面ではなく、本物の Teams を開く。つないでいないときは置かない（0-2q(6)） */}
-              {teamsLink && (
-                <a className="minna-dock-item" href={teamsLink} target="_blank" rel="noopener noreferrer" aria-label="Teams を開く">
-                  <Icon name="chat" />
-                  <span>Teams</span>
-                </a>
-              )}
-            </nav>
-          }
-        >
-          {feed.length > 0 ? (
-            <FilteredList label="最近の投稿と返事">
-              {feed.map(({ post, channel, activeAt }) => (
-                <FilteredItem key={post.id} channelId={channel.id}>
-                  <article className="minna-post" {...cardAttr(post.subject)} aria-label={`${post.authorName}さんの投稿`}>
-                    <header className="minna-post-head">
-                      <strong>{post.authorName}</strong>
-                      <span className="minna-post-role">{post.authorLabel}</span>
-                      <small>
-                        {channel.name}・{shortAgo(activeAt, now)}
-                      </small>
-                    </header>
-                    <PostSubject subject={post.subject} className="minna-post-subject" />
-                    {/* 本文は途中で切らず、全部出す */}
-                    <p className="minna-post-body">{post.body}</p>
-                    {post.attachment && <p className="minna-post-note">写真や資料が付いています</p>}
-                    {post.replies.length > 0 && (
-                      <ul className="minna-post-replies" aria-label="返事">
-                        {post.replies.map((reply) => (
-                          <li key={reply.id}>
-                            <span className="minna-post-head">
-                              <strong>{reply.authorName}</strong>
-                              <small>{shortAgo(reply.createdAt, now)}</small>
-                            </span>
-                            <p className="minna-post-body">{reply.body}</p>
-                            {/* 助けてもらった場所：自分の投稿への返事にだけ置く */}
-                            {post.authorId === viewer.id && reply.authorId !== viewer.id && <ThanksEntry person={{ id: reply.authorId, name: reply.authorName, label: reply.authorLabel }} />}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                    <ReplyField
-                      postId={post.id}
-                      authorName={post.authorName}
-                      own={post.authorId === viewer.id}
-                      likeCount={post.likeCount}
-                      liked={post.likedByViewer}
-                      replyCount={post.replies.length}
-                    />
-                    <PostThanks post={post} viewerId={viewer.id} />
-                    <Link className="minna-post-open" href={`/teams?channel=${channel.id}#post-${post.id}`}>
-                      {channel.name}で見る
-                    </Link>
-                  </article>
-                </FilteredItem>
-              ))}
-            </FilteredList>
-          ) : (
-            <p className="minna-post-empty">まだ投稿はありません。話す画面から、パートナーと一緒に最初の一言を。</p>
-          )}
+            )}
+          </>
+        }
+        dock={
+          // 0-2f(1)：入口は、いちばん下に固定したアイコンの帯の1か所だけ（Teams の下の帯のように）
+          <nav className="minna-dock" aria-label="みんなの入口" data-noswipe>
+            <TodayEntrance badge={counts.today} />
+            <Link className="minna-dock-item" href="/inbox">
+              <Icon name="inbox" />
+              <span>受信箱</span>
+              {counts.inbox > 0 && <span className="minna-dock-badge">{counts.inbox}</span>}
+            </Link>
+            <Link className="minna-dock-item" href="/study/room" aria-label="自習室（一緒に勉強する）">
+              <Icon name="book" />
+              <span>自習室</span>
+            </Link>
+            <Link className="minna-dock-item" href="/chie">
+              <Icon name="idea" />
+              <span>
+                校内の<wbr />
+                知恵
+              </span>
+            </Link>
+            {/* アプリの中の校内チャネルの画面ではなく、本物の Teams を開く。つないでいないときは置かない（0-2q(6)） */}
+            {teamsLink && (
+              <a className="minna-dock-item" href={teamsLink} target="_blank" rel="noopener noreferrer" aria-label="Teams を開く">
+                <Icon name="chat" />
+                <span>Teams</span>
+              </a>
+            )}
+          </nav>
+        }
+      >
+        {feed.length > 0 ? (
+          <ul className="minna-post-list" aria-labelledby="minna-feed-title">
+            {feed.map(({ post, channel, activeAt, tier }) => (
+              <li key={post.id}>
+                <article className="minna-post" {...cardAttr(post.subject)} data-tier={tier} aria-label={`${post.authorName}さんの投稿`}>
+                  <header className="minna-post-head">
+                    <strong>{post.authorName}</strong>
+                    <span className="minna-post-role">{post.authorLabel}</span>
+                    <small>
+                      <ChannelLink {...channelLink(channel.id, post.id)} name={channel.name} />・{shortAgo(activeAt, now)}
+                    </small>
+                  </header>
+                  <PostSubject subject={post.subject} className="minna-post-subject" />
+                  {/* 本文は途中で切らず、全部出す */}
+                  <p className="minna-post-body">{post.body}</p>
+                  {post.attachment && <p className="minna-post-note">写真や資料が付いています</p>}
+                  {post.replies.length > 0 && (
+                    <ul className="minna-post-replies" aria-label="返事">
+                      {post.replies.map((reply) => (
+                        <li key={reply.id}>
+                          <span className="minna-post-head">
+                            <strong>{reply.authorName}</strong>
+                            <small>{shortAgo(reply.createdAt, now)}</small>
+                          </span>
+                          <p className="minna-post-body">{reply.body}</p>
+                          {/* 助けてもらった場所：自分の投稿への返事にだけ置く */}
+                          {post.authorId === viewer.id && reply.authorId !== viewer.id && <ThanksEntry person={{ id: reply.authorId, name: reply.authorName, label: reply.authorLabel }} />}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  <ReplyField
+                    postId={post.id}
+                    authorName={post.authorName}
+                    own={post.authorId === viewer.id}
+                    likeCount={post.likeCount}
+                    liked={post.likedByViewer}
+                    replyCount={post.replies.length}
+                  />
+                  <PostThanks post={post} viewerId={viewer.id} />
+                </article>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="minna-post-empty">まだ投稿はありません。話す画面から、パートナーと一緒に最初の一言を。</p>
+        )}
 
-          {/* 新しい投稿の欄は置かない。新しく話すのは「話す」画面から */}
-          <Link className="minna-talk-link" href="/">
-            新しく話す →
-          </Link>
-        </MinnaFrame>
-      </ChannelFilter>
+        {/* 新しい投稿の欄は置かない。新しく話すのは「話す」画面から */}
+        <Link className="minna-talk-link" href="/">
+          新しく話す →
+        </Link>
+      </MinnaFrame>
       <TodayModal cards={todayCards} />
     </TodayProvider>
+  );
+}
+
+/** 0-3e：投稿のチャネル名。押すと Teams のそのチャネルを開く（つないでいないときはアプリの校内チャネルの画面） */
+function ChannelLink({ href, external, name }: { href: string; external: boolean; name: string }) {
+  const label = `${name}を${external ? " Teams で" : ""}開く`;
+  return external ? (
+    <a className="minna-post-channel" href={href} target="_blank" rel="noopener noreferrer" aria-label={label}>
+      {name}
+    </a>
+  ) : (
+    <Link className="minna-post-channel" href={href} aria-label={label}>
+      {name}
+    </Link>
   );
 }
 

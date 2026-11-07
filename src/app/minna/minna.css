@@ -447,7 +447,7 @@ html[data-theme="retro"] main .minna-band,
   content: "桜を開く ⌃";
 }
 
-/* チャネルの札は、縮んだ帯のすぐ下に残る */
+/* 0-3e：見出し「おすすめ」と、必要なときだけの入口の行。縮んだ帯のすぐ下に残る（チャネルの札は置かない） */
 .minna-chip-row {
   position: sticky;
   top: 48px;
@@ -460,43 +460,16 @@ html[data-theme="retro"] main .minna-band,
   background: var(--window, #f4fafd);
 }
 
-.minna-chips {
-  display: flex;
+html[data-theme="retro"] main .minna-feed-title,
+.minna-feed-title {
   flex: 1 1 auto;
-  gap: 6px;
   min-width: 0;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-
-.minna-chips::-webkit-scrollbar {
-  display: none;
-}
-
-html[data-theme="retro"] main .minna-chip,
-.minna-chip {
-  flex: none;
-  min-height: 36px;
-  padding: 0 12px;
-  border: 1px solid #c9cfd6;
-  border-radius: 999px;
-  background: #fff;
+  margin: 0;
+  padding: 6px 4px;
   color: #1d1c19;
-  font: inherit;
-  font-size: 0.82rem;
-  transition: transform 120ms var(--minna-spring);
-}
-
-html[data-theme="retro"] main .minna-chip[aria-pressed="true"],
-.minna-chip[aria-pressed="true"] {
-  border-color: #1d1c19;
-  background: #1d1c19;
-  color: #fff;
-}
-
-html[data-theme="retro"] main .minna-chips .minna-chip:active {
-  transform: scale(0.94);
-  transition-duration: 60ms;
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1.4;
 }
 
 /* 0-2f(5)：必要なときだけの入口（相談室への知らせ・広報・卵）は、札の列の端に小さく */
@@ -589,12 +562,6 @@ main .minna-dock-item,
   margin: 0;
   padding: 0;
   list-style: none;
-  transition: opacity 160ms var(--minna-ease);
-}
-
-.minna-post-list[data-fading="true"] {
-  opacity: 0;
-  transition: opacity 80ms ease-in;
 }
 
 .minna-post {
@@ -701,11 +668,12 @@ html[data-theme="retro"] main .minna-post-actions button:active {
   }
 }
 
-main a.minna-post-open {
-  display: inline-block;
-  margin-top: 6px;
-  color: #55526a;
-  font-size: 0.78rem;
+/* 0-3e：投稿のチャネル名は小さく出し、押すと Teams のそのチャネルを開く */
+main a.minna-post-channel {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: rgb(85 82 106 / 40%);
+  text-underline-offset: 2px;
 }
 
 .minna-post-empty {
@@ -976,10 +944,7 @@ main a.minna-talk-link {
     animation: none;
   }
 
-  .minna-post-list,
-  .minna-post-list[data-fading="true"],
-  .minna-sakura-meter > span,
-  .minna-chip {
+  .minna-sakura-meter > span {
     transition: none;
   }
 }
@@ -1458,7 +1423,7 @@ html[data-theme="retro"] main .minna-band,
   min-width: 40px;
 }
 
-/* 0-2y：投稿の「おめでとう」「ありがとう」は、その下の「〇〇で見る」のリンクと重ならないよう、1行を取る */
+/* 0-2y：投稿の「おめでとう」「ありがとう」は、本文や返事の欄と重ならないよう、1行を取る */
 .minna-post > .thanks-entry {
   display: flex;
   width: fit-content;
