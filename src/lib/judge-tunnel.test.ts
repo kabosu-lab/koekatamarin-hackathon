@@ -54,6 +54,12 @@ describe("見張りの判断", () => {
     expect(plan.problems).toHaveLength(1);
   });
 
+  it("cloudflared が動いているのに URL を読めていなければ、知らせる", () => {
+    const plan = watchPlan(SITES, { judge: { ...ok, hasUrl: false, outside: null }, public: ok }, "tunnel");
+    expect(plan.restartTunnels).toEqual([]);
+    expect(plan.problems).toHaveLength(1);
+  });
+
   it("トンネルで出していないときは、トンネルを開かない", () => {
     const plan = watchPlan(SITES, { judge: { local: true, tunnelAlive: null, outside: false }, public: { local: true, tunnelAlive: null, outside: null } }, "funnel");
     expect(plan.restartTunnels).toEqual([]);

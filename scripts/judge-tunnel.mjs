@@ -18,7 +18,7 @@ export function tunnelsToStart(sites, tunnels, isAlive) {
  * - 手元のサーバーが開けなければ、サーバーを起こし直す
  * - トンネルで出しているとき、cloudflared のプロセスが止まっていれば、そのトンネルだけ開き直す
  * - cloudflared が動いているのに外から開けないときは、知らせるだけで触らない
- * checks は site.name ごとに { local: boolean, tunnelAlive: boolean | null, outside: boolean | null }
+ * checks は site.name ごとに { local: boolean, tunnelAlive: boolean | null, hasUrl: boolean, outside: boolean | null }
  */
 export function watchPlan(sites, checks, expose) {
   const problems = [];
@@ -33,6 +33,8 @@ export function watchPlan(sites, checks, expose) {
     if (expose === "tunnel" && check.tunnelAlive === false) {
       restartTunnels.push(site.name);
       problems.push(`${site.label}のトンネル（cloudflared）が止まっていた`);
+    } else if (expose === "tunnel" && check.tunnelAlive && check.hasUrl === false) {
+      problems.push(`${site.label}のトンネルは動いているが、URL を読めていない（data/judge-logs を見る）`);
     } else if (check.local && check.outside === false) {
       const hint = expose === "tunnel" ? "cloudflared は動いているので触らない" : "Tailscale Funnel を確かめる";
       problems.push(`${site.label}は手元では動いているが、外から開けない（${hint}）`);

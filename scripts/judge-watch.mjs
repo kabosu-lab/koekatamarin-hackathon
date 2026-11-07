@@ -72,7 +72,7 @@ for (const site of SITES) {
   const tunnelAlive = tunnel ? alive(state.tunnels?.[site.name]) : null;
   const url = state.urls?.[site.name];
   const outside = url && tunnelAlive !== false ? await opens(url) : null;
-  checks[site.name] = { local, tunnelAlive, outside };
+  checks[site.name] = { local, tunnelAlive, hasUrl: Boolean(url), outside };
 }
 const { restartServers, restartTunnels, problems } = watchPlan(SITES, checks, state.expose);
 
