@@ -300,6 +300,17 @@ ${READY_MARK}`)).toEqual({ reply: "いいね、それ届けてみよう。", rea
     expect(result.ready).toBe(true);
     expect(result.reply).not.toContain(READY_MARK);
   });
+
+  it("台本でも、3D プリンターの看板の話から、詳しい野田先生につなぐ（動画の中心の話）", async () => {
+    const claude = createScriptedClaude();
+    const first = await converse(claude, [], "3D プリンターで文化祭の看板、作ってみたいんだけど");
+    expect(first.ready).toBe(false);
+    const history = [{ role: "user" as const, content: "3D プリンターで文化祭の看板、作ってみたいんだけど" }, { role: "assistant" as const, content: first.reply }];
+    const next = await converse(claude, history, "でも、どこから始めればいいか分からなくて");
+    expect(next.reply).toContain("野田先生が詳しいかも");
+    expect(next.reply).toContain("聞いてみる？");
+    expect(next.ready).toBe(true);
+  });
 });
 
 describe("調べものの出典（0-1s）", () => {
