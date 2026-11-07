@@ -4,7 +4,7 @@ import { useState } from "react";
 import { VoiceReply, type VoiceReplyRestore } from "../VoiceReply";
 
 /** 今日のカードや担任への案内から、話して返信する。押すまで開かない。 */
-export function CardReply({ postId, label = "話して返信する" }: { postId: string; label?: string }) {
+export function CardReply({ postId, label = "話して返信する", onSent }: { postId: string; label?: string; onSent?(): void }) {
   const [open, setOpen] = useState(false);
   const [sent, setSent] = useState(false);
   // 0-2l：押した瞬間に届けた形にし、届かなかったら言葉を戻して知らせる
@@ -33,7 +33,10 @@ export function CardReply({ postId, label = "話して返信する" }: { postId:
         replyUrl="/api/today/reply"
         listenLabel="声で話す"
         restore={retry?.value}
-        onSent={() => setSent(true)}
+        onSent={() => {
+          setSent(true);
+          onSent?.();
+        }}
         onFailed={(value, message) => {
           setRetry((current) => ({ key: (current?.key ?? 0) + 1, value, message }));
           setSent(false);

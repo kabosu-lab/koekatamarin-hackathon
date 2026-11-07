@@ -108,6 +108,13 @@ export type TodayAffinity = {
   postedChannels?: ReadonlySet<string>;
   /** 生徒の ID。最初の3人は、理由のある生徒の投稿から出す */
   studentIds?: ReadonlySet<string>;
+  /** 担任のクラスの生徒の ID（先生のとき） */
+  classIds?: ReadonlySet<string>;
+  /**
+   * 0-3p(1)：まだ反応のない投稿（最大2件、1人1件）。先生には担任のクラス、生徒には同じ学年・部活など。
+   * 新しい出会いになるので、見た目は変えずに今日の3人の中へそっと混ぜる
+   */
+  quietPostIds?: ReadonlySet<string>;
 };
 
 /** 最初に出す人数（今日の3人）。理由のある生徒の投稿を先に、足りなければその日のランダムで埋める。そこからめくると、関係の深い人が出てくる */
@@ -155,7 +162,9 @@ export function listTodayCards(
     if (goal) note(post.id, `頑張りたいことの「${goal}」に近い話`, 5);
     const shared = keywords.find((word) => post.body.includes(word));
     if (shared) note(post.id, `同じ「${shared}」の話`, 4);
-    if (affinity.recentPeople?.has(post.authorId)) note(post.id, "最近やり取りした人", 3);
+    // 0-3p(3)：まだやりとりのない人との出会いを先にしたいので、最近やり取りした人は軽く
+    if (affinity.recentPeople?.has(post.authorId)) note(post.id, "最近やり取りした人", 1.5);
+    if (affinity.classIds?.has(post.authorId)) note(post.id, "担任のクラスの生徒", 3);
     const part = labelParts(post.authorLabel).find((p) => myParts.includes(p));
     if (part) note(post.id, `同じ${part}`, 2);
     if (affinity.postedChannels?.has(post.channelId)) note(post.id, `あなたもよく書く「${post.channelName}」`, 1);
@@ -164,8 +173,9 @@ export function listTodayCards(
   // 最初の3人は、理由のある生徒 → 理由のある人 → 生徒 → ほか の順。同じ段の中はその日のランダム。
   // そこから先は、関係の深い順に。関係のない人もそのあとに続く
   // 0-2q(3)：カードは人ごとに1枚。同じ人が2回出ないよう、最初の3人は別の人から選ぶ
+  // 0-3p(1)：まだ反応のない投稿は、いちばん先に（最大2件なので、3人のうち少なくとも1人はほかの人）
   const tier = (post: (typeof shuffled)[number]) =>
-    (related.has(post.id) ? 2 : 0) + (affinity.studentIds?.has(post.authorId) ? 1 : 0);
+    affinity.quietPostIds?.has(post.id) ? 4 : (related.has(post.id) ? 2 : 0) + (affinity.studentIds?.has(post.authorId) ? 1 : 0);
   const leading = shuffled.map((post, index) => ({ post, index })).sort((a, b) => tier(b.post) - tier(a.post) || a.index - b.index).map(({ post }) => post);
   const first: typeof shuffled = [];
   for (const post of leading) {
@@ -173,13 +183,19 @@ export function listTodayCards(
     if (!first.some((p) => p.authorId === post.authorId)) first.push(post);
   }
   const weight = (id: string) => related.get(id)?.weight ?? 0;
-  // 同じ人の中では、関係の深い投稿（できた投稿など）を残す
+  // 同じ人の中では、関係の深い投稿（できた投稿など）を残す。まだ反応のない投稿はそのまま
   for (let i = 0; i < first.length; i += 1) {
+    if (affinity.quietPostIds?.has(first[i].id)) continue;
     const best = shuffled.filter((post) => post.authorId === first[i].authorId).reduce((a, b) => (weight(b.id) > weight(a.id) ? b : a), first[i]);
     first[i] = best;
   }
   const rest = shuffled.filter((post) => !first.includes(post));
-  const sortedRest = rest.map((post, index) => ({ post, index })).sort((a, b) => weight(b.post.id) - weight(a.post.id) || a.index - b.index).map(({ post }) => post);
+  // 関係の深い順。同じ深さなら、まだやりとりのない人を先に
+  const known = (post: (typeof shuffled)[number]) => (affinity.recentPeople?.has(post.authorId) ? 1 : 0);
+  const sortedRest = rest
+    .map((post, index) => ({ post, index }))
+    .sort((a, b) => weight(b.post.id) - weight(a.post.id) || known(a.post) - known(b.post) || a.index - b.index)
+    .map(({ post }) => post);
   const usedAuthors = new Set(first.map((post) => post.authorId));
   const ordered = [...first];
   for (const post of sortedRest) {
@@ -210,11 +226,26 @@ export function listPopularCards(
 const QUIET_AFTER_MS = 24 * 60 * 60 * 1000;
 const QUIET_LIMIT = 2;
 
+/** 24時間たっても、本人以外の反応（いいね・返事）がない投稿。本人の追記は反応に数えない */
+function isQuiet(post: PostView, now: Date): boolean {
+  return (
+    post.likeCount === 0 &&
+    post.replies.every((reply) => reply.authorId === post.authorId) &&
+    now.getTime() - Date.parse(post.createdAt) >= QUIET_AFTER_MS
+  );
+}
+
 /**
  * 反応のない生徒の投稿を、担任にだけそっと伝える。教室で余った子に先生が声をかけるのと同じ。
  * 通知の時間外には出さない。
  */
-export function listQuietPosts(db: DatabaseSync, destination: PostDestination, viewerId: string, now: Date): TodayCard[] {
+export function listQuietPosts(
+  db: DatabaseSync,
+  destination: PostDestination,
+  viewerId: string,
+  now: Date,
+  hidden: ReadonlySet<string> = new Set(),
+): TodayCard[] {
   if (!isNoticeHours(now)) return [];
   const students = new Set(
     (db.prepare("SELECT id FROM people WHERE homeroom_teacher_id = ?").all(viewerId) as { id: string }[]).map((row) => row.id),
@@ -223,12 +254,10 @@ export function listQuietPosts(db: DatabaseSync, destination: PostDestination, v
   return candidates(destination, viewerId)
     .filter(
       (post) =>
-        students.has(post.authorId) &&
-        post.likeCount === 0 &&
-        // 本人の追記は反応に数えない
-        post.replies.every((reply) => reply.authorId === post.authorId) &&
-        now.getTime() - Date.parse(post.createdAt) >= QUIET_AFTER_MS,
+        students.has(post.authorId) && isQuiet(post, now) && !hidden.has(post.authorId),
     )
+    // 0-3p(4)：同じ人を2回出さない（1人1枚）
+    .filter((post, index, all) => all.findIndex((other) => other.authorId === post.authorId) === index)
     .slice(0, QUIET_LIMIT)
     .map(toCard);
 }
@@ -442,8 +471,8 @@ export async function handleTodayReply(
 
 const RECENT_DAYS = 14;
 
-/** 今日の3人のおすすめの材料。肩書き、頑張りたいこと、最近の返事のやり取り、書いたことのあるチャネル。 */
-export function todayAffinity(db: DatabaseSync, viewerId: string, now: Date): TodayAffinity {
+/** 今日の3人のおすすめの材料。肩書き、頑張りたいこと、最近の返事のやり取り、書いたことのあるチャネル、まだ反応のない投稿。 */
+export function todayAffinity(db: DatabaseSync, viewerId: string, now: Date, destination?: PostDestination): TodayAffinity {
   const since = new Date(now.getTime() - RECENT_DAYS * 24 * 60 * 60 * 1000).toISOString();
   const label = (db.prepare("SELECT label FROM people WHERE id = ?").get(viewerId) as { label: string } | undefined)?.label;
   const goals = (db.prepare("SELECT text FROM goals WHERE person_id = ? AND status = 'active'").all(viewerId) as { text: string }[]).map((row) => row.text);
@@ -455,11 +484,30 @@ export function todayAffinity(db: DatabaseSync, viewerId: string, now: Date): To
     .all(viewerId, since, viewerId, since) as { id: string }[];
   const channels = db.prepare("SELECT DISTINCT channel_id FROM posts WHERE author_id = ?").all(viewerId) as { channel_id: string }[];
   const students = db.prepare("SELECT id FROM people WHERE role = 'student'").all() as { id: string }[];
+  const studentIds = new Set(students.map((row) => row.id));
+  const classIds = new Set(
+    (db.prepare("SELECT id FROM people WHERE homeroom_teacher_id = ?").all(viewerId) as { id: string }[]).map((row) => row.id),
+  );
+  // 先生には担任のクラスの生徒、生徒には同じ学年・部活などの生徒の、まだ反応のない投稿
+  const myParts = labelParts(label ?? "");
+  const near = (post: { authorId: string; authorLabel: string }) =>
+    studentIds.has(viewerId)
+      ? studentIds.has(post.authorId) && labelParts(post.authorLabel).some((part) => myParts.includes(part))
+      : classIds.has(post.authorId);
+  const quiet = destination
+    ? candidates(destination, viewerId)
+        .filter((post) => near(post) && isQuiet(post, now))
+        .filter((post, index, all) => all.findIndex((other) => other.authorId === post.authorId) === index)
+        .slice(0, QUIET_LIMIT)
+        .map((post) => post.id)
+    : [];
   return {
     viewerLabel: label,
     goals,
     recentPeople: new Set(people.map((row) => row.id).filter((id) => id !== viewerId)),
     postedChannels: new Set(channels.map((row) => row.channel_id)),
-    studentIds: new Set(students.map((row) => row.id)),
+    studentIds,
+    classIds,
+    quietPostIds: new Set(quiet),
   };
 }

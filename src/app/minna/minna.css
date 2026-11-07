@@ -1475,3 +1475,83 @@ html body:has(.feedback-fab) main .minna-megaphone.minna-megaphone[data-place="b
     height: 100%;
   }
 }
+
+/* ---- 0-3p：今日の3人のカードは横に払うと消える。返事・ありがとうのあとは「届けました」を一瞬出して、ふわっと縮む ---- */
+.minna-today-card {
+  position: relative;
+  /* 縦の指はスクロールとなでおろしに、横の指はカードに */
+  touch-action: pan-y;
+  transform: translateX(var(--swipe-x, 0px));
+  transition:
+    transform 200ms var(--minna-ease),
+    opacity 200ms var(--minna-ease);
+}
+
+.minna-today-sheet[data-dragging] .minna-today-card {
+  transition: none;
+}
+
+.minna-today-card[data-answer="left"],
+.minna-today-card[data-answer="right"] {
+  opacity: 0;
+  transition:
+    transform 220ms ease-in,
+    opacity 220ms ease-in;
+}
+
+.minna-today-card[data-answer="left"] {
+  transform: translateX(-120%) rotate(-6deg);
+}
+
+.minna-today-card[data-answer="right"] {
+  transform: translateX(120%) rotate(6deg);
+}
+
+.minna-today-card[data-answer="leaving"] {
+  opacity: 0;
+  transform: scale(0.88);
+  transition:
+    transform 260ms ease-in,
+    opacity 260ms ease-in;
+}
+
+.minna-today-answered {
+  position: absolute;
+  top: 40%;
+  left: 50%;
+  margin: 0;
+  padding: 8px 18px;
+  border-radius: 999px;
+  background: #2f7d5b;
+  color: #fff;
+  font-weight: 800;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+/* 次のおすすめ：「前へ」「次へ」と同じ白い丸い札（「みんなを見る」より控えめ） */
+.minna-today-end .minna-today-next {
+  min-height: 44px;
+  margin: 8px auto 0;
+  padding: 0 18px;
+  border: 1.5px solid #1d1c19;
+  border-radius: 999px;
+  background: #fff;
+  color: #1d1c19;
+  font: inherit;
+  font-weight: 700;
+  transition: transform 120ms var(--minna-spring);
+}
+
+.minna-today-end .minna-today-next:active {
+  transform: scale(0.94);
+  transition-duration: 60ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .minna-today-card,
+  .minna-today-card[data-answer] {
+    transform: none;
+    transition: none;
+  }
+}

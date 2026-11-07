@@ -19,7 +19,7 @@ import { showsRewards } from "@/lib/rewards-view";
 import { listAlertsFor } from "@/lib/safety";
 import { getSakura, isBloomingSeason, leavesThisWeek, timeOfDay } from "@/lib/sakura";
 import { counselorId, schoolName } from "@/lib/seed-data";
-import { FIRST_RANDOM, listTodayCards, todayAffinity, viewerPublicWords } from "@/lib/today";
+import { listTodayCards, todayAffinity, viewerPublicWords } from "@/lib/today";
 import { isTrialMode } from "@/lib/trial";
 import { MinnaFrame } from "./MinnaFrame";
 import { ReplyField } from "./ReplyField";
@@ -37,8 +37,8 @@ export const dynamic = "force-dynamic";
 
 /** みんなの画面に並べる投稿の数。本文は切らずに全部出す（0-1k(4)） */
 const FEED_LIMIT = 20;
-/** 今日の3人のあとに続ける、関係のありそうな投稿の数（数枚で終わる） */
-const RELATED_LIMIT = 3;
+/** 今日の3人と、そのあとの「次のおすすめ」に使うカードの数（3人ずつ出す。0-3p(3)） */
+const TODAY_LIMIT = 12;
 
 export default async function MinnaPage({ searchParams }: { searchParams: Promise<{ hayaokuri?: string | string[] }> }) {
   const { viewer } = await getViewer();
@@ -62,7 +62,8 @@ export default async function MinnaPage({ searchParams }: { searchParams: Promis
   const feed = recommendedFeed(channels, (channelId) => destination.listPosts(viewer.id, channelId), viewer, FEED_LIMIT, now);
   const channelLink = postChannelLinker();
 
-  // 0-1x：今日の3人と、そのあとの関係のありそうな投稿。生徒には職員室の投稿は来ない（見えるチャネルからだけ選ぶ）
+  // 0-1x・0-3p：今日の3人と、そのあとの次のおすすめ（関係の深い順）。生徒には職員室の投稿は来ない（見えるチャネルからだけ選ぶ）
+  // まだ反応のない投稿（先生には担任のクラス、生徒には同じ学年・部活など）も、見た目を変えずに3人の中へ混ぜる
   const todayAll = listTodayCards(
     destination,
     viewer.id,
@@ -70,16 +71,9 @@ export default async function MinnaPage({ searchParams }: { searchParams: Promis
     listHiddenIds(db, viewer.id),
     viewerPublicWords(db, destination, viewer.id),
     listCelebratedPostIds(db, now),
-    todayAffinity(db, viewer.id, now),
+    todayAffinity(db, viewer.id, now, destination),
   );
-  const todayCards: TodayModalCard[] = [
-    ...todayAll.slice(0, FIRST_RANDOM).map((card) => ({ card, related: false })),
-    ...todayAll
-      .slice(FIRST_RANDOM)
-      .filter((card) => card.relatedReason)
-      .slice(0, RELATED_LIMIT)
-      .map((card) => ({ card, related: true })),
-  ].map(({ card, related }) => ({
+  const todayCards: TodayModalCard[] = todayAll.slice(0, TODAY_LIMIT).map((card) => ({
     postId: card.postId,
     authorId: card.authorId,
     authorName: card.authorName,
@@ -91,8 +85,7 @@ export default async function MinnaPage({ searchParams }: { searchParams: Promis
     likeCount: card.likeCount,
     liked: card.likedByViewer,
     replyCount: card.replyCount,
-    related,
-    // 今日の3人にも、理由があれば一言添える（先生で開くと、理由のある生徒の投稿が先に来る）
+    // 理由があれば一言添える（先生で開くと、理由のある生徒の投稿が先に来る）
     reason: card.relatedReason,
     kind: card.kind,
   }));
@@ -230,7 +223,7 @@ export default async function MinnaPage({ searchParams }: { searchParams: Promis
           新しく話す →
         </Link>
       </MinnaFrame>
-      <TodayModal cards={todayCards} />
+      <TodayModal cards={todayCards} polite={viewer.role !== "student"} />
     </TodayProvider>
   );
 }

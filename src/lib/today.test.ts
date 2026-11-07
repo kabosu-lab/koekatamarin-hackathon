@@ -13,6 +13,7 @@ import {
   handleTodayReplyDraft,
   keywordsOf,
   listPopularCards,
+  listQuietPosts,
   listSeenNotes,
   listTodayCards,
   makeCheerHints,
@@ -363,5 +364,45 @@ describe("おすすめの材料", () => {
     expect(affinity.recentPeople?.has("noda")).toBe(true);
     expect(affinity.recentPeople?.has("aoki")).toBe(false);
     expect(affinity.postedChannels?.has("making")).toBe(true);
+  });
+});
+
+describe("0-3p：まだ反応のない投稿を、今日の3人へそっと混ぜる", () => {
+  /** 3日前の投稿にする（24時間たっても反応のないもの） */
+  function oldPost(author: string, channel: string, body: string) {
+    vi.useFakeTimers({ now: new Date(NOW.getTime() - 3 * 86_400_000), toFake: ["Date"] });
+    try {
+      return teams.createPost(author, channel, body, {});
+    } finally {
+      vi.useRealTimers();
+    }
+  }
+
+  it("先生には担任のクラスの生徒の、まだ反応のない投稿が3人の中に入り、印は付かず、理由はふつうの言葉", () => {
+    const affinity = todayAffinity(db, "kawamura", NOW, teams);
+    expect([...affinity.quietPostIds!]).toEqual(["post-clubs-1"]);
+    const cards = listTodayCards(teams, "kawamura", NOW, new Set(), [], new Set(), affinity);
+    const quiet = cards.slice(0, 3).find((card) => card.postId === "post-clubs-1");
+    expect(quiet).toBeDefined();
+    expect(Object.keys(quiet!)).not.toContain("quiet");
+    expect(quiet!.relatedReason).toBe("担任のクラスの生徒");
+    // 同じ人は2回出ない（3人の中でも、そのあとの次のおすすめでも）
+    const authors = cards.map((card) => card.authorId);
+    expect(new Set(authors).size).toBe(authors.length);
+  });
+
+  it("生徒には、同じ学年・部活などの生徒の、まだ反応のない投稿を混ぜる。担任のいない先生には混ぜない", () => {
+    const id = oldPost("kinoshita", "making", "治具の寸法を測り直しました");
+    // 木下さん（3年・ものづくり部）と同じところのない青木さん（2年）には混ぜない
+    expect(todayAffinity(db, "aoki", NOW, teams).quietPostIds?.has(id)).toBe(false);
+    db.prepare("UPDATE people SET label = '3年' WHERE id = 'aoki'").run();
+    expect(todayAffinity(db, "aoki", NOW, teams).quietPostIds?.has(id)).toBe(true);
+    expect(todayAffinity(db, "fujimoto", NOW, teams).quietPostIds?.size).toBe(0);
+  });
+
+  it("担任への知らせ（listQuietPosts）も、同じ人を2回出さない", () => {
+    oldPost("nakamura", "clubs", "もう1つの投稿");
+    const quiet = listQuietPosts(db, teams, "kawamura", NOW);
+    expect(quiet.filter((post) => post.authorId === "nakamura")).toHaveLength(1);
   });
 });

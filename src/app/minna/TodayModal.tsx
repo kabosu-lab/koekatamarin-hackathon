@@ -17,13 +17,14 @@ import { TODAY_SEEN_COOKIE } from "./today-seen";
 import { cardAttr, PostSubject } from "@/app/PostSubject";
 import { STRIP_LAND_EVENT } from "../strip";
 import { useLift } from "../column-lift";
+import { batchOf, markAnswered, nextBatchLabel, todayDoneLine, useAnswered, useHeldOrder } from "../today/answered";
 
 
 /** 設計書 §1：移動は 160〜260ms、消えるときは ease-in で素早く */
 const CLOSE_MS = 160;
-/** めくると決める指の量（カードの幅に対する割合）と、払う速さ（px/ms） */
-const FLIP_RATIO = 0.2;
-const FLIP_SPEED = 0.5;
+/** 払って消すと決める指の量（カードの幅に対する割合）と、払う速さ（px/ms） */
+const AWAY_RATIO = 0.3;
+const AWAY_SPEED = 0.5;
 /** 下へなでおろして閉じる量と速さ */
 const DROP_DISTANCE = 90;
 const DROP_SPEED = 0.6;
@@ -42,8 +43,6 @@ export type TodayModalCard = {
   likeCount: number;
   liked: boolean;
   replyCount: number;
-  /** 3人のあとの、関係のありそうな投稿 */
-  related: boolean;
   reason?: string;
   kind: string;
 };
@@ -158,12 +157,18 @@ type Drag = {
 };
 
 /**
- * 今日の3人のカード。1人ずつ、左右になでるとめくれ、その場でいいねと返事ができる。
- * 3人のあとは関係のありそうな投稿が理由の一言付きで続き、最後は「おしまい」。
+ * 今日の3人のカード。1人ずつ出し、その場でいいね・返事・ありがとうができる。
+ * 0-3p：カードは横にシュッと払うと消える（返事・ありがとうをしたら、それだけで消える）。めくるのは下の ‹ › と矢印キー。
+ * 3人とも応えたら「おしまい」と、次のおすすめがあれば「次のおすすめを見る（N件）」。
  * 外を押す・下へなでおろす・「みんなを見る」で閉じる。
  */
-export function TodayModal({ cards }: { cards: TodayModalCard[] }) {
+export function TodayModal({ cards: incoming, polite = false }: { cards: TodayModalCard[]; polite?: boolean }) {
   const { open, hide } = useToday();
+  // 0-3p(2)(3)：応えたカードは消え、3人とも応えたら「おしまい」。次の3人は押したときだけ
+  const { answered, phase, answer, dismiss } = useAnswered();
+  const allCards = useHeldOrder(incoming);
+  const [batches, setBatches] = useState(1);
+  const { shown: cards, done: allDone, rest } = batchOf(allCards, batches, answered);
   // 0-3m：3列のときは、3列の上に全画面で（column-lift.ts）
   useLift(open);
   const [closing, setClosing] = useState(false);
@@ -174,6 +179,11 @@ export function TodayModal({ cards }: { cards: TodayModalCard[] }) {
   const swallowClick = useRef(false);
   const total = cards.length + 1;
   const last = total - 1;
+  // 消えたカードの分だけ、次のカードが今の場所へ来る。最後を越えたら「おしまい」へ
+  const at = Math.min(index, last);
+  useEffect(() => {
+    if (index > last) setIndex(last);
+  }, [index, last]);
 
   // 開くたびに1枚目から。手前に来たら読み上げと鍵盤の焦点をカードへ
   useEffect(() => {
@@ -184,7 +194,7 @@ export function TodayModal({ cards }: { cards: TodayModalCard[] }) {
   }, [open]);
 
   // 見た記録（あなたの投稿を見てくれました）。残らなくても続けられる
-  const shownId = open ? cards[index]?.postId : undefined;
+  const shownId = open ? cards[at]?.postId : undefined;
   useEffect(() => {
     if (!shownId) return;
     void fetch("/api/today/seen", {
@@ -222,6 +232,7 @@ export function TodayModal({ cards }: { cards: TodayModalCard[] }) {
   closeRef.current = close;
 
   const go = (next: number) => setIndex(Math.min(last, Math.max(0, next)));
+  const current = () => track.current?.children[at] as HTMLElement | undefined;
 
   /**
    * 端の先へめくったとき（0-2p）。カードのめくりを先にし、端からさらに払ったら奥の画面としてホームへ戻る。
@@ -276,9 +287,8 @@ export function TodayModal({ cards }: { cards: TodayModalCard[] }) {
     state.lastT = now;
     state.moved = Math.max(state.moved, Math.abs(dx), Math.abs(dy));
     if (state.axis === "x") {
-      // 端の先は重くして、行けないことを手で分かるように
-      const atEdge = (index === 0 && dx > 0) || (index === last && dx < 0);
-      setVar(track.current, "--dx", atEdge ? dx * 0.3 : dx);
+      // カードは指に付いてくる（払うと消える）。おしまいのカードは重くして、端だと分かるように
+      setVar(current() ?? null, "--swipe-x", at === last ? dx * 0.3 : dx);
     } else {
       setVar(sheet.current, "--dy", Math.max(0, dy));
     }
@@ -289,7 +299,6 @@ export function TodayModal({ cards }: { cards: TodayModalCard[] }) {
     if (!state || state.id !== event.pointerId) return;
     drag.current = null;
     sheet.current?.removeAttribute("data-dragging");
-    track.current?.style.setProperty("--dx", "0px");
     if (!state.axis) return;
     swallowClick.current = state.moved > LOCK;
     if (cancelled) {
@@ -299,13 +308,14 @@ export function TodayModal({ cards }: { cards: TodayModalCard[] }) {
     if (state.axis === "x") {
       const dx = event.clientX - state.x;
       const width = track.current?.offsetWidth ?? 320;
-      if (dx < -width * FLIP_RATIO || state.vx < -FLIP_SPEED) {
-        if (index === last) pastEdge(true);
-        else go(index + 1);
-      } else if (dx > width * FLIP_RATIO || state.vx > FLIP_SPEED) {
-        if (index === 0) pastEdge(false);
-        else go(index - 1);
+      const away = Math.abs(dx) > width * AWAY_RATIO || Math.abs(state.vx) > AWAY_SPEED;
+      // 0-3p(2)：カードを払うと、その向きへ飛んで消える。おしまいのカードの先は、奥の画面としてホームへ（0-2p）
+      if (away && at < last) {
+        dismiss(cards[at].postId, dx < 0 ? "left" : "right");
+        return;
       }
+      current()?.style.setProperty("--swipe-x", "0px");
+      if (away) pastEdge(dx < 0);
       return;
     }
     const dy = event.clientY - state.y;
@@ -316,8 +326,8 @@ export function TodayModal({ cards }: { cards: TodayModalCard[] }) {
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if ((event.target as HTMLElement).closest("textarea, input")) return;
     if (event.key === "Escape") close();
-    else if (event.key === "ArrowRight") go(index + 1);
-    else if (event.key === "ArrowLeft") go(index - 1);
+    else if (event.key === "ArrowRight") go(at + 1);
+    else if (event.key === "ArrowLeft") go(at - 1);
   };
 
   return (
@@ -346,17 +356,18 @@ export function TodayModal({ cards }: { cards: TodayModalCard[] }) {
       >
         <span className="minna-today-handle" aria-hidden="true" />
         <div className="minna-today-window">
-          <div ref={track} className="minna-today-track" style={{ "--i": index } as CSSProperties}>
+          <div ref={track} className="minna-today-track" style={{ "--i": at } as CSSProperties}>
             {cards.map((card, i) => (
               <article
                 key={card.postId}
                 className="minna-today-card"
                 {...cardAttr(card.subject)}
                 aria-label={`${card.authorName}さんの投稿`}
-                aria-hidden={i !== index}
-                inert={i !== index}
+                aria-hidden={i !== at}
+                inert={i !== at}
+                data-answer={phase[card.postId]}
               >
-                <p className="minna-today-kind">{card.related ? "あなたに関係のありそうな投稿" : "今日の3人"}</p>
+                <p className="minna-today-kind">{batches > 1 ? "次のおすすめ" : "今日の3人"}</p>
                 <header className="minna-today-who">
                   <Avatar image={card.authorImage} alt={`${card.authorName}さんのパートナー`} size={44} lazy={i > 0} />
                   <span>
@@ -376,26 +387,47 @@ export function TodayModal({ cards }: { cards: TodayModalCard[] }) {
                   likeCount={card.likeCount}
                   liked={card.liked}
                   replyCount={card.replyCount}
+                  onAnswered={() => answer(card.postId)}
                 />
-                <CardThanks card={card} />
+                {/* ありがとうは話す画面へ移るので、押した時点で応えたことにする（戻ったときに出さない） */}
+                <span className="minna-today-thanks" onClickCapture={() => markAnswered(card.postId)}>
+                  <CardThanks card={card} />
+                </span>
+                {(phase[card.postId] === "done" || phase[card.postId] === "leaving") && (
+                  <p className="minna-today-answered" role="status">
+                    届けました
+                  </p>
+                )}
               </article>
             ))}
-            <section className="minna-today-card minna-today-end" aria-label="おしまい" aria-hidden={index !== last} inert={index !== last}>
+            <section className="minna-today-card minna-today-end" aria-label="おしまい" aria-hidden={at !== last} inert={at !== last}>
               <h2>おしまい</h2>
-              <p>{cards.length > 0 ? "今日はここまで。見てくれてありがとう！" : "今見られる投稿はまだありません。"}</p>
+              <p>{allDone ? todayDoneLine(polite) : allCards.length > 0 ? "今日はここまで。見てくれてありがとう！" : "今見られる投稿はまだありません。"}</p>
+              {allDone && rest > 0 && (
+                <button
+                  type="button"
+                  className="minna-today-next"
+                  onClick={() => {
+                    setBatches((value) => value + 1);
+                    setIndex(0);
+                  }}
+                >
+                  {nextBatchLabel(rest)}
+                </button>
+              )}
             </section>
           </div>
         </div>
         <div className="minna-today-foot">
-          <button type="button" className="minna-today-step" aria-label="前へ" disabled={index === 0} onClick={() => go(index - 1)}>
+          <button type="button" className="minna-today-step" aria-label="前へ" disabled={at === 0} onClick={() => go(at - 1)}>
             ‹
           </button>
-          <span className="minna-today-dots" aria-label={`${index + 1} 枚目（全 ${total} 枚）`} role="img">
+          <span className="minna-today-dots" aria-label={`${at + 1} 枚目（全 ${total} 枚）`} role="img">
             {Array.from({ length: total }, (_, i) => (
-              <i key={i} data-current={i === index ? "" : undefined} />
+              <i key={i} data-current={i === at ? "" : undefined} />
             ))}
           </span>
-          <button type="button" className="minna-today-step" aria-label="次へ" disabled={index === last} onClick={() => go(index + 1)}>
+          <button type="button" className="minna-today-step" aria-label="次へ" disabled={at === last} onClick={() => go(at + 1)}>
             ›
           </button>
           <button type="button" className="minna-today-done" onClick={close}>
