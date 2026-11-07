@@ -194,7 +194,7 @@
   border-radius: 50%;
   opacity: 0;
   pointer-events: none;
-  animation: partner-ring-breathe 2800ms ease-in-out 2 both;
+  animation: partner-ring-breathe 2800ms ease-in-out 3 both;
 }
 
 @keyframes partner-ring-breathe {

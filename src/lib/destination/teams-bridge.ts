@@ -222,10 +222,11 @@ async function channelPath(fetcher: Fetch, token: string, target: TeamsTarget): 
   const cached = cachedPaths.get(key);
   if (cached) return cached;
   const { value: teams } = await graph<{ value: { id: string; displayName: string }[] }>(fetcher, token, "/me/joinedTeams");
-  const team = teams.find((item) => item.displayName === target.team);
+  // チームは ID でも表示名でも引ける。ID で書いておけば、Teams でチームの名前を変えても送り先が外れない
+  const team = teams.find((item) => item.id === target.team) ?? teams.find((item) => item.displayName === target.team);
   if (!team) throw new Error("チームが見つかりません");
   const { value: channels } = await graph<{ value: { id: string; displayName: string }[] }>(fetcher, token, `/teams/${team.id}/channels`);
-  const channel = channels.find((item) => item.displayName === target.channel);
+  const channel = channels.find((item) => item.id === target.channel) ?? channels.find((item) => item.displayName === target.channel);
   if (!channel) throw new Error("チャネルが見つかりません");
   const path = `/teams/${team.id}/channels/${encodeURIComponent(channel.id)}/messages`;
   cachedPaths.set(key, path);

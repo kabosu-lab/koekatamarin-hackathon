@@ -3,8 +3,6 @@
 import { type PointerEvent, type ReactNode, useEffect, useRef, useState } from "react";
 import { hintPending, markHintSeen, reducedMotion, WHEEL_HINT_KEY, whenCalm } from "./first-hint";
 
-/** 輪のまわりの目盛りの点の数（0-3i (3)） */
-const TICKS = 24;
 /** 指の印が4分の1周なぞる長さ（CSS の .wheel-hint-finger と同じ） */
 const HINT_MS = 1800;
 
@@ -13,8 +11,8 @@ const HINT_MS = 1800;
  * 輪から始めた指はなぞり（機能のチップを選ぶ、0-1g(3)）、真ん中から始めた指は話すボタンのもの。
  * カリの音はカルーセルの側で鳴らす（二重に鳴らさない）。
  *
- * 0-3i：なぞれる輪だと分かるよう、まわりに目盛りのような薄い点を並べる。初めて開いたときだけ、
- * 指の形の小さな印が輪を4分の1周なぞる動きを1回見せる（動きを減らす設定では見せない）。点と印は指を受けない。
+ * 0-3i：初めて開いたときだけ、
+ * 指の形の小さな印が輪を4分の1周なぞる動きを1回見せる（動きを減らす設定では見せない）。印は指を受けない（目盛りの点は利用者の決定でなくした）。
  */
 export function ClickWheel({
   invite = false,
@@ -102,11 +100,6 @@ export function ClickWheel({
         onAbort?.();
       }}
     >
-      <span className="wheel-ticks" aria-hidden="true">
-        {Array.from({ length: TICKS }, (_, index) => (
-          <i key={index} style={{ rotate: `${(360 / TICKS) * index}deg` }} />
-        ))}
-      </span>
       {hint && (
         <span className="wheel-hint" aria-hidden="true">
           <span className="wheel-hint-finger">

@@ -404,6 +404,14 @@ describe("チャネルの対応表", () => {
     expect(sent[1]).toContain("/teams/staff/channels/c-room/messages");
   });
 
+  it("チームは ID でも引ける（Teams でチームの名前を変えても送れる）", async () => {
+    writeFileSync(join(dir, "teams.json"), JSON.stringify({ ...CONFIG, channels: { clubs: { team: "school", channel: "部活" } } }));
+    signIn("saeki");
+    const { calls, fetcher } = mappedGraph();
+    expect(await sendPostToTeams(db, "saeki", "p-id", "clubs", "部活の話", {}, fetcher)).toEqual({ state: "sent" });
+    expect(posts(calls)[0].url).toContain("/teams/school/channels/c-clubs/messages");
+  });
+
   it("対応表にないチャネルは、アプリの中に残す", async () => {
     signIn("saeki");
     const { calls, fetcher } = mappedGraph();
