@@ -93,13 +93,16 @@ export function TodayProvider({
     return () => window.removeEventListener(STRIP_LAND_EVENT, onShown);
   }, [openWhenShown]);
   useEffect(() => {
+    // 開いたときに1回だけ決める。帯で着いたときの読み直し（router.refresh）で、開いたモーダルを閉じたり印を付け直したりしない。
+    // 欄（iframe）の中かどうかはクライアントで決める（サーバーの sec-fetch-dest は読み直しのときに iframe にならない）
     if (!initialOpen) return;
     if (window.self !== window.top) {
       setOpen(false);
       return;
     }
     markSeen();
-  }, [initialOpen]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const show = () => {
     markSeen();
     setOpened(true);

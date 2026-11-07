@@ -78,7 +78,15 @@ export function TrialTools() {
     <section className="card trial-tools" aria-label="試用版について">
       <h2>試用版</h2>
       <div className="row">
-        <button type="button" onClick={() => window.dispatchEvent(new Event(OPEN_EVENT))}>
+        <button
+          type="button"
+          onClick={() => {
+            // 列や左右の画面（iframe）の中から押したときは、外側の話す画面へ帯を戻してから、外側で注意を出す
+            const top = (window.top ?? window) as Window & typeof globalThis;
+            top.koekataStrip?.go("/");
+            top.dispatchEvent(new top.Event(OPEN_EVENT));
+          }}
+        >
           注意を読み直す
         </button>
       </div>

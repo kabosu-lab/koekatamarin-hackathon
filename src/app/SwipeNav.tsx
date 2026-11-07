@@ -5,7 +5,7 @@ import { useEffect } from "react";
 import { isDeep, SWIPE_HOME, SWIPE_SCREENS, swipeTarget } from "@/lib/swipe-nav";
 import { WIDE_QUERY } from "@/lib/wide";
 import { Peek, remember, screenOf } from "./swipe-peek";
-import { paneFromUrl, STRIP_LAND_EVENT, strip, stripReady, stripRest } from "./strip";
+import { holdStrip, paneFromUrl, STRIP_LAND_EVENT, strip, stripReady, stripRest } from "./strip";
 
 /**
  * 操作の途中の指の動きを、画面の移動にしない場所。
@@ -158,17 +158,28 @@ export function SwipeNav() {
       }
       // 外側は、左右の画面で人や見た目が替わっていたら、話す画面へ戻ったときに窓ごと読み直す。
       // router.refresh は使わない（読み直しの途中で帯がまた左右へ動くと、遅れて届いた話す画面の木で帯が元へ戻ってしまう）
-      if (to === 0 && whoAndLook() !== drawnAs) location.replace("/");
+      // 読み直すと左右の画面も新しい人で読み込み直す。URL の引数は残す
+      if (to === 0 && whoAndLook() !== drawnAs) {
+        holdStrip();
+        location.reload();
+      }
     };
     window.addEventListener(STRIP_LAND_EVENT, onLand);
     if (window.self !== window.top) return () => window.removeEventListener(STRIP_LAND_EVENT, onLand);
     window.koekataStrip = strip;
+    // 帯を動かせるようになった印（html[data-strip-ready]）。左右の画面の読み込みを見て付け外しする（画面テストもこれを待つ）
+    const root = document.documentElement;
+    const watchReady = window.setInterval(() => {
+      if (stripReady()) root.dataset.stripReady = "true";
+      else delete root.dataset.stripReady;
+    }, 250);
     const onPop = () => {
       if (!document.querySelector(".device-row")) return;
       strip.settle(stripRest(), 0, paneFromUrl(), "none");
     };
     window.addEventListener("popstate", onPop);
     return () => {
+      window.clearInterval(watchReady);
       window.removeEventListener(STRIP_LAND_EVENT, onLand);
       window.removeEventListener("popstate", onPop);
     };
