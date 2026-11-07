@@ -230,7 +230,9 @@ export function TodayModal({ cards }: { cards: TodayModalCard[] }) {
       detail: { forward, layer: sheet.current?.parentElement },
     });
     const handled = !window.dispatchEvent(request);
-    if (!handled && forward) close();
+    // 帯の中（pane）では、話す画面へ戻したあと、モーダルは閉じておく（次に開いたときに残らない）
+    const inPane = (window.frameElement as HTMLElement | null)?.dataset.mode === "pane";
+    if ((!handled && forward) || (handled && inPane)) close();
   };
 
   const setVar = (element: HTMLElement | null, name: string, value: number) => element?.style.setProperty(name, `${Math.round(value)}px`);

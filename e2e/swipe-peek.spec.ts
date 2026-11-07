@@ -271,3 +271,58 @@ test("帯：何度往復しても、記録は1つだけ。「戻る」2回でア
   await expect(page).toHaveURL("about:blank");
   await context.close();
 });
+
+test("帯：送った直後や、奥から戻った直後に払っても、丸ごとの遷移ではなく帯で移る", async ({ browser }) => {
+  const context = await touchContext(browser);
+  const page = await context.newPage();
+  await openStrip(page);
+  let topLoads = 0;
+  page.on("load", () => topLoads++);
+  // 送った直後：画面の外のみんなを読み直している途中でも、帯で開く
+  await page.evaluate(() => window.dispatchEvent(new Event("koekata:posted")));
+  expect(await goStrip(page, "/minna")).toBe(true);
+  await expect(page).toHaveURL(/\/\?pane=right$/);
+  await expect(page.locator('.device-row[data-pane="right"]')).toHaveCount(1);
+  // みんなの中で奥（受信箱）へ進んでから話す画面へ戻り、すぐまたみんなへ
+  const right = page.frameLocator('.wide-panel[data-side="right"] iframe');
+  await right.getByRole("navigation", { name: "みんなの入口" }).getByRole("link", { name: /受信箱/ }).click();
+  await expect(right.getByRole("heading", { name: "受信箱", level: 1 })).toBeVisible();
+  expect(await goStrip(page, "/")).toBe(true);
+  await expect(page).toHaveURL(/127\.0\.0\.1:\d+\/$/);
+  await expect.poll(() => page.evaluate(() => window.koekataStrip!.rest())).toBe(0);
+  expect(await goStrip(page, "/minna")).toBe(true);
+  await expect(page).toHaveURL(/\/\?pane=right$/);
+  // 外側は読み直していない
+  expect(topLoads).toBe(0);
+  await context.close();
+});
+
+test("帯：みんなの今日の3人を「おしまい」の先へめくると、話す画面へ戻る", async ({ browser }) => {
+  const context = await touchContext(browser);
+  await context.clearCookies({ name: "koekata_today_seen" });
+  const page = await context.newPage();
+  await openStrip(page);
+  await goStrip(page, "/minna");
+  const right = page.frameLocator('.wide-panel[data-side="right"] iframe');
+  const modal = right.getByRole("dialog", { name: "今日の3人" });
+  await expect(modal).toBeVisible();
+  const next = modal.getByRole("button", { name: "次へ" });
+  await expect(async () => {
+    while (await next.isEnabled()) await next.click();
+    await expect(modal.getByRole("heading", { name: "おしまい" })).toBeVisible({ timeout: 1000 });
+  }).toPass();
+  // おしまいの先へ左へなでる
+  const box = (await modal.boundingBox())!;
+  const x = box.x + box.width / 2;
+  const y = box.y + 40;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  for (let i = 1; i <= 8; i++) await page.mouse.move(x - (200 * i) / 8, y);
+  await page.mouse.up();
+  await expect(page).toHaveURL(/127\.0\.0\.1:\d+\/$/);
+  await expect(page.locator(".device-row[data-pane]")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "押し続けて話す" })).toBeInViewport();
+  // モーダルは閉じている（次に帯でみんなを開いたときに残らない）
+  await expect(modal).toHaveCount(0);
+  await context.close();
+});

@@ -33,7 +33,6 @@ export function refreshPane(side: "left" | "right") {
   const frame = pane(side)?.querySelector("iframe");
   try {
     if (!frame?.contentWindow) return;
-    delete frame.dataset.loaded;
     frame.contentWindow.location.reload();
   } catch {
     // 読めなければそのまま
@@ -79,9 +78,11 @@ export function stripReady(): boolean {
   for (const side of ["left", "right"] as const) {
     const frame = pane(side)?.querySelector("iframe");
     try {
-      // 読み込みが済んだ印（WidePanel の onLoad）と、中の文書の両方を見る
-      if (!frame || frame.dataset.loaded !== "true" || frame.contentDocument?.readyState !== "complete") return false;
+      // 中の画面の場所だけで決める（読み込み前の about:blank は除く）。投稿のあとの読み直し（refreshPane）や、
+      // 奥から入口へ戻す読み直しの間も、前の画面が見えているので帯は動かせる（丸ごとの遷移にしない）
+      if (!frame) return false;
       const path = frame.contentWindow?.location.pathname ?? "";
+      if (!path || path === "blank") return false;
       if (path !== ROOTS[side] && !path.startsWith(`${ROOTS[side]}/`) && !(side === "right" ? RIGHT_PREFIXES : LEFT_PREFIXES).some((prefix) => path.startsWith(prefix)))
         return false;
     } catch {
