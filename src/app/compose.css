@@ -189,3 +189,8 @@ html[data-theme="modern"] .compose-sheet .compose-writing {
     animation: none;
   }
 }
+
+/* 書いている間は直せる欄を隠す（上の display: block が hidden を打ち消さないように） */
+.compose-sheet .compose-body[hidden] {
+  display: none;
+}

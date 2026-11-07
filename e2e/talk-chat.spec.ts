@@ -74,6 +74,8 @@ test("0-2l：とどけるを押すとすぐシートが開き、本文はカー�
   await expect(sheet).toBeVisible({ timeout: 1000 });
   await expect(sheet.locator(".preview-author")).toContainText("佐伯 みどり");
   await expect(sheet.locator(".compose-caret")).toBeVisible();
+  // 書いている間は、直せる欄を隠して、流れる本文だけを1つ出す（二重に出さない）
+  await expect(sheet.locator("textarea.compose-body")).toBeHidden();
   await expect(sheet.getByRole("button", { name: "本人として送る" })).toBeDisabled();
   // 会話の中の骨組みと「作っています」はもう出さない
   await expect(page.locator(".draft-skeleton")).toHaveCount(0);
