@@ -2,6 +2,7 @@ import type { DatabaseSync } from "node:sqlite";
 import { handleConverse, parseConverseInput } from "./claude/converse-request";
 import type { ClaudeClient } from "./claude/types";
 import { getDestination } from "./destination/current";
+import { saveTalkFeedback } from "./feedback";
 import { goalsForPrompt } from "./goals";
 import { memoryForPrompt } from "./memory";
 import { schoolPostsForPrompt } from "./school-posts-prompt";
@@ -23,6 +24,8 @@ export async function handleTalk(
   viewerId: string,
   input: unknown,
   now: Date = new Date(),
+  /** 依頼に画面の場所がないとき（歩きながら など）に使う、開いていた画面の道 */
+  fallbackPath?: string,
 ) {
   const parsed = parseConverseInput(input);
   const [outcome, assessment] = await Promise.all([
@@ -48,6 +51,18 @@ export async function handleTalk(
     ? createSafetyNotice(db, viewerId, assessment.summary, now)
     : undefined;
 
+  // 0-3l (2)：本人が届けることに同意した感想は、この呼び出しの中で残す。名前も人物も残さない。
+  // 命や安全の案内が出たときは預からない。同じ言葉は二重に残さない
+  let feedbackSaved: true | undefined;
+  if (outcome.status === 200 && outcome.deliver && !safety) {
+    const { path, screenWidth } = input as Record<string, unknown>;
+    try {
+      if (saveTalkFeedback(db, { body: outcome.deliver, path: path ?? fallbackPath, screenWidth }, now)) feedbackSaved = true;
+    } catch (error) {
+      console.error("話の中の感想を残せませんでした", error instanceof Error ? error.name : "unknown");
+    }
+  }
+
   // 返事が作れなくても、相談室に伝えたことは本人に知らせる
-  return { status: outcome.status, body: { ...outcome.body, safety } };
+  return { status: outcome.status, body: { ...outcome.body, safety, ...(feedbackSaved ? { feedbackSaved } : {}) } };
 }

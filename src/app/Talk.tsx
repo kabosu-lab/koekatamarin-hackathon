@@ -36,8 +36,7 @@ import { isSpeechSupported, type ListeningSession, SLOW_NOTICE, startSession } f
 import { useLockedTalk } from "./use-locked-talk";
 import { Icon } from "./Icon";
 import "./new-talk.css";
-import { postFeedback } from "./FeedbackSheet";
-import { isFeedbackConsent } from "@/lib/feedback-consent";
+import { announceTalkFeedback, feedbackPlace } from "./FeedbackSheet";
 import { ClickWheel } from "./ClickWheel";
 import { VoiceLump } from "./VoiceLump";
 import { openScreenFromHome } from "./WidePanels";
@@ -257,8 +256,6 @@ export function Talk({
   const sessionRef = useRef<ListeningSession | null>(null);
   const messagesRef = useRef<ChatMessage[]>([]);
   messagesRef.current = messages;
-  /** 0-2h：パートナーが作っている人に届けてよいか聞いた、本人の言葉（試用版だけ） */
-  const askedFeedback = useRef<string | null>(null);
   const lockedTalk = useLockedTalk({
     session: sessionRef,
     history: () => messagesRef.current.slice(-MAX_HISTORY),
@@ -358,10 +355,6 @@ export function Talk({
     if (!text || sending) return;
 
     const history = messages.slice(-MAX_HISTORY);
-    // 0-2h：パートナーが「作っている人に届けてもいい？」と聞いたあと、本人がいいと言ったら、その前の本人の言葉だけを届ける
-    const askedAbout = askedFeedback.current;
-    askedFeedback.current = null;
-    if (trial && askedAbout && isFeedbackConsent(text)) void postFeedback({ body: askedAbout, from: "talk" }, window.location.pathname);
     setMessages([...messages, { role: "user", content: text }]);
     setDraft("");
     setNotice("");
@@ -370,18 +363,18 @@ export function Talk({
       const response = await fetch("/api/converse", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ history, text }),
+        // 0-3l (2)：本人が感想を届けることに同意したら、サーバーがその場で残す。そのときの画面の場所を添える
+        body: JSON.stringify({ history, text, ...(trial ? feedbackPlace() : {}) }),
       });
-      const { reply, mode, ready, level: incoming, safety: notice, feedback } = (await response.json().catch(() => ({}))) as {
+      const { reply, mode, ready, level: incoming, safety: notice, feedbackSaved } = (await response.json().catch(() => ({}))) as {
         reply?: string;
         mode?: string;
         ready?: boolean;
         level?: number;
         safety?: SafetyNotice;
-        feedback?: boolean;
+        feedbackSaved?: boolean;
       };
-      // 届けてよいか聞かれた言葉を覚えておく（次の本人の返事で決める）。命や安全の案内のときは預からない
-      if (trial && feedback === true && !notice && response.ok && reply) askedFeedback.current = text;
+      if (feedbackSaved === true) announceTalkFeedback();
       // 返事が作れなくても、相談室に伝えたことは必ず本人に知らせる
       if (notice) setSafety(notice);
       if (!response.ok || !reply) throw new Error(`status ${response.status}`);
@@ -891,7 +884,6 @@ export function Talk({
     setAskNewAt(null);
     archiveTalk(viewer.name, messages);
     setArchived(loadArchive(viewer.name));
-    askedFeedback.current = null;
     setMessages([]);
     setReadyAt(null);
     setDeliveredAt(0);

@@ -4,6 +4,11 @@ import Link from "next/link";
 import { useState } from "react";
 import type { Goal, Nudge } from "@/lib/goals";
 
+const NUDGE_CHOICES = [
+  ["gentle", "そっと"],
+  ["blunt", "耳が痛め"],
+] as const;
+
 export function GoalsPanel({ initial, initialNudge }: { initial: Goal[]; initialNudge: Nudge }) {
   const [goals, setGoals] = useState(initial);
   const [nudge, setNudge] = useState(initialNudge);
@@ -12,6 +17,8 @@ export function GoalsPanel({ initial, initialNudge }: { initial: Goal[]; initial
   const [editText, setEditText] = useState("");
   const [justDone, setJustDone] = useState<Goal | null>(null);
   const [notice, setNotice] = useState("");
+  /** 促し方を替えたときの小さな知らせ */
+  const [nudgeSaid, setNudgeSaid] = useState("");
 
   async function call(body: Record<string, unknown>): Promise<boolean> {
     setNotice("");
@@ -115,25 +122,29 @@ export function GoalsPanel({ initial, initialNudge }: { initial: Goal[]; initial
         ))}
       </ul>
 
-      <p className="muted">パートナーの促し方</p>
-      <div className="row">
-        {(
-          [
-            ["gentle", "そっと"],
-            ["blunt", "耳が痛め"],
-          ] as const
-        ).map(([value, label]) => (
+      <p className="muted" id="goal-nudge-label">
+        パートナーの促し方
+      </p>
+      {/* 2つで1組の切り替え。選んだほうを塗る（見た目は globals.css の選んだ印と同じ） */}
+      <div className="row nudge-choice" role="group" aria-labelledby="goal-nudge-label">
+        {NUDGE_CHOICES.map(([value, label]) => (
           <button
             key={value}
             type="button"
             className="secondary"
             aria-pressed={nudge === value}
-            onClick={() => void call({ action: "nudge", nudge: value })}
+            onClick={() =>
+              void call({ action: "nudge", nudge: value }).then((ok) => setNudgeSaid(ok ? `「${label}」にしました` : ""))
+            }
           >
             {label}
           </button>
         ))}
       </div>
+      <p className="muted">近い話が出たとき、パートナーがこの言い方で背中を押します</p>
+      <p className="muted nudge-said" role="status">
+        {nudgeSaid}
+      </p>
 
 
       {notice && (

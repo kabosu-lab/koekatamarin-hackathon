@@ -1,7 +1,9 @@
 import { assessWithoutClaude } from "../safety";
 import type { DeliverLevel } from "../send-sound";
 import { collectsFeedback, isTrialMode } from "../trial";
+import { talkFeedbackToDeliver } from "../feedback-consent";
 import { companionSystemPrompt, refusalReply, trialCompanionSystemPrompt, trialFeedbackRules } from "./persona";
+import { isTeacherSpeaking } from "./scripted";
 import type { ChatMessage, ClaudeClient } from "./types";
 
 const MAX_REPLY_TOKENS = 4000;
@@ -18,6 +20,11 @@ export type ConverseResult = {
    * 試用版で感想を集めているときだけ付く（聞いていないときは付けない）。保存は、本人が次にいいと言ったときに画面がする
    */
   feedback?: true;
+  /**
+   * 本人が届けることに同意した、感想の本人の言葉（0-3l (2)）。試用版で感想を集めているときだけ付く。
+   * 呼び出し側（talk-request.ts）がその場で trial_feedback に残す。画面には返さない
+   */
+  deliver?: string;
 };
 
 /** 段の型は、画面の音と光（send-sound.ts）と同じものを使う */
@@ -42,10 +49,20 @@ export function splitReady(text: string): { reply: string; ready: boolean; level
 /** アプリへの感想を届けてよいか聞いた印。画面には出さない */
 const FEEDBACK_MARKS = /\n?\[\[感想\]\]/g;
 
-/** 返事から感想の印を取り除き、印があったかを返す */
-export function splitFeedback(text: string): { text: string; feedback: boolean } {
+/** 本人が届けることに同意した印 */
+const DELIVERED_MARKS = /\n?\[\[感想を届け(?:る|た)\]\]/g;
+
+/** 返事から感想の印を取り除き、聞いた印（feedback）と同意の印（delivered）があったかを返す */
+export function splitFeedback(text: string): { text: string; feedback: boolean; delivered: boolean } {
   const feedback = /\[\[感想\]\]/.test(text);
-  return { text: text.replace(FEEDBACK_MARKS, ""), feedback };
+  const delivered = /\[\[感想を届け(?:る|た)\]\]/.test(text);
+  return { text: text.replace(FEEDBACK_MARKS, "").replace(DELIVERED_MARKS, ""), feedback, delivered };
+}
+
+/** 届けたあとの返事が「届けた」と言い切っていなければ、頭に言い切りを足す（「画面から」などと言わせない） */
+export function sayDelivered(reply: string, teacher: boolean): string {
+  if (/届け(まし)?た|とどけた/.test(reply)) return reply;
+  return `${teacher ? "届けました。ありがとうございます。" : "届けたよ、ありがとう！"}${reply ? `\n${reply}` : ""}`;
 }
 
 /** 調べもの（0-1s）の出典の印 [[出典:題|URL]] を、印のまま見せず「出典：題 URL」の行にする */
@@ -87,5 +104,15 @@ export async function converse(
   }
   // 命や安全に関わるはっきりした言葉があれば、パートナーが印を付けても光らせず、感想も預からない
   if (assessWithoutClaude(userText).concern) return { reply, refused: false, ready: false, level: 0 };
-  return { reply, refused: false, ready: level > 0, level, ...(asksFeedback && marked.feedback ? { feedback: true as const } : {}) };
+  // 本人が届けることに同意したら、本人の言葉を預ける（同意の判定は印と、聞いたあとの返事の両方で見る）
+  const deliver = asksFeedback ? talkFeedbackToDeliver(history, userText, marked.delivered) : null;
+  return {
+    reply: deliver ? sayDelivered(reply, isTeacherSpeaking(memory)) : reply,
+    refused: false,
+    ready: level > 0,
+    level,
+    // 届けた返事では、もう一度聞いた印を立てない（同じ感想を二重に預けない）
+    ...(asksFeedback && marked.feedback && !deliver ? { feedback: true as const } : {}),
+    ...(deliver ? { deliver } : {}),
+  };
 }

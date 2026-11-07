@@ -1,4 +1,5 @@
-import { FEEDBACK_MARK, openingLines } from "./persona";
+import { isFeedbackConsent } from "../feedback-consent";
+import { FEEDBACK_DELIVERED_MARK, FEEDBACK_MARK, openingLines } from "./persona";
 import type { ClaudeClient } from "./types";
 
 /** 0-2l：できた下書きの本文を、決まった速さで少しずつ渡す（流せない Claude と台本で、書いていく様子を見せる） */
@@ -39,12 +40,21 @@ export function isTeacherSpeaking(system: string | undefined): boolean {
  * 聞いたあとの返事には短くお礼だけ言う（届けるかは画面が本人の返事で決める）。
  */
 function feedbackReply(spoken: string, previous: string, teacher = false): string | null {
+  const delivered = teacher
+    ? `届けました。ありがとうございます。\n${FEEDBACK_DELIVERED_MARK}`
+    : `届けたよ、ありがとう！\n${FEEDBACK_DELIVERED_MARK}`;
+  // 聞いたあとの返事：いいよなら届けた印、断りならそれで終える
+  if (/作っている人に届けてもいい/.test(previous)) {
+    if (isFeedbackConsent(spoken)) return delivered;
+    return teacher ? "わかりました、届けずにおきますね。" : "わかった、届けないでおくね。";
+  }
   if (/このアプリ|こえかた/.test(spoken) && /使いにく|分かりにく|わかりにく|動かない|してほしい|欲しい|ほしい|よかった|いい/.test(spoken)) {
+    // 自分から「届けて」と頼んだら、聞き直さずにその場で届ける
+    if (/(届け|とどけ|伝え)て/.test(spoken)) return delivered;
     return teacher
       ? `教えてくださってありがとうございます。それ、作っている人に届けてもいいですか？ お名前は届きません。\n${FEEDBACK_MARK}`
       : `教えてくれてありがとう。それ、作っている人に届けてもいい？ 名前は届かないよ。\n${FEEDBACK_MARK}`;
   }
-  if (/作っている人に届けてもいい/.test(previous)) return teacher ? "わかりました、ありがとうございます！" : "わかった、ありがとう！";
   return null;
 }
 
