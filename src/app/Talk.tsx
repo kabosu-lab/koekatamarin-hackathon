@@ -65,7 +65,8 @@ const WHEEL_CHIPS: (ChipItem & { href: string })[] = [
   { id: "inbox", label: "受信箱", code: "I-02", icon: "inbox", href: "/inbox", description: "あなたに届いた返事を読めます" },
   { id: "room", label: "自習室", code: "S-04", icon: "book", href: "/study/room", description: "みんなと一緒に勉強する部屋に入ります" },
   { id: "chie", label: "校内の知恵", code: "K-05", icon: "idea", href: "/chie", description: "校内で広がっている知恵を探せます" },
-  { id: "goals", label: "頑張りたいこと", code: "G-06", icon: "flag", href: "/me?open=goals", description: "頑張りたいことを書いて、みんなに言っておけます" },
+  // 名前は5字まで（どの画面でも 14px 以上の字で1行に収めるため）
+  { id: "goals", label: "頑張り", code: "G-06", icon: "flag", href: "/me?open=goals", description: "頑張りたいことを書いて、みんなに言っておけます" },
   { id: "daily", label: "日報・日記", code: "D-07", icon: "note", href: "/me?open=daily", description: "今日のことを書き残せます" },
   { id: "lookback", label: "ふりかえり", code: "L-08", icon: "clock", href: "/me?open=lookback", description: "これまでの話や投稿をふりかえります" },
   { id: "settings", label: "設定", code: "C-09", icon: "settings", href: "/me?open=settings", description: "見た目やパートナーなどの設定を変えます" },

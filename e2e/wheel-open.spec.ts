@@ -29,7 +29,7 @@ const CHIPS: { index: number; label: string; side: Side; path: string; today?: b
   { index: 5, label: "校内の知恵", side: "right", path: "/chie", entrance: (frame) => frame.locator('.minna-dock a[href="/chie"]').click() },
   ...(["goals", "daily", "lookback", "settings"] as const).map((key, i) => ({
     index: 6 + i,
-    label: ["頑張りたいこと", "日報・日記", "ふりかえり", "設定"][i],
+    label: ["頑張り", "日報・日記", "ふりかえり", "設定"][i],
     side: "left" as const,
     path: `/me?open=${key}`,
     entrance: (frame: Frame) => frame.locator(`a[data-tile="${key}"]`).click(),
@@ -38,10 +38,15 @@ const CHIPS: { index: number; label: string; side: Side; path: string; today?: b
 
 async function frameOf(page: Page, side: Side): Promise<Frame> {
   const iframe = page.locator(`.device-row > .wide-panel[data-side=${side}] iframe`);
-  await expect(iframe).toBeAttached();
-  const frame = (await (await iframe.elementHandle())!.contentFrame())!;
-  await frame.waitForLoadState("load");
-  return frame;
+  // 列の中で開き直すと iframe が作り直されるので、取れるまで取り直す
+  let frame: Frame | null = null;
+  await expect(async () => {
+    await expect(iframe).toBeAttached();
+    frame = (await (await iframe.elementHandle())?.contentFrame()) ?? null;
+    expect(frame).not.toBeNull();
+    await frame!.waitForLoadState("load");
+  }).toPass({ timeout: 15_000 });
+  return frame!;
 }
 
 /** 開いた所：どちらの列（帯）に、どの画面が、今日の3人のモーダルつきで出ているか */
