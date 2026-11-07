@@ -1,7 +1,7 @@
 import { Icon } from "@/app/Icon";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { cookies, headers } from "next/headers";
+import { cookies } from "next/headers";
 import { readAppearance } from "@/lib/appearance";
 import { getAvatar } from "@/lib/avatar";
 import { getViewer } from "@/lib/current-person";
@@ -89,12 +89,12 @@ export default async function MinnaPage({ searchParams }: { searchParams: Promis
     liked: card.likedByViewer,
     replyCount: card.replyCount,
     related,
-    reason: related ? card.relatedReason : undefined,
+    // 今日の3人にも、理由があれば一言添える（先生で開くと、理由のある生徒の投稿が先に来る）
+    reason: card.relatedReason,
     kind: card.kind,
   }));
-  // その日はじめて開いたときだけ自動で出す。広い画面の左右の欄（iframe）と、動画用の早回しでは出さない
-  const embedded = (await headers()).get("sec-fetch-dest") === "iframe";
-  const showToday = todayCards.length > 0 && !store.get(TODAY_SEEN_COOKIE) && !embedded && hayaokuri !== "1";
+  // その日はじめて開いたときだけ自動で出す。広い画面の右の欄（iframe）の中でも出す。動画用の早回しでは出さない
+  const showToday = todayCards.length > 0 && !store.get(TODAY_SEEN_COOKIE) && hayaokuri !== "1";
 
   return (
     <TodayProvider initialOpen={showToday}>
