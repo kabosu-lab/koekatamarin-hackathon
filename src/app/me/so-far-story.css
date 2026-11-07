@@ -607,3 +607,186 @@ html[data-theme] .home .so-far-panel > h2,
   border-radius: 999px;
   background: color-mix(in srgb, var(--accent) 10%, transparent);
 }
+
+/* ---- 0-3h：押すと意味の一文、つながりはワードクラウド、葉とパートナーは別のグラフ ---- */
+
+/* 棒・名前・見出しはボタン。外側の画面のボタンの形（枠・影・余白）を持ち込まない */
+html .so-far-story .so-far-board button:is(.so-far-bar, .so-far-name, .so-far-title) {
+  min-width: 0;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  box-shadow: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html .so-far-story .so-far-board button:is(.so-far-bar, .so-far-name, .so-far-title):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.so-far-panel {
+  position: relative;
+  cursor: pointer;
+}
+
+html .so-far-story .so-far-board button.so-far-title {
+  color: inherit;
+  font-weight: inherit;
+  letter-spacing: inherit;
+}
+
+html .so-far-story .so-far-board button.so-far-bar {
+  display: grid;
+  height: 100%;
+}
+
+html .so-far-story .so-far-board button.so-far-bar[aria-expanded="true"] small {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* 押した一文・名札：グラフの下に重ねる（スクロールを生まない） */
+.so-far-tip {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  left: 6px;
+  z-index: 2;
+  max-height: calc(100% - 12px);
+  overflow: hidden;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: var(--surface, #fff);
+  box-shadow: 0 4px 16px rgb(20 30 40 / 18%);
+  color: var(--ink);
+  font-size: clamp(0.72rem, 3.6cqi, 0.9rem);
+  font-weight: 600;
+  line-height: 1.45;
+  text-align: left;
+  animation: so-far-rise 160ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.so-far-tag {
+  display: grid;
+  gap: 2px;
+}
+
+.so-far-tag strong {
+  font-size: 1.05em;
+}
+
+.so-far-tag small {
+  color: var(--muted);
+  font-size: 0.9em;
+}
+
+/* つながり：ワードクラウド。名前の大きさ（--s：0〜1）はやり取りの多さ。自分は真ん中に置かない */
+.so-far-cloud {
+  display: flex;
+  flex-wrap: wrap;
+  align-content: center;
+  align-items: center;
+  justify-content: center;
+  gap: 2px 10px;
+  width: 100%;
+  height: 100cqh;
+  overflow: hidden;
+}
+
+html .so-far-story .so-far-board button.so-far-name {
+  padding: 1px 2px;
+  font-size: calc(clamp(0.62rem, 4.2cqw, 0.9rem) * (1 + 1.1 * var(--s, 0)));
+  font-weight: 800;
+  line-height: 1.2;
+  white-space: nowrap;
+  color: color-mix(in srgb, var(--accent) calc(45% + 55% * var(--s, 0)), var(--ink));
+}
+
+html .so-far-story .so-far-board button.so-far-name[aria-expanded="true"] {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+.so-far-name[data-grew] {
+  animation: so-far-arrive 300ms cubic-bezier(0.34, 1.56, 0.64, 1) 260ms both;
+}
+
+.so-far-cloud .so-far-more-people {
+  position: static;
+  font-size: 0.65rem;
+}
+
+/* あなたの葉 */
+.so-far-tree .so-far-leaves {
+  font-size: clamp(0.95rem, 7cqw, 1.4rem);
+}
+
+/* パートナーの育ち：声のかたまり → 今の姿 */
+.so-far-growth {
+  display: grid;
+  gap: 4px;
+  justify-items: center;
+}
+
+.so-far-growth .so-far-stages {
+  flex-wrap: nowrap;
+}
+
+.so-far-stage {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.so-far-arrow {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.so-far-growth .so-far-stages img {
+  width: min(44px, 30cqh, 15cqw);
+  height: min(44px, 30cqh, 15cqw);
+  object-fit: contain;
+}
+
+/* 中身のないとき：はじまりの日とパートナーを横に */
+.so-far-grid[data-empty] .so-far-panel[data-panel="bars"] {
+  grid-column: 1 / -1;
+}
+
+/* 3列の上に重ねて開いたとき（iPad 横・パソコン）と、広い横向きの画面：3列×2段 */
+@media (orientation: landscape) and (min-width: 900px) {
+  .so-far-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-rows: repeat(2, minmax(0, 1fr));
+  }
+
+  .so-far-panel[data-panel="bars"] {
+    grid-column: span 2;
+  }
+
+  .so-far-grid[data-empty] {
+    grid-template-rows: minmax(0, 0.8fr) minmax(0, 1fr);
+  }
+
+  .so-far-grid[data-empty] .so-far-panel[data-panel="bars"] {
+    grid-column: 1 / -1;
+  }
+
+  .so-far-grid[data-empty] .so-far-panel[data-panel="first"] {
+    grid-column: span 2;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .so-far-tip,
+  .so-far-name[data-grew] {
+    animation: none;
+  }
+}
