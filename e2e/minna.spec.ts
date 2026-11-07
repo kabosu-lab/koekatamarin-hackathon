@@ -362,7 +362,7 @@ test.describe("今日の3人のモーダル", () => {
     await expect(modal).toHaveCount(0);
   });
 
-  test("初めて開くと出て後ろが暗く沈み、なでるとめくれ、3人のあとにおすすめ、最後はおしまい", async ({ page, context }) => {
+  test("初めて開くと出て後ろが暗く沈み、前後のボタンでめくれ、横に払うとそのカードが消え、3人とも済むとおしまいと次のおすすめ", async ({ page, context }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/minna");
     const modal = page.getByRole("dialog", { name: "今日の3人" });
@@ -370,36 +370,39 @@ test.describe("今日の3人のモーダル", () => {
     await expect(page.locator(".minna-today-scrim")).toHaveCSS("opacity", "0.55");
     // その日に出したことの印が残る
     await expect.poll(async () => (await context.cookies()).some((cookie) => cookie.name === TODAY_SEEN.name)).toBe(true);
-    // 左右になでるのは、画面の切り替えとぶつからない
+    // 横の指はカードが受け、画面の切り替えには使わない
     await expect(page.locator(".minna-today-layer")).toHaveAttribute("data-noswipe");
 
     const count = modal.getByRole("img", { name: /枚目/ });
-    await expect(count).toHaveAttribute("aria-label", /^1 枚目/);
+    // 0-3p：きっちり3人（と、おしまいの1枚）
+    await expect(count).toHaveAttribute("aria-label", "1 枚目（全 4 枚）");
     await expect(modal.getByRole("article")).toHaveCount(1);
     await expect(modal.getByRole("article").getByText("今日の3人", { exact: true })).toBeVisible();
-    // 左へなでると次の人
-    await expect(async () => {
-      await stroke(page, -200, 0);
-      await expect(count).toHaveAttribute("aria-label", /^2 枚目/, { timeout: 1000 });
-    }).toPass();
-    // 右へなでると戻る。画面は移らない
-    await stroke(page, 200, 0);
+    // めくるのは前後のボタン。画面は移らない
+    await modal.getByRole("button", { name: "次へ" }).click();
+    await expect(count).toHaveAttribute("aria-label", /^2 枚目/);
+    await modal.getByRole("button", { name: "前へ" }).click();
     await expect(count).toHaveAttribute("aria-label", /^1 枚目/);
     await expect(page).toHaveURL(/\/minna$/);
 
-    // 理由のある投稿は今日の3人に先に入る。残っていれば、3人のあとに理由の一言付きで続く
-    const total = Number((await count.getAttribute("aria-label"))!.match(/全 (\d+) 枚/)![1]);
-    expect(total).toBeGreaterThanOrEqual(4);
-    for (let i = 1; i < total; i++) {
-      if (i === 4 && total > 4) {
-        await expect(modal.getByRole("article").getByText("あなたに関係のありそうな投稿")).toBeVisible();
-        await expect(modal.getByRole("article").getByText(/^おすすめ：/)).toBeVisible();
-      }
-      await modal.getByRole("button", { name: "次へ" }).click();
-      await expect(count).toHaveAttribute("aria-label", new RegExp(`^${i + 1} 枚目`));
+    // 横に払うと、そのカードが消えて次の人が来る
+    for (const left of [3, 2, 1]) {
+      const name = (await modal.getByRole("article").getAttribute("aria-label")) ?? "";
+      await expect(async () => {
+        await stroke(page, -220, 0);
+        await expect(modal.getByRole("article", { name, exact: true })).toHaveCount(0, { timeout: 1000 });
+      }).toPass();
+      if (left > 1) await expect(count).toHaveAttribute("aria-label", `1 枚目（全 ${left} 枚）`);
     }
+    await expect(page).toHaveURL(/\/minna$/);
+    // 3人とも済んだら、おしまいと次のおすすめ
     await expect(modal.getByRole("heading", { name: "おしまい" })).toBeVisible();
-    await expect(modal.getByRole("button", { name: "次へ" })).toBeDisabled();
+    await expect(modal.getByText(/^今日の3人(、おしまい。ありがとう|は、おしまいです。ありがとうございます)$/)).toBeVisible();
+    const next = modal.getByRole("button", { name: /^次のおすすめを見る（\d+件）$/ });
+    await expect(next).toBeVisible();
+    await next.click();
+    await expect(count).toHaveAttribute("aria-label", /^1 枚目/);
+    await expect(modal.getByRole("article").getByText("次のおすすめ", { exact: true })).toBeVisible();
 
     await modal.getByRole("button", { name: "みんなを見る" }).click();
     await expect(modal).toHaveCount(0);
@@ -408,24 +411,28 @@ test.describe("今日の3人のモーダル", () => {
     await expect(page.getByRole("region", { name: "みんな" }).getByRole("article").first()).toBeVisible();
     await page.waitForTimeout(300);
     await expect(modal).toHaveCount(0);
-    // 2回目からは入口から開く。外の暗い所を押すと閉じる
+    // 2回目からは入口から開く。払ったカードは、その日は戻ってこない（おしまいから始まる）。外の暗い所を押すと閉じる
     await page.getByRole("navigation", { name: "みんなの入口" }).getByRole("button", { name: "今日の3人" }).click();
     await expect(modal).toBeVisible();
-    await expect(count).toHaveAttribute("aria-label", /^1 枚目/);
+    await expect(modal.getByRole("heading", { name: "おしまい" })).toBeVisible();
     await page.mouse.click(195, 8);
     await expect(modal).toHaveCount(0);
   });
 
-  test("カードからその場でいいねと返事ができ、下へなでおろすと閉じる", async ({ page }) => {
+  test("カードからその場でいいねと返事ができ、返事を送るとそのカードは消える。下へなでおろすと閉じる", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/minna");
     const modal = page.getByRole("dialog", { name: "今日の3人" });
     const card = modal.getByRole("article");
+    const name = (await card.getAttribute("aria-label")) ?? "";
     const like = card.getByRole("button", { name: /^いいね/ });
     await expect(async () => {
       await like.click();
       await expect(like).toHaveAttribute("aria-pressed", "true", { timeout: 1000 });
     }).toPass();
+    // いいねだけでは消えない（払えば消える）
+    await page.waitForTimeout(1200);
+    await expect(modal.getByRole("article", { name, exact: true })).toHaveCount(1);
 
     const words = `モーダルからの返事 ${test.info().testId}`;
     await card.getByRole("button", { name: "返信", exact: true }).click();
@@ -433,7 +440,9 @@ test.describe("今日の3人のモーダル", () => {
     await sheet.getByLabel("返信").fill(words);
     await sheet.getByRole("button", { name: "返信する" }).click();
     await expect(sheet).toHaveCount(0);
-    // 返事を送ってもモーダルは開いたまま
+    // 返事を送ると「届けました」のあと、そのカードは消える。モーダルは開いたまま
+    await expect(modal.getByRole("status").filter({ hasText: "届けました" })).toBeVisible();
+    await expect(modal.getByRole("article", { name, exact: true })).toHaveCount(0);
     await expect(modal).toBeVisible();
 
     await stroke(page, 0, 240);

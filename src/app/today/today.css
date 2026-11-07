@@ -1,0 +1,51 @@
+/* 0-3p：今日の3人（/today）のカードは横に払うと消える。返信・ありがとうのあとは、ふわっと縮んで消える */
+.today-card {
+  /* 縦の指はスクロールに、横の指はカードに */
+  touch-action: pan-y;
+  transform: translateX(var(--swipe-x, 0px));
+  transition:
+    transform 200ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    opacity 200ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.today-card[data-swiping] {
+  transition: none;
+}
+
+.today-card[data-answer="left"],
+.today-card[data-answer="right"] {
+  opacity: 0;
+  transition:
+    transform 220ms ease-in,
+    opacity 220ms ease-in;
+}
+
+.today-card[data-answer="left"] {
+  transform: translateX(-120%) rotate(-4deg);
+}
+
+.today-card[data-answer="right"] {
+  transform: translateX(120%) rotate(4deg);
+}
+
+.today-card[data-answer="leaving"] {
+  opacity: 0;
+  transform: scale(0.9);
+  transition:
+    transform 260ms ease-in,
+    opacity 260ms ease-in;
+}
+
+.today-card .today-swipe-hint {
+  margin: 0;
+  color: var(--muted, #5b6670);
+  font-size: 0.8rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .today-card,
+  .today-card[data-answer] {
+    transform: none;
+    transition: none;
+  }
+}

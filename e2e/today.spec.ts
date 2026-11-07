@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { switchPerson } from "./helpers";
 
-test("カードは1枚ずつで、押さないと次が出ず、3枚で止まる", async ({ page }) => {
+test("カードは1枚ずつで、押さないと次が出ず、3枚で止まり、次のおすすめは押したときだけ", async ({ page }) => {
   await page.goto("/today");
 
   const count = page.locator(".today-card .count").first();
@@ -18,8 +18,8 @@ test("カードは1枚ずつで、押さないと次が出ず、3枚で止まる
   await page.getByRole("button", { name: "次へ" }).click();
 
   await expect(page.getByText("今日はここまで")).toBeVisible();
-  await page.getByRole("button", { name: "もっと見る" }).click();
-  await expect(count).toContainText("4 枚目");
+  await page.getByRole("button", { name: /^次のおすすめを見る（\d+件）$/ }).click();
+  await expect(count).toContainText("1 枚目");
 });
 
 test("応援のきっかけが添えられ、押すと応援になる", async ({ page }) => {

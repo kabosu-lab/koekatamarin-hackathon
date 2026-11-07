@@ -117,7 +117,7 @@ test("音ありで応援しても、画面が乱れない", async ({ page }) => 
   await page.goto("/today");
   const cheer = page.getByRole("button", { name: "応援する" });
   // すでに応援した投稿は飛ばす
-  const next = page.getByRole("button", { name: /^(次へ|もっと見る.*)$/ });
+  const next = page.getByRole("button", { name: /^(次へ|次のおすすめを見る.*)$/ });
   while ((await cheer.count()) === 0) await next.first().click();
   await cheer.click();
   await expect(page.getByRole("button", { name: "応援しました" }).first()).toBeVisible();

@@ -12,7 +12,7 @@ test("最初の3人のあとは、めくると関係の深い人がおすすめ�
   const reason = page.locator(".related-line");
   for (let i = 0; i < 6 && (await reason.count()) === 0; i++) {
     const next = page.getByRole("button", { name: "次へ" });
-    if ((await next.count()) === 0) await page.getByRole("button", { name: /もっと/ }).first().click();
+    if ((await next.count()) === 0) await page.getByRole("button", { name: /次のおすすめを見る/ }).first().click();
     else await next.click();
   }
   await expect(reason.first()).toContainText(/^おすすめ：.*(の話|できた投稿|やり取り|同じ|よく書く)/);
@@ -23,12 +23,16 @@ test("しばらく出さないは本人にだけ効き、相手には何も見�
   await switchPerson(page, "大河原 誠（英語・学年主任）");
   await page.goto("/today?view=popular");
 
+  // 0-3p：今日の3人のカードからは「しばらく出さない」をなくし、払う操作に置き換えた。しばらく出さない仕組みそのものは残る
+  await expect(page.getByRole("button", { name: "しばらく出さない" })).toHaveCount(0);
   const name = (await page.locator(".today-card .who strong").textContent()) ?? "";
-  await page.getByRole("button", { name: "しばらく出さない" }).click();
-  await expect(page.getByRole("status")).toContainText("相手には伝わりません");
-  await expect(page.locator(".today-card .who strong").filter({ hasText: name })).toHaveCount(0);
+  // 相手の ID は、人の切り替えの選択肢から読む
+  await page.goto("/me?open=settings");
+  const authorId = await page.getByLabel("試す人を切り替える").locator("option", { hasText: name }).getAttribute("value");
+  expect(authorId).toBeTruthy();
+  expect((await page.request.post("/api/hidden", { data: { personId: authorId, hidden: true } })).ok()).toBe(true);
 
-  await page.reload();
+  await page.goto("/today?view=popular");
   await expect(page.locator(".today-card .who strong").filter({ hasText: name })).toHaveCount(0);
 
   await page.goto("/me?open=settings");

@@ -28,6 +28,7 @@ export function ReplyField({
   likeCount,
   liked,
   replyCount,
+  onAnswered,
 }: {
   postId: string;
   authorName: string;
@@ -36,6 +37,8 @@ export function ReplyField({
   likeCount: number;
   liked: boolean;
   replyCount: number;
+  /** 0-3p：今日の3人で、返信が届いたとき（カードを消す合図）。いいねは押しただけでは消さない（払えば消える） */
+  onAnswered?(): void;
 }) {
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -142,6 +145,7 @@ export function ReplyField({
     startTransition(async () => {
       try {
         await createReply(form);
+        onAnswered?.();
         router.refresh();
       } catch {
         setExtraReplies((n) => Math.max(0, n - 1));

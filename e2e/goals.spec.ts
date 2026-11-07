@@ -42,7 +42,7 @@ test("話の中で提案され、押すと残り、できたら投稿になり�
   const done = page.getByText("頑張ってきたことが、できた投稿");
   for (let i = 0; i < 6 && !(await done.isVisible()); i++) {
     const next = page.getByRole("button", { name: "次へ" });
-    if ((await next.count()) === 0) await page.getByRole("button", { name: /もっと見る/ }).click();
+    if ((await next.count()) === 0) await page.getByRole("button", { name: /次のおすすめを見る/ }).click();
     else await next.click();
   }
   await expect(done).toBeVisible();

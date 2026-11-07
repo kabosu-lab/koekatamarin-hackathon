@@ -7,8 +7,7 @@ import { getAvatar } from "@/lib/avatar";
 import { getDestination } from "@/lib/destination/current";
 import { listHiddenIds } from "@/lib/hidden-people";
 import { listCelebratedPostIds } from "@/lib/goals";
-import { listPopularCards, listQuietPosts, listSeenNotes, listTodayCards, viewerPublicWords, todayAffinity } from "@/lib/today";
-import { CardReply } from "./CardReply";
+import { listPopularCards, listSeenNotes, listTodayCards, viewerPublicWords, todayAffinity } from "@/lib/today";
 import { TodayCards } from "./TodayCards";
 import { MarkTodaySeen } from "../minna/TodayModal";
 
@@ -25,9 +24,8 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
   const teams = getDestination(db);
   const now = new Date();
   const hidden = listHiddenIds(db, viewer.id);
-  const cards = popular ? listPopularCards(teams, viewer.id, hidden) : listTodayCards(teams, viewer.id, now, hidden, viewerPublicWords(db, teams, viewer.id), listCelebratedPostIds(db, now), todayAffinity(db, viewer.id, now));
+  const cards = popular ? listPopularCards(teams, viewer.id, hidden) : listTodayCards(teams, viewer.id, now, hidden, viewerPublicWords(db, teams, viewer.id), listCelebratedPostIds(db, now), todayAffinity(db, viewer.id, now, teams));
   const seen = listSeenNotes(db, viewer.id, now);
-  const quiet = listQuietPosts(db, teams, viewer.id, now);
 
   return (
     <PageShell back={{ href: "/minna", label: "みんな" }} title="今日の3人" lead="10秒で、誰かの頑張りを応援できます。">
@@ -39,13 +37,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
         </p>
       ))}
 
-      {quiet.map((post) => (
-        <div className="quiet-note" key={post.postId}>
-          {post.authorName}さんの投稿に、まだ反応がありません。一言どうですか？「{post.body}」{" "}
-          <Link href={`/teams?channel=${post.channelId}`}>校内チャネルで見る</Link>
-          <CardReply postId={post.postId} label="一言話して返す" />
-        </div>
-      ))}
+      {/* 0-3p(1)：まだ反応のない投稿は別枠にせず、見た目を変えずに今日の3人の中へ混ぜる（todayAffinity） */}
 
       <nav className="today-tabs" aria-label="カードの選び方">
         <Link href="/today" aria-current={popular ? undefined : "page"}>
@@ -58,6 +50,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
 
       <TodayCards
         key={`${viewer.id}-${popular ? "popular" : "today"}`}
+        polite={viewer.role !== "student"}
         cards={cards.map((card) => ({ ...card, authorImage: getAvatar(db, card.authorId).image, authorTitle: wornTitle(db, card.authorId) }))}
       />
     </PageShell>
