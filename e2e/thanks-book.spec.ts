@@ -92,8 +92,9 @@ test("カードが0枚のときは、空のカード帳に「最初の1枚は、
   await switchPerson(page, "川村 陽菜（理科・1年副担任・生徒指導）");
   // 川村先生に届くのは、今日の1枚（学年主任から）だけ。しばらく出さないにして、0枚の形を見る
   await page.goto("/me?open=thanks");
-  const hide = await page.request.post("/api/hidden", { data: { personId: "ogawara", hidden: true } });
-  expect(hide.ok()).toBe(true);
+  // 並んで動くほかのテストが川村先生にカードを送ることもあるので、ほかの人を全員しばらく出さないにする
+  const others = ["saeki", "ogawara", "noda", "shiraishi", "fujimoto", "aoki", "kinoshita", "nakamura"];
+  for (const personId of others) expect((await page.request.post("/api/hidden", { data: { personId, hidden: true } })).ok()).toBe(true);
   try {
     await page.goto("/me?open=thanks");
     const book = page.getByRole("region", { name: "もらったありがとう" });
@@ -101,6 +102,6 @@ test("カードが0枚のときは、空のカード帳に「最初の1枚は、
     await expect(book).toContainText("最初の1枚は、誰かの役に立ったときに届きます");
     await expect(book.getByRole("listitem")).toHaveCount(0);
   } finally {
-    await page.request.post("/api/hidden", { data: { personId: "ogawara", hidden: false } });
+    for (const personId of others) await page.request.post("/api/hidden", { data: { personId, hidden: false } });
   }
 });
