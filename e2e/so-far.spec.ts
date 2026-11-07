@@ -409,8 +409,8 @@ test("0-3h：つながりの箱に収まらない人は、多い順に残して�
   const more = Number(await cloud.getAttribute("data-more"));
   expect(weights.length + more).toBe(total);
   await expect(cloud.locator(".so-far-more-people")).toHaveText(`ほか ${more} 人`);
-  const over = await cloud.evaluate((el) => Math.max(el.scrollHeight - el.clientHeight, el.scrollWidth - el.clientWidth));
-  expect(over).toBeLessThanOrEqual(1);
+  // 測り直しは描いたあとに1人ずつ減らすので、落ち着くまで待つ
+  await expect.poll(() => cloud.evaluate((el) => Math.max(el.scrollHeight - el.clientHeight, el.scrollWidth - el.clientWidth))).toBeLessThanOrEqual(1);
 });
 
 test("0-3h：広げたまま列の中が読み直されても、3列に戻る", async ({ page }) => {

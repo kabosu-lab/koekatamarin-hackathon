@@ -6,7 +6,8 @@ import { switchPerson } from "./helpers";
 test("ふりかえりの「この一年」は読むだけで、共有の道はなく、チャネルにも出ない", async ({ page }) => {
   await page.goto("/");
   await switchPerson(page, "青木 ひより（2年）");
-  await page.getByRole("link", { name: "履歴と設定" }).click();
+  // 下の帯のリンク（0-3i のつまみの棒も同じ行き先なので、帯のほうを選ぶ）
+  await page.getByRole("link", { name: /^‹ 履歴と設定/ }).click();
   await page.getByRole("navigation", { name: "履歴と設定の項目" }).getByRole("link", { name: "ふりかえり" }).click();
 
   const periods = page.getByRole("navigation", { name: "期間を選ぶ" });
