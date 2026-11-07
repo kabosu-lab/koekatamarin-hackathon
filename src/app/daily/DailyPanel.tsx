@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import type { DailyReport, Recipient } from "@/lib/daily";
+import { SECTION_LABELS, SECTIONS } from "@/lib/daily-sections";
 import { playSendSound, SendBurst } from "../SendBurst";
 import { loadTalk } from "../talk-storage";
 import "./daily.css";
@@ -175,31 +176,50 @@ export function DailyPanel({ initialReport, recipients, viewerName, noun }: Prop
                 : "自分の記録です。誰にも届きません。"}
             </p>
             {editing
-              ? report.items.map((item, index) => (
-                  <textarea
-                    key={item.id}
-                    aria-label={`${index + 1}つ目の項目を直す`}
-                    value={editing[item.id] ?? item.text}
-                    rows={2}
-                    maxLength={200}
-                    style={{ width: "100%", marginBottom: "0.5rem" }}
-                    onChange={(event) => setEditing({ ...editing, [item.id]: event.target.value })}
-                  />
-                ))
-              : report.items.map((item) => (
-                  <label className="daily-item" key={item.id}>
-                    {canSend && (
-                      <input
-                        type="checkbox"
-                        checked={item.checked || selected.has(item.id)}
-                        disabled={item.checked || updating !== null || delivering}
-                        onChange={(event) => choose(item.id, event.target.checked)}
-                      />
-                    )}
-                    <span>{item.text}</span>
-                    {item.checked && canSend && <small className="daily-sent">届けました</small>}
-                  </label>
-                ))}
+              ? // 人とのつながりは記録の事実なので、直す欄に出さない
+                SECTIONS.flatMap((section) => report.items.filter((item) => item.section === section && section !== "ties")).map(
+                  (item, index) => (
+                    <textarea
+                      key={item.id}
+                      aria-label={`${index + 1}つ目の項目を直す`}
+                      value={editing[item.id] ?? item.text}
+                      rows={2}
+                      maxLength={200}
+                      style={{ width: "100%", marginBottom: "0.5rem" }}
+                      onChange={(event) => setEditing({ ...editing, [item.id]: event.target.value })}
+                    />
+                  ),
+                )
+              : // 0-3g：一言と見出しに分けて並べる。空の見出しは出さない。相談したいことは目立たせる
+                SECTIONS.map((section) => {
+                  const items = report.items.filter((item) => item.section === section);
+                  if (items.length === 0) return null;
+                  const label = section === "words" ? `【${SECTION_LABELS.words}】` : SECTION_LABELS[section];
+                  return (
+                    <section
+                      key={section}
+                      className={section === "consult" ? "daily-section daily-consult" : "daily-section"}
+                      data-section={section}
+                      aria-label={SECTION_LABELS[section]}
+                    >
+                      <h3>{label}</h3>
+                      {items.map((item) => (
+                        <label className="daily-item" key={item.id}>
+                          {canSend && (
+                            <input
+                              type="checkbox"
+                              checked={item.checked || selected.has(item.id)}
+                              disabled={item.checked || updating !== null || delivering}
+                              onChange={(event) => choose(item.id, event.target.checked)}
+                            />
+                          )}
+                          <span>{item.text}</span>
+                          {item.checked && canSend && <small className="daily-sent">届けました</small>}
+                        </label>
+                      ))}
+                    </section>
+                  );
+                })}
             {syncing && (
               <p className="muted" role="status">
                 新しい分を足しています…

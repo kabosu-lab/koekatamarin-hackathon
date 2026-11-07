@@ -167,11 +167,56 @@ function scriptedGoalCheck(prompt: string) {
   return { goal, doneGoalId: done };
 }
 
+/**
+ * 日報（0-3g）：本物と同じ形（今日の一言＋見出し）で返す。
+ * 一言は最後に話した言葉。困りごとは「相談したいこと」、明日の話は「明日やること」、ほかは「うまくいったこと」。
+ * 前の日報の項目は同じ見出しに残し、前の一言は新しい一言に替わるときに「うまくいったこと」へ移す。
+ */
 function scriptedDaily(prompt: string) {
-  const lines = [...prompt.matchAll(/^(?:項目：|本人：|投稿：|返信：|ありがとう：|勉強：)(.*)$/gm)]
-    .map((match) => match[1].trim())
-    .filter((line) => !(openingLines as readonly string[]).includes(line));
-  return { items: lines.slice(-6) };
+  const sectionOf: Record<string, "words" | "good" | "consult" | "tomorrow"> = {
+    今日の一言: "words",
+    うまくいったこと: "good",
+    "相談したいこと（管理職の方へ）": "consult",
+    明日やること: "tomorrow",
+  };
+  const previous = { words: [] as string[], good: [] as string[], consult: [] as string[], tomorrow: [] as string[] };
+  let fixedWords = false;
+  const fresh: { text: string; spoken: boolean }[] = [];
+  let block = "";
+  let section: keyof typeof previous = "good";
+  for (const raw of prompt.split("\n")) {
+    const line = raw.trim();
+    const open = line.match(/^<([^/][^>]*)>$/);
+    if (open) {
+      block = open[1];
+      section = "good";
+      continue;
+    }
+    const head = line.match(/^［(.+)］$/);
+    if (head) {
+      section = sectionOf[head[1]] ?? "good";
+      continue;
+    }
+    const item = line.match(/^(?:項目|直した項目)：(.*)$/);
+    if (item && block === "前の日報") previous[section].push(item[1].trim());
+    if (item && block === "変えない項目" && section === "words") fixedWords = true;
+    const said = line.match(/^(本人|投稿|返信|ありがとう|勉強)：(.*)$/);
+    if (said && !(openingLines as readonly string[]).includes(said[2].trim())) fresh.push({ text: said[2].trim(), spoken: said[1] === "本人" });
+  }
+  const spoken = fresh.filter((f) => f.spoken);
+  const words = fixedWords ? "" : (spoken.at(-1)?.text ?? previous.words[0] ?? "");
+  const rest = fresh.map((f) => f.text).filter((text) => text !== words);
+  const consult = rest.filter((text) => /困|迷|相談|悩|どうしたら|わから/.test(text));
+  const tomorrow = rest.filter((text) => /明日/.test(text) && !consult.includes(text));
+  const good = rest.filter((text) => !consult.includes(text) && !tomorrow.includes(text));
+  // 前の一言が新しい一言に替わるときは、消さずに「うまくいったこと」へ
+  const movedWords = previous.words.filter((text) => text !== words);
+  return {
+    words,
+    good: [...movedWords, ...previous.good, ...good].slice(-3),
+    consult: [...previous.consult, ...consult].slice(-3),
+    tomorrow: [...previous.tomorrow, ...tomorrow].slice(-3),
+  };
 }
 
 function scriptedProfile(prompt: string) {
