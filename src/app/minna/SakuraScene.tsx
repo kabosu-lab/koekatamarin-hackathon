@@ -21,7 +21,15 @@ import {
 } from "@/lib/sakura";
 import { audioOutput } from "../sound";
 
-/** 樹冠の円（viewBox 800×340 の中）。木の絵は RoomBackdrop の庭の描き方を写し、こちらで独自に持つ */
+/**
+ * 絵の枠。木の全体（樹冠のてっぺん〜幹〜地面）だけを囲み、細い列でも切り取らずに縮めて収める（meet）。
+ * 下の端（地面）をそろえ、余った所は枠の外まで描いた空と地面で埋まる
+ */
+const VIEW_TOP = -44;
+const VIEW_BOX = `150 ${VIEW_TOP} 500 ${340 - VIEW_TOP}`;
+const FIT = "xMidYMax meet";
+
+/** 樹冠の円（座標は 800×340 の庭の中）。木の絵は RoomBackdrop の庭の描き方を写し、こちらで独自に持つ */
 const BLOBS: [number, number, number][] = [
   [400, 92, 128],
   [288, 124, 84],
@@ -81,16 +89,17 @@ function Garden({ season, fill, gradientId }: { season: Season; fill: number; gr
   return (
     <>
       <defs>
-        <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+        <linearGradient id={gradientId} gradientUnits="userSpaceOnUse" x1="0" y1={VIEW_TOP} x2="0" y2="340">
           <stop offset="0" stopColor="var(--minna-sky-top, #a9dcf5)" />
           <stop offset="1" stopColor="var(--minna-sky-bottom, #e4f6fb)" />
         </linearGradient>
       </defs>
-      <rect width="800" height="340" fill={`url(#${gradientId})`} />
+      {/* 空と地面は絵の枠（viewBox）の外まで描き、幅の違う場面でも余った所が空と地面で埋まる */}
+      <rect x="-2400" y="-1200" width="5600" height="1540" fill={`url(#${gradientId})`} />
       <ellipse cx="140" cy="60" rx="56" ry="16" fill="#fff" opacity="0.8" />
       <ellipse cx="680" cy="44" rx="66" ry="17" fill="#fff" opacity="0.8" />
-      <path d="M0 270q200-44 400-24t400-14v108H0z" fill="#a8d58a" />
-      <path d="M382 280q8-90-4-150h44q-12 60-4 150z" fill="#8a6549" />
+      <path className="koekata-sakura-ground" d="M-2400 270H0q200-44 400-24t400-14H3200V800H-2400z" fill="#a8d58a" />
+      <path className="koekata-sakura-trunk" d="M382 280q8-90-4-150h44q-12 60-4 150z" fill="#8a6549" />
       <path
         d="M396 170Q330 140 280 130M406 160q60-30 110-34M400 130q-30-40-60-60M402 128q26-34 60-64"
         stroke="#8a6549"
@@ -271,12 +280,12 @@ export function SakuraScene({
       data-playing={playing ?? undefined}
       aria-label={ariaLabel}
     >
-      <svg className="koekata-sakura-art" viewBox="0 0 800 340" preserveAspectRatio="xMidYMax slice" role="img" aria-label={label}>
+      <svg className="koekata-sakura-art" viewBox={VIEW_BOX} preserveAspectRatio={FIT} role="img" aria-label={label}>
         <Garden season={shownSeason} fill={fill} gradientId={`koekata-sky-${as}`} />
       </svg>
       {/* 0-1j(3)：春の見通し。今の葉の数で咲く花の影を、木の上にうっすら重ねる */}
       {shownSeason !== "haru" && (
-        <svg className="koekata-sakura-shadow" viewBox="0 0 800 340" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
+        <svg className="koekata-sakura-shadow" viewBox={VIEW_BOX} preserveAspectRatio={FIT} aria-hidden="true">
           {SHADOW_BLOBS.slice(0, shadow.count).map(([x, y, r]) => (
             <circle key={`${x}-${y}`} cx={x} cy={y} r={r} fill="#ffd3e1" opacity={shadow.opacity} />
           ))}
