@@ -26,7 +26,7 @@ test("スマホでは、広い画面の欄を出さず、下のタブのかわ�
 });
 
 test("広い画面では、話す画面の左右に履歴と設定、みんなを並べ、欄の中のリンクは欄の中で動く", async ({ page, context }) => {
-  // 欄の中でモーダルが自動で出ないことも確かめるので、出した印は消しておく
+  // 欄の中でもモーダルが自動で出ることを確かめるので、出した印は消しておく
   await context.clearCookies({ name: "koekata_today_seen" });
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto("/");
@@ -38,8 +38,10 @@ test("広い画面では、話す画面の左右に履歴と設定、みんな�
   expect(mic?.x).toBeGreaterThan(400);
   await expect(page.locator(".retro-home")).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0);
-  // 欄の中では今日の3人のモーダルは自動で出ないが、下の帯から開ける
+  // その日はじめてなら、欄の中でも今日の3人のモーダルが自動で開く。閉じたあとは下の帯から開ける
   const today = minna.getByRole("dialog", { name: "今日の3人" });
+  await expect(today).toBeVisible();
+  await today.getByRole("button", { name: "みんなを見る" }).click();
   await expect(today).toHaveCount(0);
   await minna.getByRole("navigation", { name: "みんなの入口" }).getByRole("button", { name: "今日の3人" }).click();
   await expect(today).toBeVisible();

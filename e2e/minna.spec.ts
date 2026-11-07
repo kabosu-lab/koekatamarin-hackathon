@@ -271,6 +271,22 @@ test.describe("今日の3人のモーダル", () => {
     await page.mouse.up();
   }
 
+  test("先生で開くと、1枚目は理由つきの生徒の投稿。焦点がカードの外にあっても Escape で閉じる", async ({ page, context }) => {
+    await context.addCookies([{ name: "koekata_person", value: "saeki", domain: "127.0.0.1", path: "/" }]);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/minna");
+    const modal = page.getByRole("dialog", { name: "今日の3人" });
+    await expect(modal).toBeVisible();
+    const first = modal.getByRole("article").first();
+    await expect(first.locator(".minna-today-reason")).toContainText("おすすめ：");
+    const author = ((await first.getAttribute("aria-label")) ?? "").replace(/さんの投稿$/, "");
+    expect(["青木", "木下", "中村"].some((name) => author.includes(name)), author).toBe(true);
+    // 焦点をページの地に移してから Escape
+    await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+    await page.keyboard.press("Escape");
+    await expect(modal).toHaveCount(0);
+  });
+
   test("初めて開くと出て後ろが暗く沈み、なでるとめくれ、3人のあとにおすすめ、最後はおしまい", async ({ page, context }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/minna");
@@ -296,11 +312,11 @@ test.describe("今日の3人のモーダル", () => {
     await expect(count).toHaveAttribute("aria-label", /^1 枚目/);
     await expect(page).toHaveURL(/\/minna$/);
 
-    // 3人のあとは、関係のありそうな投稿が理由の一言付きで続く
+    // 理由のある投稿は今日の3人に先に入る。残っていれば、3人のあとに理由の一言付きで続く
     const total = Number((await count.getAttribute("aria-label"))!.match(/全 (\d+) 枚/)![1]);
-    expect(total).toBeGreaterThan(4);
+    expect(total).toBeGreaterThanOrEqual(4);
     for (let i = 1; i < total; i++) {
-      if (i === 4) {
+      if (i === 4 && total > 4) {
         await expect(modal.getByRole("article").getByText("あなたに関係のありそうな投稿")).toBeVisible();
         await expect(modal.getByRole("article").getByText(/^おすすめ：/)).toBeVisible();
       }
@@ -367,10 +383,9 @@ test.describe("今日の3人のモーダル", () => {
   ]) {
     test(`iPad（${viewport.width}×${viewport.height}）でも画面の中に収まり、はみ出さない`, async ({ page }) => {
       await page.setViewportSize(viewport);
-      // 0-2y：iPad の横では、みんなは3列の右の列の中。列の中ではモーダルは自動で出ないので、入口から開く
+      // 0-2y：iPad の横では、みんなは3列の右の列の中。その日はじめてなら、列の中でも自動で開く
       const screen = await openScreen(page, "/minna");
       const modal = screen.getByRole("dialog", { name: "今日の3人" });
-      if (screen !== page) await screen.getByRole("navigation", { name: "みんなの入口" }).getByRole("button", { name: "今日の3人" }).click();
       await expect(modal).toBeInViewport({ ratio: 1 });
       expect((await modal.boundingBox())!.width).toBeLessThanOrEqual(26 * 16 + 1);
       expect(await screen.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0);

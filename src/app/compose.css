@@ -232,3 +232,9 @@ html[data-theme="modern"] .compose-sheet .compose-writing {
   font: inherit;
   font-weight: 700;
 }
+
+/* 0-2k(3)：送り先の一文は送るボタン列（下に貼り付く）の中で、2つのボタンの上に横いっぱい */
+.compose-sheet .compose-sheet-actions .compose-audience {
+  grid-column: 1 / -1;
+  margin: 0;
+}

@@ -200,3 +200,33 @@ test("0-2k：送り先は「先生だけ」と「生徒も見る」に分かれ�
   await channels.getByRole("radio", { name: /資格の勉強会/ }).click();
   await expect(page.locator(".compose-audience")).toContainText(/先生 \d+人と生徒 \d+人が見ます/);
 });
+
+for (const size of [
+  { name: "iPhone", width: 390, height: 844 },
+  { name: "iPad 横", width: 1180, height: 820 },
+  { name: "パソコン", width: 1280, height: 800 },
+]) {
+  test(`0-2k(3)：${size.name}で、誰が見るかの一文は下まで送らなくても送るボタンのすぐ上に見え、ボタンの裏に隠れない`, async ({ page }) => {
+    await page.setViewportSize({ width: size.width, height: size.height });
+    await page.goto("/");
+    await say(page, "送り先の一文の置き場を確かめる");
+    await page.getByRole("button", { name: "とどける" }).click();
+    const line = page.locator(".compose-audience");
+    await expect(line).toBeVisible();
+    await expect(line).toBeInViewport({ ratio: 1 });
+    const send = page.getByRole("button", { name: "本人として送る" });
+    await expect(send).toBeInViewport({ ratio: 1 });
+    const lineBox = (await line.boundingBox())!;
+    const sendBox = (await send.boundingBox())!;
+    expect(lineBox.y + lineBox.height).toBeLessThanOrEqual(sendBox.y + 0.5);
+    expect(sendBox.y - (lineBox.y + lineBox.height)).toBeLessThan(24);
+    // 一文の真ん中に当たるのは一文そのもの（ボタンや札の裏に隠れていない）
+    const onTop = await line.evaluate((element) => {
+      const box = element.getBoundingClientRect();
+      const hit = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
+      return hit !== null && element.contains(hit);
+    });
+    expect(onTop).toBe(true);
+    await page.screenshot({ path: test.info().outputPath(`compose-audience-${size.width}.png`) });
+  });
+}

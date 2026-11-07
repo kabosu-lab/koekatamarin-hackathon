@@ -106,9 +106,11 @@ export type TodayAffinity = {
   recentPeople?: ReadonlySet<string>;
   /** 本人が書いたことのあるチャネル */
   postedChannels?: ReadonlySet<string>;
+  /** 生徒の ID。最初の3人は、理由のある生徒の投稿から出す */
+  studentIds?: ReadonlySet<string>;
 };
 
-/** 最初にランダムで出す人数。そこからめくると、関係の深い人が出てくる */
+/** 最初に出す人数（今日の3人）。理由のある生徒の投稿を先に、足りなければその日のランダムで埋める。そこからめくると、関係の深い人が出てくる */
 export const FIRST_RANDOM = 3;
 
 /** 肩書きを、学年や教科などの手がかりに分ける（「国語・2年担任」→「国語」「2年」） */
@@ -119,7 +121,7 @@ export function labelParts(label: string): string[] {
     .filter((part) => part.length >= 2);
 }
 
-/** その人のその日のカード。同じ日は同じ順で出て、日が変わると変わる。最初の3人はランダムで、そのあとは関係の深い人から理由付きで出す。 */
+/** その人のその日のカード。同じ日は同じ順で出て、日が変わると変わる。最初の3人は理由のある生徒の投稿から（なければランダム）、そのあとは関係の深い人から理由付きで出す。 */
 export function listTodayCards(
   destination: PostDestination,
   viewerId: string,
@@ -159,10 +161,14 @@ export function listTodayCards(
     if (affinity.postedChannels?.has(post.channelId)) note(post.id, `あなたもよく書く「${post.channelName}」`, 1);
   }
 
-  // 最初の3人はランダム。そこから先は、関係の深い順に。関係のない人もそのあとに続く
+  // 最初の3人は、理由のある生徒 → 理由のある人 → 生徒 → ほか の順。同じ段の中はその日のランダム。
+  // そこから先は、関係の深い順に。関係のない人もそのあとに続く
   // 0-2q(3)：カードは人ごとに1枚。同じ人が2回出ないよう、最初の3人は別の人から選ぶ
+  const tier = (post: (typeof shuffled)[number]) =>
+    (related.has(post.id) ? 2 : 0) + (affinity.studentIds?.has(post.authorId) ? 1 : 0);
+  const leading = shuffled.map((post, index) => ({ post, index })).sort((a, b) => tier(b.post) - tier(a.post) || a.index - b.index).map(({ post }) => post);
   const first: typeof shuffled = [];
-  for (const post of shuffled) {
+  for (const post of leading) {
     if (first.length >= FIRST_RANDOM) break;
     if (!first.some((p) => p.authorId === post.authorId)) first.push(post);
   }
@@ -448,10 +454,12 @@ export function todayAffinity(db: DatabaseSync, viewerId: string, now: Date): To
     )
     .all(viewerId, since, viewerId, since) as { id: string }[];
   const channels = db.prepare("SELECT DISTINCT channel_id FROM posts WHERE author_id = ?").all(viewerId) as { channel_id: string }[];
+  const students = db.prepare("SELECT id FROM people WHERE role = 'student'").all() as { id: string }[];
   return {
     viewerLabel: label,
     goals,
     recentPeople: new Set(people.map((row) => row.id).filter((id) => id !== viewerId)),
     postedChannels: new Set(channels.map((row) => row.channel_id)),
+    studentIds: new Set(students.map((row) => row.id)),
   };
 }

@@ -1464,3 +1464,16 @@ html[data-theme="retro"] main .minna-band,
   width: fit-content;
   margin-top: 8px;
 }
+
+/* 試用で右上に感想のアイコン（44px、feedback-sheet.css）が浮くときは、縮んだ帯の右にその分の空きを取り、メガホンと「桜を開く」を重ねない */
+html body:has(.feedback-fab) main .minna-band.minna-band {
+  padding-right: 52px;
+}
+
+html body:has(.feedback-fab) main .minna-band.minna-band[data-event] {
+  padding-right: 104px;
+}
+
+html body:has(.feedback-fab) main .minna-megaphone.minna-megaphone[data-place="band"] {
+  right: 52px;
+}

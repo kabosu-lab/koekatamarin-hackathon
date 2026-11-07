@@ -67,7 +67,7 @@ export const useToday = () => useContext(TodayContext);
 
 /**
  * 今日の3人のモーダルの開け閉め（0-1x）。その日はじめて「みんな」を開いたときだけ自動で開く。
- * 埋め込みの欄（広い画面の左右）では自動で開かない。
+ * 広い画面の右の欄（iframe）の中でも、その日はじめてなら欄の中で開く。
  */
 export function TodayProvider({ initialOpen, children }: { initialOpen: boolean; children: ReactNode }) {
   const [open, setOpen] = useState(initialOpen);
@@ -75,10 +75,6 @@ export function TodayProvider({ initialOpen, children }: { initialOpen: boolean;
   const [opened, setOpened] = useState(initialOpen);
   useEffect(() => {
     if (!initialOpen) return;
-    if (window.self !== window.top) {
-      setOpen(false);
-      return;
-    }
     markSeen();
   }, [initialOpen]);
   const show = () => {
@@ -159,6 +155,20 @@ export function TodayModal({ cards }: { cards: TodayModalCard[] }) {
     }).catch(() => {});
   }, [shownId]);
 
+  // 焦点がカードの外（ページの地など）にあっても、Escape で閉じる。カードの中は下の onKeyDown が受け持つ
+  const closeRef = useRef<() => void>(() => {});
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (event: globalThis.KeyboardEvent) => {
+      if (event.key !== "Escape" || event.defaultPrevented) return;
+      const target = event.target instanceof Element ? event.target : null;
+      if (target && (sheet.current?.contains(target) || target.closest("textarea, input"))) return;
+      closeRef.current();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
+
   if (!open) return null;
 
   const close = () => {
@@ -170,6 +180,7 @@ export function TodayModal({ cards }: { cards: TodayModalCard[] }) {
     setClosing(true);
     window.setTimeout(hide, CLOSE_MS);
   };
+  closeRef.current = close;
 
   const go = (next: number) => setIndex(Math.min(last, Math.max(0, next)));
 

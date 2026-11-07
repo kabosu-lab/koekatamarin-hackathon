@@ -1,13 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { audioOutput } from "@/app/sound";
 import { schedulePop } from "@/lib/send-sound";
 import type { NewRibbon } from "@/lib/ribbons";
 import { Sticker } from "./Sticker";
-import { useFirstCardClear } from "./use-first-card-clear";
+import { useQuietScreen } from "./use-quiet-screen";
 import "./trophy-toast.css";
 
 /** 画面が落ち着いてから出す */
@@ -47,32 +47,44 @@ function playTrophyChime(): void {
 }
 
 /**
- * トロフィーを取った瞬間の小さな知らせ。上からすっと出て、2〜3秒で自分で消える。押すとコレクションのそのトロフィーが開く。
+ * トロフィーを取った瞬間の小さな知らせ。画面の下の端にすっと出て、2〜3秒で自分で消える。押すとコレクションのそのトロフィーが開く。
  * 生徒には「🏆 実績解除！」、先生には「トロフィーが届きました：」と落ち着いた形で。
  * 何個も同時に取ったときは、重ねずに1つずつ順に出す。広い画面の横の欄（iframe）の中では出さない（同じことを2か所で出さない）。
  */
-export function TrophyToast({ trophies }: { trophies: NewRibbon[] }) {
+/** hold：この端末でまだ開けていないサンクスカードがあるあいだ（封筒をしまうまで）待たせる。差出人を封筒より先に見せない */
+export function TrophyToast({ trophies: incoming, hold = false }: { trophies: NewRibbon[]; hold?: boolean }) {
+  // 最初に受け取った一覧を持っておく。封筒をしまったあとの読み直しで「見た」あとの空の一覧が来ても、見せている途中で消さない
+  const [trophies, setTrophies] = useState(incoming);
+  useEffect(() => {
+    if (incoming.length > 0) setTrophies((held) => (held.length > 0 ? held : incoming));
+  }, [incoming]);
   // サーバーでは出さず、画面に届いてから出す（-1 はまだ）
   const [index, setIndex] = useState(-1);
   const [revealed, setRevealed] = useState(false);
   const [leaving, setLeaving] = useState(false);
-  // 0-2q(1)：最初の注意カードの暗幕が出ている間は待ち、カードを閉じてから出す
-  const clear = useFirstCardClear();
+  // 0-2q(1)：最初の注意カード・開けていない封筒・シートやモーダルが出ている間は待ち、閉じてから出す。
+  // 見せている途中で何かが前に出たら、いったん引っ込めて、閉じたあとにその1つから出し直す
+  const quiet = useQuietScreen();
+  const clear = quiet && !hold;
+  const told = useRef(false);
 
   useEffect(() => {
     if (!clear || trophies.length === 0 || window.self !== window.top) return;
-    void fetch("/api/ribbons", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "seen" }),
-    }).catch(() => undefined);
+    if (!told.current) {
+      told.current = true;
+      void fetch("/api/ribbons", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "seen" }),
+      }).catch(() => undefined);
+    }
     const timer = setTimeout(() => setIndex((current) => (current < 0 ? 0 : current)), START_MS);
     return () => clearTimeout(timer);
   }, [clear, trophies.length]);
 
   useEffect(() => {
     const current = trophies[index];
-    if (!current) return;
+    if (!current || !clear) return;
     setLeaving(false);
     setRevealed(!current.hidden);
     const timers: ReturnType<typeof setTimeout>[] = [];
@@ -90,7 +102,7 @@ export function TrophyToast({ trophies }: { trophies: NewRibbon[] }) {
     timers.push(setTimeout(() => setLeaving(true), wait + SHOW_MS));
     timers.push(setTimeout(() => setIndex(index + 1), wait + SHOW_MS + EXIT_MS + GAP_MS));
     return () => timers.forEach(clearTimeout);
-  }, [index, trophies]);
+  }, [index, trophies, clear]);
 
   useEffect(() => {
     if (index < 0 || index >= trophies.length) return;
@@ -102,7 +114,7 @@ export function TrophyToast({ trophies }: { trophies: NewRibbon[] }) {
   }, [index, trophies.length]);
 
   const current = trophies[index];
-  if (!current) return null;
+  if (!current || !clear) return null;
   const name = revealed ? current.name : "？？？";
   const line = current.quip ?? current.story;
   return createPortal(

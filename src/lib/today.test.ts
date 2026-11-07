@@ -17,6 +17,7 @@ import {
   listTodayCards,
   makeCheerHints,
   recordSeen,
+  todayAffinity,
   viewerPublicWords,
 } from "./today";
 import { handleMemory } from "./memory";
@@ -207,14 +208,28 @@ describe("関連する投稿", () => {
     teams.createPost("aoki", "making", `${word}の練習を始めました`, {});
   });
 
-  it("最初の3人はランダムのままで、めくると同じ話題の投稿が理由付きで出る", () => {
+  it("同じ話題の投稿は、理由付きで最初の3人に入る", () => {
     const id = teams.createPost("noda", "making", `${word}の部品を作りました`, {});
-    const plain = listTodayCards(teams, "aoki", NOW).map((c) => c.postId);
     const cards = listTodayCards(teams, "aoki", NOW, new Set(), myWords());
-    expect(cards.slice(0, 3).map((c) => c.postId)).toEqual(plain.slice(0, 3));
     const at = cards.findIndex((c) => c.postId === id);
-    expect(at).toBeLessThanOrEqual(3);
+    expect(at).toBeLessThan(3);
     expect(cards[at].relatedReason).toBe(`同じ「${word}」の話`);
+  });
+
+  it("先生で開くと、最初の3人は理由のある生徒の投稿が先で、1枚目は生徒", () => {
+    const affinity = todayAffinity(db, "saeki", NOW);
+    const cards = listTodayCards(teams, "saeki", NOW, new Set(), viewerPublicWords(db, teams, "saeki"), new Set(), affinity);
+    const students = affinity.studentIds!;
+    expect(students.has(cards[0].authorId)).toBe(true);
+    expect(cards[0].relatedReason).toBeTruthy();
+    // 理由のある生徒の投稿が残っている限り、先生の投稿や理由のない投稿はそれより前に来ない
+    const first = cards.slice(0, 3);
+    const tier = (c: (typeof cards)[number]) => (c.relatedReason ? 2 : 0) + (students.has(c.authorId) ? 1 : 0);
+    for (let i = 1; i < first.length; i += 1) expect(tier(first[i - 1])).toBeGreaterThanOrEqual(tier(first[i]));
+    // 同じ日は同じ順
+    expect(listTodayCards(teams, "saeki", NOW, new Set(), viewerPublicWords(db, teams, "saeki"), new Set(), affinity).map((c) => c.postId)).toEqual(
+      cards.map((c) => c.postId),
+    );
   });
 
   it("頑張りたいこと、最近のやり取り、同じ学年からも、理由を一言付けて選ぶ", () => {
