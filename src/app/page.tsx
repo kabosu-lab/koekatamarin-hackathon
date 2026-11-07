@@ -64,7 +64,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
     <WidePanel src={columnSrc("left", left)} title="履歴と設定" side="left" />
     <main className="retro-home">
       <h1 className="visually-hidden">こえかた</h1>
-      {rewards && <RibbonMoment key={`ribbon-${viewer.id}`} ribbons={listNewRibbons(db, viewer.id)} />}
+      {rewards && <RibbonMoment key={`ribbon-${viewer.id}`} ribbons={listNewRibbons(db, viewer.id)} hold={revealCards.length > 0} />}
       <ThanksReveal key={`thanks-${viewer.id}`} viewerId={viewer.id} cards={revealCards} />
       <Talk
         key={viewer.id}

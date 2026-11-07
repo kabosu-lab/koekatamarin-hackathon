@@ -311,7 +311,7 @@ test.describe("見た目を選んでいない生徒", () => {
     await expect(page.locator(".partner-greeting .partner-bubble")).toBeVisible();
     await expect(page.locator(".partner-greeting")).not.toHaveAttribute("data-waiting", "true");
 
-    // 知らせの置き場（trophy-toast.css）は、右上の感想のアイコンの下。同じ形を置いて重ならないことを確かめる
+    // 知らせの置き場（trophy-toast.css）は画面の下の端。同じ形を置いて右上の感想のアイコンに重ならないことを確かめる
     const overlap = await page.evaluate(() => {
       const layer = document.createElement("div");
       layer.className = "trophy-toast-layer";
