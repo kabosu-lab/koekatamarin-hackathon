@@ -5,7 +5,7 @@ import { useEffect } from "react";
 import { isDeep, SWIPE_HOME, SWIPE_SCREENS, swipeTarget } from "@/lib/swipe-nav";
 import { WIDE_QUERY } from "@/lib/wide";
 import { Peek, remember, screenOf } from "./swipe-peek";
-import { strip, stripReady } from "./strip";
+import { paneFromUrl, STRIP_LAND_EVENT, strip, stripReady, stripRest } from "./strip";
 
 /**
  * 操作の途中の指の動きを、画面の移動にしない場所。
@@ -104,6 +104,8 @@ export function SwipeNav() {
 
   // 隣の画面を先に読んでおき、移るときに待たせない
   useEffect(() => {
+    // 左右の画面（iframe）の中では先読みしない。外側がする
+    if (window.self !== window.top) return;
     if (SWIPE_SCREENS.includes(pathname as (typeof SWIPE_SCREENS)[number])) {
       for (const screen of SWIPE_SCREENS) if (screen !== pathname) router.prefetch(screen);
       // 0-2z：ホイールのチップで開く奥の画面も、話す画面から先に読んでおく
@@ -133,10 +135,27 @@ export function SwipeNav() {
     main.animate([{ transform: `translateX(${offset})` }, { transform: "translateX(0)" }], { duration: ms, easing: EASE });
   }, [pathname]);
 
-  // 0-2z：話す画面の帯を、左右の画面（iframe）の中からも動かせるようにする
+  // 0-2z：話す画面の帯を、左右の画面（iframe）の中からも動かせるようにする。
+  // 帯が止まったら、着いた先を新しくする（外側は話す画面へ戻ったとき、左右の画面はその中で）。「戻る」では帯を合わせる
   useEffect(() => {
-    if (window.self === window.top) window.koekataStrip = strip;
-  }, []);
+    const onLand = (event: Event) => {
+      const to = (event as CustomEvent<number>).detail;
+      // 外側は話す画面へ戻ったときだけ。左右の画面は、着いたとき自分の中で
+      if (window.self === window.top ? to === 0 : true) router.refresh();
+    };
+    window.addEventListener(STRIP_LAND_EVENT, onLand);
+    if (window.self !== window.top) return () => window.removeEventListener(STRIP_LAND_EVENT, onLand);
+    window.koekataStrip = strip;
+    const onPop = () => {
+      if (!document.querySelector(".device-row")) return;
+      strip.settle(stripRest(), 0, paneFromUrl(), "none");
+    };
+    window.addEventListener("popstate", onPop);
+    return () => {
+      window.removeEventListener(STRIP_LAND_EVENT, onLand);
+      window.removeEventListener("popstate", onPop);
+    };
+  }, [router]);
 
   useEffect(() => {
     let start: { x: number; y: number } | null = null;
@@ -145,6 +164,8 @@ export function SwipeNav() {
     let banded = false;
     let paneMode = false;
     let base = 0;
+    // 帯の今の位置（指が取り消されたときに、ここからばねで戻す）
+    let bandAt = 0;
     let main: HTMLElement | null = null;
     // 横画面か・動きを減らす設定かは、指を置いたときに1回だけ調べる（動かすたびに matchMedia しない）
     let landscape = false;
@@ -172,6 +193,10 @@ export function SwipeNav() {
     };
 
     const reset = () => {
+      // 0-2z：帯をつかんでいる途中で指が取り消されたら（touchcancel）、帯を元の位置へ戻す
+      if (dragging && banded) strip.settle(bandAt, 0, stripRest());
+      if (dragging && paneMode) window.parent.koekataStrip?.settle(bandAt, 0, base as -1 | 1);
+      banded = false;
       dropPeek();
       delete document.documentElement.dataset.swiping;
       if (main) {
@@ -224,11 +249,13 @@ export function SwipeNav() {
         }
       }
       if (paneMode) {
-        window.parent.koekataStrip?.drag(bandOffset(base, dx));
+        bandAt = bandOffset(base, dx);
+        window.parent.koekataStrip?.drag(bandAt);
         return;
       }
       if (banded) {
-        strip.drag(dx / (window.innerWidth || 1));
+        bandAt = dx / (window.innerWidth || 1);
+        strip.drag(bandAt);
         return;
       }
       if (!dragging) {

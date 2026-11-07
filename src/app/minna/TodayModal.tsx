@@ -14,6 +14,7 @@ function CardThanks({ card }: { card: { authorId: string; authorName: string; au
 }
 import { ReplyField } from "./ReplyField";
 import { TODAY_SEEN_COOKIE } from "./today-seen";
+import { STRIP_LAND_EVENT } from "../strip";
 
 
 /** 設計書 §1：移動は 160〜260ms、消えるときは ease-in で素早く */
@@ -67,10 +68,30 @@ export const useToday = () => useContext(TodayContext);
  * 今日の3人のモーダルの開け閉め（0-1x）。その日はじめて「みんな」を開いたときだけ自動で開く。
  * 埋め込みの欄（広い画面の左右）では自動で開かない。
  */
-export function TodayProvider({ initialOpen, children }: { initialOpen: boolean; children: ReactNode }) {
+export function TodayProvider({
+  initialOpen,
+  openWhenShown = false,
+  children,
+}: {
+  initialOpen: boolean;
+  /** 0-2z：狭い画面の帯で裏に読み込んだ「みんな」は、帯で開かれたときに、その日はじめてなら開く */
+  openWhenShown?: boolean;
+  children: ReactNode;
+}) {
   const [open, setOpen] = useState(initialOpen);
   // 0-2v：一度開いたら、下の帯の数を消す
   const [opened, setOpened] = useState(initialOpen);
+  useEffect(() => {
+    if (!openWhenShown || document.documentElement.dataset.pane !== "true") return;
+    const onShown = () => {
+      if (document.cookie.split("; ").some((pair) => pair.startsWith(`${TODAY_SEEN_COOKIE}=`))) return;
+      markSeen();
+      setOpened(true);
+      setOpen(true);
+    };
+    window.addEventListener(STRIP_LAND_EVENT, onShown);
+    return () => window.removeEventListener(STRIP_LAND_EVENT, onShown);
+  }, [openWhenShown]);
   useEffect(() => {
     if (!initialOpen) return;
     if (window.self !== window.top) {
