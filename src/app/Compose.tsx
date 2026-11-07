@@ -383,12 +383,13 @@ export function Compose({
         </p>
       )}
 
-      {!writing && audienceLine && (
-        <p className="compose-audience" role="status">
-          {audienceLine}
-        </p>
-      )}
       <div className="compose-actions compose-sheet-actions">
+        {/* 0-2k(3)：誰が見るかの一文は、送るボタンと一緒にいつも下に見える */}
+        {!writing && audienceLine && (
+          <p className="compose-audience" role="status">
+            {audienceLine}
+          </p>
+        )}
         <button type="button" className="secondary" disabled={busy} onClick={onCancel}>
           <Icon name="cancel" />
           取り消す
