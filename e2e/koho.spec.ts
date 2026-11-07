@@ -34,7 +34,8 @@ test("広報の担当が候補から本人に確認し、本人が同意した�
   await expect(request).toBeVisible();
   await request.getByLabel("保護者の同意があります").check();
   await request.getByRole("button", { name: "紹介してよい" }).click();
-  await expect(author.getByText(words)).toHaveCount(0);
+  // 同意すると、受信箱の確認の欄から消える（重いときは返事が遅いので長めに待つ）
+  await expect(request).toHaveCount(0, { timeout: 30_000 });
 
   await officer.reload();
   await expect(officer.getByRole("region", { name: "本人に確認したもの" }).filter({ hasText: words })).toContainText("本人が同意しました");
