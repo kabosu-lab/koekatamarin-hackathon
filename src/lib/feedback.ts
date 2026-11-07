@@ -55,6 +55,19 @@ export function saveFeedback(db: DatabaseSync, input: FeedbackInput, now: Date):
   );
 }
 
+/**
+ * 話の中で本人が届けることに同意した感想を残す（0-3l (2)）。サーバーの中で、返事と同じ呼び出しの間に保存する。
+ * 同じ言葉がもう話の中の感想として残っていれば、二重に残さない。残したら true。
+ */
+export function saveTalkFeedback(db: DatabaseSync, place: { body: string; path?: unknown; screenWidth?: unknown }, now: Date): boolean {
+  const parsed = parseFeedback({ body: place.body.slice(0, MAX_FEEDBACK_LENGTH), path: place.path, screenWidth: place.screenWidth, from: "talk" });
+  if (!parsed || parsed.kind !== FEEDBACK_FROM_TALK) return false;
+  const seen = db.prepare("SELECT 1 FROM trial_feedback WHERE kind = ? AND body = ? LIMIT 1").get(FEEDBACK_FROM_TALK, parsed.body);
+  if (seen) return false;
+  saveFeedback(db, parsed, now);
+  return true;
+}
+
 /** 連打を抑える。数えるのはメモリの中だけで、保存しない。再起動で忘れてよい。 */
 export function createFeedbackLimiter() {
   const counts = new Map<string, { startedAt: number; count: number }>();

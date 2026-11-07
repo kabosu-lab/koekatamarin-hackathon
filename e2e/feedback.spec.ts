@@ -1,4 +1,15 @@
+import { DatabaseSync } from "node:sqlite";
 import { expect, type Page, test } from "@playwright/test";
+
+/** 試用のサーバーが残した、話の中の感想（playwright.config.ts が KOEKATA_E2E_TRIAL_DB に道を置く） */
+function talkFeedback(body: string): Record<string, unknown>[] {
+  const db = new DatabaseSync(process.env.KOEKATA_E2E_TRIAL_DB!, { readOnly: true });
+  try {
+    return db.prepare("SELECT kind, body, path, screen_width FROM trial_feedback WHERE body = ?").all(body) as Record<string, unknown>[];
+  } finally {
+    db.close();
+  }
+}
 
 // 試用中の感想（0-2h）。このファイルは「スマホ」の project で動くので、試用のサーバー（次の番号）へは住所を替えて向ける
 const PORT = Number(process.env.KOEKATA_E2E_PORT ?? 3100);
@@ -98,50 +109,56 @@ test.describe("試用版", () => {
     await expect(page.locator(".feedback-thanks")).toHaveText("ありがとう");
   });
 
-  test("話す画面でアプリへの感想が出ると、パートナーが届けてよいか聞き、いいよと言ったら本人の言葉だけを届ける", async ({ page }) => {
+  test("話す画面でアプリへの感想が出ると、パートナーが届けてよいか聞き、届けてくださいと言うとその場で1件残り、届けたと言い切る", async ({ page }) => {
     await enter(page);
-    const said = "このアプリ、ボタンが分かりにくい";
-    const posted: Record<string, unknown>[] = [];
-    page.on("request", (r) => {
-      if (r.url().endsWith("/api/feedback") && r.method() === "POST") posted.push(r.postDataJSON() as Record<string, unknown>);
-    });
+    // 走らせるたびに違う言葉にする（同じ言葉は二重に残さないため）
+    const said = `このアプリ、ボタンが分かりにくい ${test.info().testId}-${Date.now()}`;
     const write = page.getByLabel("パートナーに書く");
     const sendTalk = page.getByRole("button", { name: "パートナーへ送る" });
+    const replies = page.locator(".bubble.assistant");
     await write.fill(said);
     await sendTalk.click();
-    await expect(page.locator(".bubble.assistant").last()).toContainText("作っている人に届けてもいい？");
-    await expect(page.locator(".bubble.assistant").last()).not.toContainText("[[");
+    await expect(replies.last()).toContainText("作っている人に届けてもいい？");
+    await expect(replies.last()).not.toContainText("[[");
+    expect(talkFeedback(said)).toHaveLength(0);
 
-    const request = page.waitForRequest((r) => r.url().endsWith("/api/feedback") && r.method() === "POST");
+    await write.fill("届けてください");
+    await sendTalk.click();
+    await expect(replies.last()).toContainText("届けたよ、ありがとう");
+    await expect(replies.last()).not.toContainText("[[");
+    await expect(replies.last()).not.toContainText(/画面から|自分では|送れない/);
+    await expect(page.locator(".feedback-thanks")).toHaveText("ありがとう");
+    // サーバーが trial_feedback に本人の言葉と画面の場所だけを残す（名前や人物の列はない）
+    await expect.poll(() => talkFeedback(said)).toHaveLength(1);
+    expect(talkFeedback(said)[0]).toMatchObject({ kind: "話の中で", body: said, path: "/" });
+    expect(Number(talkFeedback(said)[0].screen_width)).toBeGreaterThan(0);
+
+    // 続けて同意の言葉を言っても、二重に残さない
     await write.fill("いいよ");
     await sendTalk.click();
-    const body = (await request).postDataJSON() as Record<string, unknown>;
-    expect(body).toMatchObject({ body: said, from: "talk" });
-    expect(Object.keys(body).sort()).toEqual(["body", "from", "path", "screenWidth"]);
-    await expect(page.locator(".feedback-thanks")).toHaveText("ありがとう");
-    await expect(page.locator(".bubble.assistant").last()).toContainText("ありがとう");
-    expect(posted).toHaveLength(1);
+    await expect(replies).toHaveCount(3);
+    expect(talkFeedback(said)).toHaveLength(1);
   });
 
-  test("届けてよいか聞かれて断ったら、何も送らない。聞かれていないときのいいよも送らない", async ({ page }) => {
+  test("届けてよいか聞かれて断ったら、何も残さない。聞かれていないときのいいよも残さない", async ({ page }) => {
     await enter(page);
-    const posted: string[] = [];
-    page.on("request", (r) => {
-      if (r.url().endsWith("/api/feedback") && r.method() === "POST") posted.push(r.url());
-    });
+    const said = `このアプリ、文字が小さくて分かりにくい ${test.info().testId}-${Date.now()}`;
     const write = page.getByLabel("パートナーに書く");
     const sendTalk = page.getByRole("button", { name: "パートナーへ送る" });
     const replies = page.locator(".bubble.assistant");
 
-    await write.fill("このアプリ、文字が小さくて分かりにくい");
+    await write.fill(said);
     await sendTalk.click();
     await expect(replies.last()).toContainText("作っている人に届けてもいい？");
     await write.fill("いや、やめとく");
     await sendTalk.click();
     await expect(replies).toHaveCount(2);
+    await expect(replies.last()).not.toContainText("届けたよ");
     await write.fill("いいよ");
     await sendTalk.click();
     await expect(replies).toHaveCount(3);
-    expect(posted).toHaveLength(0);
+    await expect(replies.last()).not.toContainText("届けたよ");
+    expect(talkFeedback(said)).toHaveLength(0);
+    await expect(page.locator(".feedback-thanks")).toHaveCount(0);
   });
 });

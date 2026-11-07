@@ -3,6 +3,7 @@
 import { type RefObject, useCallback, useEffect, useRef, useState } from "react";
 import { AIZUCHI_INTERVAL_MS, aizuchiAt, detectCommand, withoutEndWord } from "@/lib/walk-command";
 import type { ChatMessage } from "@/lib/claude/types";
+import { announceTalkFeedback, feedbackPlace } from "./FeedbackSheet";
 import type { SafetyNotice } from "./SafetyCard";
 import type { ListeningSession } from "./speech";
 import { soundAllowed } from "./sound";
@@ -109,10 +110,12 @@ export function useLockedTalk({
       const response = await fetch("/api/converse", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ history: history(), text: asked }),
+        body: JSON.stringify({ history: history(), text: asked, ...feedbackPlace() }),
       });
-      const body = (await response.json().catch(() => ({}))) as { reply?: string; safety?: SafetyNotice; ready?: boolean };
+      const body = (await response.json().catch(() => ({}))) as { reply?: string; safety?: SafetyNotice; ready?: boolean; feedbackSaved?: boolean };
       if (body.safety) onSafety(body.safety);
+      // 0-3l (2)：声で感想を届けることに同意したら、サーバーが残している
+      if (body.feedbackSaved === true) announceTalkFeedback();
       if (!response.ok || !body.reply) {
         await speak(VOICE.failed[tone]);
         return;

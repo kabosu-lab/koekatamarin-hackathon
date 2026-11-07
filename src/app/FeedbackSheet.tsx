@@ -14,6 +14,16 @@ export const FEEDBACK_HINT_EVENT = "koekata:feedback-hint";
 /** 話す画面から感想を届けたとき、アイコンの横に「ありがとう」を出す */
 const FEEDBACK_SENT_EVENT = "koekata:feedback-sent";
 
+/** 話の中の感想がサーバーで残されたとき（0-3l (2)）、アイコンの横に「ありがとう」を出す */
+export function announceTalkFeedback() {
+  window.dispatchEvent(new Event(FEEDBACK_SENT_EVENT));
+}
+
+/** 話す画面から /api/converse へ添える、開いていた画面の場所（感想を残すときだけ使う。名前も人物も送らない） */
+export function feedbackPlace(): { path: string; screenWidth: number } {
+  return { path: window.location.pathname, screenWidth: window.innerWidth };
+}
+
 type FeedbackPayload = { kind?: string; body: string; from?: "talk" };
 
 /** 感想を送る。名前も人物も送らない。送れたら true、連打で止められたら "busy" */
