@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { TEAMS_HOME, teamsChannelUrl, teamsDockUrl } from "./teams-link";
+import { postChannelUrl, TEAMS_HOME, teamsChannelUrl, teamsDockUrl } from "./teams-link";
 
 describe("みんなの下の帯の「Teams」が開く先", () => {
   it("つながりの設定がなければ、Teams のはじめの画面", () => {
@@ -33,5 +33,27 @@ describe("下の帯に「Teams」を置くか（0-2q(6)）", () => {
   it("つないでいるときは、そのチャネルか Teams のはじめの画面を開く", () => {
     expect(teamsDockUrl("webhook", null)).toBe(TEAMS_HOME);
     expect(teamsDockUrl("graph", { tenant: "t", team: "dummy-team", channel: "dummy" })).toContain("groupId=dummy-team");
+  });
+});
+
+describe("0-3e：投稿のチャネル名が開く先", () => {
+  it("Teams につないでいないときは、アプリの校内チャネルの画面のその投稿", () => {
+    expect(postChannelUrl("off", { tenant: "t", team: "dummy-team", channel: "c" }, "study", "p1")).toEqual({ href: "/teams?channel=study#post-p1", external: false });
+    expect(postChannelUrl("webhook", null, "study")).toEqual({ href: "/teams?channel=study", external: false });
+  });
+
+  it("対応表に載っているチャネルは、本物の Teams のそのチャネル。載っていないものはアプリの中", () => {
+    const config = { tenant: "t", channels: { study: { team: "team-a", channel: "ch-study" }, notice: { team: "team-b", channel: "ch-notice" } } };
+    const notice = postChannelUrl("graph", config, "notice");
+    expect(notice.external).toBe(true);
+    expect(new URL(notice.href).searchParams.get("groupId")).toBe("team-b");
+    expect(notice.href).toContain("/ch-notice/");
+    expect(postChannelUrl("graph", config, "club")).toEqual({ href: "/teams?channel=club", external: false });
+  });
+
+  it("対応表がなく1つのチャネルにつないでいるときは、そのチャネル", () => {
+    const url = postChannelUrl("graph", { tenant: "t", team: "dummy-team", channel: "dummy" }, "study");
+    expect(url.external).toBe(true);
+    expect(url.href).toContain("groupId=dummy-team");
   });
 });

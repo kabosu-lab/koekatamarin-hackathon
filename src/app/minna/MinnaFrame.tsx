@@ -14,7 +14,7 @@ const reducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)"
 
 /**
  * 「みんな」の外枠（0-1k・0-1y）。ページ全体が1つのスクロールで、桜は開いた直後は大きく、
- * スクロールすると細い帯に縮んで上に残る。帯の下にチャネルの札、その下に投稿。入口はいちばん下のアイコンの帯（0-2f）。
+ * スクロールすると細い帯に縮んで上に残る。帯の下に見出し「おすすめ」、その下に投稿（0-3e：チャネルの札は置かない）。入口はいちばん下のアイコンの帯（0-2f）。
  * iPad 横・PC は左に桜、右に投稿の2列。イベントは桜の木のそばのメガホンから知らせる。
  * 話すボタンとホイールは置かない。左右スワイプと下の点で「話す」へ戻れる。
  */
@@ -29,7 +29,7 @@ export function MinnaFrame({
   petals,
   fastForward,
   extras,
-  chips,
+  heading,
   dock,
   events,
   children,
@@ -46,7 +46,8 @@ export function MinnaFrame({
   fastForward: boolean;
   /** 札の列の端に小さく置く、必要なときだけの入口（相談室への知らせ・広報・卵） */
   extras: ReactNode;
-  chips: ReactNode;
+  /** 帯のすぐ下に残る、投稿の見出し（「おすすめ」） */
+  heading: ReactNode;
   /** いちばん下に固定するアイコンの帯（今日の3人・受信箱・自習室・校内の知恵・Teams） */
   dock: ReactNode;
   /** 今のイベント。ないときはメガホンを置かない */
@@ -176,7 +177,7 @@ export function MinnaFrame({
             {hasEvent && <MegaphoneButton place="band" hidden={!shrunk} onOpen={openEvent} />}
           </div>
           <div className="minna-chip-row">
-            {chips}
+            {heading}
             {extras}
           </div>
           <div className="minna-posts">{children}</div>

@@ -1,4 +1,4 @@
-import { expect, type Page, test } from "@playwright/test";
+import { type Browser, expect, type Page, test } from "@playwright/test";
 import { openScreen, switchPerson } from "./helpers";
 
 // 0-1k：みんなの画面。ページ全体が1つのスクロール、桜は上で帯に縮み、返信はその場で
@@ -30,7 +30,7 @@ test("スクロールすると桜が細い帯に縮んで上に残り、帯を�
   expect(Math.abs(bandBox!.y - box!.y)).toBeLessThanOrEqual(10);
   await expect(band).toContainText(/葉\d+枚/);
 
-  // 投稿が画面の大半を使う（上に残るのは帯と札の列だけ）
+  // 投稿が画面の大半を使う（上に残るのは帯と見出しの行だけ）
   const header = await page.locator(".minna-chip-row").boundingBox();
   expect(header!.y + header!.height - box!.y).toBeLessThan(box!.height * 0.2);
 
@@ -141,43 +141,117 @@ test("0-2m：返信を話している間は音を鳴らさず、話し終えた�
   await expect.poll(oscillators).toBeGreaterThan(before);
 });
 
-test("チャネルの札で投稿を絞れ、教職員だけの札は生徒には出ない", async ({ page }) => {
+/** 決まった人で開く、別の窓（今日の3人は出したことにしておく） */
+async function openAs(browser: Browser, personId: string) {
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  await context.addCookies([TODAY_SEEN, { name: "koekata_person", value: personId, domain: "127.0.0.1", path: "/" }]);
+  const page = await context.newPage();
+  await page.goto("/");
+  return page;
+}
+
+const TIER_RANK = { related: 0, card: 1, popular: 2, new: 3 } as const;
+
+// 0-3e：チャネルの札もタブも置かず、「おすすめ」の1本の流れ
+
+test("チャネルの札の列はなく、見出しは「おすすめ」だけ。チャネル名は小さく出て、押すとそのチャネルを開く", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/minna");
-  const chips = page.getByRole("group", { name: "チャネルで絞る" });
-  const chip = chips.getByRole("button").nth(1);
-  const name = (await chip.textContent()) ?? "";
-  await expect(async () => {
-    await chip.click();
-    await expect(chip).toHaveAttribute("aria-pressed", "true", { timeout: 1000 });
-  }).toPass();
   const scroller = page.getByRole("region", { name: "みんな" });
   await expect(scroller.getByRole("article").first()).toBeVisible();
-  // 絞ったあとに見えている投稿だけを見る（隠れた投稿も DOM には残る）
-  for (const head of await scroller.locator("li:not([hidden]) article header.minna-post-head small").all()) {
-    await expect(head).toContainText(name);
-  }
-  await chips.getByRole("button", { name: "すべて" }).click();
-  await expect(chips.getByRole("button", { name: "すべて" })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("group", { name: "チャネルで絞る" })).toHaveCount(0);
+  await expect(page.locator(".minna-chips, .minna-chip")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "すべて" })).toHaveCount(0);
+  await expect(page.getByRole("tab")).toHaveCount(0);
+  await expect(scroller.getByRole("heading", { name: "おすすめ", exact: true })).toBeVisible();
+  await expect(scroller.getByRole("list", { name: "おすすめ" })).toBeVisible();
+  // 「〇〇で見る」のリンクは置かず、見出しの行のチャネル名がその入口
+  await expect(scroller.getByRole("link", { name: /で見る$/ })).toHaveCount(0);
+  const article = scroller.getByRole("article").first();
+  const channel = article.locator(".minna-post-head small a.minna-post-channel");
+  await expect(channel).toHaveCount(1);
+  const name = ((await channel.textContent()) ?? "").trim();
+  expect(name.length).toBeGreaterThan(0);
+  // テストは Teams につないでいないので、アプリの校内チャネルの画面のその投稿へ
+  expect(await channel.getAttribute("href")).toMatch(/^\/teams\?channel=[^#]+#post-/);
+  const size = (selector: string) => article.locator(selector).first().evaluate((element) => parseFloat(getComputedStyle(element).fontSize));
+  expect(await size("a.minna-post-channel")).toBeLessThan(await size(".minna-post-body"));
+  await channel.click();
+  await expect(page).toHaveURL(/\/teams\?channel=/);
+  await expect(page.getByRole("heading", { name, exact: true }).first()).toBeVisible();
+});
 
-  await switchPerson(page, "青木 ひより（2年）");
+test("おすすめは、自分へのメンション → カード → 反応の多いもの → 新しいもの の順", async ({ browser }) => {
+  const id = test.info().testId;
+  // 木下さん（3年・ものづくり部）は、中村さん（1年・吹奏楽部）と学年も部活も重ならない
+  const author = await openAs(browser, "kinoshita");
+  const publish = (data: Record<string, unknown>) => author.request.post("/api/publish", { data: { channelId: "study", ...data } });
+  expect((await publish({ text: `中村さんに聞きたい譜面の読み方 ${id}`, askedPersonId: "nakamura" })).ok()).toBe(true);
+  expect((await publish({ text: `資料のお礼 ${id}`, subject: "【ありがとう】資料を見せてくれて", askedPersonId: "aoki" })).ok()).toBe(true);
+  expect((await publish({ text: `ふつうの新しい話 ${id}` })).ok()).toBe(true);
+  await author.context().close();
+
+  const page = await openAs(browser, "nakamura");
   await page.goto("/minna");
-  await expect(page.getByRole("group", { name: "チャネルで絞る" }).getByRole("button", { name: "職員室" })).toHaveCount(0);
+  const list = page.getByRole("region", { name: "みんな" }).getByRole("list", { name: "おすすめ" });
+  const articles = list.getByRole("article");
+  await expect(articles.first()).toBeVisible();
+  const rows = await articles.evaluateAll((elements) => elements.map((element) => ({ tier: element.getAttribute("data-tier") ?? "", text: element.textContent ?? "" })));
+  // 段は上から順に並び、戻らない
+  const ranks = rows.map((row) => TIER_RANK[row.tier as keyof typeof TIER_RANK]);
+  expect(ranks.every((rank) => rank !== undefined)).toBe(true);
+  expect(ranks).toEqual([...ranks].sort((a, b) => a - b));
+  const at = (words: string) => rows.findIndex((row) => row.text.includes(words));
+  const mention = at(`中村さんに聞きたい譜面の読み方 ${id}`);
+  const card = at(`資料のお礼 ${id}`);
+  expect(rows[mention].tier).toBe("related");
+  expect(rows[card].tier).toBe("card");
+  expect(mention).toBeLessThan(card);
+  // 反応のあった投稿（はじめの投稿にいいねや返事がある）は、カードのあと
+  const popular = rows.findIndex((row) => row.tier === "popular");
+  expect(popular).toBeGreaterThan(card);
+  // 反応のない新しい投稿は、いちばん後ろの段（数をしぼって出ないこともある）
+  const fresh = at(`ふつうの新しい話 ${id}`);
+  if (fresh >= 0) {
+    expect(rows[fresh].tier).toBe("new");
+    expect(fresh).toBeGreaterThan(popular);
+  }
+  await page.context().close();
+});
+
+test("生徒のおすすめには、教職員だけのチャネルの投稿は出ない", async ({ browser }) => {
+  const words = `職員室だけの連絡 ${test.info().testId}`;
+  const teacher = await openAs(browser, "saeki");
+  expect((await teacher.request.post("/api/publish", { data: { text: words, channelId: "staffroom" } })).ok()).toBe(true);
+  await teacher.goto("/minna");
+  // 先生には、送ったばかりの自分の投稿として上の方に出る
+  const own = teacher.getByRole("article").filter({ hasText: words });
+  await expect(own).toBeVisible();
+  await expect(own.locator(".minna-post-head small")).toContainText("職員室");
+  await teacher.context().close();
+
+  const student = await openAs(browser, "aoki");
+  await student.goto("/minna");
+  await expect(student.getByRole("region", { name: "みんな" }).getByRole("article").first()).toBeVisible();
+  await expect(student.getByRole("article").filter({ hasText: words })).toHaveCount(0);
+  await expect(student.locator(".minna-post-head small", { hasText: "職員室" })).toHaveCount(0);
+  await student.context().close();
 });
 
 // 0-2y (6)：横向きは必ず3列で、みんなは右の列の中（e2e/wide-columns.spec.ts）。前の「横長の1画面で桜と投稿の2列」は、もう出ない
 
-// 0-1y・0-2f：みんなは投稿が主役。上はチャネルの札だけ、入口はいちばん下のアイコンの帯だけ、下の縦の一覧はない
+// 0-1y・0-2f・0-3e：みんなは投稿が主役。上は見出し「おすすめ」だけ、入口はいちばん下のアイコンの帯だけ、下の縦の一覧はない
 
-test("並びは桜 → チャネルの札 → 投稿で、入口はいちばん下に固定した帯の1か所だけ", async ({ page }) => {
+test("並びは桜 → 見出し「おすすめ」 → 投稿で、入口はいちばん下に固定した帯の1か所だけ", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/minna");
   const scroller = page.getByRole("region", { name: "みんな" });
   const dock = page.getByRole("navigation", { name: "みんなの入口" });
   const sakura = (await page.getByRole("link", { name: "校内の桜" }).boundingBox())!;
-  const chips = (await page.getByRole("group", { name: "チャネルで絞る" }).boundingBox())!;
+  const heading = (await scroller.getByRole("heading", { name: "おすすめ", exact: true }).boundingBox())!;
   const post = (await scroller.getByRole("article").first().boundingBox())!;
-  expect(sakura.y).toBeLessThan(chips.y);
-  expect(chips.y).toBeLessThan(post.y);
+  expect(sakura.y).toBeLessThan(heading.y);
+  expect(heading.y).toBeLessThan(post.y);
   // 開いたらすぐ投稿が見える
   await expect(scroller.getByRole("article").first()).toBeInViewport();
 
@@ -203,7 +277,8 @@ test("並びは桜 → チャネルの札 → 投稿で、入口はいちばん�
   await expect(page.locator(".minna-chip-row").getByRole("button", { name: "今日の3人" })).toHaveCount(0);
   // 同じ入口を2か所に置かない
   await expect(page.locator(".minna-more")).toHaveCount(0);
-  await expect(page.locator('a[href^="/teams"]').filter({ hasNotText: "で見る" })).toHaveCount(0);
+  // 校内チャネルの画面へのリンクは、投稿のチャネル名だけ
+  await expect(page.locator('a[href^="/teams"]:not(.minna-post-channel)')).toHaveCount(0);
   await expect(page.getByRole("link", { name: "今日の3人" })).toHaveCount(0);
   await expect(page.getByRole("link", { name: /校内チャネル（Teams）/ })).toHaveCount(0);
   await expect(page.getByRole("link", { name: "一緒に勉強する", exact: true })).toHaveCount(0);
