@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { isColumnPath, WIDE_QUERY, type WideSide, wideHomeUrl, wideSide } from "@/lib/wide";
+import { strip } from "./strip";
 
 /** 列の中身を外から替える知らせ（欄の中のリンクが、もう片方の列で開くとき） */
 const COLUMN_EVENT = "koekata:wide-column";
@@ -24,7 +25,8 @@ function openInColumn(href: string): boolean {
  * 狭い画面では今までどおり push する。
  */
 export function openScreenFromHome(href: string, push: (href: string) => void) {
-  if (!openInColumn(href)) push(href);
+  // 0-2z：狭い画面では、みんな・履歴と設定は帯を動かして開く（読み込み直さない）
+  if (!openInColumn(href) && !strip.go(href)) push(href);
 }
 
 /** 狭い画面で、話す画面の左右の画面を裏で読み込み始めるまでの待ち（最初の描画と操作を先にする） */
@@ -132,7 +134,8 @@ export function EmbedMark() {
       if (!link || link.target || link.hasAttribute("download")) return;
       const url = new URL(link.href, location.href);
       if (url.origin !== location.origin) return;
-      if (!openInColumn(url.pathname + url.search + url.hash)) return;
+      const href = url.pathname + url.search + url.hash;
+      if (!openInColumn(href) && !strip.go(href)) return;
       event.preventDefault();
       event.stopPropagation();
     };
@@ -152,6 +155,19 @@ export function EmbedMark() {
       if (url.origin !== location.origin) return;
       const href = url.pathname + url.search + url.hash;
       const side = wideSide(url.pathname);
+      // 0-2z：狭い画面の左右の画面（pane）では、3つの画面の入口へのリンク（下の印など）は外側の帯を動かす
+      if (document.documentElement.dataset.pane === "true") {
+        if (window.parent.koekataStrip?.go(href)) {
+          event.preventDefault();
+          event.stopPropagation();
+          return;
+        }
+        if (side === own) return;
+        event.preventDefault();
+        event.stopPropagation();
+        window.top?.location.assign(href);
+        return;
+      }
       if (side === own) return;
       event.preventDefault();
       event.stopPropagation();

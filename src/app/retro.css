@@ -2076,3 +2076,33 @@ html[data-embed] .first-card-backdrop {
     transform: translateX(100vw);
   }
 }
+
+/* 0-2z：帯が止まっている位置（strip.ts の data-pane）。動かしている間は strip.ts が transform を直接書く */
+@media not ((orientation: landscape) and (min-height: 600px)) {
+  .device-row[data-pane="right"] > .retro-home {
+    transform: translateX(-100vw);
+  }
+
+  .device-row[data-pane="right"] > .wide-panel[data-mode="pane"][data-side="right"],
+  .device-row[data-pane="left"] > .wide-panel[data-mode="pane"][data-side="left"] {
+    transform: translateX(0);
+    pointer-events: auto;
+  }
+
+  .device-row[data-pane="right"] > .wide-panel[data-mode="pane"][data-side="left"] {
+    transform: translateX(-200vw);
+  }
+
+  .device-row[data-pane="left"] > .retro-home {
+    transform: translateX(100vw);
+  }
+
+  .device-row[data-pane="left"] > .wide-panel[data-mode="pane"][data-side="right"] {
+    transform: translateX(200vw);
+  }
+}
+
+/* 左右の画面の中には感想のアイコンを出さない（外側の1つだけ。動かしている間に2つ並ばない） */
+html[data-pane] :is(.feedback-fab, .feedback-thanks) {
+  display: none;
+}

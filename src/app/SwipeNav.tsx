@@ -5,6 +5,7 @@ import { useEffect } from "react";
 import { isDeep, SWIPE_HOME, SWIPE_SCREENS, swipeTarget } from "@/lib/swipe-nav";
 import { WIDE_QUERY } from "@/lib/wide";
 import { Peek, remember, screenOf } from "./swipe-peek";
+import { strip, stripReady } from "./strip";
 
 /**
  * 操作の途中の指の動きを、画面の移動にしない場所。
@@ -35,6 +36,13 @@ const EASE = "cubic-bezier(0.2, 0.8, 0.2, 1)";
 const SPRING = "cubic-bezier(0.34, 1.56, 0.64, 1)";
 
 type Arrival = { from: "left" | "right"; ms: number; rest: number };
+
+/** 左右の画面の中からの指の量を、帯の位置にする。帯の端の先は重くする */
+function bandOffset(base: number, dx: number): number {
+  const width = window.innerWidth || 1;
+  const outward = (base === -1 && dx < 0) || (base === 1 && dx > 0);
+  return base + (outward ? dx * 0.3 : dx) / width;
+}
 
 const reducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 const page = () => document.querySelector<HTMLElement>("body > main, main");
@@ -125,9 +133,18 @@ export function SwipeNav() {
     main.animate([{ transform: `translateX(${offset})` }, { transform: "translateX(0)" }], { duration: ms, easing: EASE });
   }, [pathname]);
 
+  // 0-2z：話す画面の帯を、左右の画面（iframe）の中からも動かせるようにする
+  useEffect(() => {
+    if (window.self === window.top) window.koekataStrip = strip;
+  }, []);
+
   useEffect(() => {
     let start: { x: number; y: number } | null = null;
     let dragging = false;
+    // 0-2z：帯（話す画面と、裏で読み込んだ左右の画面）を動かしているか。paneMode は左右の画面の中から動かすとき
+    let banded = false;
+    let paneMode = false;
+    let base = 0;
     let main: HTMLElement | null = null;
     // 横画面か・動きを減らす設定かは、指を置いたときに1回だけ調べる（動かすたびに matchMedia しない）
     let landscape = false;
@@ -172,11 +189,14 @@ export function SwipeNav() {
       still = reducedMotion();
       deep = isDeep(pathname, document.querySelector(DEEP_STATE) !== null);
       const root = document.documentElement;
+      paneMode = root.dataset.pane === "true" && Boolean(window.parent?.koekataStrip);
+      banded = false;
       const blocked =
         event.touches.length !== 1 ||
         root.dataset.theme !== "retro" ||
-        // 広い画面と、その左右の欄（iframe）の中では移らない。欄の中でホームへ移ると、欄の中が話す画面になってしまう
-        !swipes() ||
+        // 広い画面と、その左右の欄（iframe）の中では移らない。欄の中でホームへ移ると、欄の中が話す画面になってしまう。
+        // 狭い画面で裏に読み込んだ左右の画面（pane）の中からは、外側の帯を動かす
+        (!paneMode && !swipes()) ||
         target?.closest(NO_SWIPE) ||
         (landscape && !deep && target?.closest(NO_SWIPE_LANDSCAPE)) ||
         insideSideScroller(target) ||
@@ -195,6 +215,23 @@ export function SwipeNav() {
       const dy = event.touches[0].clientY - start.y;
       if (!dragging) {
         if (Math.abs(dx) < LOCK_DISTANCE || Math.abs(dx) < Math.abs(dy) * 1.6) return;
+        if (paneMode) {
+          dragging = true;
+          base = (window.frameElement as HTMLElement | null)?.dataset.side === "left" ? 1 : -1;
+        } else if (pathname === SWIPE_HOME && !deep && !landscape && window.self === window.top && stripReady()) {
+          dragging = true;
+          banded = true;
+        }
+      }
+      if (paneMode) {
+        window.parent.koekataStrip?.drag(bandOffset(base, dx));
+        return;
+      }
+      if (banded) {
+        strip.drag(dx / (window.innerWidth || 1));
+        return;
+      }
+      if (!dragging) {
         main = screenOf();
         if (!main) return;
         dragging = true;
@@ -227,6 +264,29 @@ export function SwipeNav() {
       const sideways = !landscape || deep;
       const forward = (sideways ? dx : touch.clientY - start.y) < 0;
       start = null;
+      if ((paneMode || banded) && dragging) {
+        // 0-2z：帯は、ホイールと同じばねで吸い付く。URL は replaceState で替える（strip.ts）
+        const width = window.innerWidth || 1;
+        const [a, b] = recent.length >= 2 ? recent : [{ x: touch.clientX, t: 0 }, { x: touch.clientX, t: 1 }];
+        const velocity = ((b.x - a.x) / Math.max(1, b.t - a.t)) * (1000 / width);
+        dragging = false;
+        if (banded) {
+          banded = false;
+          strip.settle(dx / width, velocity, next ? (dx < 0 ? -1 : 1) : 0);
+          return;
+        }
+        // 左右の画面の中から：話す画面の側へ払えば戻る。奥の画面では左右どちらへ払っても戻る（0-2p）。
+        // 帯の端（話す画面と反対の側）には何もないので、元の位置へ戻る
+        let to = base as -1 | 1 | 0;
+        if (next) {
+          if (deep) to = 0;
+          else if ((base === -1 && dx > 0) || (base === 1 && dx < 0)) to = 0;
+        }
+        window.parent.koekataStrip?.settle(bandOffset(base, dx), velocity, to);
+        return;
+      }
+      // 左右の画面の中では、指に付かなかった払い方でも、その中では移らない（外側の帯だけが動く）
+      if (paneMode) return;
       if (peek && main && dragging) {
         // 0-2z：離したら、ホイールと同じばねで吸い付く。届けば隣の画面へ、届かなければ元の位置へ
         const [a, b] = recent.length >= 2 ? recent : [{ x: touch.clientX, t: 0 }, { x: touch.clientX, t: 1 }];
