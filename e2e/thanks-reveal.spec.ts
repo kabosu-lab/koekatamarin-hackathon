@@ -104,7 +104,7 @@ test("動きを減らす設定では、動かさずに表のカードを出す",
 /** 封筒を開け、言葉に text を含むカードが出るまで「しまって次へ」で進める */
 async function untilCard(page: Page, text: string) {
   const reveal = page.getByRole("dialog", { name: "届いたサンクスカード" });
-  for (let i = 0; i < 8; i++) {
+  for (let i = 0; i < 60; i++) {
     await expect(page.locator(".thanks-reveal")).toHaveAttribute("data-phase", "card");
     if (((await reveal.locator(".thanks-reveal-words").textContent()) ?? "").includes(text)) return reveal;
     await reveal.getByRole("button", { name: "しまって次へ" }).click();
@@ -156,9 +156,9 @@ test("長い言葉もカードの中で読め、開くと焦点がカードへ�
   await expect(reveal.locator(".thanks-reveal-words")).toContainText(tail);
 
   // Esc で閉じる（何枚あっても、1枚ずつしまう）
-  for (let i = 0; i < 8 && (await reveal.isVisible()); i++) {
+  for (let i = 0; i < 60 && (await reveal.isVisible()); i++) {
     await page.keyboard.press("Escape");
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(250);
   }
   await expect(reveal).toBeHidden();
   expect(await page.locator("main").evaluate((el) => Boolean(el.closest("[inert]")))).toBe(false);
@@ -169,9 +169,9 @@ test("開けたかは端末ごと。ある端末で開けても、別の端末�
   await switchPerson(page, "白石 文（養護・相談室）");
   await page.goto("/");
   const reveal = await openEnvelope(page);
-  for (let i = 0; i < 8 && (await reveal.isVisible()); i++) {
+  for (let i = 0; i < 60 && (await reveal.isVisible()); i++) {
     await page.keyboard.press("Escape");
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(250);
   }
   await expect(reveal).toBeHidden();
 
