@@ -40,8 +40,13 @@ test("0-2l：応援は押した瞬間に済みの形になり、届かなかっ�
   });
   await page.goto("/today");
   const button = page.getByRole("button", { name: /^応援/ }).first();
-  await expect(button).toBeVisible();
-  test.skip((await button.innerText()) !== "応援する", "このカードはもう応援してある");
+  // まだ応援していないカードまで進める
+  for (let step = 0; step < 3; step += 1) {
+    await expect(button).toBeVisible();
+    if ((await button.innerText()) === "応援する") break;
+    await page.getByRole("button", { name: "次へ" }).click();
+  }
+  test.skip((await button.innerText()) !== "応援する", "3枚とももう応援してある");
   await button.click();
   // 返事を待たずに済みの形
   await expect(page.getByRole("button", { name: "応援しました" })).toBeDisabled();
