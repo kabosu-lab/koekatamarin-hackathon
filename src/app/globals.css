@@ -1126,7 +1126,8 @@ main a {
   color: var(--accent);
 }
 
-.appearance .row button[aria-pressed="true"] {
+.appearance .row button[aria-pressed="true"],
+.goals .nudge-choice button[aria-pressed="true"] {
   background: var(--accent);
   color: var(--on-accent);
 }
