@@ -2385,19 +2385,26 @@ body:has(.first-card-backdrop) button.edge-handle {
   height: 100dvh;
 }
 
-/* 列の中：広げている間は、重ね（シートと data-lift-layer）のほかを隠して透明にし、後ろの3列を見せる（暗幕で暗くなる） */
-html[data-column-lift],
-html[data-column-lift] body {
+/* 列の中：広げている間も、中の画面は広げる前の列の場所（--lift-*）にそのまま置き、まわりは透明にして後ろの3列を見せる。
+   重ね（position: fixed）は画面いっぱいのまま、暗幕で3列ごと暗くなる。
+   中の画面は広げている間だけ上から見え、スクロールの位置は閉じると戻す（ずらすと重ねの置き場が変わるので、ずらさない） */
+html[data-column-lift] {
   overflow: hidden !important;
-  background: transparent !important;
+  /* 透明な絵を持たせて、body の地が画面いっぱい（キャンバス）に広がらないようにする */
+  background: linear-gradient(transparent, transparent) !important;
 }
 
 html[data-column-lift] body {
-  visibility: hidden;
-}
-
-html[data-column-lift] :is(.sheet-lift, [data-lift-layer]) {
-  visibility: visible;
+  position: fixed !important;
+  top: var(--lift-y);
+  left: var(--lift-x);
+  width: var(--lift-w);
+  height: var(--lift-h);
+  min-height: 0 !important;
+  max-height: var(--lift-h);
+  margin: 0;
+  overflow: hidden !important;
+  border-radius: 28px;
 }
 
 /* シートの最上層の台。枠も余白も持たない、画面いっぱいの透明な台（暗幕はシートの中のもの） */
