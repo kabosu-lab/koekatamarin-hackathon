@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { lumpFrames, sendTiming, speakerFrames, splitIntoWords, trailFrames } from "@/lib/lumps";
 import { Avatar } from "./Avatar";
 
@@ -40,6 +40,7 @@ export function SendBurst({ words, avatarImage, onDone }: { words: string; avata
 
 /**
  * 話した言葉が少しずつ固まり、固まる速さが加速して、ためてからヒューンと飛び、届くと花びらになる。
+ * 後ろの画面に幕はかけない（3列の左右の列も沈めない）。「届いた！」は窓の中に1秒ほど。
  * 動きを減らす設定では出さない（CSS）。
  */
 function PopBurst({ words, avatarImage, onDone }: { words: string; avatarImage?: string; onDone(): void }) {
@@ -48,6 +49,17 @@ function PopBurst({ words, avatarImage, onDone }: { words: string; avatarImage?:
   const lump = useRef<HTMLSpanElement>(null);
   const speaker = useRef<HTMLSpanElement>(null);
   const trails = useRef<(HTMLSpanElement | null)[]>([]);
+  // 「届いた！」は全画面ではなく、話す画面の窓（.lcd）の中に出す。窓がない画面では上のほうの真ん中
+  const [spot, setSpot] = useState<React.CSSProperties>({});
+  useLayoutEffect(() => {
+    const box = document.querySelector(".lcd")?.getBoundingClientRect();
+    if (!box || box.width === 0 || box.height === 0) return;
+    setSpot({
+      "--reached-top": `${box.top + box.height * 0.35}px`,
+      "--reached-left": `${box.left + box.width / 2}px`,
+      "--reached-width": `${box.width}px`,
+    } as React.CSSProperties);
+  }, []);
 
   useEffect(() => {
     const timer = setTimeout(onDone, timing.end * 1000);
@@ -71,6 +83,7 @@ function PopBurst({ words, avatarImage, onDone }: { words: string; avatarImage?:
   const times = {
     "--land": `${timing.land}s`,
     "--end": `${timing.end}s`,
+    ...spot,
   } as React.CSSProperties;
 
   return (

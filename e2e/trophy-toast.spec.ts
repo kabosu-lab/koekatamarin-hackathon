@@ -1,14 +1,16 @@
-import { expect, type Browser, test } from "@playwright/test";
+import { expect, type Browser, type Page, test } from "@playwright/test";
 import { PROMISE_SEEN } from "./promise-seen";
 
 test.use({ storageState: { cookies: PROMISE_SEEN, origins: [] } });
 
 /** 生徒の初期のレトロで開く（先生も、飾りを出す見た目を選んだときに知らせが出る）。 */
-async function open(browser: Browser, personId: string, theme = "retro", envelope = false) {
-  const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+async function open(browser: Browser, personId: string, theme = "retro", envelope = false, viewport = { width: 390, height: 844 }) {
+  const context = await browser.newContext({ viewport });
   await context.addCookies([
     { name: "koekata_person", value: personId, domain: "127.0.0.1", path: "/" },
     { name: "koekata_theme", value: theme, domain: "127.0.0.1", path: "/" },
+    // 広い画面の右の列で、今日の3人のモーダルを出さない
+    { name: "koekata_today_seen", value: "1", domain: "127.0.0.1", path: "/" },
     ...(envelope ? [] : [envelopeOpened(personId)]),
   ]);
   return context.newPage();
@@ -20,8 +22,8 @@ function envelopeOpened(personId: string) {
 }
 
 /** 投稿した人に、白石先生（養護）から返事を届ける。それまでに届いていたトロフィーは見たことにしておく。 */
-async function nurseReplied(browser: Browser, authorId: string, words: string, theme?: string, envelope = false) {
-  const author = await open(browser, authorId, theme, envelope);
+async function nurseReplied(browser: Browser, authorId: string, words: string, theme?: string, envelope = false, viewport?: { width: number; height: number }) {
+  const author = await open(browser, authorId, theme, envelope, viewport);
   await author.goto("/");
   await author.request.post("/api/ribbons", { data: { action: "seen" } });
   const posted = await author.request.post("/api/publish", { data: { text: words, channelId: "study" } });
@@ -118,3 +120,35 @@ test("開けていない封筒や封筒の演出が出ている間は知らせ�
   const windowBox = (await page.locator(".lcd").boundingBox())!;
   expect(toastBox.y).toBeGreaterThanOrEqual(windowBox.y + windowBox.height);
 });
+
+/** 2つの箱が重なっているか */
+function overlaps(a: { x: number; y: number; width: number; height: number }, b: { x: number; y: number; width: number; height: number }) {
+  return a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+}
+
+async function expectClearOfBottom(page: Page) {
+  const toast = (await page.locator('.trophy-toast[data-trophy="nurse-word"]').boundingBox())!;
+  for (const selector of [".swipe-mark", ".click-wheel", ".device-controls", ".device-mic"]) {
+    const part = (await page.locator(selector).boundingBox())!;
+    expect(overlaps(toast, part), `${selector} に重ならない`).toBe(false);
+    expect(toast.y + toast.height, `${selector} より上`).toBeLessThanOrEqual(part.y);
+  }
+  // 窓の上にも重ならない（窓と輪の間に出る）
+  const window = (await page.locator(".lcd").boundingBox())!;
+  expect(toast.y).toBeGreaterThanOrEqual(window.y + window.height);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0);
+}
+
+// 撮影の前の決定：知らせは下の「‹ 履歴と設定 / みんな ›」の行とマイクの輪に重ならない高さに出す
+for (const viewport of [
+  { width: 390, height: 844 },
+  { width: 1180, height: 820 },
+]) {
+  test(`${viewport.width}×${viewport.height}：知らせは下の帯とマイクの輪に重ならない`, async ({ browser }) => {
+    const page = await nurseReplied(browser, viewport.width > 600 ? "ogawara" : "kawamura", `廊下の掲示 ${test.info().testId}`, undefined, false, viewport);
+    await page.goto("/");
+    const nurse = page.locator('.trophy-toast[data-trophy="nurse-word"]');
+    await expect(nurse).toBeVisible({ timeout: 30_000 });
+    await expectClearOfBottom(page);
+  });
+}
