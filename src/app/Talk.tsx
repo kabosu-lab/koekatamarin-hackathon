@@ -186,15 +186,21 @@ export function Talk({
   const [composing, setComposing] = useState<ComposeStart | null>(null);
   // 0-2n：「新しい話にする？」を出しているアイコンの場所（会話の何番目か）
   const [askNewAt, setAskNewAt] = useState<number | null>(null);
+  const askIconRef = useRef<HTMLElement | null>(null);
+  const askButtonRef = useRef<HTMLButtonElement | null>(null);
   const politeTalk = viewer.role !== undefined && viewer.role !== "student";
   useEffect(() => {
     if (askNewAt === null) return;
+    // 吹き出しは窓の下に重ねて出す。焦点はそのボタンへ
+    askButtonRef.current?.focus({ preventScroll: true });
     // 外を押せば消える
     const away = (event: PointerEvent) => {
       if (!(event.target instanceof Element) || !event.target.closest("[data-new-talk-ask]")) setAskNewAt(null);
     };
     const escape = (event: globalThis.KeyboardEvent) => {
-      if (event.key === "Escape") setAskNewAt(null);
+      if (event.key !== "Escape") return;
+      setAskNewAt(null);
+      askIconRef.current?.focus({ preventScroll: true });
     };
     document.addEventListener("pointerdown", away);
     document.addEventListener("keydown", escape);
@@ -896,9 +902,12 @@ export function Talk({
     window.setTimeout(() => setReturning(false), 700);
   }
   /** 0-2n：会話の中のアイコンを押すと弾み、「新しい話にする？」を横に出す。新しく話す入口はここ1つ */
-  function tapChatIcon(index: number) {
+  function tapChatIcon(index: number, iconElement: HTMLElement) {
     partnerTap.onTap();
     if (listening || sending) return;
+    askIconRef.current = iconElement;
+    // 押したアイコンが窓の外にかかっていたら、先に見える所まで寄せる
+    iconElement.scrollIntoView({ block: "nearest" });
     setAskNewAt((current) => (current === index ? null : index));
   }
   /** パートナーを触る。話す前は一言が次へ替わり、会話のあとは弾むだけ（0-2a (5)） */
@@ -933,11 +942,11 @@ export function Talk({
                 aria-expanded={askNewAt === index}
                 data-new-talk-ask
                 data-react={index === askNewAt || (askNewAt === null && index === lastAssistantIndex) ? (partnerTap.reaction ?? undefined) : undefined}
-                onClick={() => tapChatIcon(index)}
+                onClick={(event) => tapChatIcon(index, event.currentTarget)}
                 onKeyDown={(event) => {
                   if (event.key !== "Enter" && event.key !== " ") return;
                   event.preventDefault();
-                  tapChatIcon(index);
+                  tapChatIcon(index, event.currentTarget);
                 }}
                 onAnimationEnd={partnerTap.onAnimationEnd}
               >
@@ -948,14 +957,6 @@ export function Talk({
               <span className="visually-hidden">パートナー：</span>
               {message.content}
             </p>
-            {askNewAt === index && !listening && !sending && (
-              <div className="new-talk-ask" role="group" aria-label={politeTalk ? "新しい話にしますか？" : "新しい話にする？"} data-new-talk-ask>
-                <p>{politeTalk ? "新しい話にしますか？" : "新しい話にする？"}</p>
-                <button type="button" className="new-talk" onClick={startNewTalk}>
-                  新しく話す
-                </button>
-              </div>
-            )}
           </div>
         ) : (
           <div className="chat-row me" key={index} data-index={index}>
@@ -1246,6 +1247,15 @@ export function Talk({
               </section>
             )}
           </div>
+          {/* 0-2n：会話のスクロールの中には置かず、窓の下端（入力欄の上）に重ねる */}
+          {askNewAt !== null && !listening && !sending && (
+            <div className="new-talk-ask" role="group" aria-label={politeTalk ? "新しい話にしますか？" : "新しい話にする？"} data-new-talk-ask>
+              <p>{politeTalk ? "新しい話にしますか？" : "新しい話にする？"}</p>
+              <button type="button" className="new-talk" ref={askButtonRef} onClick={startNewTalk}>
+                新しく話す
+              </button>
+            </div>
+          )}
         </section>
 
         <form className="device-input" onSubmit={submit}>

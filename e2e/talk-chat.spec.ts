@@ -311,3 +311,57 @@ test("0-2q(8)：「校内の知恵を探す」は窓の上端で半分に切れ�
   }
   expect(seen).toBeGreaterThan(0);
 });
+
+// 0-2n：会話が長くても、「新しい話にしますか？」とボタンは窓の見えている範囲に出る（会話のスクロールの中に埋もれない）
+for (const viewport of [
+  { width: 390, height: 844 },
+  { width: 1180, height: 820 },
+  { width: 1280, height: 800 },
+]) {
+  test(`0-2n：会話が長くても、新しい話の吹き出しは窓の中に見える（${viewport.width}×${viewport.height}）`, async ({ page }) => {
+    await page.setViewportSize(viewport);
+    await page.goto("/");
+    const input = page.getByLabel("パートナーに書く");
+    const log = page.getByRole("log");
+    const replies = log.locator(".bubble.assistant:not(.waiting)");
+    const lines = ["今日の授業のこと", "声を小さくしたら、みんな聞いてくれた", "次の時間もやってみたい", "ほかの先生にも伝えたいな", "どう言えばいいかな"];
+    for (const [index, line] of lines.entries()) {
+      await input.fill(line);
+      await input.press("Enter");
+      await expect(replies).toHaveCount(index + 1);
+    }
+    // 会話の下の端まで送ってから、上の方のアイコンを押す（押す操作そのものでは寄せない）
+    await log.evaluate((element) => {
+      element.scrollTop = element.scrollHeight;
+    });
+    const icon = log.getByRole("button", { name: "パートナー。押すと新しい話にできます" }).first();
+    await icon.dispatchEvent("click");
+    const ask = page.getByRole("group", { name: "新しい話にしますか？" });
+    await expect(ask).toBeVisible();
+    const button = ask.getByRole("button", { name: "新しく話す" });
+    // 焦点はボタンへ
+    await expect(button).toBeFocused();
+    // 押したアイコンは、会話の窓の見える所まで寄る
+    await page.waitForTimeout(300);
+    const logBox = (await log.boundingBox())!;
+    const iconBox = (await icon.boundingBox())!;
+    expect(iconBox.y).toBeGreaterThanOrEqual(logBox.y - 1);
+    expect(iconBox.y + iconBox.height).toBeLessThanOrEqual(logBox.y + logBox.height + 1);
+    // 吹き出しもボタンも、窓の見えている範囲の中
+    const lcd = (await page.locator(".lcd").boundingBox())!;
+    const top = Math.max(lcd.y, 0);
+    const bottom = Math.min(lcd.y + lcd.height, viewport.height);
+    const left = Math.max(lcd.x, 0);
+    const right = Math.min(lcd.x + lcd.width, viewport.width);
+    for (const box of [(await ask.boundingBox())!, (await button.boundingBox())!]) {
+      expect(box.y).toBeGreaterThanOrEqual(top);
+      expect(box.y + box.height).toBeLessThanOrEqual(bottom);
+      expect(box.x).toBeGreaterThanOrEqual(left);
+      expect(box.x + box.width).toBeLessThanOrEqual(right);
+    }
+    // Esc で閉じ、焦点はアイコンへ戻る
+    await page.keyboard.press("Escape");
+    await expect(ask).toHaveCount(0);
+    await expect(icon).toBeFocused();
+  });
+}
