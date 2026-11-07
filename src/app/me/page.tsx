@@ -7,7 +7,6 @@ import { getViewer } from "@/lib/current-person";
 import { getDatabase } from "@/lib/db";
 import { getDraft } from "@/lib/profile";
 import { listThanks } from "@/lib/thanks";
-import { listRecentPartners } from "@/lib/thanks-people";
 import { ensureWelcomeThanks } from "@/lib/thanks-reveal";
 import { ThanksSeenOnDevice } from "../thanks/ThanksSeenOnDevice";
 import { ThanksKindMark } from "../thanks/ThanksCard";
@@ -37,7 +36,7 @@ import { Ribbons } from "./Ribbons";
 import { BackdropCollection } from "./BackdropCollection";
 import { listNewRibbons, listTrophyShelves, syncRibbonsOnOpen } from "@/lib/ribbons";
 import { showsRewards } from "@/lib/rewards-view";
-import { ArtRefresher, AvatarFromPhoto, AvatarQuiz, MemoryList, ProfileEditor, ThanksForm } from "./MeActions";
+import { ArtRefresher, AvatarFromPhoto, AvatarQuiz, MemoryList, ProfileEditor } from "./MeActions";
 
 import { DeviceFrame } from "../DeviceFrame";
 import { type MeTileKey, resolveOpenKey } from "./tiles";
@@ -139,13 +138,14 @@ export default async function MePage({ searchParams }: { searchParams: Promise<{
       badge: badgeOf(fresh.thanks),
       content: () => {
         const thanks = listThanks(db, viewer.id);
-        // 0-2j：一覧からは選ばせず、最近やりとりした人を数人だけ顔つきで出す
-        const recent = listRecentPartners(db, viewer.id).map((p) => ({ ...p, image: getAvatar(db, p.id).image }));
         return (
           <>
             {/* 0-3a：このタイルで見たら、この端末では封筒の知らせを出さない */}
             <ThanksSeenOnDevice viewerId={viewer.id} at={now.toISOString()} />
-            <ThanksForm key={`${viewer.id}-thanks`} recent={recent} />
+            {/* 0-3d：送る欄は置かない。カードは話す画面で話すと下書きになる */}
+            <p className="muted thanks-howto">
+              ありがとう・がんばったね・おめでとうは、<Link href="/">話す画面</Link>で「〇〇さんにありがとうを伝えたい」と話すと、カードの下書きになります。
+            </p>
             <section className="card" aria-label="もらったありがとう">
               <h2>もらったありがとう</h2>
               {thanks.length === 0 ? (

@@ -5,7 +5,6 @@ import { useEffect, useState } from "react";
 import type { MemoryItem } from "@/lib/memory";
 import type { ProfileDraft } from "@/lib/profile";
 import { PhotoHatch } from "./PhotoHatch";
-import { type RecentPerson, ThanksPicker } from "../thanks/ThanksCard";
 
 async function postJson(url: string, body: unknown) {
   const response = await fetch(url, {
@@ -187,14 +186,6 @@ export function MemoryList({ initial }: { initial: MemoryItem[] }) {
       )}
     </section>
   );
-}
-
-/**
- * サンクスカード（0-2j）。送り先は一覧から選ばせない：最近やりとりした人のチップと、打って絞り込む欄だけ。
- * 中身は「ありがとう」の入口のシートと同じ部品（src/app/thanks/ThanksCard.tsx）。
- */
-export function ThanksForm({ recent }: { recent: RecentPerson[] }) {
-  return <ThanksPicker recent={recent} />;
 }
 
 /** 本人が押したときだけ、登録した写真を読む。読み終わるまで、誕生の演出を見せる。 */

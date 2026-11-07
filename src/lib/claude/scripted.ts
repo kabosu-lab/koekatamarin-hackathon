@@ -113,6 +113,21 @@ function scriptedDraft(transcript: string, jsonSchema: Record<string, unknown> |
     .filter((line) => !(openingLines as readonly string[]).includes(line));
   const properties = (jsonSchema?.properties ?? {}) as { channelId?: { enum?: string[] } };
   const channels = properties.channelId?.enum ?? [];
+  // 0-3d：サンクスカードの下書き。札は話から ありがとう・がんばったね・おめでとう を選び、言葉の案を本文にする
+  const card = transcript.match(/この投稿は、サンクスカードです（宛名：(.+?)さん。言葉の案：(.*?)）。/);
+  if (card && spoken.length > 0) {
+    const talk = spoken.join("\n");
+    const tag = /おめでと|祝|合格|優勝|入賞/.test(talk) ? "おめでとう" : /頑張|がんば|お疲れ|おつかれ/.test(talk) && !/ありがと/.test(talk) ? "がんばったね" : "ありがとう";
+    return {
+      ready: true,
+      subject: `【${tag}】${card[1]}さんへ`,
+      text: `${card[1]}さん、${card[2]}`,
+      channelId: channels[0] ?? "",
+      kind: "report",
+      researchedWithAi: false,
+      announcement: false,
+    };
+  }
   return {
     ready: spoken.length > 0,
     subject: spoken.length > 0 ? scriptedSubject(spoken) : "",

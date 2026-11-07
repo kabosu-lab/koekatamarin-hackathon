@@ -14,7 +14,7 @@ function CardThanks({ card }: { card: { authorId: string; authorName: string; au
 }
 import { ReplyField } from "./ReplyField";
 import { TODAY_SEEN_COOKIE } from "./today-seen";
-import { PostSubject } from "@/app/PostSubject";
+import { cardAttr, PostSubject } from "@/app/PostSubject";
 
 
 /** 設計書 §1：移動は 160〜260ms、消えるときは ease-in で素早く */
@@ -299,6 +299,7 @@ export function TodayModal({ cards }: { cards: TodayModalCard[] }) {
               <article
                 key={card.postId}
                 className="minna-today-card"
+                {...cardAttr(card.subject)}
                 aria-label={`${card.authorName}さんの投稿`}
                 aria-hidden={i !== index}
                 inert={i !== index}

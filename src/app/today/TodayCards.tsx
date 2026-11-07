@@ -9,7 +9,7 @@ import { PersonTitle } from "../PersonTitle";
 import { ThanksEntry } from "../thanks/ThanksCard";
 import { thanksEntryLabel } from "@/lib/thanks-kind";
 import { CardReply } from "./CardReply";
-import { PostSubject } from "@/app/PostSubject";
+import { cardAttr, PostSubject } from "@/app/PostSubject";
 
 const BATCH = 3;
 
@@ -123,6 +123,7 @@ export function TodayCards({ cards: allCards }: { cards: (TodayCard & { authorIm
       {note}
       <section
         className="talk today-card"
+        {...cardAttr(card.subject)}
         aria-label={`${card.authorName}さんの投稿`}
         // 左へめくると次の人。ボタンの「次へ」と同じ
         onTouchStart={(event) => {

@@ -28,13 +28,13 @@ test("サンクスカードが相手に届き、他の人には見えない", as
   const words = `助かりました ${test.info().testId}`;
   await page.goto("/");
   await switchPerson(page, "青木 ひより（2年）");
-  await page.goto("/me?open=thanks");
-  const form = page.getByRole("region", { name: "サンクスカードを送る" });
-  await form.getByLabel("名前で探す").fill("野田");
-  await form.getByRole("list", { name: "見つかった人" }).getByRole("button", { name: /野田 翔さん/ }).click();
-  await form.getByLabel("届けることば").fill(words);
-  await form.getByRole("button", { name: "サンクスカードを送る" }).click();
-  await expect(form).toContainText("ありがとうが届きました");
+  // 0-3d：送る欄はなくなった（話す画面から送る）。ありがとうの記録が相手だけに見えることを、記録を作る口で確かめる
+  const sent = await page.evaluate(
+    (message) =>
+      fetch("/api/thanks", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ toPersonId: "noda", message }) }).then((r) => r.ok),
+    words,
+  );
+  expect(sent).toBe(true);
 
   await page.goto("/");
   await switchPerson(page, "野田 翔（情報・ものづくり部顧問）");

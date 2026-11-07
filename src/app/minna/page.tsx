@@ -30,7 +30,7 @@ import { TODAY_SEEN_COOKIE } from "./today-seen";
 import { ThanksEntry } from "../thanks/ThanksCard";
 import { thanksEntryLabel } from "@/lib/thanks-kind";
 import type { PostView } from "@/lib/destination/types";
-import { PostSubject } from "@/app/PostSubject";
+import { cardAttr, PostSubject } from "@/app/PostSubject";
 import "./minna.css";
 
 export const metadata: Metadata = { title: "みんな｜こえかた" };
@@ -181,7 +181,7 @@ export default async function MinnaPage({ searchParams }: { searchParams: Promis
             <FilteredList label="最近の投稿と返事">
               {feed.map(({ post, channel, activeAt }) => (
                 <FilteredItem key={post.id} channelId={channel.id}>
-                  <article className="minna-post" aria-label={`${post.authorName}さんの投稿`}>
+                  <article className="minna-post" {...cardAttr(post.subject)} aria-label={`${post.authorName}さんの投稿`}>
                     <header className="minna-post-head">
                       <strong>{post.authorName}</strong>
                       <span className="minna-post-role">{post.authorLabel}</span>

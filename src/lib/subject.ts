@@ -11,10 +11,28 @@ export const SUBJECT_TAGS = [
   // notice は学校からのお知らせ（育ちや桜の数に入れない）なので、本人の告知は report にする
   { label: "お知らせ", kind: "report" },
   { label: "頑張り", kind: "effort" },
+  // 0-3d：ここから3つはサンクスカードの札。カードかどうかは札で見分ける（kind は report のまま）
   { label: "ありがとう", kind: "report" },
+  { label: "がんばったね", kind: "report" },
+  { label: "おめでとう", kind: "report" },
 ] as const satisfies readonly { label: string; kind: PostKind }[];
 
 export type SubjectTag = (typeof SUBJECT_TAGS)[number]["label"];
+
+/** 0-3d：サンクスカードの札と、カードの種類（封筒の絵柄、thanks-kind.ts の ThanksKind と同じ） */
+export const CARD_TAGS = { ありがとう: "thanks", がんばったね: "effort", おめでとう: "congrats" } as const;
+export type CardKind = (typeof CARD_TAGS)[keyof typeof CARD_TAGS];
+
+/** 件名の札がサンクスカードの札なら、カードの種類。ふつうの投稿なら null */
+export function cardKind(subject: string | null | undefined): CardKind | null {
+  const tag = subject ? splitSubject(subject).tag : null;
+  return tag && Object.hasOwn(CARD_TAGS, tag) ? CARD_TAGS[tag as keyof typeof CARD_TAGS] : null;
+}
+
+/** カードの種類から札 */
+export function cardTag(kind: CardKind): SubjectTag {
+  return kind === "congrats" ? "おめでとう" : kind === "effort" ? "がんばったね" : "ありがとう";
+}
 
 /** 件名の長さの上限（20字前後の目安より少し余裕を持たせる） */
 export const MAX_SUBJECT_LENGTH = 60;

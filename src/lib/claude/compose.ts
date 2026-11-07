@@ -7,6 +7,12 @@ const MAX_TOKENS = 4000;
 
 export type DraftChannel = { id: string; name: string; description: string };
 
+/** 0-3d：サンクスカードの下書き。宛名の人の名前と、話から取り出した言葉の案 */
+export type CardRequest = { name: string; words: string };
+
+/** カードの印。台本もこの行で見分ける */
+export const CARD_LINE = "この投稿は、サンクスカードです";
+
 export type Draft = {
   ready: boolean;
   /** 0-3b：件名。頭に種類の札（【うまくいった】など）。Teams の件名にもなる */
@@ -132,11 +138,15 @@ function parseJson(text: string, refused: boolean): Record<string, unknown> {
   throw new ComposeError("Claude の答えを読めませんでした");
 }
 
-function draftRequest(history: ChatMessage[], channels: DraftChannel[], askedName?: string): ClaudeRequest {
+function draftRequest(history: ChatMessage[], channels: DraftChannel[], askedName?: string, card?: CardRequest): ClaudeRequest {
   const transcript = history
     .map((m) => `${m.role === "user" ? "本人" : "パートナー"}：${m.content}`)
     .join("\n");
-  const asking = askedName ? `\n\nこの投稿は、${askedName}さんに聞いてみるためのものです。` : "";
+  const asking = card
+    ? `\n\n${CARD_LINE}（宛名：${card.name}さん。言葉の案：${card.words}）。${card.name}さんに向けて、本人の言葉で短く書く。件名の札は【ありがとう】【がんばったね】【おめでとう】のどれかを話から選ぶ。`
+    : askedName
+      ? `\n\nこの投稿は、${askedName}さんに聞いてみるためのものです。`
+      : "";
   const channelList = channels.map((c) => `- ${c.id}：${c.name}（${c.description}）`).join("\n");
   return {
     task: "draft",
@@ -153,8 +163,9 @@ export async function draftPost(
   history: ChatMessage[],
   channels: DraftChannel[],
   askedName?: string,
+  card?: CardRequest,
 ): Promise<Draft> {
-  const { text, refused } = await claude.complete(draftRequest(history, channels, askedName));
+  const { text, refused } = await claude.complete(draftRequest(history, channels, askedName, card));
   return toDraft(text, refused, channels);
 }
 
@@ -178,8 +189,9 @@ export async function streamDraft(
   progress: DraftProgress,
   askedName?: string,
   signal?: AbortSignal,
+  card?: CardRequest,
 ): Promise<Draft> {
-  const request = draftRequest(history, channels, askedName);
+  const request = draftRequest(history, channels, askedName, card);
   if (!claude.stream) {
     const { text, refused } = await claude.complete(request);
     const draft = toDraft(text, refused, channels);

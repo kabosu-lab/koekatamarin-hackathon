@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { kindOfTag, nextTag, normalizeSubject, splitSubject, SUBJECT_TAGS, subjectFromText } from "./subject";
+import { cardKind, kindOfTag,nextTag, normalizeSubject, splitSubject, SUBJECT_TAGS, subjectFromText } from "./subject";
 
 describe("件名と種類の札（0-3b）", () => {
   it("札と言葉に分け、知らない札は札として扱わない", () => {
@@ -15,7 +15,7 @@ describe("件名と種類の札（0-3b）", () => {
       seen.push(tag);
       tag = nextTag(tag);
     }
-    expect(seen).toEqual(["うまくいった", "困りごと", "聞きたい", "お知らせ", "頑張り", "ありがとう"]);
+    expect(seen).toEqual(["うまくいった", "困りごと", "聞きたい", "お知らせ", "頑張り", "ありがとう", "がんばったね", "おめでとう"]);
     expect(tag).toBe("うまくいった");
   });
 
@@ -27,6 +27,17 @@ describe("件名と種類の札（0-3b）", () => {
     expect(normalizeSubject(`【お知らせ】${"あ".repeat(100)}`, "report").subject.length).toBe(60);
     // 学校からのお知らせ（notice）と分けるため、本人の【お知らせ】は report に残す
     expect(kindOfTag("お知らせ")).toBe("report");
+  });
+
+  it("0-3d：ありがとう・がんばったね・おめでとうの札はカード。ほかの札と札なしはカードでない", () => {
+    expect(cardKind("【ありがとう】野田先生へ")).toBe("thanks");
+    expect(cardKind("【がんばったね】中村さんへ")).toBe("effort");
+    expect(cardKind("【おめでとう】県大会")).toBe("congrats");
+    expect(cardKind("【頑張り】走った")).toBeNull();
+    expect(cardKind("ありがとう")).toBeNull();
+    expect(cardKind(null)).toBeNull();
+    // 札を回すと、カードからふつうの投稿に戻る
+    expect(cardKind(`【${nextTag("おめでとう")}】県大会`)).toBeNull();
   });
 
   it("件名のない下書きには、種類の札と本文の頭から件名を作る", () => {

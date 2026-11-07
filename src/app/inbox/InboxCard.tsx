@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import type { InboxItem, PassCandidate } from "@/lib/inbox";
 import { VoiceReply, type VoiceReplyRestore } from "../VoiceReply";
-import { PostSubject } from "@/app/PostSubject";
+import { cardAttr, PostSubject } from "@/app/PostSubject";
 
 async function postJson(url: string, body: unknown) {
   const response = await fetch(url, {
@@ -75,7 +75,11 @@ export function InboxCard({ item, candidates }: { item: InboxItem; candidates: P
 
 
   return (
-    <section className="talk inbox-item" aria-label={`${item.authorName}さんからのお願い`}>
+    <section
+      className="talk inbox-item"
+      {...cardAttr(item.subject)}
+      aria-label={cardAttr(item.subject)["data-card"] ? `${item.authorName}さんからのカード` : `${item.authorName}さんからのお願い`}
+    >
       {item.passedThrough.length > 0 && <p className="passed">{item.passedThrough.join("さん → ")}さんからのパス</p>}
       <p className="from">
         <strong>{item.authorName}</strong>（{item.authorLabel}）・{item.channelName}

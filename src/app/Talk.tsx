@@ -111,8 +111,11 @@ export function Talk({
   companionColor,
   companionShape,
   companionImage,
+  initialThanks = null,
 }: {
   viewer: { name: string; label: string; role?: string };
+  /** 0-3d：「ありがとう」ボタン（/?thanks=<人のID>）から来たとき。その人へのカードの下書きを始める */
+  initialThanks?: { id: string; name: string } | null;
   question: string | null;
   initialAsk?: { id: string; name: string } | null;
   viewerId: string;
@@ -304,6 +307,18 @@ export function Talk({
 
   useEffect(() => () => stopRef.current?.(), []);
 
+  // 0-3d：「ありがとう」ボタンから来たら、その人へのカードの下書きを1回だけ始める（読み直しで繰り返さない）
+  const thanksStarted = useRef(false);
+  useEffect(() => {
+    if (!initialThanks || thanksStarted.current) return;
+    thanksStarted.current = true;
+    window.history.replaceState(null, "", window.location.pathname);
+    const line: ChatMessage = { role: "user", content: `${initialThanks.name}さんにありがとうを伝えたい` };
+    setMessages((current) => [...current, line]);
+    void startCompose(undefined, undefined, [line]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialThanks]);
+
   // 画面を行き来しても話が消えないよう、このタブの中だけに残す。サーバーには保存しない
   const restored = useRef(false);
   useEffect(() => {
@@ -455,7 +470,7 @@ export function Talk({
   }
 
   // 0-2l：押した瞬間にシートを開き、見出しと Teams の見え方を先に出す。本文は流れてくるそばから書く
-  async function startCompose(asked?: { id: string; name: string }, goal = goalForPost) {
+  async function startCompose(asked?: { id: string; name: string }, goal = goalForPost, history?: ChatMessage[]) {
     if (publishing) return;
     composeAbort.current?.abort();
     const abort = new AbortController();
@@ -492,7 +507,7 @@ export function Talk({
       const response = await fetch("/api/draft/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ history: messages.slice(-MAX_HISTORY), askedPersonId: asked?.id, attachmentId: attachment?.id }),
+        body: JSON.stringify({ history: (history ?? messages).slice(-MAX_HISTORY), askedPersonId: asked?.id, attachmentId: attachment?.id }),
         signal: abort.signal,
       });
       if (!response.ok || !response.body) throw new Error(`status ${response.status}`);
@@ -501,7 +516,7 @@ export function Talk({
       let buffer = "";
       const handle = (event: DraftStreamEvent) => {
         if (event.type === "start") {
-          update((current) => ({ ...current, channels: event.channels, people: event.people, attachment: event.attachment ?? current.attachment }));
+          update((current) => ({ ...current, channels: event.channels, people: event.people, attachment: event.attachment ?? current.attachment, asked: event.asked ?? current.asked }));
         } else if (event.type === "channel") {
           update((current) => ({ ...current, draft: { ...current.draft, channelId: event.channelId } }));
         } else if (event.type === "subject") {

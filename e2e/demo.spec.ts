@@ -83,13 +83,18 @@ test("先生の一日：話しかける、返す、パス、サンクス、日�
   // 生徒から、サンクスカード
   await page.goto("/");
   await switchPerson(page, MAKER);
-  await page.goto("/me?open=thanks");
-  const form = page.getByRole("region", { name: "サンクスカードを送る" });
-  // 一覧からは選ばない。お願いを聞いてくれた先生は「最近やりとりした人」に出ている
-  await form.getByRole("group", { name: "最近やりとりした人" }).getByRole("button", { name: `${TEACHER.split("（")[0]}さん` }).click();
-  await form.getByLabel("届けることば").fill("つないでくれて、ありがとうございました");
-  await form.getByRole("button", { name: "サンクスカードを送る" }).click();
-  await expect(form).toContainText("ありがとうが届きました");
+  // 0-3d：カードは話す画面で話すと下書きになる。宛名と【ありがとう】の札が付く
+  await page.goto("/");
+  await page.getByLabel("パートナーに書く").fill(`${TEACHER.split(" ")[0]}先生に、つないでくれて、ありがとうございましたって伝えたい`);
+  await page.getByRole("button", { name: "パートナーへ送る" }).click();
+  await expect(page.getByRole("button", { name: "とどける" })).toBeEnabled();
+  await page.getByRole("button", { name: "とどける" }).click();
+  const card = page.getByRole("region", { name: "言葉にして送る" });
+  await expect(card).toHaveAttribute("data-card", "thanks");
+  await expect(card.locator(".preview-asked")).toHaveText(`${TEACHER.split("（")[0]}さんへ`);
+  await expect(page.locator(".perception")).toContainText("大丈夫そう");
+  await card.getByRole("button", { name: "本人として送る" }).click();
+  await expect(card).toBeHidden();
 
   // アシストが付き、ありがとうが届き、パートナーが育つ
   await page.goto("/");

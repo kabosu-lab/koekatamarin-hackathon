@@ -120,6 +120,25 @@ export function draftThanksFromWords(db: DatabaseSync, viewerId: string, words: 
   };
 }
 
+/** 0-3d：お礼・ねぎらい・お祝いを伝えたい話か（名前が出るだけの相談はカードにしない） */
+const CARD_INTENT = /ありがと|ありがた|感謝|助かった|おめでと|お祝い|祝い|頑張ってたね|がんばってたね|頑張ったね|がんばったね|お疲れさま|おつかれさま|ねぎらい/;
+
+/**
+ * 0-3d：本人の最後の言葉が、特定の人へのお礼・ねぎらい・お祝いなら、サンクスカードの下書きにする。
+ * 宛名が1人に決まったときだけ返す。決まらなければ null（ふつうの投稿のまま）
+ */
+export function detectThanksCard(
+  db: DatabaseSync,
+  viewerId: string,
+  lastWords: string,
+): { to: ThanksPerson; words: string; kind: ThanksKind } | null {
+  const text = lastWords.normalize("NFKC").replace(/[ァ-ヶ]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0x60));
+  if (!CARD_INTENT.test(text)) return null;
+  const draft = draftThanksFromWords(db, viewerId, lastWords);
+  if (!draft?.to) return null;
+  return { to: draft.to, words: draft.message, kind: draft.kind };
+}
+
 function defaultWords(kind: ThanksKind): string {
   if (kind === "effort") return "頑張ってたね！";
   if (kind === "congrats") return "おめでとう！";
