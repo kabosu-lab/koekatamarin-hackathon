@@ -2,7 +2,8 @@
 
 import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import type { StudyMate } from "@/lib/study";
-import { useLift } from "../../column-lift";
+import { createPortal } from "react-dom";
+import { useLift, useLiftMode } from "../../column-lift";
 
 /** 名札は2〜3秒で消える（指を乗せている間は待つ） */
 const TAG_MS = 3_000;
@@ -32,8 +33,10 @@ export function RoomPeople({
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [tag, setTag] = useState<Tag | null>(null);
   const [listOpen, setListOpen] = useState(false);
-  // 0-3m：3列のときは、名前の一覧を3列の上に全画面で（column-lift.ts）
+  // 0-3m：3列のときは、名前の一覧を3列の上に全画面で（column-lift.ts）。景色の箱に閉じ込められないよう、body の直下に出す
   useLift(listOpen);
+  const lift = useLiftMode();
+  const liftList = (list: ReactNode) => (lift ? createPortal(list, document.body) : list);
 
   const stopTimer = useCallback(() => {
     if (timer.current) clearTimeout(timer.current);
@@ -116,21 +119,22 @@ export function RoomPeople({
           ほか {others.length}人
         </button>
       )}
-      {listOpen && (
-        <div className="room-list" role="dialog" aria-label="ほかに勉強している人" data-lift-layer>
-          <ul>
-            {others.map((other, index) => (
-              <li key={index}>
-                <strong>{other.name}</strong>
-                {other.label && <span>{other.label}</span>}
-              </li>
-            ))}
-          </ul>
-          <button type="button" className="room-list-close" onClick={() => setListOpen(false)}>
-            とじる
-          </button>
-        </div>
-      )}
+      {listOpen &&
+        liftList(
+          <div className="room-list" role="dialog" aria-label="ほかに勉強している人" data-lift-layer>
+            <ul>
+              {others.map((other, index) => (
+                <li key={index}>
+                  <strong>{other.name}</strong>
+                  {other.label && <span>{other.label}</span>}
+                </li>
+              ))}
+            </ul>
+            <button type="button" className="room-list-close" onClick={() => setListOpen(false)}>
+              とじる
+            </button>
+          </div>,
+        )}
       {tag && mate && (
         <div
           className="room-tag"

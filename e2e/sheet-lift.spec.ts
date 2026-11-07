@@ -1,4 +1,6 @@
-import { expect, type Frame, type Locator, type Page, test } from "@playwright/test";
+import { type Browser, expect, type Frame, type Locator, type Page, test } from "@playwright/test";
+import { openScreen, switchPerson } from "./helpers";
+import { PROMISE_SEEN } from "./promise-seen";
 
 // 0-3m：横向きの3列（iPad 横・パソコン）では、シートや重ねの画面は列の中でなく、3列の上に全画面でせり上がる。
 // 後ろの3列は暗幕で暗く inert、中身は最大 720px で真ん中、閉じると元の3列に戻る。iPhone・iPad 縦は今のまま。
@@ -58,13 +60,25 @@ async function expectDimmed(scrim: Locator, page: Page) {
 }
 
 /** 列の iframe が画面いっぱいに広がり、裏の列は inert */
-async function expectLifted(page: Page, element: Locator) {
+async function expectLifted(page: Page, element: Locator, frame: Frame, column: { x: number; y: number; width: number; height: number }) {
   const viewport = page.viewportSize()!;
   await expect(element).toHaveAttribute("data-column-full", "true");
   const box = (await element.boundingBox())!;
   expect(Math.round(box.width)).toBe(viewport.width);
   expect(Math.round(box.height)).toBe(viewport.height);
   await expect(page.locator(".device-row > .retro-home")).toHaveAttribute("inert", "");
+  // 締めの点検 2：上げた列の場所には、元の中身がそのまま見えている（空の板にならない）
+  await expect(frame.locator("main").first()).toBeVisible();
+  // 広げた枠のまわりは透明（中の画面の地が画面いっぱいに広がらず、後ろの3列が見える）
+  expect(await frame.evaluate(() => getComputedStyle(document.documentElement).backgroundImage)).not.toBe("none");
+  const body = (await frame.locator("body").boundingBox())!;
+  expect(Math.abs(body.x - column.x), "列の左").toBeLessThanOrEqual(1);
+  expect(Math.abs(body.y - column.y), "列の上").toBeLessThanOrEqual(1);
+  expect(Math.abs(body.width - column.width), "列の幅").toBeLessThanOrEqual(1);
+  expect(Math.abs(body.height - column.height), "列の高さ").toBeLessThanOrEqual(1);
+  const main = (await frame.locator("main").first().boundingBox())!;
+  expect(main.x).toBeGreaterThanOrEqual(column.x - 1);
+  expect(main.x + main.width).toBeLessThanOrEqual(column.x + column.width + 1);
 }
 
 async function expectBack(page: Page, element: Locator, column: { x: number; width: number }) {
@@ -109,7 +123,7 @@ for (const size of WIDE) {
       await frame.getByRole("button", { name: "今日の3人" }).first().click();
       const modal = frame.getByRole("dialog", { name: "今日の3人" });
       await expect(modal).toBeVisible();
-      await expectLifted(page, element);
+      await expectLifted(page, element, frame, column);
       await expect(page.locator('.device-row > .wide-panel[data-side="left"]')).toHaveAttribute("inert", "");
       await expectDimmed(frame.locator(".minna-today-scrim"), page);
       await expectCentered(modal, page);
@@ -127,7 +141,7 @@ for (const size of WIDE) {
       await scroller.getByRole("button", { name: "返信", exact: true }).first().click();
       const sheet = frame.getByRole("dialog", { name: /さんへの返信$/ });
       await expect(sheet).toBeVisible();
-      await expectLifted(page, element);
+      await expectLifted(page, element, frame, column);
       await expectDimmed(frame.locator(".minna-reply-scrim"), page);
       await expectCentered(sheet, page);
       await page.waitForTimeout(400);
@@ -143,7 +157,7 @@ for (const size of WIDE) {
       await frame.getByRole("region", { name: "これまで" }).getByRole("button").click();
       const story = frame.getByRole("dialog", { name: "これまで" });
       await expect(story).toBeVisible();
-      await expectLifted(page, element);
+      await expectLifted(page, element, frame, column);
       await expect(page.locator('.device-row > .wide-panel[data-side="right"]')).toHaveAttribute("inert", "");
       await page.waitForTimeout(400);
       await page.screenshot({ path: test.info().outputPath(`lift-so-far-${size.width}x${size.height}.png`) });
@@ -158,7 +172,7 @@ for (const size of WIDE) {
       await frame.locator(".room-more").click();
       const list = frame.getByRole("dialog", { name: "ほかに勉強している人" });
       await expect(list).toBeVisible();
-      await expectLifted(page, element);
+      await expectLifted(page, element, frame, column);
       await expectCentered(list, page);
       await page.waitForTimeout(400);
       await page.screenshot({ path: test.info().outputPath(`lift-room-${size.width}x${size.height}.png`) });
@@ -188,7 +202,7 @@ for (const size of WIDE) {
       await cards.first().click();
       const viewer = frame.getByRole("dialog", { name: "サンクスカード" });
       await expect(viewer).toBeVisible();
-      await expectLifted(page, element);
+      await expectLifted(page, element, frame, column);
       await expectDimmed(frame.locator(".thanks-reveal-scrim"), page);
       await expectCentered(viewer, page);
       await page.waitForTimeout(1200);
@@ -212,5 +226,59 @@ for (const size of NARROW) {
     await expect(page.getByRole("dialog", { name: "今日の3人" })).toBeVisible();
     await expect(page.locator("html[data-column-lift]")).toHaveCount(0);
     await page.screenshot({ path: test.info().outputPath(`narrow-today-${size.width}x${size.height}.png`) });
+  });
+}
+
+// 締めの点検 6：話す画面の封筒から開けたカードも、カード帳のカードと同じく3列の上に全画面の重ねで出る
+async function deliverThanks(browser: Browser, fromId: string, toId: string) {
+  const context = await browser.newContext();
+  await context.addCookies([{ name: "koekata_person", value: fromId, domain: "127.0.0.1", path: "/" }, ...PROMISE_SEEN]);
+  const page = await context.newPage();
+  await page.goto("/api/health");
+  expect((await page.request.post("/api/thanks", { data: { toPersonId: toId, message: `3列で開ける ${test.info().testId}` } })).ok()).toBe(true);
+  await context.close();
+}
+
+for (const size of WIDE) {
+  test(`${size.name}（${size.width}×${size.height}）：話す画面の封筒のカードは、3列の上に全画面の重ねで出る`, async ({ page, browser }) => {
+    await page.setViewportSize({ width: size.width, height: size.height });
+    await switchPerson(page, "大河原 誠（英語・学年主任）");
+    await deliverThanks(browser, "noda", "ogawara");
+    await page.goto("/");
+    const bubble = page.locator(".partner-bubble");
+    await expect(bubble).toBeVisible();
+    // ほかのテストから返事やお願いが届いていると、受信箱の知らせが先に出る。受信箱を開けてから戻る
+    for (let i = 0; i < 3 && /受信箱|返事/.test((await bubble.textContent()) ?? ""); i++) {
+      await openScreen(page, "/inbox");
+      await page.goto("/");
+      await expect(bubble).toBeVisible();
+    }
+    await expect(bubble).toHaveText(/^ありがとうが届い(てるよ|ています)$/, { timeout: 15_000 });
+    await bubble.click();
+    const reveal = page.getByRole("dialog", { name: "届いたサンクスカード" });
+    await expect(reveal).toBeVisible();
+    await expect(page.locator(".thanks-reveal")).toHaveAttribute("data-phase", "card");
+    await expectDimmed(page.locator(".thanks-reveal-scrim"), page);
+    await expectCentered(reveal, page);
+    for (const side of await page.locator(".device-row > .wide-panel").all()) await expect(side).toHaveAttribute("inert", "");
+    await page.waitForTimeout(600);
+    await page.screenshot({ path: test.info().outputPath(`lift-envelope-${size.width}x${size.height}.png`) });
+    for (let i = 0; i < 8 && (await reveal.isVisible()); i++) {
+      await page.keyboard.press("Escape");
+      await page.waitForTimeout(250);
+    }
+    await expect(reveal).toBeHidden();
+    await expect(page.locator(".device-row > .wide-panel[inert]")).toHaveCount(0);
+  });
+
+  test(`${size.name}（${size.width}×${size.height}）：ダミーのやり取りの回数に差があり、これまでのワードクラウドの名前の大きさが2種類以上`, async ({ page }) => {
+    await page.setViewportSize({ width: size.width, height: size.height });
+    const { frame } = await columnFrame(page, "履歴と設定");
+    await frame.getByRole("region", { name: "これまで" }).getByRole("button").click();
+    const story = frame.getByRole("dialog", { name: "これまで" });
+    await expect(story.locator(".so-far-board")).toHaveAttribute("data-settled", "", { timeout: 5000 });
+    const sizes = await story.locator(".so-far-name").evaluateAll((elements) => [...new Set(elements.map((el) => getComputedStyle(el).fontSize))]);
+    expect(sizes.length).toBeGreaterThanOrEqual(2);
+    await page.screenshot({ path: test.info().outputPath(`so-far-cloud-${size.width}x${size.height}.png`) });
   });
 }

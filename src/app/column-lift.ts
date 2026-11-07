@@ -9,7 +9,7 @@ import { WIDE_QUERY } from "@/lib/wide";
  *
  * - 外側（話す画面）で開くとき：シートは最上層（<dialog> の showModal）に出し、左右の列には inert を付ける。
  * - 列の iframe の中で開くとき：開いている間だけ、その iframe を外側の画面いっぱいに広げ（data-column-full と retro.css）、
- *   中の画面は重ね（data-lift-layer）のほかを隠して透明にする（後ろに3列が見え、重ねの暗幕で暗くなる）。
+ *   中の画面は、広げる前の列の場所にそのまま置いておく（後ろに3列が見えたまま、重ねの暗幕で暗くなる）。
  *   裏に隠れた列（真ん中の話す画面ともう片方の列）には inert を付ける。閉じると元の3列に戻す。
  * iPhone・iPad 縦（3列でないとき）は、何もしない。
  */
@@ -103,6 +103,7 @@ export function collapseColumn(frame: HTMLElement, all = false) {
 }
 
 let innerCount = 0;
+let savedScroll = 0;
 
 /**
  * 重ねが出ている間（active）、3列なら3列の上に上げる。外側では左右の列を inert に、列の中では iframe を広げる。
@@ -126,11 +127,27 @@ export function useLift(active: boolean) {
       };
     }
     innerCount += 1;
-    document.documentElement.dataset.columnLift = "true";
+    const root = document.documentElement;
+    if (innerCount === 1) {
+      // 広げる前の列の場所に、中の画面をそのまま置いておく（後ろに3列が見えたまま暗くなる。0-3m の締めの点検 2）
+      const rect = frame.getBoundingClientRect();
+      const scroller = document.scrollingElement;
+      savedScroll = scroller?.scrollTop ?? 0;
+      root.style.setProperty("--lift-x", `${rect.left}px`);
+      root.style.setProperty("--lift-y", `${rect.top}px`);
+      root.style.setProperty("--lift-w", `${rect.width}px`);
+      root.style.setProperty("--lift-h", `${rect.height}px`);
+      root.dataset.columnLift = "true";
+    }
     expandColumn(frame);
     return () => {
       innerCount = Math.max(0, innerCount - 1);
-      if (innerCount === 0) delete document.documentElement.dataset.columnLift;
+      if (innerCount === 0) {
+        delete root.dataset.columnLift;
+        for (const name of ["--lift-x", "--lift-y", "--lift-w", "--lift-h"]) root.style.removeProperty(name);
+        const scroller = document.scrollingElement;
+        if (scroller) scroller.scrollTop = savedScroll;
+      }
       collapseColumn(frame);
     };
   }, [active]);
