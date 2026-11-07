@@ -214,6 +214,8 @@ for (const person of ["青木 ひより（2年）", "川村 陽菜（理科・1�
         const rect = dialog.getBoundingClientRect();
         return {
           body: over(dialog.querySelector(".bottom-sheet-body")!),
+          // 0-3h：ワードクラウドの名前も切れずに収まる
+          cloud: over(dialog.querySelector(".so-far-cloud") ?? dialog),
           dialog: Math.max(rect.bottom - innerHeight, rect.right - innerWidth),
           panels: [...dialog.querySelectorAll(".so-far-panel")].map((panel) => ({
             name: panel.getAttribute("aria-label"),
@@ -223,6 +225,7 @@ for (const person of ["青木 ひより（2年）", "川村 陽菜（理科・1�
         };
       });
       expect(fit.body, "シートの中身").toBeLessThanOrEqual(1);
+      expect(fit.cloud, "つながりの名前").toBeLessThanOrEqual(1);
       expect(fit.dialog, "シート").toBeLessThanOrEqual(1);
       for (const panel of fit.panels) expect(panel.over, panel.name ?? "").toBeLessThanOrEqual(1);
       for (const label of fit.labels) expect(label, "棒の名前").toBeLessThanOrEqual(1);
