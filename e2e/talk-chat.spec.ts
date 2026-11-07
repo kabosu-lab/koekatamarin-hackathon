@@ -271,3 +271,41 @@ test("0-2a：話す前は、パートナーを触るたびに一言が替わり�
   await partner.click();
   await expect.poll(async () => bubble.innerText(), { timeout: 5000 }).not.toBe(first);
 });
+
+// 0-2q(8)：会話が少しだけ窓からあふれたときも、「校内の知恵を探す」は上端で半分に切れない（丸ごと見えるか、丸ごと上）
+test("0-2q(8)：「校内の知恵を探す」は窓の上端で半分に切れない", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 664 });
+  await page.goto("/");
+  const input = page.getByLabel("パートナーに書く");
+  const log = page.getByRole("log");
+  const replies = log.locator(".bubble.assistant:not(.waiting)");
+  const find = log.locator(".find-knowledge");
+  const lines = ["こんにちは", "今日の授業、急に静かになった瞬間があって", "うん", "声を小さくしたら、みんな聞いてくれた", "ありがとう", "またね"];
+  let seen = 0;
+  for (const [index, line] of lines.entries()) {
+    await input.fill(line);
+    await input.press("Enter");
+    await expect(replies).toHaveCount(index + 1);
+    if (!(await find.count())) continue;
+    seen += 1;
+    await expect
+      .poll(async () =>
+        log.evaluate((element) => {
+          const box = element.querySelector(":scope > .find-knowledge")!.getBoundingClientRect();
+          const top = element.getBoundingClientRect().top + element.clientTop;
+          return box.bottom <= top + 1 || box.top >= top - 1;
+        }),
+      )
+      .toBe(true);
+    // いちばん下に足されたものは、下の端まで読める
+    await expect
+      .poll(async () =>
+        log.evaluate((element) => {
+          const items = [...element.children].filter((child) => !child.classList.contains("find-knowledge"));
+          return items[items.length - 1].getBoundingClientRect().bottom <= element.getBoundingClientRect().bottom + 1;
+        }),
+      )
+      .toBe(true);
+  }
+  expect(seen).toBeGreaterThan(0);
+});
