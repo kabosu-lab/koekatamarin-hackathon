@@ -28,6 +28,13 @@ describe("審査用のサーバーに渡す設定", () => {
     expect(env.KOEKATA_CLAUDE).toBe("scripted");
     expect(env.KOEKATA_ACCESS_CODE).toBeUndefined();
     expect(env.KOEKATA_TEAMS).toBe("off");
+    // 訪問者ごとに書き込みを分ける（0-3n）
+    expect(env.KOEKATA_PUBLIC).toBe("1");
+  });
+
+  it("訪問者ごとに分けるのはみんな用だけ", () => {
+    expect(siteEnv(site("judge"), base, { slot: ".next-a", code: "123456" }).KOEKATA_PUBLIC).toBeUndefined();
+    expect(siteEnv(site("judge"), { ...base, KOEKATA_PUBLIC: "1" }, { slot: ".next-a", code: "123456" }).KOEKATA_PUBLIC).toBeUndefined();
   });
 
   it("昼休みの試用版（3201/3202）とポートが重ならない", () => {

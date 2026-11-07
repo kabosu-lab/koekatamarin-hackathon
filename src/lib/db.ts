@@ -1,7 +1,9 @@
-import { mkdirSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { existsSync, mkdirSync, readdirSync, rmSync, statSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
+import { workUnitAsyncStorage } from "next/dist/server/app-render/work-unit-async-storage.external";
 import { seedDatabase } from "./seed";
+import { VISITOR_COOKIE, isPublicMode, isValidVisitorId, visitorDbPath, visitorsDir } from "./visitor";
 
 /** 順番に適用する変更。公開後は書き換えず、末尾に足す。 */
 const MIGRATIONS: readonly string[] = [
@@ -434,11 +436,99 @@ export function readSchemaVersion(db: DatabaseSync): number {
 }
 
 // next dev の再読み込みで接続が増えないよう、globalThis に1つだけ持つ
-const holder = globalThis as typeof globalThis & { koekataDb?: DatabaseSync };
+const holder = globalThis as typeof globalThis & {
+  koekataDb?: DatabaseSync;
+  koekataPublicBase?: DatabaseSync;
+  koekataVisitors?: Map<string, DatabaseSync>;
+};
+
+const basePath = () => process.env.KOEKATA_DB_PATH ?? "data/koekata.db";
+/** 同時に開いておく訪問者の DB の数（メモリの少ない PC のため）。超えたら古いものから閉じる */
+const OPEN_VISITORS = 32;
+const CLOSE_DELAY_MS = 120_000;
+/** 残しておく訪問者の DB ファイルの数。超えたら、開いていない古いものから消す */
+const maxVisitorFiles = () => Number(process.env.KOEKATA_PUBLIC_MAX_VISITORS ?? 300) || 300;
+
+/** 今の要求の cookie から訪問者を読む。要求の外（書き出しのときなど）では null */
+function currentVisitorId(): string | null {
+  const store = workUnitAsyncStorage.getStore();
+  if (store?.type !== "request") return null;
+  const id = store.cookies.get(VISITOR_COOKIE)?.value;
+  return isValidVisitorId(id) ? id : null;
+}
+
+export function pruneVisitorFiles(dir: string, open: ReadonlyMap<string, DatabaseSync>): void {
+  let files: { id: string; time: number }[];
+  try {
+    files = readdirSync(dir)
+      .filter((name) => name.endsWith(".db"))
+      .map((name) => ({ id: name.slice(0, -3), time: statSync(join(dir, name)).mtimeMs }));
+  } catch {
+    return;
+  }
+  const extra = files.length - maxVisitorFiles() + 1;
+  if (extra <= 0) return;
+  files.sort((a, b) => a.time - b.time);
+  for (const { id } of files.filter((f) => !open.has(f.id)).slice(0, extra)) {
+    try {
+      for (const suffix of ["", "-wal", "-shm"]) rmSync(join(dir, `${id}.db${suffix}`), { force: true });
+    } catch {
+      // ほかで開いていて消せないものは、次の機会に回す
+    }
+  }
+}
+
+/** みんな用：訪問者ごとの DB。初めての訪問者には、ダミーの初期データだけの DB を作る */
+export function visitorDatabase(id: string, base: string = basePath()): DatabaseSync {
+  const open = (holder.koekataVisitors ??= new Map());
+  const hit = open.get(id);
+  if (hit) {
+    open.delete(id);
+    open.set(id, hit);
+    if (ensureMigrated(hit)) seedDatabase(hit);
+    return hit;
+  }
+  const path = visitorDbPath(base, id);
+  if (!existsSync(path)) pruneVisitorFiles(visitorsDir(base), open);
+  const db = openDatabase(path);
+  seedDatabase(db);
+  open.set(id, db);
+  while (open.size > OPEN_VISITORS) {
+    const [oldest, conn] = open.entries().next().value as [string, DatabaseSync];
+    open.delete(oldest);
+    // 途中の要求（Claude の返事を待つ間など）がまだ使っているかもしれないので、少し待ってから閉じる
+    setTimeout(() => {
+      try {
+        conn.close();
+      } catch {
+        // もう閉じていればよい
+      }
+    }, CLOSE_DELAY_MS).unref();
+  }
+  return db;
+}
+
+/**
+ * みんな用で、訪問者の分からない呼び出し（死活の確かめなど）に渡す DB。
+ * ダミーの初期データだけを読め、書き込みは断る（だれかの書き込みがほかの人に見えないように）。
+ */
+function publicBaseDatabase(): DatabaseSync {
+  if (!holder.koekataPublicBase) {
+    const db = openDatabase(basePath());
+    seedDatabase(db);
+    db.exec("PRAGMA query_only = ON");
+    holder.koekataPublicBase = db;
+  }
+  return holder.koekataPublicBase;
+}
 
 export function getDatabase(): DatabaseSync {
+  if (isPublicMode()) {
+    const visitor = currentVisitorId();
+    return visitor ? visitorDatabase(visitor) : publicBaseDatabase();
+  }
   if (!holder.koekataDb) {
-    const db = openDatabase(process.env.KOEKATA_DB_PATH ?? "data/koekata.db");
+    const db = openDatabase(basePath());
     seedDatabase(db);
     holder.koekataDb = db;
   } else if (ensureMigrated(holder.koekataDb)) {

@@ -6,6 +6,8 @@ import { PROMISE_SEEN } from "./e2e/promise-seen";
 // 並べて作る担当が同時に動かせるよう、番号は外から変えられる（KOEKATA_E2E_PORT。試用はその次の番号）
 const PORT = Number(process.env.KOEKATA_E2E_PORT ?? 3100);
 const TRIAL_PORT = PORT + 1;
+// みんな用（judge.mjs の public）：合言葉なし・台本で、訪問者ごとに書き込みを分ける（0-3n。e2e/public.spec.ts）
+const PUBLIC_PORT = PORT + 2;
 // 試用のサーバーの記録。話の中の感想が残ったかを、画面テスト（e2e/feedback.spec.ts）から読んで確かめる。
 // 子の worker にも同じ道が渡るよう、環境変数に置く
 const TRIAL_DB = process.env.KOEKATA_E2E_TRIAL_DB ?? join(tmpdir(), `koekata-e2e-trial-${process.pid}.db`);
@@ -43,13 +45,21 @@ export default defineConfig({
     },
   },
   projects: [
-    { name: "スマホ", testIgnore: "trial.spec.ts", use: { ...devices["Pixel 7"] } },
+    { name: "スマホ", testIgnore: ["trial.spec.ts", "public.spec.ts"], use: { ...devices["Pixel 7"] } },
     {
       name: "試用",
       testMatch: "trial.spec.ts",
       use: {
         ...devices["Pixel 7"],
         baseURL: `http://127.0.0.1:${TRIAL_PORT}`,
+      },
+    },
+    {
+      name: "みんな用",
+      testMatch: "public.spec.ts",
+      use: {
+        ...devices["Pixel 7"],
+        baseURL: `http://127.0.0.1:${PUBLIC_PORT}`,
       },
     },
   ],
@@ -87,6 +97,22 @@ export default defineConfig({
         KOEKATA_CLAUDE: "scripted",
         KOEKATA_ACCESS_CODE: "test-code",
         KOEKATA_ALLOWED_ORIGINS: "*.trycloudflare.com",
+      },
+    },
+    {
+      // 同じビルドを、みんな用の形（合言葉なし・台本・訪問者ごとの DB）で動かす
+      command: `node -e "const wait=()=>fetch('http://127.0.0.1:${PORT}/api/health').then(r=>{if(!r.ok)throw 0}).catch(()=>new Promise(s=>setTimeout(s,1000)).then(wait));wait()" && npm run start -- --hostname 127.0.0.1 --port ${PUBLIC_PORT}`,
+      url: `http://127.0.0.1:${PUBLIC_PORT}/api/health`,
+      reuseExistingServer: false,
+      timeout: 240_000,
+      env: {
+        KOEKATA_TEAMS: "off",
+        KOEKATA_GRAPH_DIR: join(tmpdir(), "koekata-e2e-no-graph"),
+        KOEKATA_TEAMS_WEBHOOK_URL: "",
+        KOEKATA_DB_PATH: join(tmpdir(), `koekata-e2e-public-${process.pid}.db`),
+        KOEKATA_CLAUDE: "scripted",
+        KOEKATA_NOTICE_ALWAYS: "1",
+        KOEKATA_PUBLIC: "1",
       },
     },
   ],
