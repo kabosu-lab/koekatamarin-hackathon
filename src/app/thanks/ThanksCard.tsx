@@ -259,10 +259,13 @@ export function ThanksEntry({
   person,
   label = "ありがとう",
   initialMessage,
+  reply = false,
 }: {
   person: ThanksPerson;
   label?: "ありがとう" | "おめでとう" | "頑張ってたね";
   initialMessage?: string;
+  /** 0-3a：届いたカードへの「ありがとうを返す」 */
+  reply?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [sent, setSent] = useState(false);
@@ -293,12 +296,12 @@ export function ThanksEntry({
         type="button"
         className="thanks-entry"
         aria-haspopup="dialog"
-        aria-label={`${person.name}さんに${label}を送る`}
+        aria-label={reply ? `${person.name}さんにありがとうを返す` : `${person.name}さんに${label}を送る`}
         data-sent={sent ? "" : undefined}
         onClick={show}
       >
         <Icon name={icon} />
-        <span>{sent ? "届きました" : label}</span>
+        <span>{sent ? "届きました" : reply ? "ありがとうを返す" : label}</span>
       </button>
       {mounted &&
         createPortal(

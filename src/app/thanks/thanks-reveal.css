@@ -1,0 +1,353 @@
+/*
+ * 0-3a：サンクスカードを受け取ったときの演出。
+ * 封筒が真ん中へ飛んできて（520ms）、ふたが開き（380ms）、カードがくるっと表を向く。閉じるとカード帳（左＝履歴と設定）へ飛んで収まる。
+ * 動かすのは transform と opacity だけ。reduced-motion では動かさずに出す。
+ */
+
+/* 話す画面：パートナーが封筒を抱えて弾む（「ありがとうが届いています」のとき） */
+.lcd-companion[data-envelope] {
+  position: relative;
+}
+
+.lcd-companion[data-envelope]::after {
+  content: "";
+  position: absolute;
+  right: calc(50% - 3.4rem);
+  bottom: 0.6rem;
+  width: 2.3rem;
+  height: 1.6rem;
+  border-radius: 0.25rem;
+  background:
+    linear-gradient(to top right, transparent calc(50% - 1px), #d9536f 50%, transparent calc(50% + 1px)) left / 50% 100% no-repeat,
+    linear-gradient(to top left, transparent calc(50% - 1px), #d9536f 50%, transparent calc(50% + 1px)) right / 50% 100% no-repeat,
+    #fff6e8;
+  border: 2px solid #d9536f;
+  box-shadow: 0 2px 0 rgb(0 0 0 / 0.15);
+  pointer-events: none;
+  animation: thanks-envelope-hop 1.6s cubic-bezier(0.2, 0.8, 0.2, 1) infinite;
+  z-index: 2;
+}
+
+@keyframes thanks-envelope-hop {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0) rotate(-8deg);
+  }
+  70% {
+    transform: translateY(-0.5rem) rotate(-4deg);
+  }
+  80% {
+    transform: translateY(0) rotate(-10deg);
+  }
+  88% {
+    transform: translateY(-0.2rem) rotate(-7deg);
+  }
+}
+
+/* 重なり：「ありがとうを返す」のシート（60）より下、ほかの画面の部品より上 */
+.thanks-reveal {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+}
+
+.thanks-reveal-scrim {
+  position: absolute;
+  inset: 0;
+  background: rgb(10 12 24 / 0.55);
+  animation: thanks-fade-in 240ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.thanks-reveal-stage {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 0.9rem;
+  width: min(20rem, 100%);
+  outline: none;
+}
+
+.thanks-reveal-count {
+  margin: 0;
+  color: #fff;
+  font-size: 0.85rem;
+}
+
+/* 封筒 */
+.thanks-reveal-envelope {
+  position: absolute;
+  top: 3rem;
+  width: 11rem;
+  height: 7.5rem;
+  border-radius: 0.6rem;
+  background:
+    linear-gradient(to top right, transparent calc(50% - 1px), #e8a0ae 50%, transparent calc(50% + 1px)) left / 50% 100% no-repeat,
+    linear-gradient(to top left, transparent calc(50% - 1px), #e8a0ae 50%, transparent calc(50% + 1px)) right / 50% 100% no-repeat,
+    #fff6e8;
+  border: 3px solid #d9536f;
+  box-shadow: 0 10px 24px rgb(0 0 0 / 0.25);
+  perspective: 600px;
+}
+
+.thanks-reveal-flap {
+  position: absolute;
+  inset: -3px -3px auto;
+  height: 55%;
+  background: #ffe3ea;
+  border: 3px solid #d9536f;
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+  transform-origin: top center;
+}
+
+.thanks-reveal[data-phase="fly"] .thanks-reveal-envelope {
+  animation: thanks-envelope-fly 520ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.thanks-reveal[data-phase="open"] .thanks-reveal-flap {
+  transform: rotateX(180deg);
+  transition: transform 380ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.thanks-reveal[data-phase="card"] .thanks-reveal-envelope,
+.thanks-reveal[data-phase="stash"] .thanks-reveal-envelope {
+  opacity: 0;
+  transform: translateY(3rem) scale(0.9);
+  transition:
+    opacity 200ms ease-in,
+    transform 200ms ease-in;
+}
+
+.thanks-reveal[data-phase="card"] .thanks-reveal-flap,
+.thanks-reveal[data-phase="stash"] .thanks-reveal-flap {
+  transform: rotateX(180deg);
+}
+
+@keyframes thanks-envelope-fly {
+  from {
+    opacity: 0;
+    transform: translate(0, 60vh) scale(0.3) rotate(-20deg);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* カード：裏から表へ、くるっと */
+.thanks-reveal-card {
+  position: relative;
+  width: 100%;
+  min-height: 13rem;
+  perspective: 900px;
+}
+
+.thanks-reveal-face {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  align-content: center;
+  gap: 0.6rem;
+  padding: 1.2rem;
+  border-radius: 1.2rem;
+  backface-visibility: hidden;
+  box-shadow: 0 14px 30px rgb(0 0 0 / 0.3);
+  transition: transform 560ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.thanks-reveal-back {
+  place-items: center;
+  background: #d9536f;
+  color: #fff;
+  transform: rotateY(0deg);
+}
+
+.thanks-reveal-back svg {
+  width: 3rem;
+  height: 3rem;
+}
+
+.thanks-reveal-front {
+  background: #ffe3ea;
+  color: #3a1420;
+  transform: rotateY(-180deg);
+  text-align: center;
+}
+
+.thanks-reveal[data-kind="effort"] .thanks-reveal-front {
+  background: #e2f1ff;
+  color: #102536;
+}
+
+.thanks-reveal[data-kind="congrats"] .thanks-reveal-front {
+  background: #fff1c7;
+  color: #3a2a00;
+}
+
+.thanks-reveal[data-kind="effort"] .thanks-reveal-back {
+  background: #3d7fb8;
+}
+
+.thanks-reveal[data-kind="congrats"] .thanks-reveal-back {
+  background: #d99a1e;
+}
+
+/* 封筒の中にいる間は見せない */
+.thanks-reveal[data-phase="fly"] .thanks-reveal-card,
+.thanks-reveal[data-phase="open"] .thanks-reveal-card {
+  opacity: 0;
+  transform: translateY(2rem) scale(0.6);
+}
+
+.thanks-reveal[data-phase="card"] .thanks-reveal-card,
+.thanks-reveal[data-phase="stash"] .thanks-reveal-card {
+  opacity: 1;
+  transition:
+    opacity 200ms ease-out,
+    transform 420ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.thanks-reveal[data-phase="card"] .thanks-reveal-back {
+  transform: rotateY(180deg);
+}
+
+.thanks-reveal[data-phase="card"] .thanks-reveal-front,
+.thanks-reveal[data-phase="stash"] .thanks-reveal-front {
+  transform: rotateY(0deg);
+}
+
+.thanks-reveal[data-phase="stash"] .thanks-reveal-back {
+  transform: rotateY(180deg);
+}
+
+/* しまう：左下（履歴と設定のカード帳）へ小さくなって飛ぶ */
+.thanks-reveal[data-phase="stash"] .thanks-reveal-card {
+  opacity: 0;
+  transform: translate(-45vw, 40vh) scale(0.15) rotate(-12deg);
+  transition:
+    opacity 420ms ease-in,
+    transform 420ms ease-in;
+}
+
+.thanks-reveal[data-phase="stash"] .thanks-reveal-scrim {
+  opacity: 0;
+  transition: opacity 420ms ease-in;
+}
+
+.thanks-reveal-kind {
+  display: inline-flex;
+  justify-self: center;
+  align-items: center;
+  gap: 0.3rem;
+  margin: 0;
+  padding: 0.15rem 0.8rem;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.7);
+  font-weight: 700;
+}
+
+.thanks-reveal-kind svg {
+  width: 1.1em;
+  height: 1.1em;
+}
+
+.thanks-reveal-words {
+  margin: 0;
+  font-size: 1.15rem;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.thanks-reveal-from {
+  margin: 0;
+  font-weight: 700;
+}
+
+.thanks-reveal-from small {
+  font-weight: 400;
+  opacity: 0.75;
+}
+
+.thanks-reveal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+  animation: thanks-fade-in 240ms 200ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.thanks-reveal-actions .thanks-entry {
+  min-height: 2.75rem;
+}
+
+/* 花びら */
+.thanks-reveal-petals {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.thanks-reveal-petals i {
+  position: absolute;
+  top: -1rem;
+  left: var(--x);
+  width: 0.7rem;
+  height: 0.5rem;
+  border-radius: 70% 0 70% 0;
+  background: #f7b6c8;
+  opacity: 0.9;
+  animation: thanks-petal 2.6s var(--d) ease-in forwards;
+}
+
+.thanks-reveal-petals i:nth-child(3n) {
+  background: #ffd6e0;
+}
+
+.thanks-reveal-petals i:nth-child(4n) {
+  background: #fff1c7;
+}
+
+@keyframes thanks-petal {
+  from {
+    transform: translate(0, 0) rotate(var(--r));
+    opacity: 0.95;
+  }
+  to {
+    transform: translate(2.5rem, 105vh) rotate(calc(var(--r) + 300deg));
+    opacity: 0;
+  }
+}
+
+@keyframes thanks-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lcd-companion[data-envelope]::after,
+  .thanks-reveal-scrim,
+  .thanks-reveal-actions,
+  .thanks-reveal-petals i,
+  .thanks-reveal[data-phase] .thanks-reveal-envelope {
+    animation: none;
+  }
+
+  .thanks-reveal-face,
+  .thanks-reveal-card,
+  .thanks-reveal-envelope,
+  .thanks-reveal-flap {
+    transition: none !important;
+  }
+
+  .thanks-reveal-petals {
+    display: none;
+  }
+}

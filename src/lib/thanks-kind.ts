@@ -38,3 +38,7 @@ export function readThanksKind(message: string): ThanksKind {
 export function sentNotice(name: string, kind: ThanksKind): string {
   return kind === "thanks" ? `${name}さんに、ありがとうが届きました。` : `${name}さんに、「${THANKS_KINDS[kind].label}」が届きました。`;
 }
+
+/** 0-3a：話す画面のパートナーの「ありがとうが届いています」。押すとその場で封筒が開く */
+export const THANKS_REVEAL_HREF = "#thanks-reveal";
+export const THANKS_REVEAL_EVENT = "koekata:thanks-reveal";

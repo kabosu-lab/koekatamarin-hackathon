@@ -6,6 +6,8 @@ test.use({ storageState: { cookies: PROMISE_SEEN, origins: [] } });
 
 async function asPerson(page: Page, id: string) {
   await page.context().addCookies([{ name: "koekata_person", value: id, domain: "127.0.0.1", path: "/" }]);
+  // 0-3a：今日届くありがとう（封筒の知らせ）は開けておき、いつもの一言で見る
+  await page.goto("/me?open=thanks");
 }
 
 const backdrop = (page: Page) => page.locator(".lcd > .partner-backdrop");

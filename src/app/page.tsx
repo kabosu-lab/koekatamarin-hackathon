@@ -16,7 +16,9 @@ import { TODAY_SEEN_COOKIE } from "./minna/today-seen";
 import { syncGiftEggs } from "@/lib/gift-eggs";
 import { listNewRibbons, syncRibbonsOnOpen } from "@/lib/ribbons";
 import { showsRewards } from "@/lib/rewards-view";
+import { ensureWelcomeThanks, listUnopenedThanks } from "@/lib/thanks-reveal";
 import { Talk } from "./Talk";
+import { ThanksReveal } from "./thanks/ThanksReveal";
 import { WidePanel } from "./WidePanels";
 import { columnSrc } from "@/lib/wide";
 
@@ -45,6 +47,8 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
   const look = lumpLookOf(db, viewer.id);
   syncRibbonsOnOpen(db, viewer.id, new Date());
   syncGiftEggs(db, viewer.id, new Date());
+  // 0-3a：試用でも審査でも届く演出を体験できるよう、ダミーの同僚から今日の1枚を入れておく
+  ensureWelcomeThanks(db, viewer.id, new Date());
   const question = goalQuestion(db, viewer.id, new Date()) ?? dailyQuestion(new Date());
   // 0-2v：新着の数（みんな・履歴と設定・ホイールと同じ数え方）。知恵や頑張りから来たときは、その話を先にする
   const counts = countNew(db, getDestination(db), viewer.id, new Date(), { rewards, todaySeen: store.has(TODAY_SEEN_COOKIE) });
@@ -58,6 +62,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
     <main className="retro-home">
       <h1 className="visually-hidden">こえかた</h1>
       {rewards && <RibbonMoment key={`ribbon-${viewer.id}`} ribbons={listNewRibbons(db, viewer.id)} />}
+      <ThanksReveal key={`thanks-${viewer.id}`} cards={listUnopenedThanks(db, viewer.id)} />
       <Talk
         key={viewer.id}
         device
