@@ -121,6 +121,26 @@ for (const viewport of [
       await expectThreeColumns(page);
     });
 
+    test("最初の約束のカードの暗幕は、左右の列にもかかり、カードは真ん中の列にある", async ({ page }) => {
+      await page.context().clearCookies({ name: /^koekata_promise_/ });
+      await page.goto("/");
+      const card = page.getByRole("dialog", { name: "最初にお伝えすること" });
+      await expect(card).toBeVisible();
+      const covered = await page.evaluate(() =>
+        [
+          [8, innerHeight / 2],
+          [innerWidth - 8, innerHeight / 2],
+        ].map(([x, y]) => document.elementFromPoint(x, y)?.closest(".first-card-backdrop") !== null),
+      );
+      expect(covered).toEqual([true, true]);
+      const box = (await card.boundingBox())!;
+      const center = (await page.locator("main.retro-home").boundingBox())!;
+      expect(box.x).toBeGreaterThanOrEqual(center.x - 1);
+      expect(box.x + box.width).toBeLessThanOrEqual(center.x + center.width + 1);
+      await card.getByRole("button").click();
+      await expect(card).toHaveCount(0);
+    });
+
     test("話す画面のシートは、真ん中の列の幅に収まる", async ({ page }) => {
       await page.goto("/");
       const sizes = await page.evaluate(() => {

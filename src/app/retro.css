@@ -2106,3 +2106,24 @@ html[data-embed] .first-card-backdrop {
 html[data-pane] :is(.feedback-fab, .feedback-thanks) {
   display: none;
 }
+
+/*
+ * 0-2y（広い画面の確認の 12）：3列のとき、話す画面の最初の約束のカードの暗幕を、左右の列にもかける。
+ * 話す画面の本体（.retro-home）は部品の幅の基準（container）なので、中の position: fixed は本体の箱に収まってしまう。
+ * 暗幕を本体の箱から四方へ大きく広げ、左右の列（iframe）より手前に出す。カードは本体の真ん中のまま
+ */
+@media (orientation: landscape) and (min-height: 600px) {
+  .device-row > .retro-home:has(.first-card-backdrop) {
+    position: relative;
+    z-index: 90;
+  }
+
+  .device-row > .retro-home .first-card-backdrop {
+    inset: -100vmax;
+    padding: calc(100vmax + 16px);
+  }
+
+  .device-row > .retro-home .first-card-backdrop .first-card {
+    width: min(360px, calc(100cqi - 32px));
+  }
+}
