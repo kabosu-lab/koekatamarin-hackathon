@@ -39,7 +39,7 @@ const PANE_DELAY_MS = 1500;
  * 0-2z：狭い画面でも、同じ枠に左右の画面を裏で読み込んでおき、画面の外（左右）に置く（data-mode="pane"）。
  * スワイプの途中は、この本物の画面が指に付いて覗く。中は単独で開いたときと同じ見た目（欄の印 data-embed は付けない）。
  */
-export function WidePanel({ src, title, side }: { src: string; title: string; side: WideSide }) {
+export function WidePanel({ src, title, side, shown = false }: { src: string; title: string; side: WideSide; shown?: boolean }) {
   const [wide, setWide] = useState(false);
   const [pane, setPane] = useState(false);
   // 同じ画面をもう一度開いたときも、列の中を開き直す（奥の状態から戻す）
@@ -49,8 +49,11 @@ export function WidePanel({ src, title, side }: { src: string; title: string; si
     const update = () => setWide(query.matches);
     update();
     query.addEventListener("change", update);
-    // 動きを減らす設定では指に付いて動かないので、裏で読み込まない
-    const timer = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : window.setTimeout(() => setPane(true), PANE_DELAY_MS);
+    // 動きを減らす設定では指に付いて動かないので、裏で読み込まない。iframe の中（左右の画面や列の中）では作らない（入れ子にしない）。
+    // 帯でその画面を開いたまま読み込み直したとき（?pane=）は、すぐ読み込む
+    const nested = window.self !== window.top;
+    const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const timer = nested || (still && !shown) ? 0 : window.setTimeout(() => setPane(true), shown ? 0 : PANE_DELAY_MS);
     return () => {
       query.removeEventListener("change", update);
       window.clearTimeout(timer);
@@ -65,7 +68,8 @@ export function WidePanel({ src, title, side }: { src: string; title: string; si
     return () => window.removeEventListener(COLUMN_EVENT, onRequest);
   }, [side]);
   return (
-    <div className="wide-panel" data-side={side} data-mode={wide ? "column" : "pane"}>
+    // 0-2z：止まっている帯で見えていない左右の画面には触れない（inert。帯が動くと strip.ts が付け替える）
+    <div className="wide-panel" data-side={side} data-mode={wide ? "column" : "pane"} inert={!wide && !shown ? true : undefined}>
       {(wide || pane) && (
         <iframe
           key={`${current.turn}:${current.href}`}

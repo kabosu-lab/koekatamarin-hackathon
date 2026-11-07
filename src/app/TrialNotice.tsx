@@ -17,6 +17,8 @@ export function TrialNotice({ text, feedbackHint = null }: { text: string; feedb
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
+    // 列や左右の画面（iframe）の中には出さない。外側に1回だけ
+    if (window.self !== window.top) return;
     try {
       if (localStorage.getItem(SEEN_KEY) !== "1") setOpen(true);
     } catch {

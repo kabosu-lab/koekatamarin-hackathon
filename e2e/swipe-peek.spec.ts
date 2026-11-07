@@ -114,10 +114,10 @@ test("話す画面では、3つの画面が1本の帯になる。指に1対1で�
   await release(page, 170);
   await expect.poll(() => right.evaluate((element) => element.getBoundingClientRect().left)).toBeGreaterThanOrEqual(389);
   await expect(page).toHaveURL(/127\.0\.0\.1:\d+\/$/);
-  // 大きく払えば、みんなが真ん中に来て、URL だけが /minna になる（読み込み直さない）
+  // 大きく払えば、みんなが真ん中に来て、URL は /?pane=right になる（読み込み直さない）
   await drag(page, -200);
   await release(page, 0);
-  await expect(page).toHaveURL(/\/minna$/);
+  await expect(page).toHaveURL(/\/\?pane=right$/);
   await expect(page.locator('.device-row[data-pane="right"]')).toHaveCount(1);
   await expect.poll(() => right.evaluate((element) => Math.round(element.getBoundingClientRect().left))).toBe(0);
   await expect(minna.getByRole("region", { name: "みんな" })).toBeInViewport();
@@ -138,5 +138,92 @@ test("話す画面では、3つの画面が1本の帯になる。指に1対1で�
   }).toPass({ timeout: 20_000 });
   await expect(page.locator(".device-row[data-pane]")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "押し続けて話す" })).toBeInViewport();
+  await context.close();
+});
+
+/** 話す画面を開き、左右の画面が裏で読み込み終わるまで待つ */
+async function openStrip(page: Page) {
+  await page.goto("/");
+  await stripLoaded(page);
+}
+
+/** 左右の画面（奥へ進んでいたら入口へ戻ったもの）が読み込み終わるまで待つ */
+async function stripLoaded(page: Page) {
+  await page.waitForFunction(() => {
+    const frames = [...document.querySelectorAll<HTMLIFrameElement>('.wide-panel[data-mode="pane"] iframe')];
+    // 読み込みの前の iframe は about:blank のまま complete になるので、中の画面の場所も確かめる
+    return (
+      frames.length === 2 &&
+      frames.every((frame) => frame.contentDocument?.readyState === "complete") &&
+      frames.every((frame) => /^\/(me|minna)/.test(frame.contentWindow?.location.pathname ?? "")) &&
+      Boolean(window.koekataStrip)
+    );
+  });
+}
+
+const goStrip = (page: Page, href: string) => page.evaluate((target) => window.koekataStrip!.go(target), href);
+
+test("帯：「戻る」で話す画面へ戻り、再読み込みしても同じ画面のまま", async ({ browser }) => {
+  const context = await touchContext(browser);
+  const page = await context.newPage();
+  await openStrip(page);
+  expect(await goStrip(page, "/minna")).toBe(true);
+  await expect(page).toHaveURL(/\/\?pane=right$/);
+  await expect(page.locator('.device-row[data-pane="right"]')).toHaveCount(1);
+  await expect(page.locator("main.retro-home")).toHaveAttribute("inert", "");
+  // ブラウザの「戻る」で、アプリの外ではなく話す画面へ
+  await page.goBack();
+  await expect(page).toHaveURL(/127\.0\.0\.1:\d+\/$/);
+  await expect(page.locator(".device-row[data-pane]")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "押し続けて話す" })).toBeInViewport();
+  // 再読み込みしても、帯で開いた画面のまま（話す画面の木はそのまま）
+  await goStrip(page, "/minna");
+  await expect(page).toHaveURL(/\/\?pane=right$/);
+  await page.reload();
+  await expect(page.locator('.device-row[data-pane="right"]')).toHaveCount(1);
+  const right = page.locator('.wide-panel[data-side="right"]');
+  await expect.poll(() => right.evaluate((element) => Math.round(element.getBoundingClientRect().left))).toBe(0);
+  await expect(page.frameLocator('.wide-panel[data-side="right"] iframe').getByRole("region", { name: "みんな" })).toBeInViewport();
+  await expect(right).not.toHaveAttribute("inert", "");
+  await context.close();
+});
+
+test("帯：左の画面で人を切り替えると、話す画面と右の画面も新しい人になる", async ({ browser }) => {
+  const context = await touchContext(browser);
+  const page = await context.newPage();
+  await openStrip(page);
+  await goStrip(page, "/me");
+  await expect(page).toHaveURL(/\/\?pane=left$/);
+  const left = page.frameLocator('.wide-panel[data-side="left"] iframe');
+  await left.locator('a[data-tile="settings"]').click();
+  await left.getByLabel("試す人を切り替える").selectOption({ label: "青木 ひより（2年）" });
+  const switched = page.waitForResponse((response) => Boolean(response.request().headers()["next-action"]));
+  await left.getByRole("button", { name: "切り替え" }).click();
+  await switched;
+  // 話す画面へ戻ると、話す画面も新しい人
+  expect(await goStrip(page, "/")).toBe(true);
+  await expect(page).toHaveURL(/127\.0\.0\.1:\d+\/$/);
+  await expect(page.locator('.talk[data-viewer="青木 ひより"]')).toBeVisible();
+  // 右のみんなも、生徒の画面（職員室の札がない）。左の画面が入口へ戻って読み込み終わってから
+  await stripLoaded(page);
+  expect(await goStrip(page, "/minna")).toBe(true);
+  const right = page.frameLocator('.wide-panel[data-side="right"] iframe');
+  await expect(right.getByRole("group", { name: "チャネルで絞る" }).getByRole("button", { name: "すべて" })).toBeVisible();
+  await expect(right.getByRole("group", { name: "チャネルで絞る" }).getByRole("button", { name: "職員室" })).toHaveCount(0);
+  await context.close();
+});
+
+test("帯：その日はじめて帯でみんなを開くと、今日の3人が開き、見た印が付く", async ({ browser }) => {
+  const context = await touchContext(browser);
+  await context.clearCookies({ name: "koekata_today_seen" });
+  const page = await context.newPage();
+  await openStrip(page);
+  // 裏で読み込んだだけでは開かず、見た印も付かない
+  const right = page.frameLocator('.wide-panel[data-side="right"] iframe');
+  await expect(right.getByRole("dialog", { name: "今日の3人" })).toHaveCount(0);
+  expect((await context.cookies()).some((cookie) => cookie.name === "koekata_today_seen")).toBe(false);
+  await goStrip(page, "/minna");
+  await expect(right.getByRole("dialog", { name: "今日の3人" })).toBeVisible();
+  await expect.poll(async () => (await context.cookies()).some((cookie) => cookie.name === "koekata_today_seen")).toBe(true);
   await context.close();
 });

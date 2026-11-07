@@ -27,8 +27,10 @@ export const dynamic = "force-dynamic";
 
 const SEND_PROMPT = "届けたいことを話してね。下書きにするよ。送るのは、確かめてから。";
 
-export default async function HomePage({ searchParams }: { searchParams: Promise<{ ask?: string | string[]; goal?: string | string[]; talk?: string | string[]; left?: string | string[]; right?: string | string[] }> }) {
-  const { ask, goal, talk, left, right } = await searchParams;
+export default async function HomePage({ searchParams }: { searchParams: Promise<{ ask?: string | string[]; goal?: string | string[]; talk?: string | string[]; left?: string | string[]; right?: string | string[]; pane?: string | string[] }> }) {
+  const { ask, goal, talk, left, right, pane } = await searchParams;
+  // 0-2z：狭い画面の帯で、左右どちらの画面にいるか（?pane=right / ?pane=left）。再読み込みや「戻る」でも同じ画面を描く
+  const shownPane = pane === "right" || pane === "left" ? pane : undefined;
   const { viewer, people } = await getViewer();
   const db = getDatabase();
   await syncFromTeamsIfStale(db);
@@ -59,10 +61,10 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
 
   // 全員同じ1画面。ほかの画面へはスワイプと、下の小さな印から移る
   return (
-    <div className="device-row">
+    <div className="device-row" data-pane={shownPane}>
     {/* 0-2y：広い画面の左右の列。奥の画面を直接開いたときは ?left= / ?right= でその列の中に開く */}
-    <WidePanel src={columnSrc("left", left)} title="履歴と設定" side="left" />
-    <main className="retro-home">
+    <WidePanel src={columnSrc("left", left)} title="履歴と設定" side="left" shown={shownPane === "left"} />
+    <main className="retro-home" inert={shownPane ? true : undefined}>
       <h1 className="visually-hidden">こえかた</h1>
       {rewards && <RibbonMoment key={`ribbon-${viewer.id}`} ribbons={listNewRibbons(db, viewer.id)} />}
       <ThanksReveal key={`thanks-${viewer.id}`} viewerId={viewer.id} cards={revealCards} />
@@ -83,7 +85,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
         initialAsk={askPerson ? { id: askPerson.id, name: askPerson.name } : null}
       />
     </main>
-    <WidePanel src={columnSrc("right", right)} title="みんな" side="right" />
+    <WidePanel src={columnSrc("right", right)} title="みんな" side="right" shown={shownPane === "right"} />
     </div>
   );
 }

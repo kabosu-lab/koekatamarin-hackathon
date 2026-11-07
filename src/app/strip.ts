@@ -6,14 +6,21 @@ import { springSettled, springStep } from "@/lib/wheel-carousel";
  *
  * 帯の位置は o で表す（画面の幅を 1 とする）。o = 0 で話す画面、-1 でみんな（右）、1 で履歴と設定（左）が見える。
  * 指で動かしている間とばねの間だけ transform を直接書き、止まったら .device-row の data-pane（CSS）に任せる。
- * 動きは rAF と transform だけで、React の state にしない。URL は history.replaceState で替える（読み込み直さない）。
+ * 動きは rAF と transform だけで、React の state にしない。
+ *
+ * URL は話す画面のまま、どこにいるかだけを ?pane=right / ?pane=left で表す（page.tsx がそれを読んで data-pane を描くので、
+ * 再読み込み・戻る・bfcache でも食い違わない）。左右へ着いたときは pushState（ブラウザの「戻る」で話す画面へ戻る）。
+ * 着いた先は新しくする（STRIP_LAND_EVENT。外側は SwipeNav が、左右の画面はその中の SwipeNav が router.refresh する）。
  */
+
+/** 帯が止まったときの知らせ。外側の window と、着いた左右の画面の window に送る。detail は着いた位置 */
+export const STRIP_LAND_EVENT = "koekata:strip-land";
 
 export type StripApi = {
   /** 帯を o の位置へ（指に付いて動かす） */
   drag(o: number): void;
-  /** 離したあと、ばねで to へ吸い付く。v は離した瞬間の速さ（画面の幅／秒） */
-  settle(from: number, v: number, to: -1 | 0 | 1): void;
+  /** 離したあと、ばねで to へ吸い付く。v は離した瞬間の速さ（画面の幅／秒）。mode は履歴の残し方 */
+  settle(from: number, v: number, to: -1 | 0 | 1, mode?: "push" | "replace" | "none"): void;
   /** 今止まっている位置 */
   rest(): -1 | 0 | 1;
   /** 3つの画面の入口（/・/me・/minna）へのリンクなら、帯を動かして開く。動かしたら true */
@@ -33,18 +40,43 @@ const center = () => row()?.querySelector<HTMLElement>(":scope > .retro-home") ?
 const pane = (side: "left" | "right") =>
   row()?.querySelector<HTMLElement>(`:scope > .wide-panel[data-mode="pane"][data-side="${side}"]`) ?? null;
 
-/** 左右の画面が両方とも読み込み終わり、帯として動かせるか */
+/** 左右の画面が両方とも読み込み終わり、帯として動かせるか。中が別の画面（話す画面や合言葉の画面）になっていたら使わない */
 export function stripReady(): boolean {
   for (const side of ["left", "right"] as const) {
     const frame = pane(side)?.querySelector("iframe");
     try {
       if (!frame || frame.contentDocument?.readyState !== "complete") return false;
+      const path = frame.contentWindow?.location.pathname ?? "";
+      if (path !== ROOTS[side] && !path.startsWith(`${ROOTS[side]}/`) && !(side === "right" ? RIGHT_PREFIXES : LEFT_PREFIXES).some((prefix) => path.startsWith(prefix)))
+        return false;
     } catch {
       return false;
     }
   }
   return center() !== null;
 }
+
+/** 左右の画面の中で奥へ進んだときの画面（列の割り当てと同じ。src/lib/wide.ts） */
+const LEFT_PREFIXES = ["/me", "/daily", "/lookback", "/portfolio", "/log", "/yousu", "/walk", "/soudan"];
+const RIGHT_PREFIXES = ["/minna", "/inbox", "/chie", "/today", "/study", "/people", "/sakura", "/koho", "/teams", "/tab"];
+
+/** 見えていない画面には触れないようにする（読み上げも届かない） */
+function markInert(to: -1 | 0 | 1) {
+  const visible = new Map<HTMLElement | null, boolean>([
+    [center(), to === 0],
+    [pane("right"), to === -1],
+    [pane("left"), to === 1],
+  ]);
+  for (const [element, shown] of visible) element?.toggleAttribute("inert", !shown);
+}
+
+/** URL の ?pane= から、帯の位置 */
+export function paneFromUrl(search = location.search): -1 | 0 | 1 {
+  const value = new URLSearchParams(search).get("pane");
+  return value === "right" ? -1 : value === "left" ? 1 : 0;
+}
+
+const urlOf = (to: -1 | 0 | 1) => (to === -1 ? "/?pane=right" : to === 1 ? "/?pane=left" : "/");
 
 export function stripRest(): -1 | 0 | 1 {
   const state = row()?.dataset.pane;
@@ -78,17 +110,38 @@ function clear() {
 
 let frame = 0;
 
-/** 止まった位置を CSS に任せ、URL を替える。話す画面へ戻ったときは、奥へ進んでいた左右の画面を入口へ戻す */
-function land(to: -1 | 0 | 1) {
+type HistoryMode = "push" | "replace" | "none";
+
+/**
+ * 止まった位置を CSS に任せ、URL を替え、着いた先を新しくする。話す画面へ戻ったときは、奥へ進んでいた左右の画面を入口へ戻す。
+ * history：左右へ着いたら push（「戻る」で話す画面へ）。話す画面へ戻ったら置き換える。popstate からは触らない
+ */
+function land(to: -1 | 0 | 1, mode: HistoryMode) {
   const strip = row();
   if (!strip) return;
+  const before = paneFromUrl();
   if (to === -1) strip.dataset.pane = "right";
   else if (to === 1) strip.dataset.pane = "left";
   else delete strip.dataset.pane;
   clear();
+  markInert(to);
   delete document.documentElement.dataset.swiping;
-  history.replaceState(null, "", to === -1 ? ROOTS.right : to === 1 ? ROOTS.left : "/");
-  if (to !== 0) return;
+  if (mode !== "none" && before !== to) {
+    // 話す画面へ戻るときは置き換える（history.back は使わない。左右の画面の中で奥へ進んだ記録も同じ履歴に入っているため）
+    if (to !== 0 && before === 0 && mode === "push") history.pushState({ ...history.state, koekataPane: true }, "", urlOf(to));
+    else history.replaceState(history.state, "", urlOf(to));
+  }
+  window.dispatchEvent(new CustomEvent(STRIP_LAND_EVENT, { detail: to }));
+  if (to !== 0) {
+    const inner = pane(to === -1 ? "right" : "left")?.querySelector("iframe");
+    try {
+      const win = inner?.contentWindow as (Window & typeof globalThis) | null | undefined;
+      win?.dispatchEvent(new win.CustomEvent(STRIP_LAND_EVENT, { detail: to }));
+    } catch {
+      // 読めなければそのまま
+    }
+    return;
+  }
   for (const side of ["left", "right"] as const) {
     const inner = pane(side)?.querySelector("iframe");
     try {
@@ -106,10 +159,10 @@ export const strip: StripApi = {
     document.documentElement.dataset.swiping = "true";
     apply(o);
   },
-  settle(from, v, to) {
+  settle(from, v, to, mode: HistoryMode = "push") {
     cancelAnimationFrame(frame);
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      land(to);
+      land(to, mode);
       return;
     }
     let x = from;
@@ -121,7 +174,7 @@ export const strip: StripApi = {
       ({ x, v: velocity } = springStep(x, velocity, to, dt));
       apply(x);
       if (springSettled(x, velocity, to)) {
-        land(to);
+        land(to, mode);
         return;
       }
       frame = requestAnimationFrame(step);
