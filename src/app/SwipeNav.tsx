@@ -5,7 +5,7 @@ import { useEffect } from "react";
 import { isDeep, SWIPE_HOME, SWIPE_SCREENS, swipeTarget } from "@/lib/swipe-nav";
 import { WIDE_QUERY } from "@/lib/wide";
 import { Peek, remember, screenOf } from "./swipe-peek";
-import { holdStrip, paneFromUrl, repairPanes, STRIP_LAND_EVENT, strip, stripReady, stripRest } from "./strip";
+import { holdStrip, paneFromUrl, POSTED_EVENT, refreshPane, repairPanes, STRIP_LAND_EVENT, strip, stripReady, stripRest } from "./strip";
 
 /**
  * 操作の途中の指の動きを、画面の移動にしない場所。
@@ -151,11 +151,9 @@ export function SwipeNav() {
     const drawnAs = whoAndLook();
     const onLand = (event: Event) => {
       const to = (event as CustomEvent<number>).detail;
-      // 左右の画面は、着いたとき自分の中で新しくする
-      if (window.self !== window.top) {
-        router.refresh();
-        return;
-      }
+      // 左右の画面の中では router.refresh しない。重いときに、先読みした別の画面（受信箱・広報など）の中身に
+      // 描き替わってしまうことがあった。左右の画面は、外側が画面の外にある間に読み直す（strip.ts の refreshPane）
+      if (window.self !== window.top) return;
       // 外側は、左右の画面で人や見た目が替わっていたら、話す画面へ戻ったときに窓ごと読み直す。
       // router.refresh は使わない（読み直しの途中で帯がまた左右へ動くと、遅れて届いた話す画面の木で帯が元へ戻ってしまう）
       // 読み直すと左右の画面も新しい人で読み込み直す。URL の引数は残す
@@ -167,6 +165,9 @@ export function SwipeNav() {
     window.addEventListener(STRIP_LAND_EVENT, onLand);
     if (window.self !== window.top) return () => window.removeEventListener(STRIP_LAND_EVENT, onLand);
     window.koekataStrip = strip;
+    // 話す画面から投稿したら、画面の外のみんなを読み直しておく（帯で開いたときに、送った投稿が出ている）
+    const onPosted = () => refreshPane("right");
+    window.addEventListener(POSTED_EVENT, onPosted);
     // 帯を動かせるようになった印（html[data-strip-ready]）。左右の画面の読み込みを見て付け外しする（画面テストもこれを待つ）
     const root = document.documentElement;
     // 左右の画面があるのに 3 秒たっても整わなければ、左右の画面を入口から読み直す
@@ -196,6 +197,7 @@ export function SwipeNav() {
     window.addEventListener("popstate", onPop);
     return () => {
       window.clearInterval(watchReady);
+      window.removeEventListener(POSTED_EVENT, onPosted);
       window.removeEventListener(STRIP_LAND_EVENT, onLand);
       window.removeEventListener("popstate", onPop);
     };

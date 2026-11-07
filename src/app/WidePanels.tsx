@@ -1,9 +1,9 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { isColumnPath, WIDE_QUERY, type WideSide, wideHomeUrl, wideSide } from "@/lib/wide";
-import { strip } from "./strip";
+import { showStrip, strip } from "./strip";
 
 /** 列の中身を外から替える知らせ（欄の中のリンクが、もう片方の列で開くとき） */
 const COLUMN_EVENT = "koekata:wide-column";
@@ -39,7 +39,26 @@ const PANE_DELAY_MS = 1500;
  * 0-2z：狭い画面でも、同じ枠に左右の画面を裏で読み込んでおき、画面の外（左右）に置く（data-mode="pane"）。
  * スワイプの途中は、この本物の画面が指に付いて覗く。中は単独で開いたときと同じ見た目（欄の印 data-embed は付けない）。
  */
-export function WidePanel({ src, title, side, shown = false }: { src: string; title: string; side: WideSide; shown?: boolean }) {
+/**
+ * 0-2z：話す画面の帯の入れ物。止まっている位置（data-pane）は、最初の描画だけサーバーの ?pane= から決め、
+ * そのあとは strip.ts が付け替える（読み直しの木が遅れて届いても、React が位置を書き戻さないように、値を固定する）。
+ * 描いたあと（作り直されたときも）は、URL の ?pane= に合わせる。
+ */
+export function DeviceRow({ pane, children }: { pane?: "left" | "right"; children: ReactNode }) {
+  const [initial] = useState(pane);
+  useEffect(() => {
+    showStrip();
+  }, []);
+  return (
+    <div className="device-row" data-pane={initial}>
+      {children}
+    </div>
+  );
+}
+
+export function WidePanel({ src, title, side, shown: shownProp = false }: { src: string; title: string; side: WideSide; shown?: boolean }) {
+  // 最初の描画のときの値だけを使う（あとの付け替えは strip.ts）
+  const [shown] = useState(shownProp);
   const [wide, setWide] = useState(false);
   const [pane, setPane] = useState(false);
   // 同じ画面をもう一度開いたときも、列の中を開き直す（奥の状態から戻す）

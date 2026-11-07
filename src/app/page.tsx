@@ -20,7 +20,7 @@ import { thanksDeviceCookie } from "@/lib/thanks-kind";
 import { ensureWelcomeThanks, listRevealThanks } from "@/lib/thanks-reveal";
 import { Talk } from "./Talk";
 import { ThanksReveal } from "./thanks/ThanksReveal";
-import { WidePanel } from "./WidePanels";
+import { DeviceRow, WidePanel } from "./WidePanels";
 import { columnSrc } from "@/lib/wide";
 
 export const dynamic = "force-dynamic";
@@ -63,10 +63,10 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
 
   // 全員同じ1画面。ほかの画面へはスワイプと、下の小さな印から移る
   return (
-    <div className="device-row" data-pane={shownPane}>
+    <DeviceRow pane={shownPane}>
     {/* 0-2y：広い画面の左右の列。奥の画面を直接開いたときは ?left= / ?right= でその列の中に開く */}
     <WidePanel src={columnSrc("left", left)} title="履歴と設定" side="left" shown={shownPane === "left"} />
-    <main className="retro-home" inert={shownPane ? true : undefined}>
+    <main className="retro-home">
       <h1 className="visually-hidden">こえかた</h1>
       {rewards && <RibbonMoment key={`ribbon-${viewer.id}`} ribbons={listNewRibbons(db, viewer.id)} hold={revealCards.length > 0} />}
       <ThanksReveal key={`thanks-${viewer.id}`} viewerId={viewer.id} cards={revealCards} />
@@ -89,6 +89,6 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
       />
     </main>
     <WidePanel src={columnSrc("right", right)} title="みんな" side="right" shown={shownPane === "right"} />
-    </div>
+    </DeviceRow>
   );
 }
