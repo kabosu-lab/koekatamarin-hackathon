@@ -1415,6 +1415,11 @@ html[data-theme="retro"] :is(.home, .soudan) {
   display: none;
 }
 
+/* 0-3k：歩きながら（固定）の間は、話の途中でもパートナーの大きな姿を窓の下に残す（上の帯と重ならない） */
+.talk.device[data-talking="true"][data-locked] .lcd-companion {
+  display: flex;
+}
+
 .talk.device[data-talking="true"] .log {
   order: 0;
   flex: 1 1 0;

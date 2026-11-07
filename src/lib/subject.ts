@@ -83,7 +83,8 @@ export function nextTag(tag: SubjectTag): SubjectTag {
 export function subjectFromText(text: string, kind: PostKind): string {
   const first = text.trim().split(/[\n。！？!?]/)[0]?.trim() ?? "";
   if (!first) return "";
-  return joinSubject(tagForKind(kind), first.length > 20 ? `${first.slice(0, 20)}…` : first);
+  // 一文の途中で「…」と切らない（読み切れない件名になる）。長すぎるときだけ上限で切る
+  return joinSubject(tagForKind(kind), first).slice(0, MAX_SUBJECT_LENGTH);
 }
 
 /**

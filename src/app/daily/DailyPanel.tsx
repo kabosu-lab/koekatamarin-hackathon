@@ -269,9 +269,10 @@ export function DailyPanel({ initialReport, recipients, viewerName, noun }: Prop
       {burst && <SendBurst words={burst} onDone={() => setBurst(null)} />}
       {!editing && (
         // 0-2u：いつも見える、届けるボタン1つ。文言は相手と件数で変わる
-        <div className="daily-send-bar">
+        // 届いた（残した）一言は、下に貼り付けず流れの中に置き、そこまで送って見せる（本文に重ならないように）
+        <div className="daily-send-bar" data-done={done ? "" : undefined}>
           {done ? (
-            <p className="daily-done" role="status">
+            <p className="daily-done" role="status" ref={(element) => element?.scrollIntoView({ block: "nearest" })}>
               {done}
             </p>
           ) : (

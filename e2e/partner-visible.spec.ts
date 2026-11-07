@@ -126,6 +126,26 @@ for (const viewport of VIEWPORTS) {
       await shot(page, "8-歩きながら返事のあと");
     });
 
+    test("話の途中から歩きながらにしても、パートナーの大きな姿が帯に重ならずに見える", async ({ page }) => {
+      await fakeVoice(page);
+      await page.goto("/");
+      await say(page, `明日は面談があるので、少し緊張しています ${test.info().testId}`);
+      await swipeToLock(page);
+      const figure = page.locator(".lcd-companion").locator(".voice-lump, .dolphin").first();
+      await expect(figure).toBeVisible();
+      await expect(figure).toBeInViewport();
+      await page.evaluate((text) => (window as unknown as { current: { hear(text: string): void } }).current.hear(text), `続きの話 ${test.info().testId}`);
+      await expect(log(page).locator(".bubble.assistant:not(.waiting)")).toHaveCount(2, { timeout: 8000 });
+      await expect(page.getByRole("status").filter({ hasText: "歩きながら" })).toBeVisible();
+      await expect(figure).toBeVisible();
+      await expect(figure).toBeInViewport();
+      // 大きな姿は上の帯と重ならない
+      const banner = (await page.locator(".lock-banner").boundingBox())!;
+      const art = (await figure.boundingBox())!;
+      expect(art.y).toBeGreaterThanOrEqual(banner.y + banner.height);
+      await shot(page, "9-話の途中から歩きながら");
+    });
+
     test("とどけるのシートを閉じたあとも、パートナーが見える", async ({ page }) => {
       await page.goto("/");
       await say(page, `今日の授業で、声を小さくしたらみんな聞いてくれた ${test.info().testId}`);

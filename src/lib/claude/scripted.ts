@@ -113,8 +113,9 @@ function scriptedSubject(spoken: string[]): string {
             : /頑張/.test(talk)
               ? "頑張り"
               : "うまくいった";
-  const first = spoken[0].replace(/[。！!]+$/, "");
-  return `【${tag}】${first.length > 20 ? `${first.slice(0, 20)}…` : first}`;
+  // 最初の一文をそのまま使い、途中で「…」と切らない（長すぎるときは normalizeSubject が上限で切る）
+  const first = spoken[0].split(/[。！!？?\n]/)[0].trim() || spoken[0];
+  return `【${tag}】${first}`;
 }
 
 function scriptedDraft(transcript: string, jsonSchema: Record<string, unknown> | undefined) {

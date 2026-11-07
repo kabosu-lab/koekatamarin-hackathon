@@ -9,7 +9,8 @@ const NUDGE_CHOICES = [
   ["blunt", "耳が痛め"],
 ] as const;
 
-export function GoalsPanel({ initial, initialNudge }: { initial: Goal[]; initialNudge: Nudge }) {
+/** polite：先生には、です・ます（パートナーの口調の決まり） */
+export function GoalsPanel({ initial, initialNudge, polite = false }: { initial: Goal[]; initialNudge: Nudge; polite?: boolean }) {
   const [goals, setGoals] = useState(initial);
   const [nudge, setNudge] = useState(initialNudge);
   const [text, setText] = useState("");
@@ -56,7 +57,7 @@ export function GoalsPanel({ initial, initialNudge }: { initial: Goal[]; initial
       </form>
       {justDone && (
         <div className="goal-done" role="status">
-          <p>やったね！みんなに言っておく？</p>
+          <p>{polite ? "できましたね！みんなにも伝えますか？" : "やったね！みんなに言っておく？"}</p>
           <div className="row">
             <Link className="goal-tell" href={`/?goal=${justDone.id}`}>
               みんなに言っておく

@@ -43,5 +43,10 @@ describe("件名と種類の札（0-3b）", () => {
   it("件名のない下書きには、種類の札と本文の頭から件名を作る", () => {
     expect(subjectFromText("過去問を20問解いた。明日も続ける", "effort")).toBe("【頑張り】過去問を20問解いた");
     expect(subjectFromText("", "report")).toBe("");
+    // 20字を超える一文も途中で「…」と切らない（読み切れる件名に）
+    expect(subjectFromText("今日の授業で、声を小さくしたら、教室が静かになりました。うれしかった", "report")).toBe(
+      "【うまくいった】今日の授業で、声を小さくしたら、教室が静かになりました",
+    );
+    expect(subjectFromText("あ".repeat(100), "report")).toHaveLength(60);
   });
 });
