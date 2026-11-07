@@ -130,7 +130,8 @@ export function MinnaFrame({
             leaves={leaves}
             petals={petals}
             watchLeaves
-            autoExplain={!todayOpen}
+            // 0-2i(2)：広い画面の右の欄（iframe）の中では、説明のカードで木を隠さないよう最初は閉じておく（桜を押せば開く）
+            autoExplain={!todayOpen && !(typeof window !== "undefined" && window.self !== window.top)}
             fastForward={fastForward}
             onCount={onCount}
           >

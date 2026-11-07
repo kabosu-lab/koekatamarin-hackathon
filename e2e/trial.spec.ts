@@ -294,6 +294,29 @@ test.describe("見た目を選んでいない生徒", () => {
     await expect(page.getByRole("button", { name: "感想を送る" })).toBeInViewport({ ratio: 1 });
   });
 
+  test("みんなを下まで送って縮んだ桜の帯のメガホンに、右上の感想のアイコンが重ならない", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/access");
+    await page.getByLabel("合言葉").fill(CODE);
+    await page.getByRole("button", { name: "入る" }).click();
+    await page.getByRole("dialog", { name: "試用版について" }).getByRole("button", { name: "わかった" }).click();
+    await page.goto("/minna");
+    // その日はじめての今日の3人は、Escape で閉じる
+    const today = page.getByRole("dialog", { name: "今日の3人" });
+    if (await today.isVisible().catch(() => false)) {
+      await page.keyboard.press("Escape");
+      await expect(today).toHaveCount(0);
+    }
+    await page.locator(".minna-scroll").evaluate((element) => element.scrollTo(0, element.scrollHeight));
+    await expect(page.locator(".minna-scroll")).toHaveAttribute("data-shrunk", "true");
+    const fab = (await page.locator(".feedback-fab").boundingBox())!;
+    const band = page.locator('.minna-megaphone[data-place="band"]');
+    if ((await band.count()) > 0) {
+      const box = (await band.boundingBox())!;
+      expect(box.x + box.width, "メガホンの右端").toBeLessThanOrEqual(fab.x);
+    }
+  });
+
   test("0-2q：注意カードの間は、後ろで吹き出しも実績解除の知らせも出さず、知らせは感想のアイコンに重ならない", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/access");

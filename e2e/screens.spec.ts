@@ -253,6 +253,13 @@ for (const viewport of VIEWPORTS) {
       await page.goto(wide ? "/" : "/minna");
       const frame = wide ? page.frameLocator('iframe[title="みんな"]') : page;
       const card = frame.locator(".koekata-forecast-card");
+      if (wide) {
+        // 欄の中では、説明のカードで木を隠さないよう最初は閉じている。桜を押すと開く
+        await expect(frame.getByRole("heading", { name: "みんな" })).toBeVisible();
+        await page.waitForTimeout(600);
+        await expect(card).toHaveCount(0);
+        await frame.locator(".koekata-sakura-forecast").click();
+      }
       await expect(card).toBeVisible();
       const cardBox = (await card.boundingBox())!;
       const storyBox = (await frame.locator(".minna-sakura-story").boundingBox())!;
