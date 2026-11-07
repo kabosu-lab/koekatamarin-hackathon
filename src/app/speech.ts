@@ -88,8 +88,11 @@ export function joinResults(results: ArrayLike<ArrayLike<{ transcript: string }>
   return { finalText, interim };
 }
 
-/** 読み上げが終わってから、これだけの間は、読み上げた文と重なる聞き取りを捨てる（0-3l） */
-const ECHO_WINDOW_MS = 20_000;
+/**
+ * 読み上げが終わってから、これだけの間は、読み上げた文と重なる聞き取りを捨てる（0-3l）。
+ * 拾い込みは話し終えた直後の残り音だけなので短くする（長いと、本人が後で同じ言葉を言ったときに捨ててしまう）
+ */
+const ECHO_WINDOW_MS = 8_000;
 const spokenLog: { text: string; endedAt: number }[] = [];
 
 /** パートナーがこれから読み上げる文を覚えておく。聞き取りがそれを拾っても本人の言葉にしない */
