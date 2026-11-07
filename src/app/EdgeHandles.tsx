@@ -82,10 +82,12 @@ export function EdgeHandles() {
       { delayMs: 600, limitMs: WAIT_MS, ready: settledFor(() => root.dataset.stripReady === "true", 1200) },
     );
     // 帯が整わない（裏の読み込みが止められているなど）ときは、待ち切る少し前に棒だけ揺らす
+    let stopFallback = () => {};
     const fallback = window.setTimeout(() => {
-      if (cancelled || root.dataset.edgeHint) return;
+      // 帯が整っていれば、覗きのある本線に任せる（約束のカードを読んでいる間など）
+      if (cancelled || root.dataset.edgeHint || root.dataset.stripReady === "true") return;
       stop();
-      whenCalm(
+      stopFallback = whenCalm(
         () => {
           markHintSeen(EDGE_HINT_KEY);
           root.dataset.edgeHint = "shown";
@@ -99,6 +101,7 @@ export function EdgeHandles() {
       cancelled = true;
       window.removeEventListener(STRIP_LAND_EVENT, onMoved);
       stop();
+      stopFallback();
       window.clearTimeout(fallback);
       for (const timer of timers) window.clearTimeout(timer);
     };

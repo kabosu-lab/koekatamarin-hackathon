@@ -121,3 +121,34 @@ test("動きを減らす設定では、揺れも指の印も出さない", async
   await expect(page.locator(".edge-handle").first()).toBeVisible();
   await ctx.close();
 });
+
+test("本当の初回（印も cookie もない）：注意のカードを読んで閉じたあとで、棒の覗きと指の印が出る", async ({ browser }) => {
+  // 設定の storageState（約束を読んだ印の cookie）を使わず、まっさらな人として開く
+  const ctx = await browser.newContext({ hasTouch: true, isMobile: true, viewport: { width: 390, height: 844 }, storageState: { cookies: [], origins: [] } });
+  await ctx.addInitScript(() => {
+    const w = window as typeof window & { __maxShift?: number };
+    w.__maxShift = 0;
+    const sample = () => {
+      const home = document.querySelector<HTMLElement>(".retro-home");
+      if (home?.style.transform) w.__maxShift = Math.max(w.__maxShift ?? 0, Math.abs(new DOMMatrixReadOnly(home.style.transform).m41));
+      requestAnimationFrame(sample);
+    };
+    requestAnimationFrame(sample);
+  });
+  const page = await ctx.newPage();
+  await page.goto("/");
+  const card = page.getByRole("dialog", { name: "最初にお伝えすること" });
+  await expect(card).toBeVisible();
+  // カードを読んでいる間は出さない（帯が整う時間も、手ほどきの待ち時間も過ぎるまで読む）
+  await page.waitForTimeout(20_000);
+  await expect(page.locator("html[data-edge-hint]")).toHaveCount(0);
+  await expect(page.locator(".wheel-hint")).toHaveCount(0);
+  // 閉じるタップでは取り消さない
+  await card.getByRole("button", { name: "わかった" }).click();
+  await expect(card).toHaveCount(0);
+  await expect(page.locator("html[data-edge-hint='shown']")).toHaveCount(1, { timeout: 20_000 });
+  await expect.poll(() => page.evaluate(() => (window as typeof window & { __maxShift?: number }).__maxShift ?? 0), { timeout: 5000 }).toBeGreaterThan(10);
+  await expect(page.locator(".wheel-hint")).toBeVisible({ timeout: 20_000 });
+  await page.screenshot({ path: test.info().outputPath("本当の初回-指の印.png") });
+  await ctx.close();
+});

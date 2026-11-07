@@ -6,8 +6,12 @@
 export const EDGE_HINT_KEY = "koekata_hint_edge";
 export const WHEEL_HINT_KEY = "koekata_hint_wheel";
 
+/** 残せなかったときも、開いている間は「見せた」を覚えておく（同じページで二度見せない） */
+const shownHere = new Set<string>();
+
 /** まだ見せていないか。読めなければ見せない */
 export function hintPending(key: string): boolean {
+  if (shownHere.has(key)) return false;
   try {
     return window.localStorage.getItem(key) !== "1";
   } catch {
@@ -16,6 +20,7 @@ export function hintPending(key: string): boolean {
 }
 
 export function markHintSeen(key: string) {
+  shownHere.add(key);
   try {
     window.localStorage.setItem(key, "1");
   } catch {
@@ -37,27 +42,34 @@ export function calm(): boolean {
 }
 
 /**
- * 落ち着くまで待ってから run する。待てるのは limitMs まで。取り消すときは戻り値を呼ぶ。
- * 指やキーで触られたら、その回は見せない（触っている人の邪魔をしない）
+ * 落ち着くまで待ってから run する。取り消すときは戻り値を呼ぶ。
+ * delayMs と limitMs は、最初に落ち着いた時刻から数える（最初の約束のカードや試用の注意を読んでいる間は数えない）。
+ * 落ち着いているときに指やキーで触られたら、その回は見せない（触っている人の邪魔をしない）。
+ * カードを閉じるタップのように、落ち着いていないときの触れでは取り消さない
  */
 export function whenCalm(run: () => void, { delayMs, limitMs, ready = () => true }: { delayMs: number; limitMs: number; ready?: () => boolean }) {
-  const began = performance.now();
+  let began = 0;
   let timer = 0;
   let stopped = false;
   const stop = () => {
     stopped = true;
     window.clearTimeout(timer);
-    document.removeEventListener("pointerdown", stop, true);
-    document.removeEventListener("touchstart", stop, true);
-    document.removeEventListener("keydown", stop, true);
+    document.removeEventListener("pointerdown", onTouch, true);
+    document.removeEventListener("touchstart", onTouch, true);
+    document.removeEventListener("keydown", onTouch, true);
   };
-  document.addEventListener("pointerdown", stop, true);
-  document.addEventListener("touchstart", stop, true);
-  document.addEventListener("keydown", stop, true);
+  const onTouch = () => {
+    if (calm()) stop();
+  };
+  document.addEventListener("pointerdown", onTouch, true);
+  document.addEventListener("touchstart", onTouch, true);
+  document.addEventListener("keydown", onTouch, true);
   const check = () => {
     if (stopped) return;
-    if (performance.now() - began > limitMs) return stop();
-    if (performance.now() - began >= delayMs && ready() && calm()) {
+    const isCalm = calm();
+    if (!began && isCalm) began = performance.now();
+    if (began && performance.now() - began > limitMs) return stop();
+    if (began && performance.now() - began >= delayMs && ready() && isCalm) {
       stop();
       run();
       return;

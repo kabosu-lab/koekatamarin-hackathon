@@ -62,6 +62,15 @@ const page = () => document.querySelector<HTMLElement>("body > main, main");
 const swipes = () =>
   document.documentElement.dataset.embed !== "true" && document.documentElement.dataset.pane !== "true" && !window.matchMedia(WIDE_QUERY).matches;
 
+/** 外側（話す画面）の帯が整っているか。左右の画面（iframe）の中から見る。読めなければ整っていないものとする */
+function parentStripReady(): boolean {
+  try {
+    return window.parent.document.documentElement.dataset.stripReady === "true";
+  } catch {
+    return false;
+  }
+}
+
 /** 指を置いた所から外へ向かって、横にスクロールできる入れ物（カルーセル、チップの列）があるか */
 function insideSideScroller(target: Element | null): boolean {
   for (let node = target; node && node !== document.body; node = node.parentElement) {
@@ -220,6 +229,9 @@ export function SwipeNav() {
     let landscape = false;
     // 奥の画面か。奥では横画面でも左右で戻る
     let deep = false;
+    // 0-3j：左右の画面の中から、輪の端の先へ動かしてよいか（奥の画面ではなく、外側の帯が整っている）。
+    // 整う前は、反対の端の画面がまだ読み込まれていない箱に着かないよう、端の先は今までどおり重くして元へ戻す
+    let ring = false;
     let still = false;
     // 速さを出すための、直近2回の指の位置と時刻
     let recent: { x: number; t: number }[] = [];
@@ -244,7 +256,7 @@ export function SwipeNav() {
     const reset = () => {
       // 0-2z：帯をつかんでいる途中で指が取り消されたら（touchcancel）、帯を元の位置へ戻す
       if (dragging && banded) strip.settle(bandAt, 0, stripRest());
-      if (dragging && paneMode) window.parent.koekataStrip?.settle(bandAt, 0, base as -1 | 1, "push", !deep);
+      if (dragging && paneMode) window.parent.koekataStrip?.settle(bandAt, 0, base as -1 | 1, "push", ring);
       banded = false;
       dropPeek();
       delete document.documentElement.dataset.swiping;
@@ -292,14 +304,15 @@ export function SwipeNav() {
         if (paneMode) {
           dragging = true;
           base = (window.frameElement as HTMLElement | null)?.dataset.side === "left" ? 1 : -1;
+          ring = !deep && parentStripReady();
         } else if (pathname === SWIPE_HOME && !deep && !landscape && window.self === window.top && stripReady()) {
           dragging = true;
           banded = true;
         }
       }
       if (paneMode) {
-        bandAt = bandOffset(base, dx, !deep);
-        window.parent.koekataStrip?.drag(bandAt, !deep);
+        bandAt = bandOffset(base, dx, ring);
+        window.parent.koekataStrip?.drag(bandAt, ring);
         return;
       }
       if (banded) {
@@ -353,9 +366,11 @@ export function SwipeNav() {
         }
         // 左右の画面の中から：払った向きの輪の隣へ（0-3j。端の先は反対の端の画面）。
         // 奥の画面では左右どちらへ払っても話す画面へ戻る（0-2p）
+        // 帯が整う前の端の先（ring でない）は、元の位置へ戻す
         let to: number = base;
-        if (next) to = deep ? 0 : base + (dx < 0 ? -1 : 1);
-        window.parent.koekataStrip?.settle(bandOffset(base, dx, !deep), velocity, to, "push", !deep);
+        const outward = (base === -1 && dx < 0) || (base === 1 && dx > 0);
+        if (next) to = deep ? 0 : ring || !outward ? base + (dx < 0 ? -1 : 1) : base;
+        window.parent.koekataStrip?.settle(bandOffset(base, dx, ring), velocity, to, "push", ring);
         return;
       }
       // 左右の画面の中では、指に付かなかった払い方でも、その中では移らない（外側の帯だけが動く）
