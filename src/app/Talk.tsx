@@ -64,7 +64,7 @@ const WHEEL_CHIPS: (ChipItem & { href: string })[] = [
   { id: "minna", label: "みんな", code: "M-01", icon: "people", href: "/minna", description: "みんなの投稿を見て、応援や返事を送れます" },
   { id: "today", label: "今日の3人", code: "T-03", icon: "heart", href: "/today", description: "今日話してみるとよさそうな3人を、パートナーが選びます" },
   { id: "inbox", label: "受信箱", code: "I-02", icon: "inbox", href: "/inbox", description: "あなたに届いた返事を読めます" },
-  { id: "room", label: "自習室（一緒に勉強する）", code: "S-04", icon: "book", href: "/study/room", description: "みんなと一緒に勉強する部屋に入ります" },
+  { id: "room", label: "自習室", code: "S-04", icon: "book", href: "/study/room", description: "みんなと一緒に勉強する部屋に入ります" },
   { id: "chie", label: "校内の知恵", code: "K-05", icon: "idea", href: "/chie", description: "校内で広がっている知恵を探せます" },
   { id: "goals", label: "頑張りたいこと", code: "G-06", icon: "flag", href: "/me?open=goals", description: "頑張りたいことを書いて、みんなに言っておけます" },
   { id: "daily", label: "日報・日記", code: "D-07", icon: "note", href: "/me?open=daily", description: "今日のことを書き残せます" },

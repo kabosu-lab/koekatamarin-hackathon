@@ -33,12 +33,13 @@ describe("layoutOf", () => {
     const right = layoutOf(1);
     expect(right.x).toBe(96);
     expect(right.scale).toBeCloseTo(0.72);
-    expect(right.opacity).toBeCloseTo(0.55);
+    // 両わきは透かさない（0-2o の続き）。薄く見せるのは CSS で色を落とす
+    expect(right.opacity).toBe(1);
     expect(right.center).toBe(false);
     const far = layoutOf(-2);
     expect(far.x).toBe(-192);
     expect(far.scale).toBeCloseTo(0.58);
-    expect(far.opacity).toBeCloseTo(0.35);
+    expect(far.opacity).toBe(1);
     expect(far.y).toBe(40);
   });
   it("左右は対称で、弧に沿って傾く", () => {

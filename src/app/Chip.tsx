@@ -1,4 +1,4 @@
-import type { HTMLAttributes } from "react";
+import type { CSSProperties, HTMLAttributes } from "react";
 import { Icon, type IconName } from "./Icon";
 import "./chip.css";
 
@@ -36,7 +36,10 @@ export function Chip({
           {item.badge}
         </span>
       )}
-      <span className="chip-label">{item.label}</span>
+      {/* 字数を CSS に渡し、長い名前も1行に収まる字の大きさにする（ホイールのカルーセル） */}
+      <span className="chip-label" style={{ "--chip-label-chars": [...item.label].length } as CSSProperties}>
+        {item.label}
+      </span>
       <span className="chip-code" aria-hidden="true">
         {item.code}
       </span>
