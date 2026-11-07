@@ -209,7 +209,10 @@ function PanelPeople({ story, plan, run, tip }: { story: Story; plan: StoryPlan;
     const bottom = Math.max(...items.map((item) => item.offsetTop + item.offsetHeight));
     const left = Math.min(...items.map((item) => item.offsetLeft));
     const right = Math.max(...items.map((item) => item.offsetLeft + item.offsetWidth));
-    if (top < -0.5 || left < -0.5 || bottom > box.clientHeight + 0.5 || right > box.clientWidth + 0.5) {
+    // 動きのないときは、実際の見え方（scroll の大きさ）でも確かめる
+    const still = typeof box.getAnimations !== "function" || box.getAnimations({ subtree: true }).length === 0;
+    const overflowing = still && (box.scrollHeight > box.clientHeight + 1 || box.scrollWidth > box.clientWidth + 1);
+    if (overflowing || top < -0.5 || left < -0.5 || bottom > box.clientHeight + 0.5 || right > box.clientWidth + 0.5) {
       setFit((current) => ({ ...current, shown: current.shown - 1 }));
     }
   }, [fit]);
@@ -239,7 +242,20 @@ function PanelPeople({ story, plan, run, tip }: { story: Story; plan: StoryPlan;
   const shown = people.slice(0, Math.max(1, fit.shown));
   const more = story.morePeople + people.length - shown.length;
   return (
-    <div ref={cloud} className="so-far-cloud" data-more={more} style={css({ "--count": shown.length })}>
+    <div
+      ref={cloud}
+      className="so-far-cloud"
+      data-more={more}
+      style={css({ "--count": shown.length })}
+      onAnimationEnd={(event) => {
+        // 名前が出そろったあとに、実際の見え方でもう一度確かめる（置き場の測り方では拾えない端数のはみ出し）
+        const box = event.currentTarget;
+        if (box.getAnimations({ subtree: true }).length > 0) return;
+        if (box.scrollHeight > box.clientHeight + 1 || box.scrollWidth > box.clientWidth + 1) {
+          setFit((current) => (current.shown > 1 ? { ...current, shown: current.shown - 1 } : current));
+        }
+      }}
+    >
       {centerOut(shown).map((person) => {
         const fresh = run && plan.newPeople.has(person.id);
         return (
