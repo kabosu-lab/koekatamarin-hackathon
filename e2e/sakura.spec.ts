@@ -52,8 +52,11 @@ test("前に見たときより葉が増えていたら、増えた分が飛ん�
   const seen = Number(await page.evaluate(() => localStorage.getItem("koekata_sakura_seen_leaves")));
   await page.evaluate((count) => localStorage.setItem("koekata_sakura_seen_leaves", String(count - 2)), seen);
   await page.reload();
-  await expect(page.getByRole("status").filter({ hasText: "+2枚" })).toBeVisible();
-  await expect.poll(() => page.evaluate(() => localStorage.getItem("koekata_sakura_seen_leaves"))).toBe(String(seen));
+  // 並んで動くほかのテストが葉を増やすことがあるので、2枚以上ふえていればよい
+  const grew = page.getByRole("status").filter({ hasText: /^\+\d+枚$/ });
+  await expect(grew).toBeVisible();
+  expect(Number((await grew.innerText()).replace(/\D/g, ""))).toBeGreaterThanOrEqual(2);
+  await expect.poll(async () => Number(await page.evaluate(() => localStorage.getItem("koekata_sakura_seen_leaves")))).toBeGreaterThanOrEqual(seen);
 });
 
 test("校内の桜の画面にも、一行の説明と春の見通しの3行がある", async ({ page }) => {
