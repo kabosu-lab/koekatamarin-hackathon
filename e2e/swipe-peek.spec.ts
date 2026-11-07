@@ -210,9 +210,14 @@ test("帯：左の画面で人を切り替えると、話す画面と右の画�
   await expect(page.locator('.talk[data-viewer="青木 ひより"]')).toBeVisible();
   // 右のみんなも、生徒の画面（職員室の札がない）。左の画面が入口へ戻って読み込み終わってから
   await stripLoaded(page);
-  expect(await goStrip(page, "/minna")).toBe(true);
+  // 読み直しの直後は、届きかけの読み込みが落ち着くまで待つ（重いときに帯が元の位置へ描き直されることがある）
+  await page.waitForLoadState("networkidle");
   const right = page.frameLocator('.wide-panel[data-side="right"] iframe');
-  await expect(right.getByRole("group", { name: "チャネルで絞る" }).getByRole("button", { name: "すべて" })).toBeVisible();
+  await expect(async () => {
+    expect(await goStrip(page, "/minna")).toBe(true);
+    await expect(page.locator('.device-row[data-pane="right"]')).toHaveCount(1, { timeout: 2000 });
+    await expect(right.getByRole("group", { name: "チャネルで絞る" }).getByRole("button", { name: "すべて" })).toBeVisible({ timeout: 3000 });
+  }).toPass({ timeout: 20000 });
   await expect(right.getByRole("group", { name: "チャネルで絞る" }).getByRole("button", { name: "職員室" })).toHaveCount(0);
   await context.close();
 });
