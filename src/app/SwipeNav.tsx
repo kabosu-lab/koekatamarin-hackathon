@@ -5,7 +5,7 @@ import { useEffect } from "react";
 import { isDeep, SWIPE_HOME, SWIPE_SCREENS, swipeTarget } from "@/lib/swipe-nav";
 import { WIDE_QUERY } from "@/lib/wide";
 import { Peek, remember, screenOf } from "./swipe-peek";
-import { holdStrip, paneFromUrl, STRIP_LAND_EVENT, strip, stripReady, stripRest } from "./strip";
+import { holdStrip, paneFromUrl, repairPanes, STRIP_LAND_EVENT, strip, stripReady, stripRest } from "./strip";
 
 /**
  * 操作の途中の指の動きを、画面の移動にしない場所。
@@ -169,9 +169,25 @@ export function SwipeNav() {
     window.koekataStrip = strip;
     // 帯を動かせるようになった印（html[data-strip-ready]）。左右の画面の読み込みを見て付け外しする（画面テストもこれを待つ）
     const root = document.documentElement;
+    // 左右の画面があるのに 3 秒たっても整わなければ、左右の画面を入口から読み直す
+    let waitingSince = 0;
     const watchReady = window.setInterval(() => {
-      if (stripReady()) root.dataset.stripReady = "true";
-      else delete root.dataset.stripReady;
+      if (stripReady()) {
+        root.dataset.stripReady = "true";
+        waitingSince = 0;
+        return;
+      }
+      delete root.dataset.stripReady;
+      const panes = document.querySelectorAll('.device-row > .wide-panel[data-mode="pane"] iframe').length;
+      if (panes < 2 || root.dataset.stripHold === "true") {
+        waitingSince = 0;
+        return;
+      }
+      if (!waitingSince) waitingSince = performance.now();
+      else if (performance.now() - waitingSince > 3000) {
+        repairPanes();
+        waitingSince = 0;
+      }
     }, 250);
     const onPop = () => {
       if (!document.querySelector(".device-row")) return;
