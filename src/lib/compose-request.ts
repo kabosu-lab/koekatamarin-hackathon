@@ -269,8 +269,21 @@ export async function handleDraft(
 /** 送った直後の取り消し。 */
 export function handleUndo(destination: PostDestination, viewerId: string, input: unknown, now: Date = new Date(), db?: DatabaseSync) {
   const { postId } = fields(input);
+  // 0-3d：カードを取り消したら、一緒に作ったありがとうの記録も消す（封筒と数が残らないように）
+  const card =
+    db && typeof postId === "string"
+      ? (db.prepare("SELECT author_id, asked_person_id, body, subject FROM posts WHERE id = ?").get(postId) as
+          | { author_id: string; asked_person_id: string | null; body: string; subject: string | null }
+          | undefined)
+      : undefined;
   if (typeof postId !== "string" || !destination.undoPost(viewerId, postId, now)) {
     return { status: 409, body: { error: "もう取り消せません" } };
+  }
+  if (db && card?.asked_person_id && cardKind(card.subject)) {
+    db.prepare(
+      `DELETE FROM thanks WHERE id = (SELECT id FROM thanks WHERE from_person_id = ? AND to_person_id = ? AND message = ?
+       ORDER BY created_at DESC, rowid DESC LIMIT 1)`,
+    ).run(card.author_id, card.asked_person_id, card.body.trim());
   }
   if (db) noteUndone(db, viewerId, now);
   return { status: 200, body: { ok: true } };

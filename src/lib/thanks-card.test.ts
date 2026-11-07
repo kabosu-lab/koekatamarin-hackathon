@@ -4,7 +4,7 @@ import { join } from "node:path";
 import type { DatabaseSync } from "node:sqlite";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createScriptedClaude } from "./claude/scripted";
-import { type DraftStreamEvent, handlePublish, prepareDraftStream } from "./compose-request";
+import { type DraftStreamEvent, handlePublish, handleUndo, prepareDraftStream } from "./compose-request";
 import { openDatabase } from "./db";
 import { createDummyTeams } from "./destination/dummy-teams";
 import { resetTeamsBridge, sendPostToTeams } from "./destination/teams-bridge";
@@ -79,6 +79,21 @@ describe("カードを送る", () => {
     expect(outcome.status).toBe(200);
     expect(listInbox(db, "noda").map((item) => item.subject)).toContain("【ありがとう】野田 翔さんへ");
     expect(listThanks(db, "noda")[0]).toMatchObject({ fromName: "青木 ひより", message: "野田 翔さん、ありがとう！" });
+  });
+
+  it("送った直後に取り消すと、ありがとうの記録も消える", async () => {
+    const before = listThanks(db, "noda").length;
+    const outcome = await handlePublish(
+      scripted,
+      teams,
+      "aoki",
+      { subject: "【ありがとう】野田 翔さんへ", text: "取り消すカード", channelId: "thanks", askedPersonId: "noda" },
+      db,
+    );
+    expect(listThanks(db, "noda").length).toBe(before + 1);
+    if (outcome.status !== 200) throw new Error("送れなかった");
+    expect(handleUndo(teams, "aoki", { postId: outcome.body.postId }, new Date(), db).status).toBe(200);
+    expect(listThanks(db, "noda").length).toBe(before);
   });
 
   it("札をふつうの種類に戻したら、ありがとうの記録は作らない", async () => {
