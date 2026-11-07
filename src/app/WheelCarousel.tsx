@@ -2,6 +2,7 @@
 
 import { type Ref, useEffect, useImperativeHandle, useRef, useState } from "react";
 import {
+  CENTER_SCALE,
   START_DEGREES,
   TICK_DEGREES,
   VISIBLE,
@@ -43,6 +44,35 @@ const FADE_MS = 160;
 
 const reducedMotion = () =>
   typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+/** チップの基準の幅（chip.css の --chip-width の初めの値） */
+const BASE_CHIP = 112;
+/** これより小さくすると名前が読めない */
+const MIN_CHIP = 56;
+/** 真ん中のチップ（拡大した分も含む）の高さを、窓の高さのこの割合までにする */
+const CHIP_SHARE = 0.38;
+/** チップと説明を、窓の上下の端からこれだけ離す */
+const EDGE = 8;
+
+/**
+ * 窓（置き場所の箱）の高さに合わせて、チップの大きさを決め、チップと説明の一文を合わせて窓の上下のまん中に寄せる。
+ * 説明は必ず窓の中に収める。チップの幅は --chip-width で渡し、基準に対する倍率を返す（横の間隔に使う）。
+ */
+function fitToWindow(root: HTMLElement | null, caption: HTMLElement | null): number {
+  const height = root?.parentElement?.clientHeight ?? 0;
+  if (!root || height <= 0) return 1;
+  const width = Math.max(MIN_CHIP, Math.min(BASE_CHIP, (height * CHIP_SHARE) / (1.4 * CENTER_SCALE)));
+  root.style.setProperty("--chip-width", `${width.toFixed(1)}px`);
+  // 真ん中からの上下（チップは 5:7、真ん中は CENTER_SCALE 倍。説明の上は retro.css の top と同じ式）
+  const top = -(width * 1.4 * CENTER_SCALE) / 2;
+  const bottom = width * 0.84 + 14 + (caption?.offsetHeight || 48);
+  let shift = -(top + bottom) / 2;
+  shift = Math.max(shift, -height / 2 + EDGE - top);
+  // 説明が窓の下で切れないことを、いちばん先に守る
+  shift = Math.min(shift, height / 2 - EDGE - bottom);
+  root.style.top = `calc(50% + ${shift.toFixed(1)}px)`;
+  return width / BASE_CHIP;
+}
 
 function transformOf(x: number, y: number, rotate: number, scale: number): string {
   return `translate3d(${x.toFixed(2)}px, ${y.toFixed(2)}px, 0) rotate(${rotate.toFixed(2)}deg) scale(${scale.toFixed(4)})`;
@@ -102,6 +132,7 @@ export function WheelCarousel({
     slotItems: slotItems,
     centerSlot: -1,
     captionId: "",
+    unit: 1, // 窓に合わせたチップの大きさ（基準の 112px に対する倍率）。横の間隔もこれで縮める
     timers: [] as number[],
   });
   // 最新の呼び先を ref に（rAF とタイマーから古いものを呼ばない）
@@ -161,6 +192,8 @@ export function WheelCarousel({
       const el = captionRef.current;
       if (!el) return;
       el.textContent = item ? (item.description ? `${item.label}：${item.description}` : item.label) : "";
+      // 文の長さで行数が変わるので、チップと説明の置き場所を測り直す
+      s.unit = fitToWindow(rootRef.current, el);
     }
 
     /** 5枚の置き場所を書く。ここで書くのは transform と opacity だけ */
@@ -181,7 +214,7 @@ export function WheelCarousel({
         if (s.cancelHint) scale *= 0.96;
         const el = slotRefs.current[slot];
         if (!el) continue;
-        el.style.transform = transformOf(layout.x, layout.y, layout.rotate, scale);
+        el.style.transform = transformOf(layout.x * s.unit, layout.y * s.unit, layout.rotate, scale);
         el.style.opacity = layout.opacity.toFixed(3);
       }
       if (center !== s.centerSlot) {
@@ -326,8 +359,9 @@ export function WheelCarousel({
       s.captionId = "";
       s.lastMoveAt = performance.now();
       setPhase("turning");
-      paint(s.lastMoveAt);
+      // 先に説明を書いて窓に合わせた大きさを決めてから、チップを置く
       writeCaption();
+      paint(s.lastMoveAt);
       startLoop();
     }
 
@@ -387,6 +421,21 @@ export function WheelCarousel({
         toIdle();
       },
     };
+  }, []);
+
+  // 窓（置き場所の箱）の大きさが変わったら、チップの大きさと置き場所を合わせ直す
+  useEffect(() => {
+    const root = rootRef.current;
+    const box = root?.parentElement;
+    if (!root || !box) return;
+    const refit = () => {
+      state.current.unit = fitToWindow(root, captionRef.current);
+    };
+    refit();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(refit);
+    observer.observe(box);
+    return () => observer.disconnect();
   }, []);
 
   // 外されたら、ループとタイマーを止め、暗転の印を外す
