@@ -216,6 +216,33 @@ describe("読む", () => {
     expect(db.prepare("SELECT count(*) AS c FROM posts WHERE body = '同じ言葉'").get()).toEqual({ c: 1 });
   });
 
+  it("同じ本文でも、限定公開の投稿は Teams の公開投稿と結び付けず、その返事を Teams へ送らない", async () => {
+    const own = createDummyTeams(db).createPost("saeki", "study", "限られた人への言葉", { scope: "self" });
+    await syncFromTeams(db, fakeGraph([message("m-scope", "佐伯 みどり", "限られた人への言葉")]).fetcher);
+    expect(db.prepare("SELECT count(*) AS c FROM teams_links WHERE local_id = ?").get(own)).toEqual({ c: 0 });
+    expect(db.prepare("SELECT count(*) AS c FROM posts WHERE body = '限られた人への言葉'").get()).toEqual({ c: 2 });
+    const send = fakeGraph();
+    await sendReplyToTeams(db, "ogawara", "r-scope", own, "返事", send.fetcher);
+    expect(send.calls).toEqual([]);
+  });
+
+  it("同じ文の返事でも、別の投稿の返事とは結び付けない", async () => {
+    const dummy = createDummyTeams(db);
+    const first = dummy.createPost("saeki", "study", "一つめの投稿");
+    dummy.createReply("ogawara", first, "了解です");
+    await syncFromTeams(db, fakeGraph([message("m-b", "佐伯 みどり", "二つめの投稿", [message("r-b", "大河原 誠", "了解です")])]).fetcher);
+    const second = (db.prepare("SELECT id FROM posts WHERE body = '二つめの投稿'").get() as { id: string }).id;
+    expect(db.prepare("SELECT count(*) AS c FROM replies WHERE post_id = ? AND body = '了解です'").get(second)).toEqual({ c: 1 });
+  });
+
+  it("取り消した投稿に Teams で返事が付いても、同期は止まらない", async () => {
+    await syncFromTeams(db, fakeGraph([message("m-del", "佐伯 みどり", "あとで消す投稿")]).fetcher);
+    const gone = (db.prepare("SELECT id FROM posts WHERE body = 'あとで消す投稿'").get() as { id: string }).id;
+    db.prepare("DELETE FROM posts WHERE id = ?").run(gone);
+    await syncFromTeams(db, fakeGraph([message("m-del", "佐伯 みどり", "あとで消す投稿", [message("r-del", "大河原 誠", "返事")]), message("m-next", "佐伯 みどり", "次の投稿")]).fetcher);
+    expect(db.prepare("SELECT count(*) AS c FROM posts WHERE body = '次の投稿'").get()).toEqual({ c: 1 });
+  });
+
   it("本文のないカードと、対応する人がいない投稿は取り込まない", async () => {
     const before = db.prepare("SELECT count(*) AS c FROM posts").get();
     await syncFromTeams(

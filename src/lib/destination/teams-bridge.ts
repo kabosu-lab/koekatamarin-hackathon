@@ -296,6 +296,9 @@ export async function sendReplyToTeams(db: DatabaseSync, viewerId: string, reply
   if (teamsMode() !== "graph") return;
   const parent = teamsIdOf(db, postId);
   if (!parent) return;
+  // 全員向けでない投稿への返事は、Teams に印があっても送らない（取り違えの最後の守り）
+  const scope = (db.prepare("SELECT scope FROM posts WHERE id = ?").get(postId) as { scope: string } | undefined)?.scope;
+  if (scope !== "everyone") return;
   try {
     const config = readGraphConfig();
     const token = await getAccessToken(fetcher, Date.now(), trialTeamsSender() ?? viewerId);
@@ -388,11 +391,17 @@ function matchPerson(db: DatabaseSync, message: GraphMessage, linked: Record<str
 /**
  * こえかたから送った直後で印がまだない投稿を、二重に取り込まない。
  * メンションを付けて送った分は、Teams では「@」が外れ、頭に相手の名前が付くので、それも同じものとみなす。
+ * 照合するのは、Teams へ送られうるものだけ：投稿は同じチャネルの全員向けで確認の印のないもの、返事は同じ投稿の中のもの。
+ * 限定公開の投稿を Teams の公開投稿と結び付けると、その投稿への返事が Teams へ流れ出てしまうため（Codex の点検・高）。
  */
-function unlinkedLocal(db: DatabaseSync, table: "posts" | "replies", authorId: string, body: string): string | null {
-  const rows = db
-    .prepare(`SELECT id, body FROM ${table} WHERE author_id = ? AND id NOT IN (SELECT local_id FROM teams_links) ORDER BY created_at DESC LIMIT 20`)
-    .all(authorId) as { id: string; body: string }[];
+function unlinkedLocal(db: DatabaseSync, table: "posts" | "replies", authorId: string, body: string, within: string): string | null {
+  const rows = (
+    table === "posts"
+      ? db.prepare(
+          "SELECT id, body FROM posts WHERE author_id = ? AND channel_id = ? AND scope = 'everyone' AND needs_look = 0 AND id NOT IN (SELECT local_id FROM teams_links) ORDER BY created_at DESC LIMIT 20",
+        )
+      : db.prepare("SELECT id, body FROM replies WHERE author_id = ? AND post_id = ? AND id NOT IN (SELECT local_id FROM teams_links) ORDER BY created_at DESC LIMIT 20")
+  ).all(authorId, within) as { id: string; body: string }[];
   const same = (local: string) => {
     const bare = local.replace(/@/g, "");
     return local === body || bare === body || body.endsWith(`\n${bare}`);
@@ -460,11 +469,12 @@ async function syncChannel(db: DatabaseSync, fetcher: Fetch, token: string, targ
 
 function importPost(db: DatabaseSync, message: GraphMessage, linked: Record<string, string>, channelId: string): string | null {
   const known = localIdOf(db, message.id);
-  if (known) return known;
+  // 取り消した投稿は印だけが残る。返事やリアクションを付けに行くと、外部キーで止まってチャネルの残りが読めなくなる
+  if (known) return db.prepare("SELECT 1 FROM posts WHERE id = ?").get(known) ? known : null;
   const text = plainText(message.body.content);
   const authorId = matchPerson(db, message, linked);
   if (!text || !authorId) return null;
-  const pending = unlinkedLocal(db, "posts", authorId, text);
+  const pending = unlinkedLocal(db, "posts", authorId, text, channelId);
   if (pending) {
     saveLink(db, pending, "post", message.id);
     return pending;
@@ -481,7 +491,7 @@ function importReply(db: DatabaseSync, reply: GraphMessage, postId: string, link
   const text = plainText(reply.body.content);
   const authorId = matchPerson(db, reply, linked);
   if (!text || !authorId) return;
-  const pending = unlinkedLocal(db, "replies", authorId, text);
+  const pending = unlinkedLocal(db, "replies", authorId, text, postId);
   if (pending) {
     saveLink(db, pending, "reply", reply.id);
     return;
