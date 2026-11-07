@@ -33,7 +33,7 @@ export async function handleTalk(
       claude,
       input,
       parsed
-        ? [speakerForPrompt(db, viewerId), memoryForPrompt(db, getDestination(db), viewerId), goalsForPrompt(db, viewerId), schoolPostsForPrompt(getDestination(db), viewerId)]
+        ? [speakerForPrompt(db, viewerId), memoryForPrompt(db, getDestination(db), viewerId), goalsForPrompt(db, viewerId), schoolPostsForPrompt(getDestination(db), viewerId, [...parsed.history.filter((m) => m.role === "user").map((m) => m.content), parsed.text].join(" "))]
             .filter(Boolean)
             .join("\n\n")
         : "",

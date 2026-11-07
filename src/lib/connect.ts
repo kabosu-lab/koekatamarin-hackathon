@@ -7,7 +7,7 @@ import { noteAskSuggested } from "./trophy-log";
 
 const MAX_TOKENS = 2000;
 const MIN_MESSAGES = 4;
-const POSTS_PER_PERSON = 5;
+const POSTS_PER_PERSON = 6;
 /** これより後は「一日の終わり」として声をかけてよい（日本時間） */
 const DAY_END_HOUR = 16;
 

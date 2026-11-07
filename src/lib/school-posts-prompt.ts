@@ -2,6 +2,8 @@ import type { PostDestination } from "./destination/types";
 import { recentFeed } from "./minna-feed";
 
 const POSTS_FOR_TALK = 6;
+/** 話に近い投稿は、最大この数まで先に入れる */
+const RELATED_FOR_TALK = 3;
 const BODY_CHARS = 120;
 
 /**
@@ -13,10 +15,28 @@ function roleOf(label: string): string {
   return /^[0-9０-９]年/.test(label) ? `生徒（${label}）` : `教職員（${label}）`;
 }
 
-export function schoolPostsForPrompt(destination: PostDestination, viewerId: string): string {
-  const feed = recentFeed(destination.listChannels(viewerId), (channelId) => destination.listPosts(viewerId, channelId), 30)
-    .filter(({ post }) => post.authorId !== viewerId && post.scope === "everyone" && !post.needsLook)
-    .slice(0, POSTS_FOR_TALK);
+/** 話の言葉から、投稿と照らし合わせる手がかり（カタカナ・漢字・英数の2文字以上のまとまり）を取り出す */
+export function topicWords(about: string): string[] {
+  const text = about.normalize("NFKC").replace(/\s+/g, "");
+  const words = text.match(/[ァ-ヶー]{2,}|[一-龠々]{2,}|[A-Za-z0-9]{2,}/g) ?? [];
+  return [...new Set(words)];
+}
+
+/**
+ * about：いまの話（本人の言葉）。話に近い投稿を先に、残りを新しい順で入れる。
+ * 同じ話の続きでは、同じ投稿が材料に残る（前の返事で名前を出した投稿が、次の返事で消えないように）
+ */
+export function schoolPostsForPrompt(destination: PostDestination, viewerId: string, about = ""): string {
+  const all = recentFeed(destination.listChannels(viewerId), (channelId) => destination.listPosts(viewerId, channelId), 60).filter(
+    ({ post }) => post.authorId !== viewerId && post.scope === "everyone" && !post.needsLook,
+  );
+  const words = topicWords(about);
+  const score = (body: string) => {
+    const flat = body.normalize("NFKC").replace(/\s+/g, "");
+    return words.filter((word) => flat.includes(word)).length;
+  };
+  const near = words.length === 0 ? [] : all.map((item) => ({ item, s: score(item.post.body) })).filter(({ s }) => s > 0).sort((a, b) => b.s - a.s).slice(0, RELATED_FOR_TALK).map(({ item }) => item);
+  const feed = [...near, ...all.filter((item) => !near.includes(item))].slice(0, POSTS_FOR_TALK);
   if (feed.length === 0) return "";
   const lines = feed.map(({ post, channel }) => {
     const body = post.body.replace(/\s+/g, " ").slice(0, BODY_CHARS);

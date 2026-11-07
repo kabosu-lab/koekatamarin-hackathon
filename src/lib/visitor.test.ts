@@ -153,7 +153,8 @@ describe("訪問者ごとの DB", () => {
     vi.stubEnv("KOEKATA_PUBLIC_NEW_PER_MINUTE", "3");
     vi.stubEnv("KOEKATA_PUBLIC", "1");
     vi.stubEnv("KOEKATA_DB_PATH", base);
-    const now = Date.UTC(2026, 10, 7, 12);
+    // 要求の中の判定は本当の時刻で数えるので、テストの時刻も本当の時刻にそろえる（壁の時計で結果が変わらないように）
+    const now = Date.now();
     const ids = Array.from({ length: 4 }, () => newVisitorId());
     for (const id of ids.slice(0, 3)) expect(visitorDatabase(id, base, now)).not.toBeNull();
     expect(visitorDatabase(ids[3], base, now + 1000)).toBeNull();

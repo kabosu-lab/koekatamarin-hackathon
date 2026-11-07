@@ -215,6 +215,17 @@ export const channels: SeedChannel[] = [
 
 export const posts: SeedPost[] = [
   {
+    // 動画の中心の話（台本第8版）：3D プリンターのことは、ものづくり部顧問の野田先生につながる
+    id: "post-making-4",
+    channelId: "making",
+    authorId: "noda",
+    kind: "notice",
+    body: "3D プリンター、放課後なら誰でも使えます。最初は名札くらいの小さいものから始めるのがおすすめです。ものづくり部の部屋にいるので、気軽にどうぞ🖨️",
+    createdAt: "2026-10-19T16:30:00+09:00",
+    replies: [],
+    likedBy: [],
+  },
+  {
     id: "post-ask-1",
     channelId: "making",
     authorId: "kinoshita",
