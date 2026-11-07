@@ -1,11 +1,20 @@
 "use client";
 
-import { type PointerEvent, type ReactNode, useRef } from "react";
+import { type PointerEvent, type ReactNode, useEffect, useRef, useState } from "react";
+import { hintPending, markHintSeen, reducedMotion, WHEEL_HINT_KEY, whenCalm } from "./first-hint";
+
+/** 輪のまわりの目盛りの点の数（0-3i (3)） */
+const TICKS = 24;
+/** 指の印が4分の1周なぞる長さ（CSS の .wheel-hint-finger と同じ） */
+const HINT_MS = 1800;
 
 /**
  * なぞる輪。真ん中には大きなボタン（押し続けて話す）を置く。触った場所で分ける：
  * 輪から始めた指はなぞり（機能のチップを選ぶ、0-1g(3)）、真ん中から始めた指は話すボタンのもの。
  * カリの音はカルーセルの側で鳴らす（二重に鳴らさない）。
+ *
+ * 0-3i：なぞれる輪だと分かるよう、まわりに目盛りのような薄い点を並べる。初めて開いたときだけ、
+ * 指の形の小さな印が輪を4分の1周なぞる動きを1回見せる（動きを減らす設定では見せない）。点と印は指を受けない。
  */
 export function ClickWheel({
   invite = false,
@@ -28,6 +37,26 @@ export function ClickWheel({
   children: ReactNode;
 }) {
   const last = useRef<number | null>(null);
+  const [hint, setHint] = useState(false);
+
+  useEffect(() => {
+    if (window.self !== window.top || !hintPending(WHEEL_HINT_KEY) || reducedMotion()) return;
+    let timer = 0;
+    // 端のつまみの棒の手ほどき（EdgeHandles）と重ならないよう、少し置いてから
+    const stop = whenCalm(
+      () => {
+        markHintSeen(WHEEL_HINT_KEY);
+        document.documentElement.dataset.wheelHint = "shown";
+        setHint(true);
+        timer = window.setTimeout(() => setHint(false), HINT_MS + 200);
+      },
+      { delayMs: 2600, limitMs: 20_000 },
+    );
+    return () => {
+      stop();
+      window.clearTimeout(timer);
+    };
+  }, []);
 
   function measure(event: PointerEvent<HTMLDivElement>) {
     const box = event.currentTarget.getBoundingClientRect();
@@ -67,6 +96,26 @@ export function ClickWheel({
         onAbort?.();
       }}
     >
+      <span className="wheel-ticks" aria-hidden="true">
+        {Array.from({ length: TICKS }, (_, index) => (
+          <i key={index} style={{ rotate: `${(360 / TICKS) * index}deg` }} />
+        ))}
+      </span>
+      {hint && (
+        <span className="wheel-hint" aria-hidden="true">
+          <span className="wheel-hint-finger">
+            <svg viewBox="0 0 24 24" width="100%" height="100%">
+              <path
+                d="M9 11V4.5a1.5 1.5 0 0 1 3 0V10l.4-.1a1.5 1.5 0 0 1 2.6.6l.1.4.4-.1a1.5 1.5 0 0 1 2.4 1l.1.3a1.5 1.5 0 0 1 2.5 1.1V16a6 6 0 0 1-6 6h-1a6 6 0 0 1-5-2.7l-2.6-4a1.5 1.5 0 0 1 2.3-1.9L9 15z"
+                fill="#fff"
+                stroke="#2a3640"
+                strokeWidth="1.4"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </span>
+        </span>
+      )}
       {children}
     </div>
   );

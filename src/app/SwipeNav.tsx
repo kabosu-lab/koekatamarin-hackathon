@@ -46,10 +46,13 @@ function whoAndLook(): string {
     .join("; ");
 }
 
-/** 左右の画面の中からの指の量を、帯の位置にする。帯の端の先は重くする */
-function bandOffset(base: number, dx: number): number {
+/**
+ * 左右の画面の中からの指の量を、帯の位置にする。0-3j：3つの画面は輪なので、端の先へもそのまま付いて動く
+ * （反対の端の画面が隣から入る。strip.ts）。奥の画面（ring = false）は話す画面へ戻るだけなので、端の先は重くする
+ */
+function bandOffset(base: number, dx: number, ring = true): number {
   const width = window.innerWidth || 1;
-  const outward = (base === -1 && dx < 0) || (base === 1 && dx > 0);
+  const outward = !ring && ((base === -1 && dx < 0) || (base === 1 && dx > 0));
   return base + (outward ? dx * 0.3 : dx) / width;
 }
 
@@ -241,7 +244,7 @@ export function SwipeNav() {
     const reset = () => {
       // 0-2z：帯をつかんでいる途中で指が取り消されたら（touchcancel）、帯を元の位置へ戻す
       if (dragging && banded) strip.settle(bandAt, 0, stripRest());
-      if (dragging && paneMode) window.parent.koekataStrip?.settle(bandAt, 0, base as -1 | 1);
+      if (dragging && paneMode) window.parent.koekataStrip?.settle(bandAt, 0, base as -1 | 1, "push", !deep);
       banded = false;
       dropPeek();
       delete document.documentElement.dataset.swiping;
@@ -295,8 +298,8 @@ export function SwipeNav() {
         }
       }
       if (paneMode) {
-        bandAt = bandOffset(base, dx);
-        window.parent.koekataStrip?.drag(bandAt);
+        bandAt = bandOffset(base, dx, !deep);
+        window.parent.koekataStrip?.drag(bandAt, !deep);
         return;
       }
       if (banded) {
@@ -348,14 +351,11 @@ export function SwipeNav() {
           strip.settle(dx / width, velocity, next ? (dx < 0 ? -1 : 1) : 0);
           return;
         }
-        // 左右の画面の中から：話す画面の側へ払えば戻る。奥の画面では左右どちらへ払っても戻る（0-2p）。
-        // 帯の端（話す画面と反対の側）には何もないので、元の位置へ戻る
-        let to = base as -1 | 1 | 0;
-        if (next) {
-          if (deep) to = 0;
-          else if ((base === -1 && dx > 0) || (base === 1 && dx < 0)) to = 0;
-        }
-        window.parent.koekataStrip?.settle(bandOffset(base, dx), velocity, to);
+        // 左右の画面の中から：払った向きの輪の隣へ（0-3j。端の先は反対の端の画面）。
+        // 奥の画面では左右どちらへ払っても話す画面へ戻る（0-2p）
+        let to: number = base;
+        if (next) to = deep ? 0 : base + (dx < 0 ? -1 : 1);
+        window.parent.koekataStrip?.settle(bandOffset(base, dx, !deep), velocity, to, "push", !deep);
         return;
       }
       // 左右の画面の中では、指に付かなかった払い方でも、その中では移らない（外側の帯だけが動く）

@@ -11,6 +11,11 @@ import { springSettled, springStep } from "@/lib/wheel-carousel";
  * URL は話す画面のまま、どこにいるかだけを ?pane=right / ?pane=left で表す（page.tsx がそれを読んで data-pane を描くので、
  * 再読み込み・戻る・bfcache でも食い違わない）。左右へ着いたときは pushState（ブラウザの「戻る」で話す画面へ戻る）。
  * 着いた知らせは STRIP_LAND_EVENT。左右の画面は中で router.refresh せず、画面の外にある間に読み直す（refreshPane）。
+ *
+ * 0-3j：3つの画面は輪につながっている（端で止めない）。o は 3 ごとに同じ並びに戻り、各画面は今の位置から
+ * いちばん近い所（-1.5〜1.5 画面の間）に並べ替えて描く。みんな（o = -1）からさらに左へ払うと（o → -2）、
+ * 履歴と設定が右から入ってくる。並べ替えは画面の外（1.5 画面より遠く）で起きるので、iframe は読み直さず、目にも見えない。
+ * 着いたら -1・0・1 のどれかに戻す。
  */
 
 /** 帯の位置を URL の ?pane= に合わせる（動かさず、履歴にも触らない）。描いたときや作り直されたときに使う */
@@ -43,10 +48,13 @@ export function refreshPane(side: "left" | "right") {
 export const STRIP_LAND_EVENT = "koekata:strip-land";
 
 export type StripApi = {
-  /** 帯を o の位置へ（指に付いて動かす） */
-  drag(o: number): void;
-  /** 離したあと、ばねで to へ吸い付く。v は離した瞬間の速さ（画面の幅／秒）。mode は履歴の残し方 */
-  settle(from: number, v: number, to: -1 | 0 | 1, mode?: "push" | "replace" | "none"): void;
+  /** 帯を o の位置へ（指に付いて動かす）。ring が false のときは輪にせず、端の先は何もない（奥の画面から戻るとき） */
+  drag(o: number, ring?: boolean): void;
+  /**
+   * 離したあと、ばねで to へ吸い付く。v は離した瞬間の速さ（画面の幅／秒）。mode は履歴の残し方。
+   * to は輪の上の位置で、-2（みんなの先の履歴と設定）や 2（履歴と設定の先のみんな）も取れる
+   */
+  settle(from: number, v: number, to: number, mode?: "push" | "replace" | "none", ring?: boolean): void;
   /** 今止まっている位置 */
   rest(): -1 | 0 | 1;
   /** 3つの画面の入口（/・/me・/minna）へのリンクなら、帯を動かして開く。動かしたら true */
@@ -157,12 +165,30 @@ function parts() {
   ] as const;
 }
 
-function apply(o: number) {
+/** 輪の上の位置を、-1・0・1 のどれかにそろえる */
+export function ringRest(o: number): -1 | 0 | 1 {
+  const value = ((((Math.round(o) + 1) % 3) + 3) % 3) - 1;
+  return value as -1 | 0 | 1;
+}
+
+/** from から見て、輪の上で to（-1・0・1）にいちばん近い位置（to, to ± 3 のどれか） */
+export function nearestOnRing(from: number, to: -1 | 0 | 1): number {
+  return [to - 3, to, to + 3].reduce((best, candidate) => (Math.abs(candidate - from) < Math.abs(best - from) ? candidate : best));
+}
+
+/** 輪のときは、各画面を今の位置からいちばん近い所（-1.5〜1.5 画面）に置く */
+function placeOf(base: number, o: number, ring: boolean): number {
+  const at = base + o;
+  if (!ring) return at;
+  return ((((at + 1.5) % 3) + 3) % 3) - 1.5;
+}
+
+function apply(o: number, ring = true) {
   const width = window.innerWidth || 1;
   for (const [element, base] of parts()) {
     if (!element) continue;
     element.style.willChange = "transform";
-    element.style.transform = `translateX(${(base + o) * width}px)`;
+    element.style.transform = `translateX(${placeOf(base, o, ring) * width}px)`;
   }
 }
 
@@ -222,15 +248,16 @@ function land(to: -1 | 0 | 1, mode: HistoryMode) {
 }
 
 export const strip: StripApi = {
-  drag(o) {
+  drag(o, ring = true) {
     cancelAnimationFrame(frame);
     document.documentElement.dataset.swiping = "true";
-    apply(o);
+    apply(o, ring);
   },
-  settle(from, v, to, mode: HistoryMode = "push") {
+  settle(from, v, target, mode: HistoryMode = "push", ring = true) {
     cancelAnimationFrame(frame);
+    const to = target;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      land(to, mode);
+      land(ringRest(to), mode);
       return;
     }
     let x = from;
@@ -240,9 +267,9 @@ export const strip: StripApi = {
       const dt = Math.min(0.05, Math.max(0, (now - last) / 1000));
       last = now;
       ({ x, v: velocity } = springStep(x, velocity, to, dt));
-      apply(x);
+      apply(x, ring);
       if (springSettled(x, velocity, to)) {
-        land(to, mode);
+        land(ringRest(to), mode);
         return;
       }
       frame = requestAnimationFrame(step);
@@ -256,7 +283,8 @@ export const strip: StripApi = {
     const to = path === "/" ? 0 : path === ROOTS.left ? 1 : path === ROOTS.right ? -1 : null;
     // 今いる画面の入口へのリンク（奥の画面の「‹ みんな」など）は、その画面の中で戻る
     if (to === null || to === stripRest()) return false;
-    strip.settle(stripRest(), 0, to);
+    // 0-3j：輪の上で近い向きへ動かす（みんなから「履歴と設定 ›」なら、さらに左へ）
+    strip.settle(stripRest(), 0, nearestOnRing(stripRest(), to));
     return true;
   },
 };

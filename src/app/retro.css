@@ -2194,3 +2194,183 @@ html[data-pane] :is(.feedback-fab, .feedback-thanks) {
   width: 24px;
   height: 24px;
 }
+
+/*
+ * 0-3i：話す画面の本体の左右の端、上下のまん中の、縦向きのつまみの棒（EdgeHandles）。押すか引くと、その側の画面へ移る。
+ * 本体（.retro-home）の箱を基準に置く（帯で本体と一緒に動く）
+ */
+.device-row > .retro-home {
+  position: relative;
+}
+
+.edge-handle {
+  position: absolute;
+  top: 50%;
+  z-index: 6;
+  display: grid;
+  place-items: center;
+  width: 14px;
+  height: 84px;
+  margin-top: -42px;
+  border-radius: 8px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.edge-handle[data-side="left"] {
+  --edge-out: -1;
+  left: 0;
+}
+
+.edge-handle[data-side="right"] {
+  --edge-out: 1;
+  right: 0;
+}
+
+.edge-handle-bar {
+  display: block;
+  width: 5px;
+  height: 44px;
+  border-radius: 3px;
+  background: rgb(40 52 62 / 34%);
+  box-shadow: inset 0 1px 1px rgb(255 255 255 / 35%), 0 1px 1px rgb(255 255 255 / 55%);
+  transition: background-color 120ms ease, height 120ms ease;
+}
+
+.edge-handle:hover .edge-handle-bar,
+.edge-handle:active .edge-handle-bar {
+  height: 52px;
+  background: rgb(40 52 62 / 52%);
+}
+
+.edge-handle:focus-visible {
+  outline: 3px solid var(--accent, #1f6f78);
+  outline-offset: -1px;
+}
+
+/* 初めて開いたときだけ、外へ一度揺れる */
+.edge-handle[data-nudge] .edge-handle-bar {
+  animation: edge-handle-nudge 1.2s ease-in-out 1;
+}
+
+@keyframes edge-handle-nudge {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  25% {
+    translate: calc(var(--edge-out) * 5px) 0;
+    background: rgb(40 52 62 / 60%);
+  }
+  50% {
+    translate: calc(var(--edge-out) * -1px) 0;
+  }
+  70% {
+    translate: calc(var(--edge-out) * 3px) 0;
+  }
+}
+
+@media (min-width: 600px) and (min-height: 561px) {
+  .edge-handle {
+    width: 22px;
+    height: 104px;
+    margin-top: -52px;
+  }
+
+  .edge-handle-bar {
+    width: 6px;
+    height: 56px;
+  }
+
+  .edge-handle:hover .edge-handle-bar,
+  .edge-handle:active .edge-handle-bar {
+    height: 64px;
+  }
+}
+
+/* 3列のときは左右に列が並ぶので出さない。欄の中にも出さない */
+@media (orientation: landscape) and (min-height: 600px) {
+  .edge-handle {
+    display: none;
+  }
+}
+
+html[data-embed] .edge-handle {
+  display: none;
+}
+
+/* 0-3i：なぞれる輪だと分かるよう、輪のまわりに目盛りのような薄い点を並べる（指は受けない） */
+.wheel-ticks,
+.wheel-ticks > i,
+.wheel-hint {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.wheel-ticks > i::before {
+  content: "";
+  position: absolute;
+  top: 4.5%;
+  left: 50%;
+  width: 3px;
+  height: 3px;
+  margin-left: -1.5px;
+  border-radius: 50%;
+  background: rgb(40 52 62 / 24%);
+}
+
+/* 初めて開いたときだけ、指の印が輪を4分の1周なぞる */
+.wheel-hint {
+  z-index: 3;
+  animation: wheel-hint-turn 1.8s ease-in-out 1 both;
+}
+
+.wheel-hint-finger {
+  position: absolute;
+  top: 6%;
+  left: 50%;
+  width: 15%;
+  aspect-ratio: 1;
+  margin-left: -7.5%;
+  filter: drop-shadow(0 1px 2px rgb(0 0 0 / 30%));
+  animation: wheel-hint-fade 1.8s ease-in-out 1 both;
+}
+
+@keyframes wheel-hint-turn {
+  0%,
+  15% {
+    rotate: 20deg;
+  }
+  85%,
+  100% {
+    rotate: 110deg;
+  }
+}
+
+@keyframes wheel-hint-fade {
+  0% {
+    opacity: 0;
+    scale: 0.8;
+  }
+  15% {
+    opacity: 1;
+    scale: 1;
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .edge-handle[data-nudge] .edge-handle-bar {
+    animation: none;
+  }
+
+  .wheel-hint {
+    display: none;
+  }
+}
