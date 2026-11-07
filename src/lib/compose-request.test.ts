@@ -111,6 +111,39 @@ describe("prepareDraftStream（0-2l）", () => {
     expect(events.find((event) => event.type === "channel")).toEqual({ type: "channel", channelId: "study" });
   });
 
+  it("0-3b：件名は本文より前に流れ、札のない件名には種類の札を付ける", async () => {
+    const json = JSON.stringify({ ready: true, channelId: "study", kind: "effort", researchedWithAi: false, announcement: false, subject: "過去問20問", text: "過去問を20問解いた" });
+    const claude: ClaudeClient = {
+      mode: "real",
+      complete: scripted.complete,
+      stream: async (_request, onText) => {
+        for (let i = 0; i < json.length; i += 4) onText(json.slice(i, i + 4));
+        return { text: json, refused: false };
+      },
+    };
+    const { events } = await collect(claude, { history: [{ role: "user", content: "x" }] });
+    const types = events.map((event) => event.type);
+    expect(events.find((event) => event.type === "subject")).toEqual({ type: "subject", subject: "【頑張り】過去問20問" });
+    expect(types.indexOf("subject")).toBeLessThan(types.indexOf("delta"));
+    const draft = events.find((event) => event.type === "draft");
+    expect(draft?.type === "draft" && draft.draft).toMatchObject({ subject: "【頑張り】過去問20問", kind: "effort" });
+  });
+
+  it("0-3b：台本でも件名を付けて流す", async () => {
+    const { events } = await collect(scripted, { history: [{ role: "user", content: "声を小さくしたら、教室が静かになった" }] });
+    expect(events.find((event) => event.type === "subject")).toEqual({ type: "subject", subject: "【うまくいった】声を小さくしたら、教室が静かになった" });
+  });
+
+  it("0-3b：Claude の下書きの指示と形に件名があり、件名は本文の前に書かせる", async () => {
+    const complete = vi.fn(scripted.complete);
+    await handleDraft({ mode: "scripted", complete }, teams, "aoki", { history: [{ role: "user", content: "頑張った" }] });
+    const request = complete.mock.calls[0][0];
+    expect(request.system).toContain("【うまくいった】【困りごと】【聞きたい】【お知らせ】【頑張り】【ありがとう】");
+    const required = (request.jsonSchema as { required: string[] }).required;
+    expect(required.slice(-2)).toEqual(["subject", "text"]);
+    expect(required[0]).toBe("ready");
+  });
+
   it("確かめで止まるものは流さず、Claude の失敗は error として流す", async () => {
     expect((await collect(scripted, { history: [] })).status).toBe(400);
     const log = quietLog();
@@ -214,6 +247,15 @@ describe("handlePublish", () => {
       kind: "effort",
       researchedWithAi: true,
     });
+  });
+
+  it("0-3b：件名を残し、本人が回した札の種類で残す", async () => {
+    const outcome = await handlePublish(scripted, teams, "aoki", { ...input, subject: "【困りごと】数学の宿題がわからない" });
+    expect(outcome.status).toBe(200);
+    expect(teams.listPosts("aoki", "study").at(-1)).toMatchObject({ subject: "【困りごと】数学の宿題がわからない", kind: "trouble" });
+    await handlePublish(scripted, teams, "aoki", input);
+    expect(teams.listPosts("aoki", "study").at(-1)).toMatchObject({ subject: null, kind: "effort" });
+    expect((await handlePublish(scripted, teams, "aoki", { ...input, subject: 3 })).status).toBe(400);
   });
 
   it("明らかな個人攻撃は、画面を通さない依頼でも止める", async () => {

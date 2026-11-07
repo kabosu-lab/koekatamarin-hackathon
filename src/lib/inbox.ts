@@ -13,6 +13,8 @@ export type InboxItem = {
   channelName: string;
   authorName: string;
   authorLabel: string;
+  /** 0-3b：件名。あるときだけ */
+  subject: string | null;
   body: string;
   createdAt: string;
   passedThrough: string[];
@@ -27,7 +29,7 @@ export function listInbox(db: DatabaseSync, viewerId: string): InboxItem[] {
   const rows = db
     .prepare(
       `SELECT p.id, p.channel_id, c.name AS channel_name, a.name AS author_name, a.label AS author_label,
-              p.body, p.created_at
+              p.subject, p.body, p.created_at
        FROM posts p
        JOIN people a ON a.id = p.author_id
        JOIN channels c ON c.id = p.channel_id
@@ -41,6 +43,7 @@ export function listInbox(db: DatabaseSync, viewerId: string): InboxItem[] {
     channel_name: string;
     author_name: string;
     author_label: string;
+    subject: string | null;
     body: string;
     created_at: string;
   }[];
@@ -54,6 +57,7 @@ export function listInbox(db: DatabaseSync, viewerId: string): InboxItem[] {
     channelName: row.channel_name,
     authorName: row.author_name,
     authorLabel: row.author_label,
+    subject: row.subject,
     body: row.body,
     createdAt: row.created_at,
     passedThrough: (selectPasses.all(row.id) as { name: string }[]).map((x) => x.name),

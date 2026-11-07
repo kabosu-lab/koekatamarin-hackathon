@@ -71,24 +71,20 @@ test("話す画面で封筒の吹き出しが出て、押すとカードが開�
   await expect(page.getByRole("region", { name: "もらったありがとう" })).toContainText(words);
 });
 
-test("届いたカードの「ありがとうを返す」で、その人宛てのシートが開く", async ({ page, browser }) => {
+test("届いたカードの「ありがとうを返す」で、話す画面にその人宛てのカードの下書きが開く", async ({ page, browser }) => {
   await switchPerson(page, "木下 蓮（3年・ものづくり部）");
   await deliver(browser, "noda", "kinoshita");
   await page.goto("/");
   const reveal = await openEnvelope(page);
-  const entry = reveal.getByRole("button", { name: /さんにありがとうを返す$/ });
+  const entry = reveal.getByRole("link", { name: /さんにありがとうを返す$/ });
   await expect(entry).toBeVisible();
   const name = ((await entry.getAttribute("aria-label")) ?? "").replace(/さんにありがとうを返す$/, "");
   await entry.click();
-  const sheet = page.getByRole("dialog", { name: `${name}さんへのサンクスカード` });
-  await expect(sheet).toBeVisible();
-  await expect(sheet.getByLabel("届けることば")).toBeInViewport();
-  await sheet.getByLabel("届けることば").fill(`こちらこそ、ありがとうございます ${test.info().testId}`);
-  await sheet.getByRole("button", { name: "サンクスカードを送る" }).click();
-  await expect(entry).toContainText("届きました");
-  await expect(sheet).toBeHidden();
-  // 返したあとも、カードはまだ手元にある
-  await expect(reveal).toBeVisible();
+  // 0-3d：返すのも、ふつうの投稿と同じシート。宛名と【ありがとう】の札が入っている
+  const sheet = page.getByRole("region", { name: "言葉にして送る" });
+  await expect(sheet).toHaveAttribute("data-card", "thanks");
+  await expect(sheet.locator(".preview-asked")).toHaveText(`${name}さんへ`);
+  await expect(sheet.getByLabel("投稿の文章")).toBeInViewport();
 });
 
 test("動きを減らす設定では、動かさずに表のカードを出す", async ({ page, browser }) => {

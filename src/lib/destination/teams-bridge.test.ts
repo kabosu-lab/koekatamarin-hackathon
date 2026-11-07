@@ -113,6 +113,18 @@ describe("送る", () => {
     expect(reachedTeams(db, "p1")).toBe(true);
   });
 
+  it("0-3b：件名は chatMessage の subject で送る。メンション付きでも件名を付ける", async () => {
+    signIn("saeki");
+    const { calls, fetcher } = fakeGraph();
+    await sendPostToTeams(db, "saeki", "p1", "study", "届けたい言葉", { subject: "【うまくいった】声を小さくした" }, fetcher);
+    await sendPostToTeams(db, "saeki", "p2", "study", "教えてください", { subject: "【聞きたい】席替え", askedPersonId: "noda" }, fetcher);
+    const [first, second] = posts(calls);
+    expect(first.body).toEqual({ subject: "【うまくいった】声を小さくした", body: { contentType: "text", content: "届けたい言葉" } });
+    expect((second.body as { subject: string }).subject).toBe("【聞きたい】席替え");
+    expect(buildTeamsMessage("本文", [], "  ")).toEqual({ body: { contentType: "text", content: "本文" } });
+    expect(askMessage(db, "本文", undefined, "【頑張り】走った").subject).toBe("【頑張り】走った");
+  });
+
   it("本人がサインインしていなければ、ほかの人のトークンで送らない", async () => {
     signIn();
     signIn("noda");
@@ -180,6 +192,11 @@ describe("送る", () => {
     await sendPostToTeams(db, "saeki", "p1", "study", "カードの本文", {}, fetcher);
     const sent = calls[0].body as { attachments: { content: { body: { text: string }[] } }[] };
     expect(sent.attachments[0].content.body.map((block) => block.text)).toEqual(["佐伯 みどり", "カードの本文"]);
+    // 0-3b：件名があれば見出しにする
+    const titled = fakeGraph();
+    await sendPostToTeams(db, "saeki", "p3", "study", "カードの本文", { subject: "【頑張り】走った" }, titled.fetcher);
+    const card = titled.calls[0].body as { attachments: { content: { body: { text: string }[] } }[] };
+    expect(card.attachments[0].content.body.map((block) => block.text)).toEqual(["【頑張り】走った", "佐伯 みどり", "カードの本文"]);
     const logged = vi.spyOn(console, "error").mockImplementation(() => undefined);
     await sendPostToTeams(db, "saeki", "p2", "study", "本文", {}, fakeGraph([], true).fetcher);
     expect(JSON.stringify(logged.mock.calls)).not.toContain("secret-hook");
@@ -189,6 +206,21 @@ describe("送る", () => {
 
 describe("読む", () => {
   beforeEach(() => signIn());
+
+  it("0-3b：Teams の件名を残す。札があれば札の種類で、なければそのまま", async () => {
+    const messages = [
+      { ...message("s1", "佐伯 みどり", "<p>件名つき</p>"), subject: "【困りごと】コピー機" },
+      { ...message("s2", "佐伯 みどり", "<p>札なし</p>"), subject: "来週の予定" },
+      message("s3", "佐伯 みどり", "<p>件名なし</p>"),
+    ];
+    await syncFromTeams(db, fakeGraph(messages).fetcher);
+    const rows = db.prepare("SELECT body, subject, kind FROM posts WHERE body IN ('件名つき', '札なし', '件名なし') ORDER BY body").all();
+    expect(rows).toEqual([
+      { body: "件名つき", subject: "【困りごと】コピー機", kind: "trouble" },
+      { body: "件名なし", subject: null, kind: "report" },
+      { body: "札なし", subject: "来週の予定", kind: "report" },
+    ]);
+  });
 
   it("投稿と返信を取り込み、HTML は文字だけにする。二度読んでも増えない", async () => {
     const messages = [message("m1", "佐伯 みどり", "<p>最初の<b>工夫</b> &amp; 気づき</p>", [message("r1", "大河原 誠", "<p>真似します</p>")])];

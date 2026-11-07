@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
 import { getAccessToken, getAccessTokenResult, type GraphConfig, readGraphConfig, readLinkedPeople } from "../graph/auth";
 import { isTrialMode, trialTeamsSender } from "../trial";
+import { MAX_SUBJECT_LENGTH, normalizeSubject, splitSubject } from "../subject";
 import type { CreatePostOptions, PostDestination } from "./types";
 
 /**
@@ -66,6 +67,8 @@ type GraphMessage = {
   deletedDateTime?: string | null;
   from: { user?: { id?: string; displayName?: string } | null } | null;
   body: { content: string; contentType?: string };
+  /** 0-3b：チャネルの投稿の件名。返信にはない */
+  subject?: string | null;
   replies?: GraphMessage[];
   /** 本文の <at id="n"> と対になる、メンションされた人 */
   mentions?: GraphMention[];
@@ -80,6 +83,8 @@ type GraphMention = {
 
 /** Graph へ送る本文。メンションがあるときだけ html にする。 */
 export type TeamsMessageBody = {
+  /** 0-3b：チャネルの投稿の件名。あるときだけ付ける */
+  subject?: string;
   body: { contentType: "text" | "html"; content: string };
   mentions?: GraphMention[];
 };
@@ -94,7 +99,8 @@ function escapeHtml(text: string): string {
  * 本文の「@名前」を Teams のメンションにする（0-2g）。Teams のユーザー ID が分からない人は、
  * メンションにせず名前だけを書く。メンションが1つもなければ、今までどおり文字で送る。
  */
-export function buildTeamsMessage(text: string, targets: MentionTarget[]): TeamsMessageBody {
+export function buildTeamsMessage(text: string, targets: MentionTarget[], subject?: string): TeamsMessageBody {
+  const head = subject?.trim() ? { subject: subject.trim() } : {};
   const mentions: GraphMention[] = [];
   let html = escapeHtml(text);
   let plain = text;
@@ -110,8 +116,8 @@ export function buildTeamsMessage(text: string, targets: MentionTarget[]): Teams
     html = html.replace(escapeHtml(marker), `<at id="${id}">${escapeHtml(target.name)}</at>`);
     mentions.push({ id, mentionText: target.name, mentioned: { user: { id: target.teamsUserId, displayName: target.name, userIdentityType: "aadUser" } } });
   }
-  if (mentions.length === 0) return { body: { contentType: "text", content: plain } };
-  return { body: { contentType: "html", content: html.replace(/\r?\n/g, "<br>") }, mentions };
+  if (mentions.length === 0) return { ...head, body: { contentType: "text", content: plain } };
+  return { ...head, body: { contentType: "html", content: html.replace(/\r?\n/g, "<br>") }, mentions };
 }
 
 /** こえかたの人 → Teams のユーザー ID（サインインのときの記録の逆引き）。分からなければ null。 */
@@ -134,11 +140,11 @@ function mentionTarget(db: DatabaseSync, personId: string, linked: Record<string
 }
 
 /** 「聞いてみる」の投稿は、頭で相手をメンションする。本人が本文に @名前 を書いていればそこを使う。 */
-export function askMessage(db: DatabaseSync, text: string, askedPersonId: string | undefined): TeamsMessageBody {
+export function askMessage(db: DatabaseSync, text: string, askedPersonId: string | undefined, subject?: string): TeamsMessageBody {
   const target = askedPersonId ? mentionTarget(db, askedPersonId) : null;
-  if (!target) return buildTeamsMessage(text, []);
+  if (!target) return buildTeamsMessage(text, [], subject);
   const withHead = text.includes(`@${target.name}`) ? text : `@${target.name}さん\n${text}`;
-  return buildTeamsMessage(withHead, [target]);
+  return buildTeamsMessage(withHead, [target], subject);
 }
 
 /** 返事の本文にある「@名前」のうち、その投稿を見られる人だけをメンションにする（回す、0-2g）。 */
@@ -268,7 +274,7 @@ export async function sendPostToTeams(db: DatabaseSync, viewerId: string, postId
   if (stays) return { state: "skipped", reason: stays };
   try {
     if (mode === "webhook") {
-      await sendWebhookCard(personName(db, viewerId), body, fetcher);
+      await sendWebhookCard(personName(db, viewerId), body, fetcher, options.subject);
       return { state: "sent" };
     }
     // 本人の名前で届けるので、本人がサインインしていなければ送らない。試用では決めたダミーの名前で届ける
@@ -283,7 +289,7 @@ export async function sendPostToTeams(db: DatabaseSync, viewerId: string, postId
     }
     const token = result.token;
     const path = await channelPath(fetcher, token, target);
-    const sent = await graph<{ id: string }>(fetcher, token, path, askMessage(db, body, options.askedPersonId));
+    const sent = await graph<{ id: string }>(fetcher, token, path, askMessage(db, body, options.askedPersonId, options.subject));
     saveLink(db, postId, "post", sent.id);
     return { state: "sent" };
   } catch (error) {
@@ -347,7 +353,7 @@ function importReactions(db: DatabaseSync, message: GraphMessage, postId: string
 }
 
 /** Workflow の「Webhook を受けたらチャネルに投稿」へカードを送る（予備）。 */
-async function sendWebhookCard(author: string, body: string, fetcher: Fetch): Promise<void> {
+async function sendWebhookCard(author: string, body: string, fetcher: Fetch, subject?: string): Promise<void> {
   const url = process.env.KOEKATA_TEAMS_WEBHOOK_URL;
   if (!url) return;
   const response = await fetcher(url, {
@@ -363,6 +369,8 @@ async function sendWebhookCard(author: string, body: string, fetcher: Fetch): Pr
             $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
             version: "1.4",
             body: [
+              // 0-3b：件名があれば見出しにする
+              ...(subject?.trim() ? [{ type: "TextBlock", text: subject.trim(), weight: "Bolder", size: "Medium", wrap: true }] : []),
               { type: "TextBlock", text: author, weight: "Bolder" },
               { type: "TextBlock", text: body, wrap: true },
             ],
@@ -480,7 +488,20 @@ function importPost(db: DatabaseSync, message: GraphMessage, linked: Record<stri
     return pending;
   }
   const id = randomUUID();
-  db.prepare("INSERT INTO posts (id, channel_id, author_id, kind, body, created_at) VALUES (?, ?, ?, 'report', ?, ?)").run(id, channelId, authorId, text, message.createdDateTime);
+  // 0-3b：Teams の件名があれば残す。札があればその種類で
+  // Teams で人が書いた件名は札がないことが多いので、そのときは札を足さずにそのまま残す
+  const raw = message.subject?.replace(/\s+/g, " ").trim() ?? "";
+  const titled = raw && splitSubject(raw).tag ? normalizeSubject(raw, "report") : null;
+  const subject = titled?.subject || raw.slice(0, MAX_SUBJECT_LENGTH) || null;
+  db.prepare("INSERT INTO posts (id, channel_id, author_id, kind, body, created_at, subject) VALUES (?, ?, ?, ?, ?, ?, ?)").run(
+    id,
+    channelId,
+    authorId,
+    titled?.subject ? titled.kind : "report",
+    text,
+    message.createdDateTime,
+    subject,
+  );
   saveLink(db, id, "post", message.id);
   askFromMentions(db, id, authorId, mentionedPeople(db, message, linked), message.createdDateTime);
   return id;

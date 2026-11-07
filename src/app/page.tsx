@@ -27,8 +27,8 @@ export const dynamic = "force-dynamic";
 
 const SEND_PROMPT = "届けたいことを話してね。下書きにするよ。送るのは、確かめてから。";
 
-export default async function HomePage({ searchParams }: { searchParams: Promise<{ ask?: string | string[]; goal?: string | string[]; talk?: string | string[]; left?: string | string[]; right?: string | string[] }> }) {
-  const { ask, goal, talk, left, right } = await searchParams;
+export default async function HomePage({ searchParams }: { searchParams: Promise<{ ask?: string | string[]; goal?: string | string[]; talk?: string | string[]; left?: string | string[]; right?: string | string[]; thanks?: string | string[] }> }) {
+  const { ask, goal, talk, left, right, thanks } = await searchParams;
   const { viewer, people } = await getViewer();
   const db = getDatabase();
   await syncFromTeamsIfStale(db);
@@ -39,6 +39,8 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
     typeof ask === "string" && ask !== viewer.id && !(isStudent(viewer.id) && isStudent(ask))
       ? people.find((person) => person.id === ask)
       : undefined;
+  // 0-3d：「ありがとう」ボタンから来たときの相手。話す画面でその人へのカードの下書きを始める
+  const thanksPerson = typeof thanks === "string" && thanks !== viewer.id ? people.find((person) => person.id === thanks) : undefined;
   const doneGoal = typeof goal === "string" ? getGoal(db, viewer.id, goal) : null;
   const store = await cookies();
   const promiseSeen = store.has(promiseCookieName(viewer.id));
@@ -55,7 +57,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
   const counts = countNew(db, getDestination(db), viewer.id, new Date(), { rewards, todaySeen: store.has(TODAY_SEEN_COOKIE) });
   // 0-3a：封筒の知らせは、この端末でまだ開けていないカードがあるときだけ（数とバッジは人物ごとのまま）
   const revealCards = listRevealThanks(db, viewer.id, store.get(thanksDeviceCookie(viewer.id))?.value ?? null, new Date());
-  const news = ask || goal || talk ? null : newsLine({ ...counts, thanks: revealCards.length }, viewer.role);
+  const news = ask || goal || talk || thanksPerson ? null : newsLine({ ...counts, thanks: revealCards.length }, viewer.role);
 
   // 全員同じ1画面。ほかの画面へはスワイプと、下の小さな印から移る
   return (
@@ -81,6 +83,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
         question={talk === "send" ? SEND_PROMPT : question}
         initialGoal={doneGoal?.status === "done" ? { id: doneGoal.id, text: doneGoal.text } : null}
         initialAsk={askPerson ? { id: askPerson.id, name: askPerson.name } : null}
+        initialThanks={thanksPerson ? { id: thanksPerson.id, name: thanksPerson.name } : null}
       />
     </main>
     <WidePanel src={columnSrc("right", right)} title="みんな" side="right" />

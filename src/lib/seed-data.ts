@@ -187,6 +187,13 @@ export const channels: SeedChannel[] = [
     audience: "everyone",
   },
   {
+    // 0-3d：サンクスカード（ありがとう・がんばったね・おめでとう）の投稿が並ぶ
+    id: "thanks",
+    name: "ありがとう",
+    description: "ありがとう・がんばったね・おめでとうのカード",
+    audience: "everyone",
+  },
+  {
     id: "staffroom",
     name: "職員室",
     description: "教職員だけのチャネル",

@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
 import type { DraftChannel, Draft } from "./claude/compose";
+import { normalizeSubject, SUBJECT_TAGS } from "./subject";
 import { ComposeError } from "./claude/compose";
 import type { ChatMessage, ClaudeAttachment, ClaudeClient } from "./claude/types";
 import type { PostDestination } from "./destination/types";
@@ -143,6 +144,7 @@ const attachmentDraftPrompt = `あなたは「こえかた」のパートナー�
 - 絵文字を1〜3個、気持ちが伝わる場所に自然に入れる。絵文字は本人が話した気持ちに合わせ、新しい気持ちを足さない。深刻な悩みやつらい話には使わない
 - 他の人の名前、連絡先、住所、学籍番号は下書きに書かない
 - channelId は内容に一番合うチャネルを選ぶ。kind は trouble（困りごと）、worry（悩み）、effort（頑張り）、report（報告）から選ぶ
+- subject は投稿の件名。20字前後で、頭に種類の札を1つ付ける：${SUBJECT_TAGS.map((t) => `【${t.label}】`).join("")}
 - 投稿にできる中身がなければ ready を false、text を空にする
 
 notices の決まり:
@@ -158,9 +160,10 @@ function attachmentDraftSchema(channels: DraftChannel[]) {
   return {
     type: "object",
     additionalProperties: false,
-    required: ["ready", "text", "channelId", "kind", "notices"],
+    required: ["ready", "subject", "text", "channelId", "kind", "notices"],
     properties: {
       ready: { type: "boolean" },
+      subject: { type: "string" },
       text: { type: "string" },
       channelId: { type: "string", enum: channels.map((c) => c.id) },
       kind: { type: "string", enum: POST_KINDS },
@@ -215,12 +218,14 @@ export async function draftFromAttachment(
     const known = NOTICE_KINDS.find((k) => k === noticeKind);
     return known && typeof where === "string" && where.trim() ? [{ kind: known, where: where.trim() }] : [];
   });
+  const subject = normalizeSubject(typeof answer.subject === "string" ? answer.subject : "", kind);
   return {
     draft: {
       ready: answer.ready && answer.text.trim() !== "",
+      subject: subject.subject,
       text: answer.text.trim(),
       channelId: channel.id,
-      kind,
+      kind: subject.kind,
       researchedWithAi: false,
     },
     notices,

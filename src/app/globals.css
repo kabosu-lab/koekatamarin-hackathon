@@ -3287,3 +3287,71 @@ html[data-avatar="hide"] .burst-speaker {
     align-items: stretch;
   }
 }
+
+/* 0-3b：投稿の件名。本文の上に太字の1行 */
+.post-subject {
+  margin: 0 0 0.2rem;
+  overflow-wrap: anywhere;
+}
+
+/* 0-3d：サンクスカードの投稿。封筒と同じ絵柄の縁と、花びらの印 */
+[data-card] {
+  --card-rose: #d9536f;
+  --card-petal: #f7b6c8;
+}
+article[data-card],
+section[data-card],
+[data-card].card-post {
+  border: 2px solid var(--card-rose);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--card-petal) 45%, transparent);
+  border-radius: 1rem;
+}
+.card-mark {
+  display: inline-block;
+  width: 0.8em;
+  height: 0.6em;
+  margin-right: 0.3em;
+  border-radius: 70% 0 70% 0;
+  background: var(--card-petal, #f7b6c8);
+  box-shadow: inset 0 0 0 1px var(--card-rose, #d9536f);
+  vertical-align: 0.05em;
+}
+.card-petals {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  overflow: hidden;
+  pointer-events: none;
+}
+.card-petals i {
+  position: absolute;
+  top: -1rem;
+  left: var(--x);
+  width: 0.8rem;
+  height: 0.55rem;
+  border-radius: 70% 0 70% 0;
+  background: #f7b6c8;
+  opacity: 0.9;
+  animation: card-petal 2.6s var(--d) ease-in forwards;
+}
+.card-petals i:nth-child(3n) {
+  background: #ffd6e0;
+}
+.card-petals i:nth-child(4n) {
+  background: #fff1c7;
+}
+@keyframes card-petal {
+  from {
+    transform: translate(0, 0) rotate(var(--r));
+    opacity: 0.95;
+  }
+  to {
+    transform: translate(2.5rem, 105vh) rotate(calc(var(--r) + 300deg));
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .card-petals {
+    display: none;
+  }
+}

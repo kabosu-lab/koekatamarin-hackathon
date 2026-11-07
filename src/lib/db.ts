@@ -375,6 +375,8 @@ const MIGRATIONS: readonly string[] = [
    ALTER TABLE daily_reports ADD COLUMN talk_seen TEXT NOT NULL DEFAULT '[]';
    ALTER TABLE daily_reports ADD COLUMN evening_at TEXT;
    ALTER TABLE report_items ADD COLUMN edited INTEGER NOT NULL DEFAULT 0 CHECK (edited IN (0, 1));`,
+  // 0-3b：投稿の件名（頭に種類の札）。Teams の件名と同じ。古い投稿にはない
+  `ALTER TABLE posts ADD COLUMN subject TEXT;`,
 ];
 
 export const SCHEMA_VERSION

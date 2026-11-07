@@ -87,14 +87,50 @@ function scriptedWalk(content: string, jsonSchema: Record<string, unknown> | und
   };
 }
 
+/** 0-3b：台本の件名。話の中身から札を選び、最初の言葉を20字ほどにする（動画に映る） */
+function scriptedSubject(spoken: string[]): string {
+  const talk = spoken.join("\n");
+  const tag = /勉強会|ゼミ|お知らせ/.test(talk)
+    ? "お知らせ"
+    : /ありがとう/.test(talk)
+      ? "ありがとう"
+      : /うまくいった|静かになった|聞いてくれた|できた/.test(talk)
+        ? "うまくいった"
+        : /教えて|聞きたい|[?？]/.test(talk)
+          ? "聞きたい"
+          : /困|わからん|どうしよ/.test(talk)
+            ? "困りごと"
+            : /頑張/.test(talk)
+              ? "頑張り"
+              : "うまくいった";
+  const first = spoken[0].replace(/[。！!]+$/, "");
+  return `【${tag}】${first.length > 20 ? `${first.slice(0, 20)}…` : first}`;
+}
+
 function scriptedDraft(transcript: string, jsonSchema: Record<string, unknown> | undefined) {
   const spoken = [...transcript.matchAll(/^本人：(.*)$/gm)]
     .map((match) => match[1].trim())
     .filter((line) => !(openingLines as readonly string[]).includes(line));
   const properties = (jsonSchema?.properties ?? {}) as { channelId?: { enum?: string[] } };
   const channels = properties.channelId?.enum ?? [];
+  // 0-3d：サンクスカードの下書き。札は話から ありがとう・がんばったね・おめでとう を選び、言葉の案を本文にする
+  const card = transcript.match(/この投稿は、サンクスカードです（宛名：(.+?)さん。言葉の案：(.*?)）。/);
+  if (card && spoken.length > 0) {
+    const talk = spoken.join("\n");
+    const tag = /おめでと|祝|合格|優勝|入賞/.test(talk) ? "おめでとう" : /頑張|がんば|お疲れ|おつかれ/.test(talk) && !/ありがと/.test(talk) ? "がんばったね" : "ありがとう";
+    return {
+      ready: true,
+      subject: `【${tag}】${card[1]}さんへ`,
+      text: `${card[1]}さん、${card[2]}`,
+      channelId: channels[0] ?? "",
+      kind: "report",
+      researchedWithAi: false,
+      announcement: false,
+    };
+  }
   return {
     ready: spoken.length > 0,
+    subject: spoken.length > 0 ? scriptedSubject(spoken) : "",
     text: spoken.join("\n"),
     // 全校のお知らせの次にある、話題のチャネルを選ぶ
     channelId: channels[1] ?? channels[0] ?? "",
@@ -106,9 +142,10 @@ function scriptedDraft(transcript: string, jsonSchema: Record<string, unknown> |
 
 /** 台本の下書き。添付は読まず、気づきの例を1つ返す。 */
 function scriptedAttachmentDraft(transcript: string, jsonSchema: Record<string, unknown> | undefined) {
-  const { ready, text, channelId } = scriptedDraft(transcript, jsonSchema);
+  const { ready, text, channelId, subject } = scriptedDraft(transcript, jsonSchema);
   return {
     ready,
+    subject,
     text: ready ? `${text} 🎉` : "",
     channelId,
     kind: "effort",

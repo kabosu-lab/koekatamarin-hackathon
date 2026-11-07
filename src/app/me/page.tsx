@@ -7,7 +7,6 @@ import { getViewer } from "@/lib/current-person";
 import { getDatabase } from "@/lib/db";
 import { getDraft } from "@/lib/profile";
 import { listThanks } from "@/lib/thanks";
-import { listRecentPartners } from "@/lib/thanks-people";
 import { thanksDeviceCookie } from "@/lib/thanks-kind";
 import { ensureWelcomeThanks, listRevealThanks } from "@/lib/thanks-reveal";
 import { CardBook } from "../thanks/CardBook";
@@ -38,7 +37,7 @@ import { Ribbons } from "./Ribbons";
 import { BackdropCollection } from "./BackdropCollection";
 import { listNewRibbons, listTrophyShelves, syncRibbonsOnOpen } from "@/lib/ribbons";
 import { showsRewards } from "@/lib/rewards-view";
-import { ArtRefresher, AvatarFromPhoto, AvatarQuiz, MemoryList, ProfileEditor, ThanksForm } from "./MeActions";
+import { ArtRefresher, AvatarFromPhoto, AvatarQuiz, MemoryList, ProfileEditor } from "./MeActions";
 
 import { DeviceFrame } from "../DeviceFrame";
 import { type MeTileKey, resolveOpenKey } from "./tiles";
@@ -145,14 +144,14 @@ export default async function MePage({ searchParams }: { searchParams: Promise<{
         // 0-3c：カード帳。しばらく出さない人からのカードは、知らせと同じく並べない
         const hiddenIds = listHiddenIds(db, viewer.id);
         const thanks = listThanks(db, viewer.id).filter((card) => !hiddenIds.has(card.fromId));
-        // 0-2j：一覧からは選ばせず、最近やりとりした人を数人だけ顔つきで出す
-        const recent = listRecentPartners(db, viewer.id).map((p) => ({ ...p, image: getAvatar(db, p.id).image }));
         return (
           <>
             {/* 0-3a：このタイルで見たら、この端末では封筒の知らせを出さない */}
             <ThanksSeenOnDevice viewerId={viewer.id} at={now.toISOString()} />
-            {/* 送る欄は 0-3d（話す画面から送る）でまとめて外す。いまはそのまま */}
-            <ThanksForm key={`${viewer.id}-thanks`} recent={recent} />
+            {/* 0-3d：送る欄は置かない。カードは話す画面で話すと下書きになる */}
+            <p className="muted thanks-howto">
+              ありがとう・がんばったね・おめでとうは、<Link href="/">話す画面</Link>で「〇〇さんにありがとうを伝えたい」と話すと、カードの下書きになります。
+            </p>
             <CardBook key={`${viewer.id}-book`} viewerId={viewer.id} cards={thanks} envelopes={envelopes} />
           </>
         );

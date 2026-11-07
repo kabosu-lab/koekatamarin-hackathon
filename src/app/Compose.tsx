@@ -6,6 +6,8 @@ import { Fragment, type KeyboardEvent, useEffect, useLayoutEffect, useRef, useSt
 import type { Draft, Review } from "@/lib/claude/compose";
 import type { AttachmentNotice, AttachmentNoticeKind, AttachmentView } from "@/lib/attachment";
 import type { ChannelView, PersonView, PostScope } from "@/lib/destination/types";
+import { cardKind, joinSubject, kindOfTag, MAX_SUBJECT_LENGTH, nextTag, splitSubject, tagForKind } from "@/lib/subject";
+import { scatterPetals } from "./petals";
 import { AttachmentPreview } from "./AttachmentPreview";
 import "./compose.css";
 
@@ -22,7 +24,8 @@ export type ComposeStart = {
   scopePersonId?: string;
   channels: ChannelView[];
   people: PersonView[];
-  asked?: { id: string; name: string };
+  /** card：0-3d のサンクスカードの宛名（札をふつうの種類に回すと、宛名は外れる） */
+  asked?: { id: string; name: string; card?: boolean };
   /** 頑張りたいことを乗り越えた投稿のとき */
   goalId?: string;
   attachment?: AttachmentView & { notices: AttachmentNotice[] };
@@ -103,9 +106,22 @@ export function Compose({
   const [edited, setEdited] = useState<string | null>(null);
   const text = writing ? draft.text : (edited ?? draft.text);
   const setText = setEdited;
+  // 0-3b：件名も本文と同じく、本人が直したらその言葉を使う。札は押すと次の種類に回る
+  const [editedSubject, setSubject] = useState<string | null>(null);
+  const subject = writing ? draft.subject : (editedSubject ?? draft.subject);
+  const subjectParts = splitSubject(subject);
+  const subjectTag = subjectParts.tag ?? tagForKind(draft.kind);
+  const [editingTitle, setEditingTitle] = useState(false);
+  // 0-3d：サンクスカードは札で見分ける。カードの札から外したら、宛名を外してふつうの投稿に戻す
+  const card = cardKind(subject);
+  const recipient = asked && (!asked.card || card) ? asked : undefined;
   // 送り先は、本人が選ぶまでは下書きの送り先。まだ決まっていなければ出さない
   const [pickedChannel, setChannelId] = useState<string | null>(null);
-  const channelId = pickedChannel ?? draft.channelId;
+  // カードからふつうの投稿に戻したら、「ありがとう」チャネルの代わりに全員が読む話題のチャネル
+  const backFromCard = asked?.card && !cardKind(writing ? draft.subject : (editedSubject ?? draft.subject)) && draft.channelId === "thanks";
+  const channelId =
+    pickedChannel ??
+    (backFromCard ? (channels.find((c) => c.id !== "thanks" && c.id !== "notices" && c.audience === "everyone")?.id ?? draft.channelId) : draft.channelId);
   // 受け取られ方は、本人が確かめ直すまでは最初に届いたもの
   const [rechecked, setRechecked] = useState<{ review: Review; text: string } | null>(null);
   const current = rechecked ?? (firstReview ? { review: firstReview, text: draft.text } : null);
@@ -188,18 +204,22 @@ export function Compose({
 
   async function send() {
     if (!channel) return;
+    const sentSubject = subjectParts.title ? joinSubject(subjectTag, subjectParts.title) : "";
     const body = {
+      subject: sentSubject || undefined,
       text,
       channelId,
-      kind: draft.kind,
+      kind: sentSubject ? kindOfTag(subjectTag) : draft.kind,
       researchedWithAi: draft.researchedWithAi,
       announcement: draft.announcement === true,
-      askedPersonId: asked?.id,
+      askedPersonId: recipient?.id,
       goalId,
       scope,
       scopePersonId: scope === "person" ? scopePersonId : undefined,
       attachmentId: attachment?.id,
     };
+    // 0-3d：カードを送るときは、ふつうの光に加えて花びらが舞う
+    if (card) scatterPetals();
     // 0-2l(2)：押した瞬間に送ったあとの動きを始め、送信は呼んだ側が裏で進める
     if (onSendStart) {
       onSendStart({ channel, words: text, isPublic: scope === "everyone", review, body });
@@ -230,16 +250,61 @@ export function Compose({
   }
 
   return (
-    <section className="compose-card compose-sheet" aria-label="言葉にして送る">
+    <section className="compose-card compose-sheet" aria-label="言葉にして送る" data-card={card ?? undefined}>
       <h2>こんな言葉でどうかな？</h2>
       <div className="preview">
         <p className="preview-title">
           Teams にはこう見えます{channel ? `（${channel.name}）` : ""}。{writing ? "パートナーが書いています" : "文章はここで直せます"}
         </p>
+        {(!writing || subject) && (
+          // 0-3b：Teams の件名。札を押すと次の種類、言葉を押すと直せる
+          <div className="preview-subject">
+            <button
+              type="button"
+              className="preview-subject-tag"
+              // 名前に札の言葉を入れない（「ありがとう」などのほかのボタンと取り違えないように）。今の札は見える文字と title で
+              aria-label="種類を替える"
+              title="押すと次の種類に替わります"
+              data-tag={subjectTag}
+              disabled={writing}
+              onClick={() => setSubject(joinSubject(nextTag(subjectTag), subjectParts.title))}
+            >
+              【{subjectTag}】
+            </button>
+            {editingTitle && !writing ? (
+              <input
+                className="preview-subject-input"
+                aria-label="件名"
+                autoFocus
+                maxLength={MAX_SUBJECT_LENGTH}
+                value={subjectParts.title}
+                onChange={(event) => setSubject(joinSubject(subjectTag, event.target.value))}
+                onBlur={() => setEditingTitle(false)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === "Escape") {
+                    event.preventDefault();
+                    setEditingTitle(false);
+                  }
+                }}
+              />
+            ) : (
+              <button
+                type="button"
+                className="preview-subject-title"
+                aria-label="件名を直す"
+                title="押すと直せます"
+                disabled={writing}
+                onClick={() => setEditingTitle(true)}
+              >
+                <strong>{subjectParts.title || "件名を付ける"}</strong>
+              </button>
+            )}
+          </div>
+        )}
         <p className="preview-author">
           <strong>{viewer.name}</strong> {viewer.label}
         </p>
-        {asked && <p className="preview-asked">{asked.name}さんへ</p>}
+        {recipient && <p className="preview-asked">{recipient.name}さんへ</p>}
         <textarea
           ref={bodyRef}
           className="preview-body compose-body"
@@ -355,7 +420,7 @@ export function Compose({
       />
       )}
 
-      {!writing && !asked && (
+      {!writing && !recipient && (
         <ChipGroup
           label="見える範囲"
           value={scope}

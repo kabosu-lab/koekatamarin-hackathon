@@ -7,6 +7,7 @@ import { loadMaterial } from "@/lib/knowledge";
 import { KnowledgeNew } from "./KnowledgeNew";
 
 import { PageShell } from "@/app/ui/PageShell";
+import { PostSubject } from "@/app/PostSubject";
 export const metadata: Metadata = { title: "知恵に残す｜こえかた" };
 export const dynamic = "force-dynamic";
 
@@ -21,6 +22,7 @@ export default async function NewKnowledgePage({ searchParams }: { searchParams:
       {material ? (
         <>
           <section className="card" aria-label="もとのやり取り">
+            <PostSubject subject={material.post.subject} />
             <p className="chie-body">
               {material.post.authorName}：{material.post.body}
             </p>

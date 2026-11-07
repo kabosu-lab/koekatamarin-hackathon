@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { markCelebrated } from "./goals";
 import type { DatabaseSync } from "node:sqlite";
 import {
@@ -8,7 +9,8 @@ import {
   loadPending,
   toClaudeAttachment,
 } from "./attachment";
-import { ComposeError, draftPost, type Draft, type Review, reviewPost, streamDraft, TooLongError } from "./claude/compose";
+import { type CardRequest, ComposeError, draftPost, type Draft, type Review, reviewPost, streamDraft, TooLongError } from "./claude/compose";
+import { detectThanksCard } from "./thanks-people";
 import { dripText } from "./claude/scripted";
 import { isMessage, MAX_HISTORY } from "./claude/converse-request";
 import type { ClaudeClient, ChatMessage } from "./claude/types";
@@ -21,6 +23,7 @@ import {
   type PostDestination,
 } from "./destination/types";
 import type { PostKind } from "./seed-data";
+import { cardKind, normalizeSubject } from "./subject";
 import { noteAlternatives, noteDraftNotReady, notePublished, noteUndone } from "./trophy-log";
 
 type Failure = { status: 400 | 422 | 503; body: { error: string; review?: Review } };
@@ -33,6 +36,7 @@ export type DraftOutcome =
         review: Review | null;
         channels: ChannelView[];
         people: PersonView[];
+        asked?: DraftAsked;
         attachment?: AttachmentView & { notices: AttachmentNotice[] };
       };
     }
@@ -70,7 +74,17 @@ type DraftPlan = {
   people: PersonView[];
   askedName?: string;
   stored: ReturnType<typeof loadPending> | null;
+  /** Claude に選ばせる送り先（カードは「ありがとう」だけ、ふつうの投稿は「ありがとう」を除く） */
+  draftChannels: ChannelView[];
+  /** 0-3d：サンクスカードの宛名。画面の「〇〇さんへ」とメンションになる */
+  card?: { asked: DraftAsked; request: CardRequest };
 };
+
+/** 0-3d：下書きの宛名。card はサンクスカードの宛名 */
+export type DraftAsked = { id: string; name: string; card?: boolean };
+
+/** 0-3d：サンクスカードの送り先のチャネル */
+export const THANKS_CHANNEL_ID = "thanks";
 
 /** 下書きを作る前の確かめと、Claude を呼ばずに決まるもの（送り先・人・添付）。 */
 function planDraft(destination: PostDestination, viewerId: string, input: unknown, db?: DatabaseSync): DraftPlan | Failure {
@@ -104,13 +118,24 @@ function planDraft(destination: PostDestination, viewerId: string, input: unknow
     stored = db ? loadPending(db, viewerId, attachmentId) : null;
     if (!stored) return { status: 400, body: { error: "添付が見つかりません。もう一度付けてください" } };
   }
-  return { history: history as ChatMessage[], channels, people: destination.listOtherPeople(viewerId), askedName, stored };
+  const messages = history as ChatMessage[];
+  // 0-3d：本人の最後の言葉が、特定の人へのお礼・ねぎらい・お祝いなら、サンクスカードの下書きにする
+  const lastWords = [...messages].reverse().find((m) => m.role === "user")?.content;
+  const thanksChannel = channels.find((c) => c.id === THANKS_CHANNEL_ID);
+  const found = askedPersonId === undefined && !stored && db && thanksChannel && typeof lastWords === "string" ? detectThanksCard(db, viewerId, lastWords) : null;
+  const card = found
+    ? { asked: { id: found.to.id, name: found.to.name, card: true }, request: { name: found.to.name, words: found.words } }
+    : undefined;
+  const draftChannels = card && thanksChannel ? [thanksChannel] : channels.filter((c) => c.id !== THANKS_CHANNEL_ID);
+  return { history: messages, channels, draftChannels: draftChannels.length > 0 ? draftChannels : channels, people: destination.listOtherPeople(viewerId), askedName, stored, card };
 }
 
 /** 0-2l：流れる下書きの知らせ。1つずつ1行の JSON にして送る。 */
 export type DraftStreamEvent =
-  | { type: "start"; channels: ChannelView[]; people: PersonView[]; attachment?: AttachmentView & { notices: AttachmentNotice[] } }
+  | { type: "start"; channels: ChannelView[]; people: PersonView[]; attachment?: AttachmentView & { notices: AttachmentNotice[] }; asked?: DraftAsked }
   | { type: "channel"; channelId: string }
+  /** 0-3b：本文より先に決まった件名 */
+  | { type: "subject"; subject: string }
   | { type: "delta"; text: string }
   | { type: "draft"; draft: Draft; notices?: AttachmentNotice[] }
   /** failed：本文はできたが、受け取られ方を確かめられなかった（下書きは残し、画面で確かめ直す） */
@@ -139,32 +164,38 @@ export function prepareDraftStream(
     return UNAVAILABLE;
   }
   if ("status" in plan) return plan;
-  const { history, channels, people, askedName, stored } = plan;
+  const { history, channels, draftChannels, people, askedName, stored, card } = plan;
   return {
     status: 200,
     async run(send, signal) {
       const attachment = stored ? { id: stored.id, mediaType: stored.media_type, fileName: stored.file_name, notices: [] } : undefined;
-      send({ type: "start", channels, people, ...(attachment ? { attachment } : {}) });
+      send({ type: "start", channels, people, ...(attachment ? { attachment } : {}), ...(card ? { asked: card.asked } : {}) });
       let draft: Draft;
       let notices: AttachmentNotice[] | undefined;
       try {
         if (stored) {
           // 添付の下書きは流せないので、できてから決まった速さで少しずつ渡す
-          const result = await draftFromAttachment(claude, toClaudeAttachment(stored), history, channels);
+          const result = await draftFromAttachment(claude, toClaudeAttachment(stored), history, draftChannels);
           draft = result.draft;
           notices = result.notices;
           if (draft.ready && !signal?.aborted) {
             send({ type: "channel", channelId: draft.channelId });
+            if (draft.subject) send({ type: "subject", subject: draft.subject });
             await dripText(draft.text, (text) => send({ type: "delta", text }), undefined, undefined, signal);
           }
         } else {
           draft = await streamDraft(
             claude,
             history,
-            channels,
-            { text: (text) => send({ type: "delta", text }), channel: (channelId) => send({ type: "channel", channelId }) },
+            draftChannels,
+            {
+              text: (text) => send({ type: "delta", text }),
+              channel: (channelId) => send({ type: "channel", channelId }),
+              subject: (subject) => send({ type: "subject", subject }),
+            },
             askedName,
             signal,
+            card?.request,
           );
         }
       } catch (error) {
@@ -209,9 +240,9 @@ export async function handleDraft(
   try {
     const plan = planDraft(destination, viewerId, input, db);
     if ("status" in plan) return plan;
-    const { history, channels, askedName, stored } = plan;
+    const { history, channels, draftChannels, askedName, stored, card } = plan;
     if (stored) {
-      const { draft, notices } = await draftFromAttachment(claude, toClaudeAttachment(stored), history, channels);
+      const { draft, notices } = await draftFromAttachment(claude, toClaudeAttachment(stored), history, draftChannels);
       const review = draft.ready ? await reviewPost(claude, draft.text) : null;
       noteDraftOutcome(db, viewerId, review);
       return {
@@ -225,10 +256,10 @@ export async function handleDraft(
         },
       };
     }
-    const draft = await draftPost(claude, history as ChatMessage[], channels, askedName);
+    const draft = await draftPost(claude, history as ChatMessage[], draftChannels, askedName, card?.request);
     const review = draft.ready ? await reviewPost(claude, draft.text) : null;
     noteDraftOutcome(db, viewerId, review);
-    return { status: 200, body: { draft, review, channels, people: destination.listOtherPeople(viewerId) } };
+    return { status: 200, body: { draft, review, channels, people: destination.listOtherPeople(viewerId), ...(card ? { asked: card.asked } : {}) } };
   } catch (error) {
     logFailure(error);
     return UNAVAILABLE;
@@ -238,8 +269,21 @@ export async function handleDraft(
 /** 送った直後の取り消し。 */
 export function handleUndo(destination: PostDestination, viewerId: string, input: unknown, now: Date = new Date(), db?: DatabaseSync) {
   const { postId } = fields(input);
+  // 0-3d：カードを取り消したら、一緒に作ったありがとうの記録も消す（封筒と数が残らないように）
+  const card =
+    db && typeof postId === "string"
+      ? (db.prepare("SELECT author_id, asked_person_id, body, subject FROM posts WHERE id = ?").get(postId) as
+          | { author_id: string; asked_person_id: string | null; body: string; subject: string | null }
+          | undefined)
+      : undefined;
   if (typeof postId !== "string" || !destination.undoPost(viewerId, postId, now)) {
     return { status: 409, body: { error: "もう取り消せません" } };
+  }
+  if (db && card?.asked_person_id && cardKind(card.subject)) {
+    db.prepare(
+      `DELETE FROM thanks WHERE id = (SELECT id FROM thanks WHERE from_person_id = ? AND to_person_id = ? AND message = ?
+       ORDER BY created_at DESC, rowid DESC LIMIT 1)`,
+    ).run(card.author_id, card.asked_person_id, card.body.trim());
   }
   if (db) noteUndone(db, viewerId, now);
   return { status: 200, body: { ok: true } };
@@ -267,7 +311,7 @@ export async function handlePublish(
   input: unknown,
   db?: DatabaseSync,
 ): Promise<PublishOutcome> {
-  const { announcement, goalId, text, channelId, kind, researchedWithAi, askedPersonId, scope, scopePersonId, attachmentId } = fields(input);
+  const { announcement, goalId, subject, text, channelId, kind, researchedWithAi, askedPersonId, scope, scopePersonId, attachmentId } = fields(input);
   if (attachmentId !== undefined && (typeof attachmentId !== "string" || !db || !loadPending(db, viewerId, attachmentId))) {
     return { status: 400, body: { error: "添付が見つかりません。もう一度付けてください" } };
   }
@@ -281,6 +325,10 @@ export async function handlePublish(
   }
   if (!validText(text)) return { status: 400, body: { error: "本文が空か、長すぎます" } };
   if (typeof channelId !== "string") return { status: 400, body: { error: "チャネルが正しくありません" } };
+  if (subject !== undefined && typeof subject !== "string") return { status: 400, body: { error: "件名が正しくありません" } };
+  const knownKind = KINDS.find((k) => k === kind);
+  // 0-3b：件名は札を整え、札から種類を決める（本人が札を回したら、その種類で残す）
+  const titled = typeof subject === "string" ? normalizeSubject(subject, knownKind ?? "report") : null;
 
   // 確かめられないときは送らない
   let review: Review;
@@ -296,7 +344,8 @@ export async function handlePublish(
 
   try {
     const postId = destination.createPost(viewerId, channelId, text, {
-      kind: KINDS.find((k) => k === kind),
+      kind: titled?.subject ? titled.kind : knownKind,
+      subject: titled?.subject || undefined,
       researchedWithAi: researchedWithAi === true,
       announcement: announcement === true,
       askedPersonId,
@@ -305,6 +354,16 @@ export async function handlePublish(
       needsLook: review.verdict === "caution",
     });
     if (typeof attachmentId === "string" && db) linkAttachment(db, viewerId, attachmentId, postId);
+    // 0-3d：サンクスカードの投稿は、ありがとうの記録も作る（受け取った数・封筒・カード帳がそろうように）
+    if (db && typeof askedPersonId === "string" && cardKind(titled?.subject)) {
+      db.prepare("INSERT INTO thanks (id, from_person_id, to_person_id, message, created_at) VALUES (?, ?, ?, ?, ?)").run(
+        randomUUID(),
+        viewerId,
+        askedPersonId,
+        text.trim(),
+        new Date().toISOString(),
+      );
+    }
     if (db) {
       markCelebrated(db, viewerId, goalId, postId, new Date());
       notePublished(db, viewerId, { text, askedPersonId }, new Date());

@@ -194,3 +194,41 @@ html[data-theme="modern"] .compose-sheet .compose-writing {
 .compose-sheet .compose-body[hidden] {
   display: none;
 }
+
+/* 0-3b：Teams の件名。札と、押すと直せる太字の1行 */
+.preview-subject {
+  display: flex;
+  align-items: baseline;
+  gap: 0.15em;
+  flex-wrap: wrap;
+  margin: 0 0 0.35rem;
+}
+.preview-subject-tag,
+.preview-subject-title {
+  appearance: none;
+  background: none;
+  border: 0;
+  padding: 0.1em 0;
+  min-height: 0;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: none;
+}
+.preview-subject-tag {
+  color: var(--accent, #2545f0);
+  white-space: nowrap;
+}
+.preview-subject-title {
+  flex: 1 1 8em;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.preview-subject-input {
+  flex: 1 1 8em;
+  min-width: 0;
+  font: inherit;
+  font-weight: 700;
+}

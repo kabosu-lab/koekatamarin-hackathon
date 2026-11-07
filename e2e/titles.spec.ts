@@ -8,19 +8,18 @@ test("ありがとうに肩書きを添えて贈り、受け取って選ぶと�
   const title = `師匠${test.info().testId.slice(0, 6)}`;
   await page.goto("/");
   await switchPerson(page, "佐伯 みどり（国語・2年担任）");
-  await page.goto("/me?open=thanks");
-  const form = page.getByRole("region", { name: "サンクスカードを送る" });
   const recipient = "中村 結衣（1年・吹奏楽部）";
-  await form.getByLabel("名前で探す").fill("吹奏楽");
-  await form.getByRole("list", { name: "見つかった人" }).getByRole("button", { name: /中村 結衣さん/ }).click();
-
-  await form.getByRole("button", { name: "案を出す" }).click();
-  await form.getByRole("button", { name: "台本の相談役" }).click();
-  await expect(form.getByLabel("肩書きを添える")).toHaveValue("台本の相談役");
-  await form.getByLabel("肩書きを添える").fill(title);
-  await form.getByLabel("届けることば").fill("助かりました");
-  await form.getByRole("button", { name: "サンクスカードを送る" }).click();
-  await expect(form).toContainText("ありがとうが届きました");
+  // 0-3d：ありがとうの送る欄はなくなった。肩書きを添える口（/api/thanks）はそのまま
+  const sent = await page.evaluate(
+    (given) =>
+      fetch("/api/thanks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ toPersonId: "nakamura", message: "助かりました", title: given }),
+      }).then((r) => r.ok),
+    title,
+  );
+  expect(sent).toBe(true);
 
   await page.goto("/");
   await switchPerson(page, recipient);
@@ -60,10 +59,6 @@ test("肩書きは自分では作れない（入れる場所がない）", async
   await page.goto("/me?open=thanks");
   const collection = page.getByRole("region", { name: "もらった肩書き" });
   await expect(collection.getByRole("textbox")).toHaveCount(0);
-  // 自分には贈れない（名前で探しても出ない）
-  const form = page.getByRole("region", { name: "サンクスカードを送る" });
-  await form.getByLabel("名前で探す").fill("佐伯");
-  const found = form.getByRole("list", { name: "見つかった人" });
-  await expect(found).toContainText("見つかりませんでした");
-  await expect(found.getByRole("button")).toHaveCount(0);
+  // 0-3d：ありがとうのタイルにも、入れる欄はない
+  await expect(page.getByRole("region", { name: "サンクスカードを送る" })).toHaveCount(0);
 });
