@@ -862,27 +862,9 @@ main a.minna-talk-link {
   }
 }
 
-/* 縦に長い桜の場面（2列の左）でも木が大きくなりすぎないよう、絵は横長のまま説明の上に置く */
+/* 桜の場面の幅を、細い欄の吹き出しの大きさの切り替え（0-2i(2)）に使う。高さは中身で決まるので、幅だけを見る */
 .minna-stage {
-  container: minna-stage / size;
-}
-
-@container minna-stage (min-height: 480px) and (max-aspect-ratio: 1 / 1) {
-  .minna-stage .minna-scene {
-    background: linear-gradient(180deg, var(--minna-sky-top), var(--minna-sky-bottom));
-  }
-
-  .minna-scene :is(.koekata-sakura-art, .koekata-sakura-shadow, .koekata-leaves) {
-    top: auto;
-    bottom: 110px;
-    height: 52.5cqw;
-  }
-
-  .minna-scene .koekata-sakura-forecast {
-    top: auto;
-    bottom: calc(110px + 24cqw);
-    height: 26cqw;
-  }
+  container: minna-stage / inline-size;
 }
 
 /* ---- 校内の桜の画面（/sakura） ---- */
@@ -1441,4 +1423,55 @@ html body:has(.feedback-fab) main .minna-band.minna-band[data-event] {
 
 html body:has(.feedback-fab) main .minna-megaphone.minna-megaphone[data-place="band"] {
   right: 52px;
+}
+
+/* ---- 0-3：細い列でも桜を木として見せる ----
+   前は絵を場面いっぱいに切り取って（slice）敷き、その下半分に説明を重ねていたので、細い列では花だけが大きく残り、幹と地面が隠れていた。
+   絵は上の決まった高さ（180〜220px）に木の全体を縮めて収め（SakuraScene の meet）、説明はその下に置いて重ねない */
+.minna-stage .minna-scene {
+  --minna-art-h: clamp(180px, 24dvh, 220px);
+  height: auto;
+  padding-top: var(--minna-art-h);
+}
+
+.minna-stage {
+  height: auto;
+}
+
+.minna-scene :is(.koekata-sakura-art, .koekata-sakura-shadow, .koekata-leaves) {
+  inset: 0 0 auto;
+  height: var(--minna-art-h);
+}
+
+.minna-scene .koekata-sakura-forecast {
+  top: calc(var(--minna-art-h) * 0.06);
+  height: calc(var(--minna-art-h) * 0.44);
+}
+
+.minna-scene .minna-megaphone[data-place="scene"] {
+  top: calc(var(--minna-art-h) * 0.34);
+}
+
+.minna-scene .minna-sakura-caption {
+  position: relative;
+}
+
+/* 説明は2行まで。続きは「校内の桜 ›」の先で読む */
+.minna-sakura-story,
+.minna-sakura-link span {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.minna-sakura-link span {
+  flex-basis: 100%;
+}
+
+@container (min-width: 900px) {
+  .minna-stage .minna-scene {
+    height: 100%;
+  }
 }
