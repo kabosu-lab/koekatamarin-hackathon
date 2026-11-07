@@ -9,7 +9,6 @@ import { dailyQuestion } from "@/lib/daily-question";
 import { getGoal, goalQuestion } from "@/lib/goals";
 import { readAppearance } from "@/lib/appearance";
 import { promiseCookieName } from "@/lib/promise-cookie";
-import { EdgeHandles } from "./EdgeHandles";
 import { RibbonMoment } from "./RibbonMoment";
 import { countNew, newsLine, sideCounts } from "@/lib/new-counts";
 import { getDestination } from "@/lib/destination/current";
@@ -69,7 +68,6 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
     <WidePanel src={columnSrc("left", left)} title="履歴と設定" side="left" shown={shownPane === "left"} />
     <main className="retro-home">
       <h1 className="visually-hidden">こえかた</h1>
-      <EdgeHandles />
       {rewards && <RibbonMoment key={`ribbon-${viewer.id}`} ribbons={listNewRibbons(db, viewer.id)} hold={revealCards.length > 0} />}
       <ThanksReveal key={`thanks-${viewer.id}`} viewerId={viewer.id} cards={revealCards} />
       <Talk

@@ -2200,25 +2200,30 @@ html[data-pane] :is(.feedback-fab, .feedback-thanks) {
 }
 
 /*
- * 0-3i：話す画面の本体の左右の端、上下のまん中の、縦向きのつまみの棒（EdgeHandles）。押すか引くと、その側の画面へ移る。
- * 本体（.retro-home）の箱を基準に置く（帯で本体と一緒に動く）
+ * 0-3i・0-3o：画面の左右の端、上下のまん中の、縦向きのつまみの棒（EdgeHandles）。押すか引くと、その側の画面へ移る。
+ * 共通の外枠から、狭い画面のどのページにも出す。シートやモーダル（60〜90）より手前、回してほしい案内（1000）より奥
  */
-.device-row > .retro-home {
-  position: relative;
-}
-
-.edge-handle {
-  position: absolute;
+html button.edge-handle {
+  position: fixed;
   top: 50%;
-  z-index: 6;
+  z-index: 950;
   display: grid;
   place-items: center;
-  width: 14px;
-  height: 84px;
-  margin-top: -42px;
+  box-sizing: border-box;
+  width: 16px;
+  min-width: 0;
+  height: calc(13.5dvh + 24px);
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
   border-radius: 8px;
+  background: transparent;
+  box-shadow: none;
   color: inherit;
-  text-decoration: none;
+  translate: 0 -50%;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .edge-handle[data-side="left"] {
@@ -2231,19 +2236,19 @@ html[data-pane] :is(.feedback-fab, .feedback-thanks) {
   right: 0;
 }
 
+/* 縦向きでは画面の高さの 13.5%（今までの 1.5〜2 倍） */
 .edge-handle-bar {
   display: block;
   width: 5px;
-  height: 44px;
+  height: 13.5dvh;
   border-radius: 3px;
   background: rgb(40 52 62 / 34%);
   box-shadow: inset 0 1px 1px rgb(255 255 255 / 35%), 0 1px 1px rgb(255 255 255 / 55%);
-  transition: background-color 120ms ease, height 120ms ease;
+  transition: background-color 120ms ease;
 }
 
 .edge-handle:hover .edge-handle-bar,
 .edge-handle:active .edge-handle-bar {
-  height: 52px;
   background: rgb(40 52 62 / 52%);
 }
 
@@ -2275,31 +2280,35 @@ html[data-pane] :is(.feedback-fab, .feedback-thanks) {
 }
 
 @media (min-width: 600px) and (min-height: 561px) {
-  .edge-handle {
+  html button.edge-handle {
     width: 22px;
-    height: 104px;
-    margin-top: -52px;
   }
 
   .edge-handle-bar {
     width: 6px;
-    height: 56px;
-  }
-
-  .edge-handle:hover .edge-handle-bar,
-  .edge-handle:active .edge-handle-bar {
-    height: 64px;
   }
 }
 
-/* 3列のときは左右に列が並ぶので出さない。欄の中にも出さない */
+/* 低い横画面では、縦の長さを今までの大きさに */
+@media (orientation: landscape) {
+  html button.edge-handle {
+    height: 84px;
+  }
+
+  .edge-handle-bar {
+    height: 44px;
+  }
+}
+
+/* 3列のときは左右に列が並ぶので出さない。欄（iframe）の中、最初の約束や試用の注意のカードを読んでいる間、キーボードを出している間も出さない */
 @media (orientation: landscape) and (min-height: 600px) {
-  .edge-handle {
+  html button.edge-handle {
     display: none;
   }
 }
 
-html[data-embed] .edge-handle {
+html:is([data-embed], [data-pane], [data-keyboard="open"]) button.edge-handle,
+body:has(.first-card-backdrop) button.edge-handle {
   display: none;
 }
 

@@ -16,7 +16,7 @@ const NO_SWIPE = "[data-noswipe], .device-mic, input, textarea, select, dialog, 
 /** 話す画面から先に読んでおく奥の画面（ホイールのチップの行き先） */
 const DEEP_PREFETCH = ["/today", "/inbox", "/study/room", "/chie", "/me?open=goals", "/me?open=daily", "/me?open=lookback", "/me?open=settings"];
 /** 3枚の上で、奥の状態（タイルを開いた・今日の3人を出した）を開いている印。あれば左右どちらでもホームへ戻る（0-2p） */
-const DEEP_STATE = "[data-swipe-home]";
+export const DEEP_STATE = "[data-swipe-home]";
 /** 奥の画面の部品が「ホームへ戻して」と頼む知らせ（今日の3人の、端の先へのめくり）。detail は SwipeHomeRequest */
 export const SWIPE_HOME_EVENT = "koekata:swipe-home";
 export type SwipeHomeRequest = { forward: boolean; layer?: HTMLElement | null };

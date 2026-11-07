@@ -8,6 +8,7 @@ import { collectsFeedback, isTrialMode, keepsSpokenWords, trialFeedbackHint, tri
 import { TrialNotice } from "./TrialNotice";
 import { FeedbackSheet } from "./FeedbackSheet";
 import { SwipeNav } from "./SwipeNav";
+import { EdgeHandles } from "./EdgeHandles";
 import { EmbedMark } from "./WidePanels";
 import { TrialProvider } from "./TrialContext";
 import { ViewportFit } from "./ViewportFit";
@@ -55,6 +56,8 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
           {/* 試用中の感想の入口（0-2h）。審査員用・本番・みんな用では出さない */}
           {collectsFeedback() && <FeedbackSheet />}
           <SwipeNav />
+          {/* 0-3o：左右のつまみの棒。狭い画面のどのページにも出す（3列と欄の中では CSS で出さない） */}
+          <EdgeHandles />
           <EmbedMark />
           <ViewportFit />
           <RotateHint />

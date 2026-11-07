@@ -30,18 +30,16 @@ for (const size of SIZES) {
     const ctx = await context(browser, size, { seen: true });
     const page = await ctx.newPage();
     await page.goto("/");
-    const home = page.locator(".retro-home");
-    const left = page.getByRole("link", { name: "履歴と設定へ" });
-    const right = page.getByRole("link", { name: "みんなへ" });
+    const left = page.getByRole("button", { name: "履歴と設定へ" });
+    const right = page.getByRole("button", { name: "みんなへ" });
     await expect(left).toBeVisible();
     await expect(right).toBeVisible();
-    // 本体の左右の端、上下のまん中
-    const box = (await home.boundingBox())!;
+    // 画面の左右の端、上下のまん中（0-3o）
     const l = (await left.boundingBox())!;
     const r = (await right.boundingBox())!;
-    expect(Math.abs(l.x - box.x)).toBeLessThan(2);
-    expect(Math.abs(r.x + r.width - (box.x + box.width))).toBeLessThan(2);
-    for (const handle of [l, r]) expect(Math.abs(handle.y + handle.height / 2 - (box.y + box.height / 2))).toBeLessThan(3);
+    expect(l.x).toBeLessThan(1);
+    expect(Math.abs(r.x + r.width - size.width)).toBeLessThan(1);
+    for (const handle of [l, r]) expect(Math.abs(handle.y + handle.height / 2 - size.height / 2)).toBeLessThan(3);
     await page.screenshot({ path: test.info().outputPath(`棒-${size.name}.png`) });
 
     await stripReady(page);
