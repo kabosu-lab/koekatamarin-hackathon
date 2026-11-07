@@ -37,6 +37,15 @@ const SPRING = "cubic-bezier(0.34, 1.56, 0.64, 1)";
 
 type Arrival = { from: "left" | "right"; ms: number; rest: number };
 
+/** 使う人と見た目の cookie。変わったら、外側の話す画面を描き直す */
+function whoAndLook(): string {
+  return document.cookie
+    .split("; ")
+    .filter((pair) => /^koekata_(person|theme|size|avatar|sound)=/.test(pair))
+    .sort()
+    .join("; ");
+}
+
 /** 左右の画面の中からの指の量を、帯の位置にする。帯の端の先は重くする */
 function bandOffset(base: number, dx: number): number {
   const width = window.innerWidth || 1;
@@ -138,10 +147,18 @@ export function SwipeNav() {
   // 0-2z：話す画面の帯を、左右の画面（iframe）の中からも動かせるようにする。
   // 帯が止まったら、着いた先を新しくする（外側は話す画面へ戻ったとき、左右の画面はその中で）。「戻る」では帯を合わせる
   useEffect(() => {
+    // 外側（話す画面）を描いたときの、使う人と見た目の印
+    const drawnAs = whoAndLook();
     const onLand = (event: Event) => {
       const to = (event as CustomEvent<number>).detail;
-      // 外側は話す画面へ戻ったときだけ。左右の画面は、着いたとき自分の中で
-      if (window.self === window.top ? to === 0 : true) router.refresh();
+      // 左右の画面は、着いたとき自分の中で新しくする
+      if (window.self !== window.top) {
+        router.refresh();
+        return;
+      }
+      // 外側は、左右の画面で人や見た目が替わっていたら、話す画面へ戻ったときに窓ごと読み直す。
+      // router.refresh は使わない（読み直しの途中で帯がまた左右へ動くと、遅れて届いた話す画面の木で帯が元へ戻ってしまう）
+      if (to === 0 && whoAndLook() !== drawnAs) location.replace("/");
     };
     window.addEventListener(STRIP_LAND_EVENT, onLand);
     if (window.self !== window.top) return () => window.removeEventListener(STRIP_LAND_EVENT, onLand);
