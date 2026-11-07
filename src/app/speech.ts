@@ -1,3 +1,5 @@
+import { isEchoOf } from "@/lib/echo";
+
 /** ブラウザの音声認識のうち、この画面が使う部分。 */
 type RecognitionEvent = {
   resultIndex: number;
@@ -86,6 +88,34 @@ export function joinResults(results: ArrayLike<ArrayLike<{ transcript: string }>
   return { finalText, interim };
 }
 
+/**
+ * 読み上げが終わってから、これだけの間は、読み上げた文と重なる聞き取りを捨てる（0-3l）。
+ * 拾い込みは話し終えた直後の残り音だけなので短くする（長いと、本人が後で同じ言葉を言ったときに捨ててしまう）
+ */
+const ECHO_WINDOW_MS = 8_000;
+const spokenLog: { text: string; endedAt: number }[] = [];
+
+/** パートナーがこれから読み上げる文を覚えておく。聞き取りがそれを拾っても本人の言葉にしない */
+export function noteSpoken(text: string): void {
+  spokenLog.push({ text, endedAt: Infinity });
+  if (spokenLog.length > 20) spokenLog.splice(0, spokenLog.length - 20);
+}
+
+/** 読み上げが終わった時刻を残す。そこから ECHO_WINDOW_MS の間だけ見分ける */
+export function noteSpeechEnded(at = Date.now()): void {
+  for (const entry of spokenLog) if (entry.endedAt === Infinity) entry.endedAt = at;
+}
+
+/** 読み上げ中か、読み上げてまもない文 */
+export function recentlySpoken(at = Date.now()): string[] {
+  return spokenLog.filter((entry) => at - entry.endedAt < ECHO_WINDOW_MS).map((entry) => entry.text);
+}
+
+/** テスト用：覚えた読み上げを消す */
+export function forgetSpoken(): void {
+  spokenLog.length = 0;
+}
+
 export type ListeningSession = {
   /** 本人が止める。そこまでの言葉を渡して終わる */
   stop(): void;
@@ -100,6 +130,8 @@ export type SessionOptions = {
   /** 聞き始めてから、これだけ経っても文字が1つも返らなければ、電波のことを知らせる（聞き取りは続ける） */
   slowMs?: number;
   now?(): number;
+  /** 聞き取った区切りが、パートナーの読み上げを拾ったものか。既定は直前に読み上げた文との重なりで見る */
+  isEcho?(segment: string): boolean;
 };
 
 /**
@@ -109,8 +141,9 @@ export type SessionOptions = {
 export function runListening(
   Class: RecognitionConstructor,
   handlers: SpeechHandlers,
-  { silenceLimitMs = DEFAULT_SILENCE_LIMIT_MS, slowMs = DEFAULT_SLOW_MS, now = Date.now }: SessionOptions = {},
+  { silenceLimitMs = DEFAULT_SILENCE_LIMIT_MS, slowMs = DEFAULT_SLOW_MS, now = Date.now, isEcho }: SessionOptions = {},
 ): ListeningSession {
+  const echo = isEcho ?? ((segment: string) => isEchoOf(segment, recentlySpoken(now())));
   let committed = "";
   let currentFinal = "";
   let currentInterim = "";
@@ -124,6 +157,9 @@ export function runListening(
   let silenceTimer: ReturnType<typeof setTimeout> | undefined;
   let stopTimer: ReturnType<typeof setTimeout> | undefined;
   let heardAny = false;
+  /** 読み上げのために止めた認識と、止めたときまでに聞いていた文。止めたあとに届いた分は読み上げの拾い込みかもしれない */
+  let pausedRecognition: Recognition | null = null;
+  let heardAtPause = "";
   let steadyTimer: ReturnType<typeof setTimeout> | undefined;
   /** 最後に区切りを知らせたときの文字の数と時刻 */
   let signaledLength = 0;
@@ -180,6 +216,21 @@ export function runListening(
     recognition.onresult = (event) => {
       if (recognition !== current) return;
       const { finalText, interim } = joinResults(event.results);
+      const segment = finalText + interim;
+      if (recognition === pausedRecognition) {
+        // 止めたあとに増えた分が読み上げと重なるなら、止めたときまでの言葉だけ残す
+        const added = segment.startsWith(heardAtPause) ? segment.slice(heardAtPause.length) : segment;
+        if (echo(added)) {
+          currentFinal = heardAtPause;
+          currentInterim = "";
+          return;
+        }
+      } else if (echo(segment)) {
+        // 読み上げを拾った区切りは、本人の言葉に入れない
+        currentFinal = "";
+        currentInterim = "";
+        return;
+      }
       currentFinal = finalText;
       currentInterim = interim;
       if (finalText || interim) heardAny = true;
@@ -246,6 +297,8 @@ export function runListening(
     pause() {
       if (finished || paused) return;
       paused = true;
+      pausedRecognition = current;
+      heardAtPause = currentFinal + currentInterim;
       clearTimeout(restartTimer);
       clearTimeout(silenceTimer);
       clearTimeout(steadyTimer);

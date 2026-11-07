@@ -10,6 +10,7 @@ import { SafetyCard, type SafetyNotice } from "../SafetyCard";
 import { useTrial } from "../TrialContext";
 import { SendBurst } from "../SendBurst";
 import { playSendSound, soundAllowed } from "../sound";
+import { cancelAloud, speakAloud } from "../speak-aloud";
 import { isSpeechSupported, startSession, type ListeningSession } from "../speech";
 
 /** 間のあとに頼みごとを読む長さ。言い終わりを待つ */
@@ -17,7 +18,6 @@ const COMMAND_WAIT_MS = 1200;
 /** 話した分がこれだけ増えたら、命や安全の確認を通す */
 const CHECK_EVERY_CHARS = 400;
 const SILENCE_LIMIT_MS = 10 * 60 * 1000;
-const SPEAK_TIMEOUT_MS = 20_000;
 const MAX_ASK_TEXT = 2000;
 const HISTORY_LIMIT = 10;
 
@@ -67,6 +67,7 @@ export function WalkMode({ viewer, viewerId }: { viewer: { name: string; label: 
   const lastAizuchi = useRef(0);
   const aizuchiCount = useRef(0);
   const speakingRef = useRef(false);
+  const speakingCount = useRef(0);
   const aizuchiOnRef = useRef(true);
   const finishingRef = useRef(false);
   const safetySpokenRef = useRef(false);
@@ -125,22 +126,14 @@ export function WalkMode({ viewer, viewerId }: { viewer: { name: string; label: 
 
   /** 声で返す。読み上げの間はマイクを止めて、自分の声を拾わない。声を消す設定なら読み上げない。 */
   const speak = useCallback(async (words: string) => {
-    if (!soundAllowed() || typeof speechSynthesis === "undefined" || speakingRef.current) return;
+    if (!soundAllowed() || typeof speechSynthesis === "undefined") return;
+    // 重なった読み上げは捨てずに順に読み、全部終わってから聞き取りに戻る（0-3l）
+    speakingCount.current += 1;
     speakingRef.current = true;
     session.current?.pause();
-    await new Promise<void>((resolve) => {
-      const utterance = new SpeechSynthesisUtterance(words);
-      utterance.lang = "ja-JP";
-      // 端末によって終わりの知らせが来ないことがある
-      const timer = setTimeout(resolve, SPEAK_TIMEOUT_MS);
-      const done = () => {
-        clearTimeout(timer);
-        resolve();
-      };
-      utterance.onend = done;
-      utterance.onerror = done;
-      speechSynthesis.speak(utterance);
-    });
+    await speakAloud(words);
+    speakingCount.current -= 1;
+    if (speakingCount.current > 0) return;
     speakingRef.current = false;
     session.current?.resume();
   }, []);
@@ -314,7 +307,7 @@ export function WalkMode({ viewer, viewerId }: { viewer: { name: string; label: 
       clearTimeout(pauseTimer.current);
       session.current?.stop();
       void wake.current?.release().catch(() => undefined);
-      if (typeof speechSynthesis !== "undefined") speechSynthesis.cancel();
+      cancelAloud();
     },
     [],
   );

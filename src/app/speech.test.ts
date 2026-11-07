@@ -1,5 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { joinResults, runListening, SLOW_NOTICE, type SpeechHandlers } from "./speech";
+import {
+  forgetSpoken,
+  joinResults,
+  noteSpeechEnded,
+  noteSpoken,
+  recentlySpoken,
+  runListening,
+  SLOW_NOTICE,
+  type SpeechHandlers,
+} from "./speech";
 
 type Result = { 0: { transcript: string }; length: number; isFinal: boolean };
 
@@ -50,6 +59,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   vi.useRealTimers();
+  forgetSpoken();
 });
 
 describe("joinResults", () => {
@@ -288,5 +298,56 @@ describe("声が1区切り固まったときの知らせ（onCommitted）", () =
     vi.advanceTimersByTime(500);
     session.stop();
     expect(calls.final).toEqual(["今日は"]);
+  });
+});
+
+describe("パートナーの読み上げを本人の言葉にしない（0-3l）", () => {
+  const SPOKEN = "下書きは自動でできていて、仕上げには人の確認が欠かせないようです。";
+
+  it("止めた認識に、止めたあと読み上げが入っても、止めたときまでの言葉だけ残す", () => {
+    const { calls, value } = handlers();
+    const session = runListening(Class, value);
+    const first = latest();
+    // 実機では stop() のあと、終わりの知らせまでに少し聞き続ける
+    first.stop = function (this: Fake) {
+      this.stopCalls += 1;
+    };
+    first.hear(result("今日の話", false));
+    noteSpoken(SPOKEN);
+    session.pause();
+    first.hear(result("今日の話仕上げには人の確認が欠かせない", false));
+    expect(calls.interim.at(-1)).toBe("今日の話");
+    first.onend?.();
+    noteSpeechEnded();
+    session.resume();
+    vi.advanceTimersByTime(300);
+    latest().hear(result("続きの話"));
+    session.stop();
+    expect(calls.final).toEqual(["今日の話続きの話"]);
+  });
+
+  it("聞き直したあとに読み上げの残りを拾っても、その区切りは捨てる", () => {
+    const { calls, value } = handlers();
+    const session = runListening(Class, value);
+    latest().hear(result("前半"));
+    noteSpoken(SPOKEN);
+    session.pause();
+    noteSpeechEnded();
+    session.resume();
+    vi.advanceTimersByTime(300);
+    latest().hear(result("いて、仕上げには人の確認が欠かせないようです"));
+    expect(calls.interim.at(-1)).toBe("前半");
+    latest().onend?.();
+    vi.advanceTimersByTime(300);
+    latest().hear(result("後半"));
+    session.stop();
+    expect(calls.final).toEqual(["前半後半"]);
+  });
+
+  it("読み上げから時間が経てば、同じ言葉でも本人の言葉として残す", () => {
+    noteSpoken(SPOKEN);
+    noteSpeechEnded(1000);
+    expect(recentlySpoken(2000)).toEqual([SPOKEN]);
+    expect(recentlySpoken(1000 + 60_000)).toEqual([]);
   });
 });
