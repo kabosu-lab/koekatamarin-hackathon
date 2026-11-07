@@ -77,6 +77,10 @@ export function WidePanel({ src, title, side, shown = false }: { src: string; ti
           title={title}
           data-side={side}
           data-mode={wide ? "column" : "pane"}
+          // 読み込みが済んだ印。帯の準備（strip.ts の stripReady）が見る
+          onLoad={(event) => {
+            event.currentTarget.dataset.loaded = "true";
+          }}
           tabIndex={wide ? undefined : -1}
           aria-hidden={wide ? undefined : true}
         />

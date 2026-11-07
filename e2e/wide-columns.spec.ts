@@ -114,8 +114,8 @@ for (const viewport of [
       for (let deg = 10; deg <= 360 && (await chip.count()) === 0; deg += 10) await page.mouse.move(at(deg).x, at(deg).y, { steps: 2 });
       await expect(chip.first()).toBeVisible();
       await page.mouse.up();
-      // 離したときに真ん中にいたチップ（受信箱かその隣）が、右の列の中で開く。外側は話す画面のまま
-      await expect(page.locator(".wide-panel[data-side=right] iframe")).toHaveAttribute("src", /^\/(inbox|today|study\/room|chie)/);
+      // 離したときに真ん中にいたチップ（受信箱かその隣。みんなのこともある）が、右の列の中で開く。外側は話す画面のまま
+      await expect(page.locator(".wide-panel[data-side=right] iframe")).toHaveAttribute("src", /^\/(minna|inbox|today|study\/room|chie)/);
       await expect(page.frameLocator(".wide-panel[data-side=right] iframe").locator("main h1").first()).toBeVisible();
       await expect(page).toHaveURL(/127\.0\.0\.1:\d+\/$/);
       await expectThreeColumns(page);

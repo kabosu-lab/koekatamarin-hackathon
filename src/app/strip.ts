@@ -52,7 +52,8 @@ export function stripReady(): boolean {
   for (const side of ["left", "right"] as const) {
     const frame = pane(side)?.querySelector("iframe");
     try {
-      if (!frame || frame.contentDocument?.readyState !== "complete") return false;
+      // 読み込みが済んだ印（WidePanel の onLoad）と、中の文書の両方を見る
+      if (!frame || frame.dataset.loaded !== "true" || frame.contentDocument?.readyState !== "complete") return false;
       const path = frame.contentWindow?.location.pathname ?? "";
       if (path !== ROOTS[side] && !path.startsWith(`${ROOTS[side]}/`) && !(side === "right" ? RIGHT_PREFIXES : LEFT_PREFIXES).some((prefix) => path.startsWith(prefix)))
         return false;
@@ -61,6 +62,29 @@ export function stripReady(): boolean {
     }
   }
   return center() !== null;
+}
+
+/**
+ * 帯の準備が整わないままのとき（重いときの読み直しの取り違えなど）、左右の画面を入口から読み直す。
+ * 中の画面がその側の画面でないか、読み込みの印がないものだけ。読み直したら true
+ */
+export function repairPanes(): boolean {
+  let repaired = false;
+  for (const side of ["left", "right"] as const) {
+    const frame = pane(side)?.querySelector("iframe");
+    if (!frame) continue;
+    try {
+      const path = frame.contentWindow?.location.pathname ?? "";
+      const own = path === ROOTS[side] || (side === "right" ? RIGHT_PREFIXES : LEFT_PREFIXES).some((prefix) => path.startsWith(prefix));
+      if (own && frame.dataset.loaded === "true" && frame.contentDocument?.readyState === "complete") continue;
+      delete frame.dataset.loaded;
+      frame.contentWindow?.location.replace(ROOTS[side]);
+      repaired = true;
+    } catch {
+      // 読めなければそのまま
+    }
+  }
+  return repaired;
 }
 
 /** 左右の画面の中で奥へ進んだときの画面（列の割り当てと同じ。src/lib/wide.ts） */
