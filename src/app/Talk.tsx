@@ -1084,7 +1084,7 @@ export function Talk({
 
       {goalForPost && (
         <p className="sent" role="status">
-          「{goalForPost.text}」、やったね！「{device ? "とどける" : "言葉にして送る"}」で、校内のみんなに伝えられます。
+          「{goalForPost.text}」、{politeTalk ? "できましたね！" : "やったね！"}「{device ? "とどける" : "言葉にして送る"}」で、校内のみんなに伝えられます。
         </p>
       )}
 
