@@ -45,14 +45,16 @@ async function make(person = "saeki", conversation = talk, now = NOW) {
 }
 
 /** 呼ばれた中身を残し、決まった項目を返す Claude */
-function recording(items: string[] | ((request: ClaudeRequest) => string[])) {
+type Answer = string[] | Record<string, unknown>;
+/** 配列は前の形（items）として返す。見出しの形（words・good…）はそのまま返す */
+function recording(items: Answer | ((request: ClaudeRequest) => Answer)) {
   const requests: ClaudeRequest[] = [];
   const client: ClaudeClient = {
     mode: "real",
     complete: async (request) => {
       requests.push(request);
-      const list = typeof items === "function" ? items(request) : items;
-      return { text: JSON.stringify({ items: list }), refused: false };
+      const answer = typeof items === "function" ? items(request) : items;
+      return { text: JSON.stringify(Array.isArray(answer) ? { items: answer } : answer), refused: false };
     },
   };
   return { client, requests, prompt: (n = 0) => String(requests[n].messages[0].content) };
@@ -69,6 +71,13 @@ function post(id: string, body: string, at = NOW, person = "saeki") {
 
 const later = (minutes: number) => new Date(NOW.getTime() + minutes * 60_000);
 
+/** 言葉で項目を探す（並びは見出しの順なので、番号で取らない） */
+function byText(report: { items: { id: string; text: string }[] }, text: string) {
+  const item = report.items.find((i) => i.text === text);
+  if (!item) throw new Error(`項目がない：${text}`);
+  return item;
+}
+
 describe("届く相手", () => {
   it("先生の日報は管理職へ、生徒の日記は担任へ", () => {
     expect(recipientsOf(db, "saeki").map((r) => r.id)).toEqual(["fujimoto"]);
@@ -81,7 +90,11 @@ describe("届く相手", () => {
 describe("開いたらまとまる", () => {
   it("項目ごとに作られ、初めはどれもチェックが付いていない", async () => {
     const report = await make();
-    expect(report.items.map((i) => i.text)).toEqual(["作文を褒めた", "保護者の電話で疲れた"]);
+    // 0-3g：最後に話した言葉が【今日の一言】、ほかは見出しの下へ
+    expect(report.items.map((i) => [i.section, i.text])).toEqual([
+      ["words", "保護者の電話で疲れた"],
+      ["good", "作文を褒めた"],
+    ]);
     expect(report.items.every((i) => !i.checked && !i.edited)).toBe(true);
   });
 
@@ -159,7 +172,7 @@ describe("足し算で整え直す", () => {
 
     post("second-post", "放課後の投稿", later(10));
     const more: ChatMessage[] = [...talk, { role: "assistant", content: "うん" }, { role: "user", content: "部活を見に行った" }];
-    const claude = recording((request) => [...String(request.messages[0].content).matchAll(/^(?:項目|投稿|本人)：(.*)$/gm)].map((m) => m[1]));
+    const claude = recording(() => ({ words: "部活を見に行った", good: ["作文を褒めた", "放課後の投稿", "保護者の電話で疲れた"] }));
     await handleSync(claude.client, db, "saeki", { conversation: more }, later(20));
 
     expect(claude.requests).toHaveLength(1);
@@ -184,7 +197,7 @@ describe("足し算で整え直す", () => {
 
   it("本人が直した項目は上書きせず、変えない項目として渡す", async () => {
     const first = await make();
-    expect(handleEdit(db, "saeki", { itemId: first.items[0].id, text: "作文のよいところを3つ伝えた" }).status).toBe(200);
+    expect(handleEdit(db, "saeki", { itemId: byText(first, "作文を褒めた").id, text: "作文のよいところを3つ伝えた" }).status).toBe(200);
 
     const claude = recording(["保護者の電話で疲れた", "作文のよいところを3つ伝えた", "部活を見に行った"]);
     await handleSync(claude.client, db, "saeki", { conversation: [...talk, { role: "user", content: "部活を見に行った" }] }, later(10));
@@ -192,7 +205,7 @@ describe("足し算で整え直す", () => {
     expect(claude.prompt()).toContain("直した項目：作文のよいところを3つ伝えた");
     expect(claude.prompt()).not.toContain("項目：作文を褒めた");
     const report = getReport(db, "saeki", DATE);
-    const kept = report?.items.find((i) => i.id === first.items[0].id);
+    const kept = report?.items.find((i) => i.id === byText(first, "作文を褒めた").id);
     expect(kept).toMatchObject({ text: "作文のよいところを3つ伝えた", edited: true });
     // 同じ文が重ならない
     expect(report?.items.filter((i) => i.text === "作文のよいところを3つ伝えた")).toHaveLength(1);
@@ -201,7 +214,7 @@ describe("足し算で整え直す", () => {
 
   it("届けた項目と届いた一言は、足し算のあとも残る", async () => {
     const first = await make();
-    handleCheck(db, "saeki", { itemId: first.items[0].id, checked: true });
+    handleCheck(db, "saeki", { itemId: byText(first, "作文を褒めた").id, checked: true });
     await handleRespond(scripted, db, "fujimoto", { reportId: first.id, text: "いいですね" }, NOW);
 
     const claude = recording(["保護者の電話で疲れた", "部活を見に行った"]);
@@ -209,9 +222,9 @@ describe("足し算で整え直す", () => {
     expect(outcome.status).toBe(200);
     const report = getReport(db, "saeki", DATE);
     expect(report?.id).toBe(first.id);
-    expect(report?.items.find((i) => i.id === first.items[0].id)).toMatchObject({ text: "作文を褒めた", checked: true });
+    expect(report?.items.find((i) => i.id === byText(first, "作文を褒めた").id)).toMatchObject({ text: "作文を褒めた", checked: true });
     expect(report?.responses).toHaveLength(1);
-    expect(listReceived(db, "fujimoto")[0].items).toEqual(["作文を褒めた"]);
+    expect(listReceived(db, "fujimoto")[0].items).toEqual(["【うまくいったこと】作文を褒めた"]);
   });
 
   it("まとめている間に届けられたら置き換えず、次に開いたときにもう一度まとめる", async () => {
@@ -224,7 +237,7 @@ describe("足し算で整え直す", () => {
     const outcome = await handleSync(sharing.client, db, "saeki", { conversation: more }, later(10));
     expect(outcome.body.saved).toBe(false);
     const kept = getReport(db, "saeki", DATE);
-    expect(kept?.items.map((i) => i.text)).toEqual(["作文を褒めた", "保護者の電話で疲れた"]);
+    expect(kept?.items.map((i) => i.text)).toEqual(["保護者の電話で疲れた", "作文を褒めた"]);
     expect(kept?.items[0].checked).toBe(true);
 
     const again = recording(["保護者の電話で疲れた", "部活を見に行った"]);
@@ -245,7 +258,7 @@ describe("足し算で整え直す", () => {
     await make();
     const empty = recording([]);
     await handleSync(empty.client, db, "saeki", { conversation: [...talk, { role: "user", content: "x" }] }, later(10));
-    expect(getReport(db, "saeki", DATE)?.items.map((i) => i.text)).toEqual(["作文を褒めた", "保護者の電話で疲れた"]);
+    expect(getReport(db, "saeki", DATE)?.items.map((i) => i.text)).toEqual(["保護者の電話で疲れた", "作文を褒めた"]);
   });
 });
 
@@ -255,7 +268,7 @@ describe("本人が直す", () => {
     expect(handleEdit(db, "fujimoto", { itemId: report.items[0].id, text: "x" }).status).toBe(404);
     expect(handleEdit(db, "saeki", { itemId: report.items[0].id, text: "  " }).status).toBe(400);
     expect(handleEdit(db, "saeki", { itemId: report.items[0].id, text: "あ".repeat(201) }).status).toBe(400);
-    expect(getReport(db, "saeki", DATE)?.items[0]).toMatchObject({ text: "作文を褒めた", edited: false });
+    expect(getReport(db, "saeki", DATE)?.items[0]).toMatchObject({ text: "保護者の電話で疲れた", edited: false });
   });
 });
 
@@ -267,11 +280,11 @@ describe("チェックした項目だけが届く", () => {
 
   it("チェックした項目だけが、決まった相手にだけ届く", async () => {
     const report = await make();
-    handleCheck(db, "saeki", { itemId: report.items[0].id, checked: true });
+    handleCheck(db, "saeki", { itemId: byText(report, "作文を褒めた").id, checked: true });
 
     const received = listReceived(db, "fujimoto");
     expect(received).toHaveLength(1);
-    expect(received[0].items).toEqual(["作文を褒めた"]);
+    expect(received[0].items).toEqual(["【うまくいったこと】作文を褒めた"]);
     expect(JSON.stringify(received)).not.toContain("保護者の電話");
 
     for (const other of ["ogawara", "kawamura", "noda", "shiraishi", "aoki", "kinoshita", "nakamura", "saeki"]) {
@@ -308,11 +321,11 @@ describe("届けるボタン（0-2u）", () => {
   it("選んだ項目だけを、押したときに届け、届いた数を返す", async () => {
     const report = await make();
     expect(listReceived(db, "fujimoto")).toEqual([]);
-    const outcome = handleSend(db, "saeki", { itemIds: [report.items[0].id] }, NOW);
+    const outcome = handleSend(db, "saeki", { itemIds: [byText(report, "作文を褒めた").id] }, NOW);
     expect(outcome.status).toBe(200);
     expect(outcome.body.sent).toBe(1);
-    expect((outcome.body.report as { items: { checked: boolean }[] }).items[0].checked).toBe(true);
-    expect(listReceived(db, "fujimoto")[0].items).toEqual(["作文を褒めた"]);
+    expect((outcome.body.report as { items: { text: string; checked: boolean }[] }).items.find((i) => i.text === "作文を褒めた")?.checked).toBe(true);
+    expect(listReceived(db, "fujimoto")[0].items).toEqual(["【うまくいったこと】作文を褒めた"]);
   });
 
   it("もう届いた項目は数えず、増えた分だけ届く", async () => {
@@ -452,5 +465,124 @@ describe("夕方のまとめの係（自動で1日1回）", () => {
     expect(outcome.status).toBe(200);
     expect(complete).not.toHaveBeenCalled();
     expect((await handleDaily(scripted, db, "saeki", { action: "make" })).status).toBe(400);
+  });
+});
+
+describe("見出しの形（0-3g）", () => {
+  it("見出しごとに3つまでで、空の見出しは作らない", async () => {
+    const claude = recording({ words: "今日は長かった", good: ["1", "2", "3", "4", "5"], consult: [], tomorrow: ["明日は面談"] });
+    await handleSync(claude.client, db, "saeki", { conversation: talk }, NOW);
+    const report = getReport(db, "saeki", DATE)!;
+    const sections = report.items.map((i) => i.section);
+    expect(sections.filter((s) => s === "words")).toHaveLength(1);
+    expect(sections.filter((s) => s === "good")).toHaveLength(3);
+    expect(sections).not.toContain("consult");
+    expect(report.items.find((i) => i.section === "tomorrow")?.text).toBe("明日は面談");
+  });
+
+  it("届く日報は見出しの順に、見出しの名前を付けて並ぶ", async () => {
+    const claude = recording({ words: "ほっとした", good: ["作文を褒めた"], consult: ["保護者対応を相談したい"], tomorrow: [] });
+    await handleSync(claude.client, db, "saeki", { conversation: talk }, NOW);
+    const report = getReport(db, "saeki", DATE)!;
+    handleSend(db, "saeki", { itemIds: report.items.map((i) => i.id) }, NOW);
+    expect(listReceived(db, "fujimoto")[0].items).toEqual([
+      "【今日の一言】ほっとした",
+      "【うまくいったこと】作文を褒めた",
+      "【相談したいこと（管理職の方へ）】保護者対応を相談したい",
+    ]);
+  });
+
+  it("届いた一言のあとに話した分は、一言を替えずに見出しへ入る（台本）", async () => {
+    const first = await make();
+    handleSend(db, "saeki", { itemIds: [byText(first, "保護者の電話で疲れた").id] }, NOW);
+    await make("saeki", [...talk, { role: "user", content: "明日は保護者に電話する" }], later(10));
+    const report = getReport(db, "saeki", DATE)!;
+    expect(report.items.filter((i) => i.section === "words").map((i) => i.text)).toEqual(["保護者の電話で疲れた"]);
+    expect(byText(report, "明日は保護者に電話する")).toMatchObject({ section: "tomorrow", checked: false });
+  });
+});
+
+describe("人とのつながり（0-3g）", () => {
+  const at = NOW.toISOString();
+  const answer = { text: JSON.stringify({ words: "", good: [], consult: [], tomorrow: [] }), refused: false };
+
+  function addPost(id: string, author: string, opts: { channel?: string; kind?: string; asked?: string } = {}) {
+    db.prepare("INSERT INTO posts (id, channel_id, author_id, kind, body, created_at, asked_person_id) VALUES (?, ?, ?, ?, ?, ?, ?)").run(
+      id,
+      opts.channel ?? "study",
+      author,
+      opts.kind ?? "effort",
+      `本文 ${id}`,
+      at,
+      opts.asked ?? null,
+    );
+  }
+  const reply = (id: string, post: string, author: string) =>
+    db.prepare("INSERT INTO replies (id, post_id, author_id, body, created_at) VALUES (?, ?, ?, 'やってみます', ?)").run(id, post, author, at);
+  const thanks = (id: string, from: string, to: string, message: string, post: string | null = null) =>
+    db
+      .prepare("INSERT INTO thanks (id, from_person_id, to_person_id, message, created_at, post_id) VALUES (?, ?, ?, ?, ?, ?)")
+      .run(id, from, to, message, at, post);
+  const ties = (person: string) => getReport(db, person, DATE)?.items.filter((i) => i.section === "ties").map((i) => i.text) ?? [];
+
+  it("もらったありがとうは、Claude を呼ばずに、誰から・一言の事実だけで入る", async () => {
+    thanks("t1", "noda", "saeki", "作文の声かけ、助かりました");
+    thanks("t2", "kawamura", "saeki", "毎朝の挨拶、がんばったね");
+    const complete = vi.fn();
+    await handleSync({ mode: "real", complete }, db, "saeki", { conversation: [] }, NOW);
+    expect(complete).not.toHaveBeenCalled();
+    expect(ties("saeki")).toEqual([
+      "野田先生から「ありがとう」が届いた：作文の声かけ、助かりました",
+      "川村先生から「がんばったね」が届いた：毎朝の挨拶、がんばったね",
+    ]);
+  });
+
+  it("投稿へのいいね・返事、解決、聞かれて答えた、つないだ、を記録から入れ、Claude には渡さない", async () => {
+    addPost("mine", "saeki");
+    db.prepare("INSERT INTO post_likes (post_id, person_id) VALUES ('mine', 'kawamura')").run();
+    reply("r1", "mine", "ogawara");
+    addPost("trouble", "aoki", { kind: "trouble" });
+    reply("r2", "trouble", "saeki");
+    thanks("t1", "aoki", "saeki", "ありがとうございます", "trouble");
+    addPost("asked", "kinoshita", { kind: "trouble", asked: "saeki" });
+    reply("r3", "asked", "saeki");
+    addPost("passed", "nakamura", { kind: "worry" });
+    db.prepare("INSERT INTO post_passes (id, post_id, from_person_id, to_person_id, created_at) VALUES ('p1', 'passed', 'saeki', 'noda', ?)").run(at);
+
+    const complete = vi.fn(async (_request: ClaudeRequest) => answer);
+    await handleSync({ mode: "real", complete }, db, "saeki", { conversation: [] }, NOW);
+    expect(ties("saeki")).toEqual([
+      "青木さんから「ありがとう」が届いた：ありがとうございます",
+      "あなたの返事で、青木さんの困りごとが解決した",
+      "川村先生が、あなたの投稿にいいねした",
+      "大河原先生から、あなたの投稿に返事が届いた",
+      "木下さんに聞かれて、答えた",
+      "中村さんの相談を、野田先生につないだ",
+    ]);
+    const prompt = String(complete.mock.calls[0]?.[0].messages[0].content ?? "");
+    expect(prompt).not.toContain("いいねした");
+    expect(prompt).not.toContain("つないだ");
+  });
+
+  it("生徒の日記には、職員室の記録を入れない", async () => {
+    addPost("open", "aoki");
+    addPost("staff", "aoki", { channel: "staffroom" });
+    db.prepare("INSERT INTO post_likes (post_id, person_id) VALUES ('open', 'kinoshita'), ('staff', 'saeki')").run();
+    await handleSync({ mode: "real", complete: async () => answer }, db, "aoki", { conversation: [] }, NOW);
+    expect(ties("aoki")).toEqual(["木下さんが、あなたの投稿にいいねした"]);
+  });
+
+  it("つながりは整え直しても消えず、言葉は直せず、1つずつ選んで届けられる", async () => {
+    thanks("t1", "noda", "saeki", "ありがとう");
+    await make();
+    await make("saeki", [...talk, { role: "user", content: "部活を見に行った" }], later(10));
+    const tie = getReport(db, "saeki", DATE)!.items.find((i) => i.section === "ties")!;
+    expect(tie.text).toBe("野田先生から「ありがとう」が届いた：ありがとう");
+    expect(handleEdit(db, "saeki", { itemId: tie.id, text: "書き換え" }).status).toBe(400);
+    handleSend(db, "saeki", { itemIds: [tie.id] }, NOW);
+    expect(listReceived(db, "fujimoto")[0].items).toEqual(["【人とのつながり】野田先生から「ありがとう」が届いた：ありがとう"]);
+    // もう一度開いても、同じつながりは重ならない
+    await handleSync(scripted, db, "saeki", { conversation: talk }, later(20));
+    expect(ties("saeki")).toEqual(["野田先生から「ありがとう」が届いた：ありがとう"]);
   });
 });

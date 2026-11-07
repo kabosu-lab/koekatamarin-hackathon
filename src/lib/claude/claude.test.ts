@@ -316,13 +316,40 @@ describe("調べものの出典（0-1s）", () => {
 });
 
 describe("台本の日報", () => {
-  it("前の日報の項目（項目：の行）を残し、増えた分を足す", async () => {
+  it("前の日報の項目（項目：の行）を同じ見出しに残し、増えた分を足す", async () => {
     const { text } = await createScriptedClaude().complete({
       task: "daily",
       system: "",
-      messages: [{ role: "user", content: "<前の日報>\n項目：朝の会で声を小さくした\n</前の日報>\n<増えた分>\n本人：放課後に面談した\n</増えた分>" }],
+      messages: [
+        {
+          role: "user",
+          content:
+            "<前の日報>\n［うまくいったこと］\n項目：朝の会で声を小さくした\n</前の日報>\n\n<パートナーとの話>\n本人：放課後に面談した\n本人：保護者への伝え方に迷っている\n本人：明日は学年会で話す\n</パートナーとの話>",
+        },
+      ],
       maxTokens: 100,
     });
-    expect(JSON.parse(text).items).toEqual(["朝の会で声を小さくした", "放課後に面談した"]);
+    // 0-3g：本物と同じ形（一言＋見出し）。一言は最後に話した言葉
+    expect(JSON.parse(text)).toEqual({
+      words: "明日は学年会で話す",
+      good: ["朝の会で声を小さくした", "放課後に面談した"],
+      consult: ["保護者への伝え方に迷っている"],
+      tomorrow: [],
+    });
+  });
+
+  it("今日の一言がもう届いていれば、新しい言葉は見出しの方へ入れる", async () => {
+    const { text } = await createScriptedClaude().complete({
+      task: "daily",
+      system: "",
+      messages: [
+        {
+          role: "user",
+          content: "<変えない項目>\n［今日の一言］\n直した項目：朝は眠かった\n</変えない項目>\n\n<パートナーとの話>\n本人：明日は早く来る\n</パートナーとの話>",
+        },
+      ],
+      maxTokens: 100,
+    });
+    expect(JSON.parse(text)).toEqual({ words: "", good: [], consult: [], tomorrow: ["明日は早く来る"] });
   });
 });

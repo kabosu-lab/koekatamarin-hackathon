@@ -89,7 +89,10 @@ test("材料がないときは作らず、そのことを伝える。作るボ�
   await page.goto("/");
   await switchPerson(page, "白石 文（養護・相談室）");
   await page.goto("/daily");
-  await expect(page.getByText("今日はまだまとめるものがありません。話したり、届けたりすると、ここにたまります。")).toBeVisible();
+  // 0-3g：話もやり取りもない日は、パートナーにまとめさせない。届いたありがとうなど記録の事実（人とのつながり）だけは出る
+  const empty = page.getByText("今日はまだまとめるものがありません。話したり、届けたりすると、ここにたまります。");
+  await expect(empty.or(page.getByRole("region", { name: "人とのつながり" }))).toBeVisible();
+  await expect(page.locator('.daily-section:not([data-section="ties"])')).toHaveCount(0);
   await expect(page.getByRole("button", { name: /作る|作り直す|係に頼む/ })).toHaveCount(0);
 });
 
@@ -185,6 +188,61 @@ test("0-2u：届けたあとに増えた項目は、次に押したときに増�
   await expect(report).toContainText(second);
 });
 
+test("0-3g：一言と見出しに分かれ、相談したいことが目立ち、人とのつながりも選んで届けられる", async ({ page }) => {
+  const id = test.info().testId;
+  // つながりの一言は30字で切るので、短くする
+  const thanks = `理科の準備、助かりました ${id.slice(-6)}`;
+  const worry = `保護者への伝え方に迷っている ${id}`;
+  const words = `今日はよく話せた ${id}`;
+
+  // 野田先生から、ありがとうが届く（記録の事実）
+  await page.goto("/");
+  await switchPerson(page, "野田 翔（情報・ものづくり部顧問）");
+  const sent = await page.request.post("/api/thanks", { data: { toPersonId: "kawamura", message: thanks } });
+  expect(sent.ok()).toBe(true);
+
+  await page.goto("/");
+  await switchPerson(page, "川村 陽菜（理科・1年副担任・生徒指導）");
+  await say(page, worry);
+  await say(page, words);
+  await page.goto("/daily");
+
+  // 【今日の一言】は最後に話した言葉
+  const head = page.getByRole("region", { name: "今日の一言" });
+  await expect(head.getByRole("heading", { name: "【今日の一言】" })).toBeVisible();
+  // 同じ人の日報を並んで動くテストも足すので、一言の中身は見出しのどこかにあることだけ確かめる
+  await expect(page.getByRole("checkbox", { name: words })).toBeVisible();
+
+  // 相談したいことは、色と枠で目立つ
+  const consult = page.getByRole("region", { name: "相談したいこと（管理職の方へ）" });
+  await expect(consult.getByRole("checkbox", { name: worry })).toBeVisible();
+  const look = await consult.evaluate((el) => {
+    const style = getComputedStyle(el);
+    return { background: style.backgroundColor, border: style.borderTopWidth };
+  });
+  expect(look.background).not.toMatch(/rgba\(0, 0, 0, 0\)|transparent/);
+  expect(parseFloat(look.border)).toBeGreaterThan(0);
+
+  // 空の見出しは出さない
+  await expect(page.getByRole("region", { name: "明日やること" })).toHaveCount(0);
+
+  // 人とのつながりは、誰から・一言の事実で入り、1つずつ選べる
+  const ties = page.getByRole("region", { name: "人とのつながり" });
+  const tie = ties.getByRole("checkbox", { name: `野田先生から「ありがとう」が届いた：${thanks}` });
+  await expect(tie).toBeVisible();
+  await tie.click();
+  await page.getByRole("button", { name: "藤本先生に届ける（1件）" }).click();
+  await expect(page).toHaveURL(/\/me$/);
+
+  await page.goto("/");
+  await switchPerson(page, "藤本 恵（教頭）");
+  await page.goto("/inbox");
+  const report = page.getByRole("article", { name: "川村 陽菜さんから" });
+  await expect(report).toContainText(`【人とのつながり】野田先生から「ありがとう」が届いた：${thanks}`);
+  // 選ばなかった相談は届かない
+  await expect(report).not.toContainText(worry);
+});
+
 test("0-2u：何も選ばずに押すと「残しました」と出して、履歴と設定へ戻る", async ({ page }) => {
   await page.goto("/");
   await switchPerson(page, "大河原 誠（英語・学年主任）");
@@ -199,9 +257,13 @@ test("0-2u：何も選ばずに押すと「残しました」と出して、履�
 test("チェックと文章は同じ行に並ぶ", async ({ page }) => {
   await page.goto("/");
   await switchPerson(page, "大河原 誠（英語・学年主任）");
-  await say(page, `並びの確認 ${test.info().testId}`);
+  const words = `並びの確認 ${test.info().testId}`;
+  await say(page, words);
   await page.goto("/daily");
-  const label = page.locator("label.daily-item").first();
+  // まとめ終わってから測る（まとめ直すと見出しの中の並びが変わるので、自分の項目で測る）
+  await expect(page.getByRole("checkbox", { name: words })).toBeVisible();
+  await expect(page.getByText("新しい分を足しています…")).toHaveCount(0);
+  const label = page.locator("label.daily-item").filter({ hasText: words });
   await expect(label).toBeVisible();
   const box = await label.locator("input").boundingBox();
   const text = await label.locator("span").boundingBox();

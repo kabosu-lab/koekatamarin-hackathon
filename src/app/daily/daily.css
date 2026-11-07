@@ -44,3 +44,21 @@
     animation: none;
   }
 }
+
+/* 0-3g：一言と見出しに分ける。見出しは小さく、項目は今の並びのまま */
+.daily-section + .daily-section {
+  margin-top: 0.75rem;
+}
+
+.daily-section > h3 {
+  margin: 0 0 0.25rem;
+  font-size: 0.95rem;
+}
+
+/* 管理職がまず見る「相談したいこと」は、今ある注意の色と枠で目立たせる */
+.daily-consult {
+  padding: 0.5rem 0.75rem;
+  border: 2px solid var(--line, currentColor);
+  border-radius: 0.75rem;
+  background: var(--warn);
+}
