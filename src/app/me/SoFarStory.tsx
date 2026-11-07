@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { type CSSProperties, type MouseEvent, type ReactNode, useEffect, useRef, useState } from "react";
+import { type CSSProperties, type MouseEvent, type ReactNode, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { Connection, ConnectionKind, SoFarStory as Story } from "@/lib/so-far";
 import { BottomSheet } from "../BottomSheet";
+import { collapseColumn, expandColumn } from "../so-far-full";
 import { playCommitPop, playReachedSound } from "../sound";
 import { type Growth, parseSeen, planStory, seenKey, seenOf, type StoryPlan } from "./so-far-seen";
 import "./so-far-story.css";
@@ -198,11 +199,36 @@ function centerOut<T>(items: T[]): T[] {
 /** つながり：ワードクラウド。名前の大きさはやり取りの多さ。押すと名札（名前・肩書・事実の数だけ） */
 function PanelPeople({ story, plan, run, tip }: { story: Story; plan: StoryPlan; run: boolean; tip: Tip }) {
   const people = story.people;
+  const cloud = useRef<HTMLDivElement>(null);
+  // 箱に収まる人数（多い順）。収まらない人は「ほか N人」にまとめる。箱の大きさが変わったら（3列の上に広げたときなど）測り直す
+  const [fit, setFit] = useState({ shown: people.length, turn: 0 });
+  useLayoutEffect(() => {
+    const box = cloud.current;
+    if (!box || fit.shown <= 1) return;
+    if (box.scrollHeight > box.clientHeight + 1 || box.scrollWidth > box.clientWidth + 1) {
+      setFit((current) => ({ ...current, shown: current.shown - 1 }));
+    }
+  }, [fit]);
+  useEffect(() => {
+    const box = cloud.current;
+    if (!box || typeof ResizeObserver === "undefined") return;
+    let size = `${box.clientWidth}x${box.clientHeight}`;
+    const watch = new ResizeObserver(() => {
+      const next = `${box.clientWidth}x${box.clientHeight}`;
+      if (next === size) return;
+      size = next;
+      setFit((current) => ({ shown: people.length, turn: current.turn + 1 }));
+    });
+    watch.observe(box);
+    return () => watch.disconnect();
+  }, [people.length]);
   if (people.length === 0) return <p className="so-far-later so-far-center">これから</p>;
   const max = Math.max(1, ...people.map((person) => person.weight));
+  const shown = people.slice(0, Math.max(1, fit.shown));
+  const more = story.morePeople + people.length - shown.length;
   return (
-    <div className="so-far-cloud" style={css({ "--count": people.length })}>
-      {centerOut(people).map((person) => {
+    <div ref={cloud} className="so-far-cloud" data-more={more} style={css({ "--count": shown.length })}>
+      {centerOut(shown).map((person) => {
         const fresh = run && plan.newPeople.has(person.id);
         return (
           <button
@@ -220,7 +246,7 @@ function PanelPeople({ story, plan, run, tip }: { story: Story; plan: StoryPlan;
           </button>
         );
       })}
-      {story.morePeople > 0 && <span className="so-far-more-people">ほか {story.morePeople} 人</span>}
+      {more > 0 && <span className="so-far-more-people">ほか {more} 人</span>}
     </div>
   );
 }
@@ -341,7 +367,7 @@ function Panel({
       <div className="so-far-panel-body">{children}</div>
       {shown && (
         // 一文や名札そのものを押しても消える（下に隠れた棒や名前を、もう一度押すのと同じ）
-        <div className="so-far-tip" role="status" data-tip={shown} onClick={tip.toggle(shown)}>
+        <div className="so-far-tip" aria-hidden="true" data-tip={shown} onClick={tip.toggle(shown)}>
           {notes[shown]}
         </div>
       )}
@@ -397,6 +423,19 @@ function Board({ story, rewards, personId }: { story: Story; rewards: boolean; p
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 開いた1回だけ
   }, []);
 
+  // 一文や名札を開いているときの Esc は、それだけを閉じる（シートまでは閉じない）
+  useEffect(() => {
+    if (openTip === null) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.stopPropagation();
+      event.preventDefault();
+      setOpenTip(null);
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [openTip]);
+
   const since = story.firstDate ?? story.today;
   const barNotes = Object.fromEntries([["bars", NOTES.bars], ...BARS.map((bar) => [`bar:${bar.key}`, bar.note])]);
   const peopleNotes: Record<string, ReactNode> = { people: NOTES.people };
@@ -409,6 +448,16 @@ function Board({ story, rewards, personId }: { story: Story; rewards: boolean; p
       </span>
     );
   }
+  // 読み上げ：知らせの入れ物はいつも置いておき、中身だけを差し替える
+  const spoken = (() => {
+    if (openTip === null) return "";
+    if (openTip.startsWith("person:")) {
+      const person = story.people.find((candidate) => `person:${candidate.id}` === openTip);
+      return person ? [person.name, person.label, factsLine(person)].filter(Boolean).join("、") : "";
+    }
+    if (openTip.startsWith("bar:")) return BARS.find((bar) => `bar:${bar.key}` === openTip)?.note ?? "";
+    return NOTES[openTip as keyof typeof NOTES] ?? "";
+  })();
   const growth = rewards ? (
     <Panel id="partner" title="パートナーの育ち" tip={tip} notes={{ partner: NOTES.partner }}>
       <PanelPartner story={story} />
@@ -425,6 +474,9 @@ function Board({ story, rewards, personId }: { story: Story; rewards: boolean; p
       data-settled={settled ? "" : undefined}
       onClick={() => setOpenTip(null)}
     >
+      <p className="visually-hidden so-far-spoken" role="status">
+        {spoken}
+      </p>
       <header className="so-far-head">
         <p className="so-far-since">
           <strong>{monthDay(since)}</strong> から
@@ -471,41 +523,33 @@ function Board({ story, rewards, personId }: { story: Story; rewards: boolean; p
  * 狭い画面（左右の画面 pane）や単独で開いたときは、何もしない（もともと全画面）。
  */
 function useFullScreenInColumn(open: boolean) {
-  const saved = useRef<{ frame: HTMLElement; style: string | null } | null>(null);
-  const timer = useRef(0);
+  const pending = useRef(0);
   useEffect(() => {
     if (!open) return;
-    window.parent.clearTimeout(timer.current);
     let frame: HTMLElement | null = null;
+    let host: Window | null = null;
     try {
-      frame = window.self !== window.top ? (window.frameElement as HTMLElement | null) : null;
+      if (window.self !== window.top) {
+        frame = window.frameElement as HTMLElement | null;
+        host = window.parent;
+        // 閉じてすぐ開き直したときは、戻す待ちを取り消す
+        if (frame) host.clearTimeout(pending.current);
+      }
     } catch {
+      // 別オリジンの枠の中では、広げない
       frame = null;
     }
-    if (!frame || frame.dataset.mode !== "column") return;
-    if (!saved.current) saved.current = { frame, style: frame.getAttribute("style") };
-    frame.dataset.soFarFull = "true";
-    document.documentElement.dataset.soFarFull = "true";
-    Object.assign(frame.style, {
-      position: "fixed",
-      inset: "0",
-      width: "100vw",
-      height: "100dvh",
-      zIndex: "2147483000",
-    });
-    const root = document.documentElement;
-    // 列の中で別の画面へ移っても戻せるよう、待ちは外側の window で数える
-    const host = window.parent;
+    if (!frame || !host || frame.dataset.mode !== "column") return;
+    expandColumn(frame);
+    const target = frame;
+    const outer = host;
     return () => {
-      timer.current = host.setTimeout(() => {
-        const restore = saved.current;
-        saved.current = null;
-        if (!restore) return;
-        if (restore.style === null) restore.frame.removeAttribute("style");
-        else restore.frame.setAttribute("style", restore.style);
-        delete restore.frame.dataset.soFarFull;
-        delete root.dataset.soFarFull;
-      }, EXIT_MS);
+      // シートが閉じる動きを待ってから戻す。列の中で別の画面へ移っても、外側の WidePanel の onLoad が戻す
+      try {
+        pending.current = outer.setTimeout(() => collapseColumn(target), EXIT_MS);
+      } catch {
+        collapseColumn(target);
+      }
     };
   }, [open]);
 }

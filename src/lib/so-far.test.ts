@@ -17,7 +17,7 @@ function addPerson(id: string, role: "teacher" | "student") {
 }
 
 describe("これまでのインフォグラフィックの材料", () => {
-  it("やり取りした相手が並び、隠している人は線にも一言にも出ない", () => {
+  it("やり取りした相手が並び、隠している人はつながりに出ない", () => {
     const before = getSoFar(db, "saeki", NOW);
     expect(before.people.length).toBeGreaterThan(0);
     const someone = before.people[0];
@@ -28,7 +28,6 @@ describe("これまでのインフォグラフィックの材料", () => {
     );
     const after = getSoFar(db, "saeki", NOW);
     expect(after.people.map((p) => p.id)).not.toContain(someone.id);
-    expect(after.words.map((w) => w.text)).not.toContain("隠した人の一言");
   });
 
   it("応援（post_likes）は時刻がないので、届いた日の点に入れない", () => {
@@ -46,7 +45,6 @@ describe("これまでのインフォグラフィックの材料", () => {
     expect(story.few).toBe(true);
     expect(story.firstDate).toBeNull();
     expect(story.people).toEqual([]);
-    expect(story.words).toEqual([]);
   });
 
   it("先生は勉強の日を持たず、生徒は一緒に勉強した日を持つ", () => {

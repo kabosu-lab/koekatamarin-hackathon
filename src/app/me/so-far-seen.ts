@@ -17,7 +17,6 @@ export type Seen = {
   people: string[];
   leaves: number;
   trophies: number;
-  words: number;
 };
 
 export type Growth = { from: number; to: number; grew: boolean };
@@ -27,7 +26,6 @@ export type StoryPlan = {
   days: Growth;
   leaves: Growth;
   trophies: Growth;
-  words: Growth;
   /** 新しくつながった人 */
   newPeople: Set<string>;
   /** どれか1つでも増えたか */
@@ -50,7 +48,6 @@ export function seenOf(story: SoFarStory): Seen {
     people: story.people.map((person) => person.id),
     leaves: story.leaves,
     trophies: story.trophies.length,
-    words: story.words.length,
   };
 }
 
@@ -68,7 +65,7 @@ export function parseSeen(raw: string | null): Seen | null {
       if (!isCount(n)) return null;
       counts[key] = n;
     }
-    if (![value.days, value.leaves, value.trophies, value.words].every(isCount)) return null;
+    if (![value.days, value.leaves, value.trophies].every(isCount)) return null;
     if (!Array.isArray(value.people) || !value.people.every((id) => typeof id === "string")) return null;
     return {
       v: SEEN_VERSION,
@@ -77,7 +74,6 @@ export function parseSeen(raw: string | null): Seen | null {
       people: value.people,
       leaves: value.leaves!,
       trophies: value.trophies!,
-      words: value.words!,
     };
   } catch {
     return null;
@@ -99,7 +95,6 @@ export function planStory(previous: Seen | null, story: SoFarStory): StoryPlan {
     people: [],
     leaves: 0,
     trophies: 0,
-    words: 0,
   };
   const counts = {} as StoryPlan["counts"];
   for (const key of COUNT_KEYS) counts[key] = grow(before.counts[key], now.counts[key]);
@@ -110,7 +105,6 @@ export function planStory(previous: Seen | null, story: SoFarStory): StoryPlan {
     days: grow(before.days, now.days),
     leaves: grow(before.leaves, now.leaves),
     trophies: grow(before.trophies, now.trophies),
-    words: grow(before.words, now.words),
     newPeople,
   };
   const any =
@@ -118,7 +112,6 @@ export function planStory(previous: Seen | null, story: SoFarStory): StoryPlan {
     plan.days.grew ||
     plan.leaves.grew ||
     plan.trophies.grew ||
-    plan.words.grew ||
     newPeople.size > 0;
   return { ...plan, any };
 }
