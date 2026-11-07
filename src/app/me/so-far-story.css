@@ -151,18 +151,6 @@
   letter-spacing: 0.08em;
 }
 
-/* 0-2y：細い列（横向きの3列の左）でも、見出し（「桜とパートナー」など）を語の途中で折らない。箱の幅に合わせて縮める */
-.so-far-panel {
-  container-type: inline-size;
-}
-
-html[data-theme] .home .so-far-panel > h2,
-.so-far-panel > h2 {
-  font-size: min(1.1rem, 11.5cqi);
-  letter-spacing: 0.02em;
-  white-space: nowrap;
-}
-
 /* 中身はこの箱の大きさ（cqw・cqh）に合わせて縮む */
 .so-far-panel-body {
   display: grid;

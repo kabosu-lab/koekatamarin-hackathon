@@ -226,16 +226,3 @@
     border-bottom: 0;
   }
 }
-
-/* 0-2y：細い列（横向きの3列の右）でも、投稿の欄の「〇〇に投稿する」を語の途中で折らない。入らなければボタンを下へ回す */
-.teams .compose {
-  flex-wrap: wrap;
-}
-
-.teams .compose textarea {
-  flex: 1 1 12rem;
-}
-
-.teams .compose textarea::placeholder {
-  white-space: nowrap;
-}
