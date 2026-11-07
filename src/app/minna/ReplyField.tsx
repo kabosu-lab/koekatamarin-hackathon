@@ -129,7 +129,8 @@ export function ReplyField({
     const form = new FormData();
     form.set("postId", postId);
     form.set("body", body);
-    // 送ると欄は閉じ、返事の数が1つ増える。届いた返事は人に届くので、葉も1枚
+    // 送ると欄は閉じ、返事の数が1つ増える。届いた返事は人に届くので、葉も1枚。鈴の段は最初に戻す
+    spoken.current = 0;
     setText("");
     close();
     setExtraReplies((n) => n + 1);
