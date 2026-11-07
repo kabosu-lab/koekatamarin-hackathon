@@ -31,8 +31,8 @@ export type SoFarStory = {
   /** 生徒だけ：一緒に勉強した日 */
   studyDays: string[];
   termStart: string;
-  /** つながった人。隠している人は出さない。最近の順に最大8人 */
-  people: { id: string; name: string }[];
+  /** つながった人。隠している人は出さない。やり取りの多い順に最大12人（0-3h） */
+  people: Connection[];
   morePeople: number;
   /** この年度に自分が足した葉（みんなの桜の数え方と同じ材料のうち、自分の分） */
   leaves: number;
@@ -47,7 +47,21 @@ export type SoFarStory = {
   words: { from: string; text: string }[];
 };
 
-const MAX_PEOPLE = 8;
+const MAX_PEOPLE = 12;
+
+/** やり取りの種類（名札に出す、事実の数だけ） */
+export const CONNECTION_KINDS = ["thanksGot", "thanksSent", "repliesGot", "repliesSent", "reportWords", "passed"] as const;
+export type ConnectionKind = (typeof CONNECTION_KINDS)[number];
+
+/** つながった人。weight はやり取りの回数の合計（名前の大きさ） */
+export type Connection = {
+  id: string;
+  name: string;
+  /** 肩書（表示名の括弧に出しているもの） */
+  label: string;
+  weight: number;
+  facts: { kind: ConnectionKind; count: number }[];
+};
 
 const japanDay = (iso: string) => new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Tokyo" }).format(new Date(iso));
 
@@ -111,26 +125,59 @@ export function getSoFar(db: DatabaseSync, personId: string, now: Date): SoFarSt
   const hidden = new Set(
     all<{ id: string }>("SELECT hidden_person_id AS id FROM hidden_people WHERE person_id = ?", personId).map((r) => r.id),
   );
-  const touches = all<{ id: string; at: string }>(
-    `SELECT p.author_id AS id, r.created_at AS at FROM replies r JOIN posts p ON p.id = r.post_id WHERE r.author_id = ?1
-     UNION ALL SELECT r.author_id, r.created_at FROM replies r JOIN posts p ON p.id = r.post_id WHERE p.author_id = ?1
-     UNION ALL SELECT from_person_id, created_at FROM thanks WHERE to_person_id = ?1
-     UNION ALL SELECT to_person_id, created_at FROM thanks WHERE from_person_id = ?1
-     UNION ALL SELECT to_person_id, created_at FROM post_passes WHERE from_person_id = ?1
-     UNION ALL SELECT x.from_person_id, x.created_at FROM report_responses x JOIN daily_reports d ON d.id = x.report_id WHERE d.person_id = ?1`,
-    personId,
+  // 0-3h：つながり（ワードクラウド）。人ごとに、やり取りの種類と回数を数える。
+  // 職員室（先生だけのチャネル）と、自分だけ・管理職だけの投稿の上のやり取りは数えない。
+  // 生徒の画面では、回しただけ（相手が何もしていない）の先生は出さない
+  const open = `coalesce((SELECT audience FROM channels c WHERE c.id = p.channel_id), 'everyone') != 'staff' AND p.scope IN ('everyone', 'person')`;
+  const tally = (sql: string) => all<{ id: string; n: number }>(sql, personId);
+  const kinds: [ConnectionKind, { id: string; n: number }[]][] = [
+    ["thanksGot", tally("SELECT from_person_id AS id, count(*) AS n FROM thanks WHERE to_person_id = ?1 GROUP BY from_person_id")],
+    ["thanksSent", tally("SELECT to_person_id AS id, count(*) AS n FROM thanks WHERE from_person_id = ?1 GROUP BY to_person_id")],
+    [
+      "repliesGot",
+      tally(`SELECT r.author_id AS id, count(*) AS n FROM replies r JOIN posts p ON p.id = r.post_id WHERE p.author_id = ?1 AND ${open} GROUP BY r.author_id`),
+    ],
+    [
+      "repliesSent",
+      tally(`SELECT p.author_id AS id, count(*) AS n FROM replies r JOIN posts p ON p.id = r.post_id WHERE r.author_id = ?1 AND ${open} GROUP BY p.author_id`),
+    ],
+    [
+      "reportWords",
+      tally(
+        "SELECT x.from_person_id AS id, count(*) AS n FROM report_responses x JOIN daily_reports d ON d.id = x.report_id WHERE d.person_id = ?1 GROUP BY x.from_person_id",
+      ),
+    ],
+    ["passed", tally("SELECT to_person_id AS id, count(*) AS n FROM post_passes WHERE from_person_id = ?1 GROUP BY to_person_id")],
+  ];
+  const everyone = new Map(
+    all<{ id: string; name: string; role: SoFarStory["role"]; label: string }>("SELECT id, name, role, label FROM people").map((p) => [p.id, p]),
   );
-  const latest = new Map<string, string>();
-  for (const touch of touches) {
-    if (touch.id === personId || hidden.has(touch.id)) continue;
-    const seen = latest.get(touch.id);
-    if (!seen || touch.at > seen) latest.set(touch.id, touch.at);
+  const names = new Map([...everyone.values()].map((p) => [p.id, p.name]));
+  const byPerson = new Map<string, Partial<Record<ConnectionKind, number>>>();
+  for (const [kind, rows] of kinds) {
+    for (const row of rows) {
+      const other = everyone.get(row.id);
+      if (!other || row.id === personId || hidden.has(row.id) || row.n <= 0) continue;
+      if (role === "student" && other.role !== "student" && kind === "passed") continue;
+      const facts = byPerson.get(row.id) ?? {};
+      facts[kind] = (facts[kind] ?? 0) + row.n;
+      byPerson.set(row.id, facts);
+    }
   }
-  const names = new Map(all<{ id: string; name: string }>("SELECT id, name FROM people").map((p) => [p.id, p.name]));
-  const ordered = [...latest.entries()]
-    .sort((x, y) => y[1].localeCompare(x[1]))
-    .map(([id]) => ({ id, name: names.get(id) ?? "" }))
-    .filter((p) => p.name !== "");
+  const ordered = [...byPerson.entries()]
+    .map(([id, facts]) => {
+      const other = everyone.get(id)!;
+      const list = CONNECTION_KINDS.filter((kind) => (facts[kind] ?? 0) > 0).map((kind) => ({ kind, count: facts[kind]! }));
+      return {
+        id,
+        name: other.name,
+        label: other.label,
+        weight: list.reduce((sum, fact) => sum + fact.count, 0),
+        facts: list,
+      };
+    })
+    .filter((p) => p.name !== "" && p.weight > 0)
+    .sort((x, y) => y.weight - x.weight || x.name.localeCompare(y.name, "ja"));
 
   // 桜とパートナー：この年度に自分が足した葉
   const yearStart = fiscalYearStart(now);

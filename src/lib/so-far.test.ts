@@ -68,12 +68,12 @@ describe("これまでのインフォグラフィックの材料", () => {
     }
   });
 
-  it("つながった人は最大8人で、残りは数だけ", () => {
+  it("つながった人は最大12人で、残りは数だけ", () => {
     addPerson("hub", "teacher");
     db.prepare("INSERT INTO posts (id, channel_id, author_id, kind, body, created_at) VALUES ('hub-post', 'study', 'hub', 'trouble', '困りごと', ?)").run(
       NOW.toISOString(),
     );
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 14; i++) {
       addPerson(`friend-${i}`, "teacher");
       db.prepare("INSERT INTO replies (id, post_id, author_id, body, created_at) VALUES (?, 'hub-post', ?, '返信', ?)").run(
         `r-${i}`,
@@ -82,7 +82,67 @@ describe("これまでのインフォグラフィックの材料", () => {
       );
     }
     const story = getSoFar(db, "hub", NOW);
-    expect(story.people).toHaveLength(8);
+    expect(story.people).toHaveLength(12);
     expect(story.morePeople).toBe(2);
+  });
+});
+
+describe("つながりのワードクラウド（0-3h）", () => {
+  const at = "2026-11-02T01:00:00Z";
+  function post(id: string, author: string, channel: string) {
+    db.prepare("INSERT INTO posts (id, channel_id, author_id, kind, body, created_at) VALUES (?, ?, ?, 'trouble', 'ダミー', ?)").run(
+      id,
+      channel,
+      author,
+      at,
+    );
+  }
+  function reply(id: string, postId: string, author: string) {
+    db.prepare("INSERT INTO replies (id, post_id, author_id, body, created_at) VALUES (?, ?, ?, 'ダミー', ?)").run(id, postId, author, at);
+  }
+  const channel = (audience: "everyone" | "staff") =>
+    (db.prepare("SELECT id FROM channels WHERE audience = ? LIMIT 1").get(audience) as { id: string }).id;
+
+  it("人ごとにやり取りの種類と回数を数え、多い人ほど重い", () => {
+    addPerson("cloud-me", "teacher");
+    addPerson("cloud-a", "teacher");
+    addPerson("cloud-b", "teacher");
+    post("cp1", "cloud-me", channel("everyone"));
+    reply("cr1", "cp1", "cloud-a");
+    reply("cr2", "cp1", "cloud-a");
+    reply("cr3", "cp1", "cloud-b");
+    db.prepare("INSERT INTO thanks (id, from_person_id, to_person_id, message, created_at) VALUES ('ct1', 'cloud-a', 'cloud-me', 'ダミー', ?)").run(at);
+    const story = getSoFar(db, "cloud-me", NOW);
+    const a = story.people.find((p) => p.id === "cloud-a")!;
+    const b = story.people.find((p) => p.id === "cloud-b")!;
+    expect(a.weight).toBe(3);
+    expect(a.facts).toEqual([
+      { kind: "thanksGot", count: 1 },
+      { kind: "repliesGot", count: 2 },
+    ]);
+    expect(b.weight).toBe(1);
+    expect(story.people.indexOf(a)).toBeLessThan(story.people.indexOf(b));
+  });
+
+  it("職員室のやり取りは数えない", () => {
+    addPerson("cloud-me", "teacher");
+    addPerson("cloud-staff", "teacher");
+    post("cp2", "cloud-me", channel("staff"));
+    reply("cr4", "cp2", "cloud-staff");
+    expect(getSoFar(db, "cloud-me", NOW).people.map((p) => p.id)).not.toContain("cloud-staff");
+  });
+
+  it("生徒の画面には、回しただけの先生は出さず、やり取りのあった先生だけを出す", () => {
+    addPerson("cloud-student", "student");
+    addPerson("cloud-t1", "teacher");
+    addPerson("cloud-t2", "teacher");
+    post("cp3", "cloud-student", channel("everyone"));
+    db.prepare(
+      "INSERT INTO post_passes (id, post_id, from_person_id, to_person_id, created_at) VALUES ('cx1', 'cp3', 'cloud-student', 'cloud-t1', ?)",
+    ).run(at);
+    reply("cr5", "cp3", "cloud-t2");
+    const ids = getSoFar(db, "cloud-student", NOW).people.map((p) => p.id);
+    expect(ids).toContain("cloud-t2");
+    expect(ids).not.toContain("cloud-t1");
   });
 });

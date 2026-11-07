@@ -55,7 +55,12 @@ test("全部のグラフを1画面に並べ、初めて見るときは 0 から�
   await page.goto("/me");
   let story = await openStory(page);
   // 6場面を順に見せるのではなく、全部のグラフが同時に1枚に並ぶ
-  for (const name of ["積み上がり", "届いた日", "つながり", "一言"]) await expect(story.getByRole("region", { name })).toBeVisible();
+  for (const name of ["積み上がり", "届いた日", "つながり", "あなたの葉", "パートナーの育ち"]) {
+    await expect(story.getByRole("region", { name })).toBeVisible();
+  }
+  // 0-3h：一言のカードはなくし、桜とパートナーは葉とパートナーの2つに分けた
+  await expect(story.getByRole("region", { name: "一言" })).toHaveCount(0);
+  await expect(story.getByRole("region", { name: "桜とパートナー" })).toHaveCount(0);
   await expect(story.getByText("押すと次へ")).toHaveCount(0);
   await expect(story.getByRole("link", { name: "ふりかえりを読む" })).toBeVisible();
   // 初めて見る端末：0 でない棒は全部 0 から伸びる。0 の棒は動かない
@@ -180,6 +185,7 @@ const STORY_VIEWPORTS = [
   { name: "iPhone", width: 390, height: 844 },
   { name: "iPad縦", width: 820, height: 1180 },
   { name: "iPad横", width: 1180, height: 820 },
+  { name: "パソコン", width: 1280, height: 800 },
 ] as const;
 
 for (const person of ["青木 ひより（2年）", "川村 陽菜（理科・1年副担任・生徒指導）", "藤本 恵（教頭）"]) {
@@ -194,12 +200,22 @@ for (const person of ["青木 ひより（2年）", "川村 陽菜（理科・1�
       const screen = await openScreen(page, "/me");
       const story = await openStory(screen);
       await expect(story.locator(".so-far-board")).toHaveAttribute("data-settled", "", { timeout: 5000 });
+      // 0-3h：3列（横向き）では、左の列の中から3列の上に全画面で重ねて開く
+      if (viewport.width > viewport.height) {
+        await expect(page.locator('iframe[title="履歴と設定"]')).toHaveAttribute("data-so-far-full", "true");
+        const box = (await page.locator('iframe[title="履歴と設定"]').boundingBox())!;
+        expect(Math.round(box.x)).toBe(0);
+        expect(Math.round(box.width)).toBe(viewport.width);
+        expect(Math.round(box.height)).toBe(viewport.height);
+      }
       await page.screenshot({ path: test.info().outputPath(`so-far-${viewport.width}x${viewport.height}.png`) });
       const fit = await story.evaluate((dialog) => {
         const over = (el: Element) => Math.max(el.scrollHeight - el.clientHeight, el.scrollWidth - el.clientWidth);
         const rect = dialog.getBoundingClientRect();
         return {
           body: over(dialog.querySelector(".bottom-sheet-body")!),
+          // 0-3h：ワードクラウドの名前も切れずに収まる
+          cloud: over(dialog.querySelector(".so-far-cloud") ?? dialog),
           dialog: Math.max(rect.bottom - innerHeight, rect.right - innerWidth),
           panels: [...dialog.querySelectorAll(".so-far-panel")].map((panel) => ({
             name: panel.getAttribute("aria-label"),
@@ -209,6 +225,7 @@ for (const person of ["青木 ひより（2年）", "川村 陽菜（理科・1�
         };
       });
       expect(fit.body, "シートの中身").toBeLessThanOrEqual(1);
+      expect(fit.cloud, "つながりの名前").toBeLessThanOrEqual(1);
       expect(fit.dialog, "シート").toBeLessThanOrEqual(1);
       for (const panel of fit.panels) expect(panel.over, panel.name ?? "").toBeLessThanOrEqual(1);
       for (const label of fit.labels) expect(label, "棒の名前").toBeLessThanOrEqual(1);
@@ -261,5 +278,112 @@ test("0-2q(9)：iPad 横の左の欄でも「これまで」の帯は2段に収�
     const tops = await Promise.all(items.map(async (item) => Math.round((await item.boundingBox())!.y)));
     // 1段の3つは同じ高さに並ぶ
     expect(Math.max(...tops) - Math.min(...tops)).toBeLessThanOrEqual(2);
+  }
+});
+
+test("0-3h：3列（iPad 横・パソコン）では、押したときだけ3列の上に全画面で重ね、閉じると3列に戻る", async ({ page }) => {
+  for (const size of [
+    { width: 1180, height: 820 },
+    { width: 1280, height: 800 },
+  ]) {
+    await page.setViewportSize(size);
+    await page.goto("/");
+    const frameElement = page.locator('iframe[title="履歴と設定"]');
+    await expect(frameElement).toBeVisible();
+    const column = (await frameElement.boundingBox())!;
+    expect(column.width).toBeLessThan(size.width / 2);
+    const frame = (await (await frameElement.elementHandle())!.contentFrame())!;
+    const story = await openStory(frame);
+    await expect(frameElement).toHaveAttribute("data-so-far-full", "true");
+    const full = (await frameElement.boundingBox())!;
+    expect(Math.round(full.width)).toBe(size.width);
+    expect(Math.round(full.height)).toBe(size.height);
+    // 真ん中の話す画面と右の列は、そのまま裏に残る
+    await expect(page.locator(".device-row > .retro-home")).toHaveCount(1);
+    await expect(page.locator('iframe[title="みんな"]')).toHaveCount(1);
+    await closeStory(story);
+    await expect(frameElement).not.toHaveAttribute("data-so-far-full", "true");
+    const back = (await frameElement.boundingBox())!;
+    expect(Math.round(back.width)).toBe(Math.round(column.width));
+    expect(Math.round(back.x)).toBe(Math.round(column.x));
+  }
+});
+
+test("0-3h：どのグラフも、押すと意味の一文が出て、もう一度押すか外を押すと消える", async ({ page }) => {
+  await page.goto("/");
+  await switchPerson(page, "川村 陽菜（理科・1年副担任・生徒指導）");
+  await page.goto("/me");
+  const story = await openStory(page);
+  await expect(story.locator(".so-far-board")).toHaveAttribute("data-settled", "", { timeout: 5000 });
+  const tip = story.locator(".so-far-tip");
+  for (const name of ["積み上がり", "届いた日", "つながり", "あなたの葉", "パートナーの育ち"]) {
+    await story.getByRole("region", { name }).getByRole("button", { name, exact: true }).click();
+    await expect(tip).toHaveCount(1);
+    await expect(tip).toContainText(`${name}：`);
+    // もう一度押すと消える
+    await story.getByRole("region", { name }).getByRole("button", { name, exact: true }).click();
+    await expect(tip).toHaveCount(0);
+  }
+  // 棒も1本ずつ意味が出る。外（いつからの行）を押すと消える
+  const labels: Record<string, string> = { posts: "届けた", comments: "返した", cheers: "応援", goals: "解決", assists: "つないだ", thanks: "ありがとう" };
+  for (const [key, label] of Object.entries(labels)) {
+    await story.locator(`.so-far-bar[data-key="${key}"]`).click();
+    await expect(tip).toContainText(`${label}：`);
+    await expect(tip).toContainText("増え");
+  }
+  await story.locator(".so-far-since").click();
+  await expect(tip).toHaveCount(0);
+  await page.screenshot({ path: test.info().outputPath("so-far-tip.png") });
+});
+
+test("0-3h：つながりはワードクラウドで、名前の大きさはやり取りの数に合い、押すと名札が出る", async ({ page }) => {
+  await page.goto("/");
+  await switchPerson(page, "青木 ひより（2年）");
+  await page.goto("/me");
+  const story = await openStory(page);
+  await expect(story.locator(".so-far-board")).toHaveAttribute("data-settled", "", { timeout: 5000 });
+  const cloud = story.getByRole("region", { name: "つながり" });
+  // 自分は真ん中に置かない
+  await expect(cloud).not.toContainText("あなた");
+  const names = cloud.locator(".so-far-name");
+  const shapes = await names.evaluateAll((elements) =>
+    elements.map((el) => ({ weight: Number(el.getAttribute("data-weight")), size: parseFloat(getComputedStyle(el).fontSize) })),
+  );
+  expect(shapes.length).toBeGreaterThan(0);
+  for (const a of shapes) {
+    for (const b of shapes) if (a.weight > b.weight) expect(a.size, `${a.weight} > ${b.weight}`).toBeGreaterThan(b.size);
+  }
+  // 名札：名前・肩書・事実の数だけ
+  for (const name of await names.all()) {
+    await name.click();
+    const tag = story.locator(".so-far-tip");
+    await expect(tag).toContainText(String(await name.textContent()));
+    await expect(tag).toContainText(/(ありがとうをもらった|ありがとうを送った|返事をもらった|返事をした|日報に一言をもらった|回した) \d+回/);
+    // 数の合計は名前の重さと同じ
+    const counts = [...String(await tag.textContent()).matchAll(/(\d+)回/g)].map((match) => Number(match[1]));
+    expect(counts.reduce((sum, n) => sum + n, 0)).toBe(Number(await name.getAttribute("data-weight")));
+    await page.screenshot({ path: test.info().outputPath("so-far-tag.png") });
+    // もう一度押すと消える（名札が名前に重なっているときは、名札を押す）
+    await tag.click();
+    await expect(tag).toHaveCount(0);
+  }
+});
+
+test("0-3h：生徒の画面のワードクラウドに、やり取りのない先生は出ない", async ({ page }) => {
+  await page.goto("/");
+  await switchPerson(page, "中村 結衣（1年・吹奏楽部）");
+  await page.goto("/me");
+  const story = await openStory(page);
+  const names = story.getByRole("region", { name: "つながり" }).locator(".so-far-name");
+  // 出ている人は、どの人もやり取りが1回以上ある
+  for (const name of await names.all()) expect(Number(await name.getAttribute("data-weight"))).toBeGreaterThan(0);
+  // 生徒から先生へ、回しただけ（先生が何もしていない）の先生は出ない（数え方は src/lib/so-far.test.ts で確かめる）
+  const teachers = ["藤本 恵", "野田 翔", "白石 文", "大河原 誠", "佐伯 みどり", "川村 陽菜"];
+  const shown = (await names.allTextContents()).filter((text) => teachers.includes(text));
+  for (const teacher of shown) {
+    await names.filter({ hasText: teacher }).click();
+    await expect(story.locator(".so-far-tip")).not.toHaveText(/^[^・]*回した \d+回$/);
+    await story.locator(".so-far-tip").click();
+    await expect(story.locator(".so-far-tip")).toHaveCount(0);
   }
 });
