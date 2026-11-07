@@ -72,9 +72,15 @@ export function ClickWheel({
       data-noswipe
       data-invite={invite ? "breathe" : undefined}
       onPointerDown={(event) => {
-        if (event.target !== event.currentTarget) return;
-        event.currentTarget.setPointerCapture?.(event.pointerId);
+        // 0-3n：真ん中のマイクから始めた指だけは話すボタンのもの。目盛り・指の印・縁など、ほかの子から始まっても輪のなぞり
+        // （iPad の Safari では子が target になり、target === currentTarget のときだけ始める形ではまったく動かなかった）
+        if (event.button > 0 || (event.target as Element).closest?.(".device-mic")) return;
         last.current = measure(event).angle;
+        try {
+          event.currentTarget.setPointerCapture?.(event.pointerId);
+        } catch {
+          // 捕まえられなくても、なぞりは続ける
+        }
       }}
       onPointerMove={(event) => {
         if (last.current === null) return;
