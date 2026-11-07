@@ -437,6 +437,13 @@ export function SwipeNav() {
     // 部品からの「ホームへ戻して」（今日の3人の端の先へのめくり）。受けたら preventDefault で知らせる
     const onHomeRequest = (event: Event) => {
       const root = document.documentElement;
+      // 帯の左右の画面（pane）の中からは、外側の帯を話す画面へ戻す（今日の3人の端の先へのめくりなど）
+      if (root.dataset.pane === "true" && window.parent?.koekataStrip) {
+        event.preventDefault();
+        const side = (window.frameElement as HTMLElement | null)?.dataset.side === "left" ? 1 : -1;
+        window.parent.koekataStrip.settle(side, 0, 0);
+        return;
+      }
       if (root.dataset.theme !== "retro" || !swipes()) return;
       event.preventDefault();
       const { forward, layer } = (event as CustomEvent<SwipeHomeRequest>).detail ?? { forward: true };
