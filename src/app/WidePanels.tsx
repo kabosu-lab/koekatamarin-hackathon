@@ -33,6 +33,8 @@ export function openScreenFromHome(href: string, push: (href: string) => void) {
 /** 今日の3人を開く印。「みんな」の下の帯の「今日の3人」と同じく、みんなの中でモーダルを出す（TodayModal が受ける） */
 export const TODAY_PARAM = "today";
 export const TODAY_SHOW_EVENT = "koekata:today-show";
+/** 知らせが届く前に動き出したみんなにも開いてもらうための、帯の中の画面（window）に残す印 */
+export const TODAY_PENDING = "__koekataTodayPending";
 
 /** 狭い画面の帯の、左右の画面の iframe（読み込み済みのとき） */
 function paneWindow(side: WideSide): (Window & typeof globalThis) | null {
@@ -62,6 +64,9 @@ export function openLikeEntrance(href: string, push: (href: string) => void) {
   const win = paneWindow(side);
   if (!win) return push(href);
   if (url.searchParams.get(TODAY_PARAM) === "1") {
+    // 帯の中のみんなは、読み込みは済んでいても、まだ動き出していない（知らせを受ける前の）ことがある。
+    // 印を残してから知らせ、動き出したみんなが印を見て開く（TodayModal）
+    (win as unknown as Record<string, unknown>)[TODAY_PENDING] = true;
     win.dispatchEvent(new win.CustomEvent(TODAY_SHOW_EVENT));
     return;
   }
