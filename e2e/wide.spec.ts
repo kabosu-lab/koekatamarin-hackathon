@@ -32,17 +32,19 @@ test("広い画面では、話す画面の左右に履歴と設定、みんな�
   await page.goto("/");
   const minna = page.frameLocator('iframe[title="みんな"]');
   const me = page.frameLocator('iframe[title="履歴と設定"]');
+  // 0-3m：今日の3人が自動で開いている間は、欄が3列の上に上がり、みんなの中身は隠れる。先に閉じてから見出しを見る
+  const firstToday = minna.getByRole("dialog", { name: "今日の3人" });
+  await expect(firstToday).toBeVisible();
+  await firstToday.getByRole("button", { name: "みんなを見る" }).click();
+  await expect(firstToday).toHaveCount(0);
   await expect(minna.getByRole("heading", { name: "みんな" })).toBeVisible();
   await expect(me.getByRole("heading", { name: "履歴と設定" })).toBeVisible();
   const mic = await page.getByRole("button", { name: "押し続けて話す" }).boundingBox();
   expect(mic?.x).toBeGreaterThan(400);
   await expect(page.locator(".retro-home")).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0);
-  // その日はじめてなら、欄の中でも今日の3人のモーダルが自動で開く。閉じたあとは下の帯から開ける
+  // 閉じたあとは下の帯から開ける
   const today = minna.getByRole("dialog", { name: "今日の3人" });
-  await expect(today).toBeVisible();
-  await today.getByRole("button", { name: "みんなを見る" }).click();
-  await expect(today).toHaveCount(0);
   await minna.getByRole("navigation", { name: "みんなの入口" }).getByRole("button", { name: "今日の3人" }).click();
   await expect(today).toBeVisible();
   await today.getByRole("button", { name: "みんなを見る" }).click();

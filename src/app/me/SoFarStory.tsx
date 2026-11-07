@@ -224,7 +224,15 @@ function PanelPeople({ story, plan, run, tip }: { story: Story; plan: StoryPlan;
       setFit((current) => ({ shown: people.length, turn: current.turn + 1 }));
     });
     watch.observe(box);
-    return () => watch.disconnect();
+    // 字の形があとから読み込まれると、箱は同じでも名前の幅が変わる。読み終えたら測り直す
+    let alive = true;
+    void document.fonts?.ready.then(() => {
+      if (alive) setFit((current) => ({ shown: people.length, turn: current.turn + 1 }));
+    });
+    return () => {
+      alive = false;
+      watch.disconnect();
+    };
   }, [people.length]);
   if (people.length === 0) return <p className="so-far-later so-far-center">これから</p>;
   const max = Math.max(1, ...people.map((person) => person.weight));
