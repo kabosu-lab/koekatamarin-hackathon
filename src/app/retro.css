@@ -2170,3 +2170,25 @@ html[data-pane] :is(.feedback-fab, .feedback-thanks) {
   border-radius: 10px;
   background: rgb(10 16 24 / 88%);
 }
+
+/* 前の話の1行。パートナーの言葉には小さなアイコンを添える */
+.chat-archive-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.chat-archive-line.me {
+  justify-content: flex-end;
+}
+
+.chat-archive-line .chat-icon {
+  width: 28px;
+  height: 28px;
+  opacity: 0.85;
+}
+
+.chat-archive-line .chat-icon .chat-icon-art {
+  width: 24px;
+  height: 24px;
+}

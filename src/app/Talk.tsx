@@ -338,7 +338,12 @@ export function Talk({
     const words =
       initialThanks.kind === "congrats" ? "おめでとうを伝えたい" : initialThanks.kind === "effort" ? "頑張ってたねって伝えたい" : "ありがとうを伝えたい";
     const line: ChatMessage = { role: "user", content: `${initialThanks.name}さんに${words}` };
-    setMessages((current) => [...current, line]);
+    // パートナーも一言返してから下書きを開く（アイコンと返事が会話に残り、シートを閉じても何をしているか分かる）
+    const reply: ChatMessage = {
+      role: "assistant",
+      content: politeTalk ? `${initialThanks.name}さんへのカードの下書きを作りますね。` : `${initialThanks.name}さんへのカードの下書きを作るね。`,
+    };
+    setMessages((current) => [...current, line, reply]);
     void startCompose(undefined, undefined, [line]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialThanks]);
@@ -1221,8 +1226,14 @@ export function Talk({
                 {archived.map((talk, talkIndex) => (
                   <ol key={talkIndex}>
                     {talk.map((message, index) => (
-                      <li key={index} className={`chat-archive-row ${message.role === "user" ? "me" : "partner"}`}>
-                        {message.content}
+                      <li key={index} className={`chat-archive-line ${message.role === "user" ? "me" : "partner"}`}>
+                        {/* 前の話でも、パートナーの言葉の左にアイコンを出す（だれの言葉か分かるように） */}
+                        {message.role !== "user" && (
+                          <span className="chat-icon" aria-hidden="true">
+                            {icon}
+                          </span>
+                        )}
+                        <span className={`chat-archive-row ${message.role === "user" ? "me" : "partner"}`}>{message.content}</span>
                       </li>
                     ))}
                   </ol>

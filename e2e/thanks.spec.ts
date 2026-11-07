@@ -92,7 +92,13 @@ test("札を回すとカードからふつうの投稿に戻り、宛名とあ�
 
 test("みんなの「おめでとう」のボタンからは、【おめでとう】の札で下書きが始まる", async ({ page, context }) => {
   await context.addCookies([{ name: "koekata_today_seen", value: "1", domain: "127.0.0.1", path: "/" }]);
+  // 頑張りの投稿を1つ、木下さん宛てに用意する（おすすめの上の段に入るので、ほかのテストの投稿が多くても見える）
   await page.goto("/");
+  await switchPerson(page, "中村 結衣（1年・吹奏楽部）");
+  const posted = await page.request.post("/api/publish", {
+    data: { text: `合奏の練習、最後まで通せた ${test.info().testId}`, channelId: "clubs", kind: "effort", askedPersonId: "kinoshita" },
+  });
+  expect(posted.ok()).toBe(true);
   await switchPerson(page, "木下 蓮（3年・ものづくり部）");
   await page.goto("/minna");
   const entry = page.getByRole("link", { name: /さんにおめでとうを送る$/ }).first();
@@ -113,6 +119,10 @@ test("前の話が残っていても、ありがとうのボタンから来た�
   const log = page.getByRole("log");
   await expect(log.locator(".bubble.user").filter({ hasText: "今日は過去問を解いた" })).toHaveCount(1);
   await expect(log.locator(".bubble.user").filter({ hasText: "野田 翔さんにありがとうを伝えたい" })).toHaveCount(1);
+  // パートナーも一言返し、その左にアイコンが出る（シートを閉じても、何をしているか分かる）
+  const reply = log.locator(".chat-row.partner").filter({ hasText: "野田 翔さんへのカードの下書きを作るね" });
+  await expect(reply).toHaveCount(1);
+  await expect(reply.locator(".chat-icon .chat-icon-art")).toBeVisible();
 });
 
 test("受信箱の届いた返事の「ありがとう」は、話す画面でその人へのカードの下書きを開く", async ({ page }) => {

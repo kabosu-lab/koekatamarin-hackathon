@@ -42,9 +42,11 @@ export function feedTier(post: PostView, viewer: { id: string; label: string }, 
   const mentioned = post.askedPersonId === viewer.id && post.authorId !== viewer.id;
   const repliedToMine = post.authorId === viewer.id && post.replies.some((reply) => reply.authorId !== viewer.id);
   const ownFresh = post.authorId === viewer.id && now.getTime() - new Date(post.createdAt).getTime() < OWN_FRESH_MS;
+  // 自分がさっき返事をした投稿も、その話の続きが見えるよう上の段に入れる（1日だけ）
+  const repliedByMe = post.replies.some((reply) => reply.authorId === viewer.id && now.getTime() - new Date(reply.createdAt).getTime() < OWN_FRESH_MS);
   const myParts = labelParts(viewer.label);
   const sameGroup = post.authorId !== viewer.id && labelParts(post.authorLabel).some((part) => myParts.includes(part));
-  if (mentioned || repliedToMine || ownFresh || sameGroup) return "related";
+  if (mentioned || repliedToMine || ownFresh || repliedByMe || sameGroup) return "related";
   if (cardKind(post.subject)) return "card";
   if (post.likeCount + post.replies.length >= POPULAR_MIN_REACTIONS) return "popular";
   return "new";

@@ -237,6 +237,8 @@ test("0-1l・0-2n：会話の中のアイコンを押すと「新しい話にし
   await input.fill("次の話");
   await input.press("Enter");
   await expect(page.getByRole("region", { name: "前の話" })).toContainText(words);
+  // 前の話でも、パートナーの言葉の左にアイコンが出る
+  await expect(page.getByRole("region", { name: "前の話" }).locator(".chat-archive-line.partner .chat-icon-art").first()).toBeVisible();
 });
 
 test("0-2n：生徒には、くだけた「新しい話にする？」で聞く", async ({ page }) => {
