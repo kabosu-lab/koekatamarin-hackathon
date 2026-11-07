@@ -14,12 +14,23 @@ const SIZES = [
 /** 試用のサーバー（playwright.config.ts の試用と同じ、次の番号） */
 const TRIAL_URL = `http://127.0.0.1:${Number(process.env.KOEKATA_E2E_PORT ?? 3100) + 1}`;
 
-/** 今日の3人が開いた。横の3列では外側の URL は変わらず、右の列の中で開く（0-2y） */
+/**
+ * 今日の3人が開いた。みんなの下の帯の「今日の3人」と同じく、みんなの中のモーダルとして出る。
+ * 狭い画面では帯がみんなへ動き、横の3列では右の列の中で開く（外側の画面は話す画面のまま。wheel-open.spec.ts）。
+ * 帯の準備の前に離したときは、みんなの画面を開いてモーダルを出す
+ */
 async function expectOpened(page: Page) {
-  if (!isWideViewport(page)) return expect(page).toHaveURL(/\/today/);
   await expect
-    .poll(async () => (await (await page.locator(".wide-panel[data-side=right] iframe").elementHandle())?.contentFrame())?.url() ?? "")
-    .toMatch(/\/today/);
+    .poll(async () => {
+      // みんなの画面ごと開いたときは列や帯がないので、待たずに数える
+      const iframe = page.locator(".wide-panel[data-side=right] iframe");
+      const frame = (await iframe.count()) > 0 ? await (await iframe.elementHandle())?.contentFrame() : null;
+      const inFrame = frame ? await frame.getByRole("dialog", { name: "今日の3人" }).first().isVisible().catch(() => false) : false;
+      const onPage = await page.getByRole("dialog", { name: "今日の3人" }).first().isVisible().catch(() => false);
+      return `${new URL(page.url()).pathname}|frame:${inFrame}|page:${onPage}`;
+    })
+    // 話す画面のまま帯や列の中で開いたか、帯の準備の前（狭い画面）にみんなの画面ごと開いたか
+    .toMatch(isWideViewport(page) ? /^\/\|frame:true/ : /^\/\|frame:true|^\/minna\|frame:\w+\|page:true/);
 }
 
 async function touch(cdp: CDPSession, type: "touchStart" | "touchMove" | "touchEnd", x: number, y: number) {

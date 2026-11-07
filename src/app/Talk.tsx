@@ -39,7 +39,7 @@ import "./new-talk.css";
 import { announceTalkFeedback, feedbackPlace } from "./FeedbackSheet";
 import { ClickWheel } from "./ClickWheel";
 import { VoiceLump } from "./VoiceLump";
-import { openScreenFromHome } from "./WidePanels";
+import { openLikeEntrance, openScreenFromHome } from "./WidePanels";
 import type { NewsLine } from "@/lib/new-counts";
 import { THANKS_REVEAL_EVENT, THANKS_REVEAL_HREF } from "@/lib/thanks-kind";
 import type { LumpShapeName } from "@/lib/lump-shapes";
@@ -61,7 +61,7 @@ const WHEEL_CHIPS: (ChipItem & { href: string })[] = [
   // 0-2o(4)：出したとき最初に真ん中にいるのはホーム。選ぶと話す画面のまま閉じる
   { id: "home", label: "ホーム", code: "H-00", icon: "talk", href: "/", description: "話す画面のまま、ホイールを閉じます" },
   { id: "minna", label: "みんな", code: "M-01", icon: "people", href: "/minna", description: "みんなの投稿を見て、応援や返事を送れます" },
-  { id: "today", label: "今日の3人", code: "T-03", icon: "heart", href: "/today", description: "今日話してみるとよさそうな3人を、パートナーが選びます" },
+  { id: "today", label: "今日の3人", code: "T-03", icon: "heart", href: "/minna?today=1", description: "今日話してみるとよさそうな3人を、パートナーが選びます" },
   { id: "inbox", label: "受信箱", code: "I-02", icon: "inbox", href: "/inbox", description: "あなたに届いた返事を読めます" },
   { id: "room", label: "自習室", code: "S-04", icon: "book", href: "/study/room", description: "みんなと一緒に勉強する部屋に入ります" },
   { id: "chie", label: "校内の知恵", code: "K-05", icon: "idea", href: "/chie", description: "校内で広がっている知恵を探せます" },
@@ -1176,8 +1176,8 @@ export function Talk({
             items={newCounts ? WHEEL_CHIPS.map((chip) => ({ ...chip, badge: newCounts[chip.id as "inbox" | "today"] })) : WHEEL_CHIPS}
             onOpen={(item) => {
               const chip = WHEEL_CHIPS.find((candidate) => candidate.id === item.id);
-              // 0-2y：横向きの3列では、属する列の中で開く
-              if (chip && chip.id !== "home") openScreenFromHome(chip.href, (href) => router.push(href));
+              // いつもの入口と同じ出方：3列では属する列の中、狭い画面では帯の中で開く。今日の3人はみんなのモーダル
+              if (chip && chip.id !== "home") openLikeEntrance(chip.href, (href) => router.push(href));
             }}
           />
           {lockedTalk.locked && (

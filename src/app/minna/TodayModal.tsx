@@ -17,6 +17,7 @@ import { TODAY_SEEN_COOKIE } from "./today-seen";
 import { cardAttr, PostSubject } from "@/app/PostSubject";
 import { STRIP_LAND_EVENT } from "../strip";
 import { useLift } from "../column-lift";
+import { TODAY_PARAM, TODAY_SHOW_EVENT } from "../WidePanels";
 import { batchOf, markAnswered, nextBatchLabel, todayDoneLine, useAnswered, useHeldOrder } from "../today/answered";
 
 
@@ -118,6 +119,20 @@ export function TodayProvider({
     setOpened(true);
     setOpen(true);
   };
+  // ホイールの「今日の3人」から来たとき：下の帯の「今日の3人」を押したときと同じく開く。
+  // 帯の中のみんなへは知らせ（TODAY_SHOW_EVENT）で、列の中や1画面で開いたみんなへは ?today=1 で届く
+  useEffect(() => {
+    const onShow = () => show();
+    window.addEventListener(TODAY_SHOW_EVENT, onShow);
+    const url = new URL(location.href);
+    if (url.searchParams.get(TODAY_PARAM) === "1") {
+      url.searchParams.delete(TODAY_PARAM);
+      history.replaceState(history.state, "", url.pathname + url.search + url.hash);
+      show();
+    }
+    return () => window.removeEventListener(TODAY_SHOW_EVENT, onShow);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   return <TodayContext.Provider value={{ open, opened, show, hide: () => setOpen(false) }}>{children}</TodayContext.Provider>;
 }
 
