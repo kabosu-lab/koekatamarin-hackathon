@@ -12,6 +12,8 @@ import { Peek, remember, screenOf } from "./swipe-peek";
  * 押し続けて話すボタンとホイール、文字を打つ欄は除く。
  */
 const NO_SWIPE = "[data-noswipe], .device-mic, input, textarea, select, dialog, [contenteditable]";
+/** 話す画面から先に読んでおく奥の画面（ホイールのチップの行き先） */
+const DEEP_PREFETCH = ["/today", "/inbox", "/study/room", "/chie", "/me?open=goals", "/me?open=daily", "/me?open=lookback", "/me?open=settings"];
 /** 3枚の上で、奥の状態（タイルを開いた・今日の3人を出した）を開いている印。あれば左右どちらでもホームへ戻る（0-2p） */
 const DEEP_STATE = "[data-swipe-home]";
 /** 奥の画面の部品が「ホームへ戻して」と頼む知らせ（今日の3人の、端の先へのめくり）。detail は SwipeHomeRequest */
@@ -37,7 +39,8 @@ type Arrival = { from: "left" | "right"; ms: number; rest: number };
 const reducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 const page = () => document.querySelector<HTMLElement>("body > main, main");
 /** スワイプは狭い画面だけ（0-2y (3)）。広い画面は3列が並び、欄（iframe）の中の奥の画面は「戻る」で閉じる */
-const swipes = () => document.documentElement.dataset.embed !== "true" && !window.matchMedia(WIDE_QUERY).matches;
+const swipes = () =>
+  document.documentElement.dataset.embed !== "true" && document.documentElement.dataset.pane !== "true" && !window.matchMedia(WIDE_QUERY).matches;
 
 /** 指を置いた所から外へ向かって、横にスクロールできる入れ物（カルーセル、チップの列）があるか */
 function insideSideScroller(target: Element | null): boolean {
@@ -95,6 +98,8 @@ export function SwipeNav() {
   useEffect(() => {
     if (SWIPE_SCREENS.includes(pathname as (typeof SWIPE_SCREENS)[number])) {
       for (const screen of SWIPE_SCREENS) if (screen !== pathname) router.prefetch(screen);
+      // 0-2z：ホイールのチップで開く奥の画面も、話す画面から先に読んでおく
+      if (pathname === SWIPE_HOME) for (const deep of DEEP_PREFETCH) router.prefetch(deep);
     } else router.prefetch(SWIPE_HOME);
   }, [pathname, router]);
 

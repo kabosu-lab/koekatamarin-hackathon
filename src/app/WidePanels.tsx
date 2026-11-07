@@ -27,13 +27,19 @@ export function openScreenFromHome(href: string, push: (href: string) => void) {
   if (!openInColumn(href)) push(href);
 }
 
+/** 狭い画面で、話す画面の左右の画面を裏で読み込み始めるまでの待ち（最初の描画と操作を先にする） */
+const PANE_DELAY_MS = 1500;
+
 /**
  * 広い画面では、話す画面の左右に同じ画面を並べる。欄の中のリンクは欄の中で動き、真ん中の機器は保たれる。
  * 列の枠はサーバーで描き、出すかどうかは CSS のメディアクエリで決める（0-2y。最初の描画から3列）。
- * 中の iframe は広い画面のときだけ読み込む（スマホでは余分に読まない）。
+ *
+ * 0-2z：狭い画面でも、同じ枠に左右の画面を裏で読み込んでおき、画面の外（左右）に置く（data-mode="pane"）。
+ * スワイプの途中は、この本物の画面が指に付いて覗く。中は単独で開いたときと同じ見た目（欄の印 data-embed は付けない）。
  */
 export function WidePanel({ src, title, side }: { src: string; title: string; side: WideSide }) {
   const [wide, setWide] = useState(false);
+  const [pane, setPane] = useState(false);
   // 同じ画面をもう一度開いたときも、列の中を開き直す（奥の状態から戻す）
   const [current, setCurrent] = useState({ href: src, turn: 0 });
   useEffect(() => {
@@ -41,7 +47,12 @@ export function WidePanel({ src, title, side }: { src: string; title: string; si
     const update = () => setWide(query.matches);
     update();
     query.addEventListener("change", update);
-    return () => query.removeEventListener("change", update);
+    // 動きを減らす設定では指に付いて動かないので、裏で読み込まない
+    const timer = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : window.setTimeout(() => setPane(true), PANE_DELAY_MS);
+    return () => {
+      query.removeEventListener("change", update);
+      window.clearTimeout(timer);
+    };
   }, []);
   useEffect(() => {
     const onRequest = (event: Event) => {
@@ -52,8 +63,18 @@ export function WidePanel({ src, title, side }: { src: string; title: string; si
     return () => window.removeEventListener(COLUMN_EVENT, onRequest);
   }, [side]);
   return (
-    <div className="wide-panel" data-side={side}>
-      {wide && <iframe key={`${current.turn}:${current.href}`} src={current.href} title={title} data-side={side} />}
+    <div className="wide-panel" data-side={side} data-mode={wide ? "column" : "pane"}>
+      {(wide || pane) && (
+        <iframe
+          key={`${current.turn}:${current.href}`}
+          src={current.href}
+          title={title}
+          data-side={side}
+          data-mode={wide ? "column" : "pane"}
+          tabIndex={wide ? undefined : -1}
+          aria-hidden={wide ? undefined : true}
+        />
+      )}
     </div>
   );
 }
@@ -67,8 +88,26 @@ export function WidePanel({ src, title, side }: { src: string; title: string; si
 export function EmbedMark() {
   const pathname = usePathname();
 
+  // 欄の印は、列（column）のときだけ。裏で読み込んだ左右の画面（pane）は単独と同じ見た目にする。
+  // iPad を回したときは、同じ iframe が列と左右の画面の間で替わるので、iframe の印を見張って付け替える
   useEffect(() => {
-    if (window.self !== window.top) document.documentElement.dataset.embed = "true";
+    if (window.self === window.top) return;
+    const frame = window.frameElement as HTMLElement | null;
+    const root = document.documentElement;
+    const apply = () => {
+      if (frame?.dataset.mode === "pane") {
+        delete root.dataset.embed;
+        root.dataset.pane = "true";
+      } else {
+        root.dataset.embed = "true";
+        delete root.dataset.pane;
+      }
+    };
+    apply();
+    if (!frame) return;
+    const watch = new MutationObserver(apply);
+    watch.observe(frame, { attributes: true, attributeFilter: ["data-mode"] });
+    return () => watch.disconnect();
   }, []);
 
   useEffect(() => {

@@ -79,3 +79,35 @@ test("大きく払えば隣の画面へ吸い付いて移り、チラ見せの�
   await expect(page.locator(".swipe-peek")).toHaveCount(0);
   await context.close();
 });
+
+test("話す画面では、左右の画面を裏で読み込んでおき、ドラッグ中は本物の画面が覗く。離せば移る", async ({ browser }) => {
+  const context = await touchContext(browser);
+  const page = await context.newPage();
+  await page.goto("/");
+  // 裏で読み込んだ左右の画面は、画面の外にある
+  const right = page.locator('.wide-panel[data-side="right"][data-mode="pane"] iframe');
+  await expect(right).toHaveAttribute("src", "/minna");
+  await expect(page.frameLocator('.wide-panel[data-side="right"] iframe').getByRole("region", { name: "みんな" })).toBeAttached();
+  const outside = await page.evaluate(() => document.querySelector('.wide-panel[data-side="right"]')!.getBoundingClientRect().left);
+  expect(outside).toBeGreaterThanOrEqual(389);
+  // ドラッグ中は、その本物の画面が指に付いて覗く（写しは作らない）
+  let state = { screen: null as number | null, peek: null as number | null };
+  await expect(async () => {
+    state = await drag(page, -60);
+    expect(state.peek).not.toBeNull();
+  }).toPass({ timeout: 20_000 });
+  await expect(page.locator('.wide-panel[data-side="right"].swipe-peek')).toHaveCount(1);
+  expect(state.peek!).toBeCloseTo(390 - 60, -1);
+  await release(page, 170);
+  await expect(page).toHaveURL(/127\.0\.0\.1:\d+\/$/);
+  await expect(page.locator(".swipe-peek")).toHaveCount(0);
+  // 大きく払えば、みんなへ移る
+  await expect(async () => {
+    const moved = await drag(page, -200);
+    expect(moved.peek).not.toBeNull();
+  }).toPass({ timeout: 20_000 });
+  await release(page, 0);
+  await expect(page).toHaveURL(/\/minna$/);
+  await expect(page.getByRole("region", { name: "みんな" })).toBeVisible();
+  await context.close();
+});

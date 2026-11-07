@@ -2047,3 +2047,32 @@ html[data-theme="retro"] .talk .device-mic {
 html[data-embed] .first-card-backdrop {
   display: none;
 }
+
+/*
+ * 0-2z：狭い画面では、話す画面の左右の画面（履歴と設定・みんな）を裏で読み込み、画面のすぐ外に置いておく。
+ * スワイプの途中は、この本物の画面が指に1対1で付いて覗く（SwipeNav と swipe-peek.ts が動かす）。
+ * 3列（上の「0-2y (6)」）のときは使わない。
+ */
+@media not ((orientation: landscape) and (min-height: 600px)) {
+  .device-row > .wide-panel[data-mode="pane"] {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 40;
+    display: block;
+    width: 100vw;
+    height: 100dvh;
+    border-radius: 0;
+    background: none;
+    box-shadow: none;
+    pointer-events: none;
+  }
+
+  .device-row > .wide-panel[data-mode="pane"][data-side="left"] {
+    transform: translateX(-100vw);
+  }
+
+  .device-row > .wide-panel[data-mode="pane"][data-side="right"] {
+    transform: translateX(100vw);
+  }
+}
