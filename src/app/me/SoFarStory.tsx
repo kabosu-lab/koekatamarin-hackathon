@@ -4,7 +4,6 @@ import Link from "next/link";
 import { type CSSProperties, type MouseEvent, type ReactNode, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { Connection, ConnectionKind, SoFarStory as Story } from "@/lib/so-far";
 import { BottomSheet } from "../BottomSheet";
-import { collapseColumn, expandColumn } from "../so-far-full";
 import { playCommitPop, playReachedSound } from "../sound";
 import { type Growth, parseSeen, planStory, seenKey, seenOf, type StoryPlan } from "./so-far-seen";
 import "./so-far-story.css";
@@ -14,8 +13,6 @@ const DELAY_MS = 260;
 /** 伸びる・数え上がる長さ */
 const GROW_MS = 900;
 const MAX_POP_STEP = 10;
-/** シートが閉じる動き（BottomSheet の EXIT_MS）を待ってから、列の大きさに戻す */
-const EXIT_MS = 180;
 
 const BARS: { key: keyof Story["counts"]; label: string; helped: boolean; note: string }[] = [
   { key: "posts", label: "届けた", helped: false, note: "届けた：あなたが本人として送った投稿の数。話して、光ったら、とどけると増えます" },
@@ -518,43 +515,6 @@ function Board({ story, rewards, personId }: { story: Story; rewards: boolean; p
 }
 
 /**
- * 0-3h：横向きの3列（iPad 横・パソコン）では、「これまで」は左の列の iframe の中にある。
- * 開いている間だけ、その iframe を外側の画面いっぱいに広げて、3列の上に重ねる。閉じれば列の大きさに戻す。
- * 狭い画面（左右の画面 pane）や単独で開いたときは、何もしない（もともと全画面）。
- */
-function useFullScreenInColumn(open: boolean) {
-  const pending = useRef(0);
-  useEffect(() => {
-    if (!open) return;
-    let frame: HTMLElement | null = null;
-    let host: Window | null = null;
-    try {
-      if (window.self !== window.top) {
-        frame = window.frameElement as HTMLElement | null;
-        host = window.parent;
-        // 閉じてすぐ開き直したときは、戻す待ちを取り消す
-        if (frame) host.clearTimeout(pending.current);
-      }
-    } catch {
-      // 別オリジンの枠の中では、広げない
-      frame = null;
-    }
-    if (!frame || !host || frame.dataset.mode !== "column") return;
-    expandColumn(frame);
-    const target = frame;
-    const outer = host;
-    return () => {
-      // シートが閉じる動きを待ってから戻す。列の中で別の画面へ移っても、外側の WidePanel の onLoad が戻す
-      try {
-        pending.current = outer.setTimeout(() => collapseColumn(target), EXIT_MS);
-      } catch {
-        collapseColumn(target);
-      }
-    };
-  }, [open]);
-}
-
-/**
  * 0-2t：帯を押すと開く「これまで」のインフォグラフィック。全部のグラフを1画面に並べ、スクロールさせない。
  * 開いた瞬間、前に見たときから増えた項目だけが前の値から同時に伸び、数字も数え上がる。増えていない項目は今の値のまま。
  * 前に見た値は端末ごと（localStorage）。動きを減らす設定では動かさない。動かすのは transform と opacity だけ。
@@ -573,7 +533,6 @@ export function SoFarStory({
   rewards: boolean;
   personId: string;
 }) {
-  useFullScreenInColumn(open);
   return (
     <div className="so-far-story">
       <BottomSheet

@@ -875,3 +875,18 @@ html body .room-list-close {
     animation: none;
   }
 }
+
+/* 0-3m：横向きの3列では、名前の一覧は3列の上に全画面で（column-lift.ts）。中身は真ん中で最大 720px、後ろは今の暗幕の色で暗く */
+html[data-column-lift] .room-list {
+  position: fixed;
+  top: 50%;
+  right: auto;
+  left: 50%;
+  width: min(calc(100vw - 32px), 720px);
+  max-height: min(80dvh, 40rem);
+  overflow: auto;
+  translate: -50% -50%;
+  box-shadow:
+    0 0 0 100vmax rgb(10 12 24 / 0.45),
+    0 4px 14px rgb(0 0 0 / 18%);
+}
