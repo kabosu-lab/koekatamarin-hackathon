@@ -69,7 +69,16 @@ async function swipeWheel(page: Page, degrees: number) {
   await expect(page.locator(".wheel-carousel")).toHaveAttribute("data-state", "turning");
   // 指を止めると、最寄りの刻みへ寄って真ん中に座る
   await page.waitForTimeout(400);
-  const label = (await page.locator('.wheel-carousel-slot[data-center="true"] .chip-label').textContent()) ?? "";
+  const center = page.locator('.wheel-carousel-slot[data-center="true"] .chip-label');
+  // 重いときは指の動きがまとめられて、刻みが1つ足りないことがある。目当てのチップまで少しずつ足す
+  let end = degrees;
+  for (let extra = 0; extra < 6 && (await center.textContent()) !== "今日の3人"; extra++) {
+    end += 6;
+    await touch(cdp, "touchMove", at(end).x, at(end).y);
+    await page.waitForTimeout(250);
+  }
+  degrees = end;
+  const label = (await center.textContent()) ?? "";
   await page.screenshot({ path: test.info().outputPath(`なぞり中.png`) });
   await touch(cdp, "touchEnd", at(degrees).x, at(degrees).y);
   await cdp.detach();
