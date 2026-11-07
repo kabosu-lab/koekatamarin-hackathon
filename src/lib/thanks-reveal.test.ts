@@ -4,7 +4,7 @@ import { openDatabase } from "./db";
 import { setHidden } from "./hidden-people";
 import { markThanksOpened } from "./new-counts";
 import { seedDatabase } from "./seed";
-import { ensureWelcomeThanks, listUnopenedThanks } from "./thanks-reveal";
+import { ensureWelcomeThanks, listRevealThanks, listUnopenedThanks } from "./thanks-reveal";
 
 const NOW = new Date("2026-11-07T01:00:00Z");
 let db: DatabaseSync;
@@ -56,5 +56,40 @@ describe("まだ開いていないカード", () => {
     setHidden(db, "aoki", card.fromId, false, NOW);
     markThanksOpened(db, "aoki", new Date(card.createdAt));
     expect(listUnopenedThanks(db, "aoki")).toHaveLength(0);
+  });
+});
+
+describe("この端末で、まだ開けていないカード", () => {
+  it("初めての端末では、ほかの端末で開けたあとでも、今日のカードが届く", () => {
+    ensureWelcomeThanks(db, "aoki", NOW);
+    const [card] = listUnopenedThanks(db, "aoki");
+    // 別の端末で開けた（人物ごとの印は進む）
+    markThanksOpened(db, "aoki", new Date(card.createdAt));
+    expect(listUnopenedThanks(db, "aoki")).toHaveLength(0);
+    expect(listRevealThanks(db, "aoki", null, NOW).map((c) => c.id)).toEqual([card.id]);
+  });
+
+  it("この端末で開けたあとは出ない。あとから届いた分だけ出る", () => {
+    ensureWelcomeThanks(db, "aoki", NOW);
+    const [card] = listRevealThanks(db, "aoki", null, NOW);
+    expect(listRevealThanks(db, "aoki", card.createdAt, NOW)).toHaveLength(0);
+    db.prepare("INSERT INTO thanks (id, from_person_id, to_person_id, message, created_at) VALUES ('t-late', 'noda', 'aoki', 'おめでとう！', ?)").run(
+      "2026-11-07T02:00:00.000Z",
+    );
+    expect(listRevealThanks(db, "aoki", card.createdAt, NOW).map((c) => [c.id, c.kind])).toEqual([["t-late", "congrats"]]);
+  });
+
+  it("初めての端末でも、昨日までにどこでも開かれていないカードは出る。開かれた古いカードは出ない", () => {
+    db.prepare("INSERT INTO thanks (id, from_person_id, to_person_id, message, created_at) VALUES ('t-old', 'noda', 'aoki', '助かりました', ?)").run(
+      "2026-11-06T05:00:00.000Z",
+    );
+    expect(listRevealThanks(db, "aoki", null, NOW).map((c) => c.id)).toContain("t-old");
+    markThanksOpened(db, "aoki", new Date("2026-11-06T06:00:00.000Z"));
+    expect(listRevealThanks(db, "aoki", null, NOW).map((c) => c.id)).not.toContain("t-old");
+  });
+
+  it("壊れた端末の印は、初めての端末と同じに扱う", () => {
+    ensureWelcomeThanks(db, "aoki", NOW);
+    expect(listRevealThanks(db, "aoki", "not-a-date", NOW)).toHaveLength(1);
   });
 });

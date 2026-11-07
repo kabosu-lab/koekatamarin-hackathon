@@ -8,12 +8,12 @@ import { PROMISE_SEEN } from "./promise-seen";
  * 今日の1枚は、並んで動くほかのテストが「ありがとう」を開くと開封済みになることがある。
  * 確かめる直前に、別の人から1枚届けておく（どちらが先に出ても演出は同じ）。
  */
-async function deliver(browser: Browser, fromId: string, toId: string) {
+async function deliver(browser: Browser, fromId: string, toId: string, message = `いつも助かっています ${test.info().testId}`) {
   const context = await browser.newContext();
   await context.addCookies([{ name: "koekata_person", value: fromId, domain: "127.0.0.1", path: "/" }, ...PROMISE_SEEN]);
   const page = await context.newPage();
   await page.goto("/api/health");
-  const sent = await page.request.post("/api/thanks", { data: { toPersonId: toId, message: `いつも助かっています ${test.info().testId}` } });
+  const sent = await page.request.post("/api/thanks", { data: { toPersonId: toId, message } });
   expect(sent.ok()).toBe(true);
   await context.close();
 }
@@ -99,4 +99,93 @@ test("動きを減らす設定では、動かさずに表のカードを出す",
   await openEnvelope(page);
   await expect(page.locator(".thanks-reveal")).toHaveAttribute("data-phase", "card", { timeout: 300 });
   await expect(page.locator(".thanks-reveal-petals")).toBeHidden();
+});
+
+/** 封筒を開け、言葉に text を含むカードが出るまで「しまって次へ」で進める */
+async function untilCard(page: Page, text: string) {
+  const reveal = page.getByRole("dialog", { name: "届いたサンクスカード" });
+  for (let i = 0; i < 60; i++) {
+    await expect(page.locator(".thanks-reveal")).toHaveAttribute("data-phase", "card");
+    if (((await reveal.locator(".thanks-reveal-words").textContent()) ?? "").includes(text)) return reveal;
+    await reveal.getByRole("button", { name: "しまって次へ" }).click();
+  }
+  throw new Error(`カードが見つかりません：${text}`);
+}
+
+test("長い言葉もカードの中で読め、開くと焦点がカードへ移り、後ろは押せず、Enter で開き直さない。Esc で閉じて元へ戻る", async ({ page, browser }) => {
+  const tail = `最後まで読めます ${test.info().testId}`;
+  const long = `${"いつも準備を手伝ってくれて、本当に助かっています。".repeat(14)}${tail}`;
+  await switchPerson(page, "野田 翔（情報・ものづくり部顧問）");
+  await deliver(browser, "kawamura", "noda", long);
+  await page.goto("/");
+  await openEnvelope(page);
+
+  // 焦点はカードの中。後ろの画面は inert
+  await expect.poll(() => page.evaluate(() => Boolean(document.activeElement?.closest(".thanks-reveal")))).toBe(true);
+  expect(await page.locator("main").evaluate((el) => Boolean(el.closest("[inert]")))).toBe(true);
+
+  const reveal = await untilCard(page, tail);
+  const front = reveal.locator(".thanks-reveal-front");
+  // 言葉は重ならず、カードの中だけスクロールして最後まで読める
+  const sizes = await front.evaluate((el) => ({ scroll: el.scrollHeight, client: el.clientHeight }));
+  expect(sizes.scroll).toBeGreaterThan(sizes.client);
+  await front.evaluate((el) => el.scrollTo(0, el.scrollHeight));
+  await expect(reveal.getByText(tail)).toBeInViewport();
+  // 並びの上で、言葉の下に差出人が続く（重ならない）
+  const layout = await front.evaluate((el) => {
+    const words = el.querySelector<HTMLElement>(".thanks-reveal-words")!;
+    const from = el.querySelector<HTMLElement>(".thanks-reveal-from")!;
+    return { wordsBottom: words.offsetTop + words.offsetHeight, fromTop: from.offsetTop };
+  });
+  expect(layout.wordsBottom).toBeLessThanOrEqual(layout.fromTop);
+  // ボタンも画面の中
+  await expect(reveal.getByRole("button", { name: /カード帳にしまう|しまって次へ/ })).toBeInViewport();
+
+  // Tab はカードの中だけを回る
+  for (let i = 0; i < 6; i++) {
+    await page.keyboard.press("Tab");
+    expect(await page.evaluate(() => Boolean(document.activeElement?.closest(".thanks-reveal")))).toBe(true);
+  }
+
+  // Enter を押しても、封筒からやり直さない（後ろの吹き出しは押せない）
+  await reveal.locator(".thanks-reveal-front").focus();
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("Enter");
+  await expect(page.locator(".thanks-reveal")).toHaveCount(1);
+  await expect(page.locator(".thanks-reveal")).toHaveAttribute("data-phase", "card");
+  await expect(reveal.locator(".thanks-reveal-words")).toContainText(tail);
+
+  // Esc で閉じる（何枚あっても、1枚ずつしまう）
+  for (let i = 0; i < 60 && (await reveal.isVisible()); i++) {
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(250);
+  }
+  await expect(reveal).toBeHidden();
+  expect(await page.locator("main").evaluate((el) => Boolean(el.closest("[inert]")))).toBe(false);
+  await expect.poll(() => page.evaluate(() => Boolean(document.activeElement?.closest(".lcd-companion")))).toBe(true);
+});
+
+test("開けたかは端末ごと。ある端末で開けても、別の端末では最初の1回は封筒が届く", async ({ page, browser }) => {
+  await switchPerson(page, "白石 文（養護・相談室）");
+  await page.goto("/");
+  const reveal = await openEnvelope(page);
+  for (let i = 0; i < 60 && (await reveal.isVisible()); i++) {
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(250);
+  }
+  await expect(reveal).toBeHidden();
+
+  // 別の端末（新しいブラウザの文脈）で同じ人を開く
+  const other = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  await other.addCookies([
+    { name: "koekata_person", value: "shiraishi", domain: "127.0.0.1", path: "/" },
+    { name: "koekata_theme", value: "pop", domain: "127.0.0.1", path: "/" },
+    ...PROMISE_SEEN,
+  ]);
+  const second = await other.newPage();
+  await second.goto("/");
+  const again = await openEnvelope(second);
+  await expect(second.locator(".thanks-reveal")).toHaveAttribute("data-phase", "card");
+  await expect(again.getByRole("article", { name: /さんからの/ })).toBeVisible();
+  await other.close();
 });

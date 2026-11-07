@@ -21,7 +21,8 @@ async function replied(browser: Browser, authorId: string, replierIds: string[],
   await author.goto("/inbox");
   await author.goto("/");
   // 0-3a：話す画面を開くと届く今日の1枚（ダミーの同僚から）と、それで届くトロフィーは、開けたことにして数から外す
-  expect((await author.request.post("/api/thanks/opened", { data: {} })).ok()).toBe(true);
+  // 開けたかは端末ごと（cookie）なので、この端末で「ありがとう」のタイルを開く
+  await author.goto("/me?open=thanks");
   await author.goto("/");
   await author.goto("/me?open=partner");
   const posted = await author.request.post("/api/publish", { data: { text: words, channelId: "study" } });

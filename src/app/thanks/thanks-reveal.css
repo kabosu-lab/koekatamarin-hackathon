@@ -138,10 +138,11 @@
 }
 
 /* カード：裏から表へ、くるっと */
+/* 高さは表の言葉に合わせる。長い言葉は、カードの中だけでスクロールする（裏は表と同じ大きさ） */
 .thanks-reveal-card {
   position: relative;
+  display: grid;
   width: 100%;
-  min-height: 13rem;
   perspective: 900px;
 }
 
@@ -171,10 +172,23 @@
 }
 
 .thanks-reveal-front {
+  position: relative;
+  inset: auto;
+  min-height: 13rem;
+  max-height: min(58dvh, 30rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  /* あふれたときに上が切れないように */
+  align-content: safe center;
   background: #ffe3ea;
   color: #3a1420;
   transform: rotateY(-180deg);
   text-align: center;
+}
+
+.thanks-reveal-front:focus-visible {
+  outline: 3px solid #3a1420;
+  outline-offset: 3px;
 }
 
 .thanks-reveal[data-kind="effort"] .thanks-reveal-front {

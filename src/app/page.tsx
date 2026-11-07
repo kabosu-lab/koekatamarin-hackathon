@@ -16,7 +16,8 @@ import { TODAY_SEEN_COOKIE } from "./minna/today-seen";
 import { syncGiftEggs } from "@/lib/gift-eggs";
 import { listNewRibbons, syncRibbonsOnOpen } from "@/lib/ribbons";
 import { showsRewards } from "@/lib/rewards-view";
-import { ensureWelcomeThanks, listUnopenedThanks } from "@/lib/thanks-reveal";
+import { thanksDeviceCookie } from "@/lib/thanks-kind";
+import { ensureWelcomeThanks, listRevealThanks } from "@/lib/thanks-reveal";
 import { Talk } from "./Talk";
 import { ThanksReveal } from "./thanks/ThanksReveal";
 import { WidePanel } from "./WidePanels";
@@ -52,7 +53,9 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
   const question = goalQuestion(db, viewer.id, new Date()) ?? dailyQuestion(new Date());
   // 0-2v：新着の数（みんな・履歴と設定・ホイールと同じ数え方）。知恵や頑張りから来たときは、その話を先にする
   const counts = countNew(db, getDestination(db), viewer.id, new Date(), { rewards, todaySeen: store.has(TODAY_SEEN_COOKIE) });
-  const news = ask || goal || talk ? null : newsLine(counts, viewer.role);
+  // 0-3a：封筒の知らせは、この端末でまだ開けていないカードがあるときだけ（数とバッジは人物ごとのまま）
+  const revealCards = listRevealThanks(db, viewer.id, store.get(thanksDeviceCookie(viewer.id))?.value ?? null, new Date());
+  const news = ask || goal || talk ? null : newsLine({ ...counts, thanks: revealCards.length }, viewer.role);
 
   // 全員同じ1画面。ほかの画面へはスワイプと、下の小さな印から移る
   return (
@@ -62,7 +65,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
     <main className="retro-home">
       <h1 className="visually-hidden">こえかた</h1>
       {rewards && <RibbonMoment key={`ribbon-${viewer.id}`} ribbons={listNewRibbons(db, viewer.id)} />}
-      <ThanksReveal key={`thanks-${viewer.id}`} cards={listUnopenedThanks(db, viewer.id)} />
+      <ThanksReveal key={`thanks-${viewer.id}`} viewerId={viewer.id} cards={revealCards} />
       <Talk
         key={viewer.id}
         device
