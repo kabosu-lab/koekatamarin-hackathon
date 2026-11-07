@@ -30,6 +30,48 @@ export function openScreenFromHome(href: string, push: (href: string) => void) {
   if (!openInColumn(href) && !strip.go(href)) push(href);
 }
 
+/** 今日の3人を開く印。「みんな」の下の帯の「今日の3人」と同じく、みんなの中でモーダルを出す（TodayModal が受ける） */
+export const TODAY_PARAM = "today";
+export const TODAY_SHOW_EVENT = "koekata:today-show";
+
+/** 狭い画面の帯の、左右の画面の iframe（読み込み済みのとき） */
+function paneWindow(side: WideSide): (Window & typeof globalThis) | null {
+  const frame = document.querySelector<HTMLIFrameElement>(`.device-row > .wide-panel[data-mode="pane"][data-side="${side}"] iframe`);
+  try {
+    return (frame?.contentWindow as (Window & typeof globalThis) | null) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * ホイールのチップから開く。いつもの入口と同じ出方にそろえる。
+ * - 3列（iPad 横・パソコン）：属する列の中で開く（列の中のリンクやタイルを押したときと同じ）
+ * - 狭い画面：帯をその画面（みんな・履歴と設定）へ動かし、その中で奥の画面やタイルを開く（帯の中のリンクを押したときと同じ）
+ * - 今日の3人（/minna?today=1）：みんなを開き、下の帯の「今日の3人」と同じモーダルを出す（3列ではモーダルが全画面に上がる）
+ * 帯の準備ができていないときは、今までどおり push する（今日の3人は、開いたみんなが印を見てモーダルを出す）。
+ */
+export function openLikeEntrance(href: string, push: (href: string) => void) {
+  const url = new URL(href, location.href);
+  const side = wideSide(url.pathname);
+  if (!side) return push(href);
+  if (openInColumn(href)) return;
+  const root = side === "left" ? "/me" : "/minna";
+  const target = side === "left" ? 1 : -1;
+  if (strip.rest() !== target && !strip.go(root)) return push(href);
+  const win = paneWindow(side);
+  if (!win) return push(href);
+  if (url.searchParams.get(TODAY_PARAM) === "1") {
+    win.dispatchEvent(new win.CustomEvent(TODAY_SHOW_EVENT));
+    return;
+  }
+  if (href === root) return;
+  // 帯の中の画面のリンクを押したときと同じく、その中で（読み込み直さずに）移る
+  const router = (win as unknown as { next?: { router?: { push(href: string): void } } }).next?.router;
+  if (router) router.push(href);
+  else win.location.assign(href);
+}
+
 /** 狭い画面で、話す画面の左右の画面を裏で読み込み始めるまでの待ち（最初の描画と操作を先にする） */
 const PANE_DELAY_MS = 1500;
 

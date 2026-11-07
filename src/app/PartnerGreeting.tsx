@@ -3,14 +3,19 @@
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import type { PartnerLineKind } from "@/lib/partner-lines";
 import type { TapReaction } from "./partner-tap";
+import { calm, hintPending, WHEEL_HINT_KEY } from "./first-hint";
 import { useFirstCardClear } from "./use-first-card-clear";
 import "./partner-tap.css";
 
 /** 1字を出す間隔（設計書 §2-1-A：35ms/字の等速。30字で約1秒） */
 const CHAR_MS = 35;
-/** 吹き出しが出終わってから輪が光り始めるまで（§2-1-B） */
-const RING_DELAY_MS = 400;
-/** 輪の呼吸 2.8s × 2回 */
+/** 話す画面を開いてから輪が光り始めるまで（0.5〜1秒） */
+const RING_DELAY_MS = 600;
+/** 初めての指の手ほどきが出てから終わるまで（ClickWheel の HINT_MS 1.8秒と後片付け）＋少しの間 */
+const HINT_END_MS = 1800 + 200 + 300;
+/** 落ち着いているのに手ほどきが出ないまま、これだけたったら待たずに光らせる（手ほどきは落ち着いて 2.6 秒後に出る） */
+const HINT_GIVE_UP_MS = 4000;
+/** 輪の呼吸 2.8s × 3回 */
 const RING_MS = 2800 * 3;
 /** 触られないまま、この時間がたったら誘いの一言を添える（§2-1-B） */
 const NUDGE_MS = 6000;
@@ -122,7 +127,7 @@ export function PartnerGreeting({
 }
 
 /**
- * さりげない誘い（0-1g(2)）。文字が出終わって 400ms 後に輪が2回だけ呼吸し（breathing）、
+ * さりげない誘い（0-1g(2)）。話す画面を開いて 0.6 秒後に輪が3回だけ呼吸し（breathing。初めての指の手ほどきがあるときはそのあと）、
  * 6秒触られなければ一度だけ誘いの一言を添える（nudge）。一度話したら（spoken）どちらも出さない。
  * 本体は breathing のあいだ、マイクのまわりに data-invite="breathe" を付ける。
  */
@@ -135,19 +140,46 @@ export function usePartnerInvite({ typed: typedNow, spoken }: { typed: boolean; 
   const [breathing, setBreathing] = useState(false);
   const [nudge, setNudge] = useState(false);
   const nudged = useRef(false);
+  // 輪の光は、開いて少ししたら（最初の一言を待たずに）。初めての指の手ほどきが出るときは、それが終わってから
+  const [ringDue, setRingDue] = useState(false);
+  const ringDone = useRef(false);
 
   useEffect(() => {
-    if (!typed || spoken) {
+    if (prefersReducedMotion()) return;
+    let timer = 0;
+    const later = (ms: number) => {
+      timer = window.setTimeout(() => setRingDue(true), ms);
+    };
+    // 手ほどき（ClickWheel）は、外側の話す画面で、まだ見せていないときだけ出る
+    if (window.self !== window.top || !hintPending(WHEEL_HINT_KEY)) {
+      later(RING_DELAY_MS);
+      return () => window.clearTimeout(timer);
+    }
+    let calmSince = 0;
+    const check = () => {
+      if (document.documentElement.dataset.wheelHint === "shown") return later(HINT_END_MS);
+      // 見せずに終わった（触られた、別の画面で見せた）ときや、落ち着いてもしばらく出ないときは、待たずに光らせる
+      if (!calm()) calmSince = 0;
+      else if (!calmSince) calmSince = performance.now();
+      if (!hintPending(WHEEL_HINT_KEY) || (calmSince && performance.now() - calmSince > HINT_GIVE_UP_MS)) return later(0);
+      timer = window.setTimeout(check, 150);
+    };
+    timer = window.setTimeout(check, 150);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (!ringDue || spoken || ringDone.current) {
       setBreathing(false);
       return;
     }
-    const start = setTimeout(() => setBreathing(true), RING_DELAY_MS);
-    const stop = setTimeout(() => setBreathing(false), RING_DELAY_MS + RING_MS);
-    return () => {
-      clearTimeout(start);
-      clearTimeout(stop);
-    };
-  }, [typed, spoken]);
+    setBreathing(true);
+    const stop = setTimeout(() => {
+      ringDone.current = true;
+      setBreathing(false);
+    }, RING_MS);
+    return () => clearTimeout(stop);
+  }, [ringDue, spoken]);
 
   useEffect(() => {
     if (spoken) {
