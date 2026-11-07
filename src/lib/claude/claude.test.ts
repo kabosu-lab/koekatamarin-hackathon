@@ -311,6 +311,17 @@ ${READY_MARK}`)).toEqual({ reply: "いいね、それ届けてみよう。", rea
     expect(next.reply).toContain("聞いてみる？");
     expect(next.ready).toBe(true);
   });
+
+  it("先生が話しても、3D プリンターの2つの言い方で「とどける」が光る（npm run demo の最初の人は先生）", async () => {
+    const claude = createScriptedClaude();
+    const teacher = "話している人：先生";
+    const first = await converse(claude, [], "3D プリンターで文化祭の看板、作ってみたいんだけど", teacher);
+    expect(first.reply).toContain("ですか");
+    const history = [{ role: "user" as const, content: "3D プリンターで文化祭の看板、作ってみたいんだけど" }, { role: "assistant" as const, content: first.reply }];
+    const next = await converse(claude, history, "でも、どこから始めればいいか分からなくて", teacher);
+    expect(next.reply).toContain("野田先生が詳しいかもしれません");
+    expect(next.ready).toBe(true);
+  });
 });
 
 describe("調べものの出典（0-1s）", () => {
