@@ -796,3 +796,8 @@ html .so-far-story .so-far-board button.so-far-name[aria-expanded="true"] {
   width: 100%;
   max-height: 100dvh;
 }
+
+/* 0-3h：名前の置き場は、この箱を基準に測る（SoFarStory の PanelPeople） */
+.so-far-cloud {
+  position: relative;
+}

@@ -202,7 +202,14 @@ function PanelPeople({ story, plan, run, tip }: { story: Story; plan: StoryPlan;
   useLayoutEffect(() => {
     const box = cloud.current;
     if (!box || fit.shown <= 1) return;
-    if (box.scrollHeight > box.clientHeight + 1 || box.scrollWidth > box.clientWidth + 1) {
+    // 名前は出てくるときに縮んだ形から弾む（transform）ので、scrollHeight でなく、動きを除いた置き場（offset）で測る。
+    // 真ん中寄せで上にはみ出した分も数える
+    const items = [...box.children] as HTMLElement[];
+    const top = Math.min(...items.map((item) => item.offsetTop));
+    const bottom = Math.max(...items.map((item) => item.offsetTop + item.offsetHeight));
+    const left = Math.min(...items.map((item) => item.offsetLeft));
+    const right = Math.max(...items.map((item) => item.offsetLeft + item.offsetWidth));
+    if (top < -0.5 || left < -0.5 || bottom > box.clientHeight + 0.5 || right > box.clientWidth + 0.5) {
       setFit((current) => ({ ...current, shown: current.shown - 1 }));
     }
   }, [fit]);

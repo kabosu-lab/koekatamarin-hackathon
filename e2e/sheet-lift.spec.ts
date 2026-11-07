@@ -170,10 +170,23 @@ for (const size of WIDE) {
     test("ありがとうのカード帳のカードは、左の列から3列の上に全画面で上がり、閉じると3列に戻る", async ({ page }) => {
       const { element, frame } = await columnFrame(page, "履歴と設定", "/me?open=thanks");
       const column = (await element.boundingBox())!;
-      const cards = frame.locator(".card-book-card, .card-book button");
+      // 並んで動くほかのテストが同じ人にカードを届けるので、まだ開けていない封筒は先にしまっておき、読み返しのカードで確かめる
+      const envelope = frame.getByRole("button", { name: /さんからの封筒を開ける$/ });
+      const reveal = frame.getByRole("dialog", { name: "届いたサンクスカード" });
+      for (let round = 0; round < 5 && (await envelope.count()) > 0; round++) {
+        await envelope.first().click();
+        await expect(reveal).toBeVisible();
+        for (let i = 0; i < 60 && (await reveal.isVisible()); i++) {
+          await page.keyboard.press("Escape");
+          await page.waitForTimeout(250);
+        }
+        await expect(reveal).toBeHidden();
+      }
+      await expectBack(page, element, column);
+      const cards = frame.locator(".card-book-card");
       test.skip((await cards.count()) === 0, "受け取ったカードがない");
       await cards.first().click();
-      const viewer = frame.locator(".thanks-reveal-stage");
+      const viewer = frame.getByRole("dialog", { name: "サンクスカード" });
       await expect(viewer).toBeVisible();
       await expectLifted(page, element);
       await expectDimmed(frame.locator(".thanks-reveal-scrim"), page);
