@@ -4,9 +4,12 @@
 //
 //   npm run judge                          動いていなければ起動する（初回は今のコミット）。PC の起動時にもこれを呼ぶ
 //   npm run judge -- --update <コミット>   その版を書き出し、サーバーだけ入れ替える（URL は変わらない）
-//   npm run judge -- --funnel              Tailscale Funnel で外へ出し、固定の URL を記録する（Tailscale のサインインのあと1回）
+//   npm run judge -- --tunnel              cloudflared の一時トンネルで外へ出し、URL を記録する（既定の出し方。1回付ければ次からも開く）
+//                                          トンネルは、cloudflared のプロセスが止まっていない限り触らない（URL が変わらない）
+//   npm run judge -- --funnel              Tailscale Funnel で外へ出し、固定の URL を記録する（予備。今は使わない）
 //   npm run judge -- --url <審査員用> <みんな用>   Funnel 以外（ngrok など）で出したときに、URL を記録する
-//   npm run judge:stop                     全部止める
+//   npm run judge:stop                     サーバーを止める（トンネルは残す。URL を変えないため）
+//   npm run judge:stop -- --tunnel         トンネルも閉じる（URL は使えなくなる）
 //
 // 審査員用（3301）：合言葉つき、本物の Claude（1時間あたりの回数に上限）、先生も選べる、Teams へは送らない、ダミーの DB。
 // みんな用（3302）：合言葉なし、台本モード（キーを渡さず、Claude を呼ばない）、Teams へは送らない。起動のたびに DB を作り直す。
@@ -17,6 +20,7 @@ import { existsSync, mkdirSync, openSync, readFileSync, rmSync, writeFileSync } 
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import nextEnv from "@next/env";
+import { parseTunnelUrl, tunnelsToStart } from "./judge-tunnel.mjs";
 
 // タスクスケジューラから呼ばれても同じ場所を使うよう、このファイルの場所から決める
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -25,9 +29,10 @@ const DATA = join(ROOT, "data");
 const LOGS = join(DATA, "judge-logs");
 const STATE = join(DATA, "judge.json");
 const NO_GRAPH = join(DATA, "judge-no-graph"); // Teams のトークンを置かない場所（送らないことを確かにする）
-const ORIGINS = "*.ts.net,*.ts.net:8443,*.ngrok-free.app,*.ngrok.app";
+const ORIGINS = "*.trycloudflare.com,*.ts.net,*.ts.net:8443,*.ngrok-free.app,*.ngrok.app";
 const NEXT = join("node_modules", "next", "dist", "bin", "next");
 const TAILSCALE = process.env.TAILSCALE ?? (process.platform === "win32" ? "C:\\Program Files\\Tailscale\\tailscale.exe" : "tailscale");
+const CLOUDFLARED = process.env.CLOUDFLARED ?? (process.platform === "win32" ? "C:\\Program Files (x86)\\cloudflared\\cloudflared.exe" : "cloudflared");
 const PER_HOUR = process.env.KOEKATA_JUDGE_PER_HOUR ?? "120";
 
 export const SITES = [
@@ -82,6 +87,7 @@ function detached(command, args, options, logName) {
   mkdirSync(LOGS, { recursive: true });
   const log = openSync(join(LOGS, logName), "a");
   const child = spawn(command, args, { ...options, detached: true, stdio: ["ignore", log, log], windowsHide: true });
+  child.on("error", () => {}); // 見つからないときは pid が無いことで分かる。ここで落とさない
   child.unref();
   return child.pid;
 }
@@ -174,16 +180,49 @@ function funnel(state) {
   state.urls = Object.fromEntries(SITES.map((site) => [site.name, site.funnel === 443 ? `https://${name}` : `https://${name}:${site.funnel}`]));
 }
 
-function stopAll() {
+/** cloudflared の一時トンネルを1つ開き、出力から URL を読む。試用版（trial.mjs）のトンネルとは別のプロセス・別の記録 */
+async function startTunnel(site) {
+  const logName = `tunnel-${site.name}.log`;
+  mkdirSync(LOGS, { recursive: true });
+  writeFileSync(join(LOGS, logName), "");
+  const pid = detached(CLOUDFLARED, ["tunnel", "--no-autoupdate", "--url", `http://127.0.0.1:${site.port}`], {}, logName);
+  if (!pid) throw new Error(`cloudflared を起動できませんでした（${CLOUDFLARED}）`);
+  for (let i = 0; i < 60; i++) {
+    const url = parseTunnelUrl(readFileSync(join(LOGS, logName), "utf8"));
+    if (url) return { pid, url };
+    await sleep(1000);
+  }
+  return { pid, url: null };
+}
+
+/** 止まっているトンネルだけを開き直す。動いているトンネルには触らない */
+async function ensureTunnels(state) {
+  state.tunnels ??= {};
+  state.urls ??= {};
+  const names = tunnelsToStart(SITES, state.tunnels, alive);
+  for (const site of SITES.filter((s) => names.includes(s.name))) {
+    const { pid, url } = await startTunnel(site);
+    state.tunnels[site.name] = pid;
+    state.urls[site.name] = url;
+  }
+  console.log(names.length > 0 ? `トンネルを開きました（${names.length}つ）。その分の URL が新しくなりました` : "トンネルはそのままです。URL は変わりません");
+}
+
+function stopAll(withTunnels) {
   const state = readState();
   for (const pid of Object.values(state.servers ?? {})) kill(pid);
-  writeState({ ...state, servers: {} });
-  console.log("審査用を止めました（Funnel の設定は残っています。外したいときは tailscale funnel reset）");
+  const next = { ...state, servers: {} };
+  if (withTunnels) {
+    for (const pid of Object.values(state.tunnels ?? {})) kill(pid);
+    Object.assign(next, { tunnels: {}, urls: {}, expose: undefined });
+  }
+  writeState(next);
+  console.log(withTunnels ? "審査用のサーバーとトンネルを止めました" : "審査用のサーバーを止めました（トンネルは残しています。閉じるときは npm run judge:stop -- --tunnel）");
 }
 
 async function main() {
   const args = process.argv.slice(2);
-  if (args[0] === "stop") return stopAll();
+  if (args[0] === "stop") return stopAll(args.includes("--tunnel"));
   nextEnv.loadEnvConfig(ROOT, false, { info: () => {}, error: console.error });
   mkdirSync(NO_GRAPH, { recursive: true });
 
@@ -206,8 +245,13 @@ async function main() {
     console.log("サーバーを起動しました");
   }
 
-  if (args.includes("--funnel")) funnel(state);
   const urlAt = args.indexOf("--url");
+  if (args.includes("--tunnel")) state.expose = "tunnel";
+  else if (args.includes("--funnel")) state.expose = "funnel";
+  else if (urlAt >= 0) state.expose = "manual";
+  // トンネルで出していたら、PC の起動時（引数なし）や --update のときも、止まっているトンネルだけ開き直す
+  if (state.expose === "tunnel") await ensureTunnels(state);
+  if (args.includes("--funnel")) funnel(state);
   if (urlAt >= 0) state.urls = { judge: args[urlAt + 1], public: args[urlAt + 2] };
   state.startedAt = new Date().toISOString();
   writeState(state);
