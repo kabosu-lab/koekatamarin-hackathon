@@ -1137,8 +1137,6 @@ main a {
   z-index: 20;
   overflow: hidden;
   pointer-events: none;
-  background: var(--stage);
-  animation: burst-screen var(--end) linear forwards;
 }
 
 /* かたまりはパートナーの頭の上で育つ */
@@ -1210,29 +1208,19 @@ main a {
   animation: burst-petal 0.9s cubic-bezier(0.2, 0.8, 0.4, 1) var(--land) forwards;
 }
 
+/* 届いた！：窓（.lcd）があれば窓の中に出す（位置は SendBurst が窓の箱から決める）。1秒ほどで消える */
 .burst-reached {
   position: absolute;
-  top: 18%;
-  left: 50%;
+  top: var(--reached-top, 18%);
+  left: var(--reached-left, 50%);
+  max-width: var(--reached-width, none);
   color: var(--ink);
   font-size: 2.6rem;
   font-weight: 900;
+  white-space: nowrap;
   opacity: 0;
-  transform: translateX(-50%);
-  animation: burst-reached 0.8s cubic-bezier(0.34, 1.8, 0.64, 1) var(--land) forwards;
-}
-
-@keyframes burst-screen {
-  0% {
-    opacity: 0;
-  }
-  6%,
-  84% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0;
-  }
+  transform: translate(-50%, -50%);
+  animation: burst-reached 0.9s cubic-bezier(0.34, 1.8, 0.64, 1) var(--land) forwards;
 }
 
 /* 出て、すぐ真ん中のかたまりへ吸い込まれる */
@@ -1256,13 +1244,18 @@ main a {
 }
 
 @keyframes burst-reached {
-  from {
+  0% {
     opacity: 0;
-    transform: translateX(-50%) scale(0.4);
+    transform: translate(-50%, -50%) scale(0.4);
   }
-  to {
+  20%,
+  75% {
     opacity: 1;
-    transform: translateX(-50%) scale(1);
+    transform: translate(-50%, -50%) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1);
   }
 }
 

@@ -242,3 +242,78 @@ test("ようすは「パートナー」のタイルから開き、姿と数を1�
   await expect(page.locator("main")).not.toContainText("気分");
   await noOverflow(page);
 });
+
+// 撮影の前の決定：「本人として送る」の直後は、幕をかけず、光が飛んで、「届いた！」が窓の中に1秒ほど出る。3列でも左右の列を沈めない
+for (const viewport of [
+  { width: 390, height: 844 },
+  { width: 1180, height: 820 },
+]) {
+  test(`${viewport.width}×${viewport.height}：送った直後は幕がなく、「届いた！」は窓の中に1秒ほどで消え、左右の列は沈まない`, async ({ page, context }) => {
+    await context.addCookies([{ name: "koekata_today_seen", value: "1", domain: "127.0.0.1", path: "/" }]);
+    await page.setViewportSize(viewport);
+    await asPerson(page, "aoki");
+    await page.goto("/");
+    const wide = viewport.width > 600;
+    const panels = () =>
+      page.evaluate(() =>
+        [...document.querySelectorAll<HTMLElement>(".wide-panel")].map((panel) => {
+          const box = panel.getBoundingClientRect();
+          const style = getComputedStyle(panel);
+          return { x: box.x, y: box.y, width: box.width, height: box.height, opacity: style.opacity, filter: style.filter, transform: style.transform };
+        }),
+      );
+    const before = await panels();
+    if (wide) expect(before).toHaveLength(2);
+    await say(page, `届ける言葉 ${test.info().testId}`);
+    await expect(page.getByRole("log").locator(".bubble.assistant").last()).toBeVisible();
+    await page.getByRole("button", { name: "とどける" }).click();
+    await page.getByRole("button", { name: "本人として送る" }).click();
+    const burst = page.locator(".send-burst");
+    await expect(burst).toHaveCount(1, { timeout: 1000 });
+    // 幕はない（後ろの画面を覆う地の色も、全体を出し入れする動きもない）
+    expect(await burst.evaluate((element) => getComputedStyle(element).backgroundColor)).toBe("rgba(0, 0, 0, 0)");
+    expect(await burst.evaluate((element) => getComputedStyle(element).animationName)).toBe("none");
+    // 光は飛ぶ
+    await expect(page.locator(".send-burst .blob")).toBeAttached();
+    // 「届いた！」が見えている間を数え、その間ずっと窓の中に収まっているかを見る
+    const seen = await page.evaluate(
+      () =>
+        new Promise<{ shown: number; inside: boolean }>((resolve) => {
+          let start = 0;
+          let inside = true;
+          const step = () => {
+            const reached = document.querySelector(".burst-reached");
+            const opacity = reached ? Number(getComputedStyle(reached).opacity) : 0;
+            const now = performance.now();
+            if (opacity > 0.5) {
+              if (!start) start = now;
+              const box = reached!.getBoundingClientRect();
+              const frame = document.querySelector(".lcd")!.getBoundingClientRect();
+              if (box.left < frame.left || box.right > frame.right || box.top < frame.top || box.bottom > frame.bottom) inside = false;
+            } else if (start && opacity < 0.1) {
+              resolve({ shown: now - start, inside });
+              return;
+            }
+            requestAnimationFrame(step);
+          };
+          requestAnimationFrame(step);
+          // 出ないまま、または消えないまま時間が過ぎたら打ち切る
+          setTimeout(() => resolve({ shown: start ? -1 : 0, inside }), 6000);
+        }),
+    );
+    expect(seen.inside, "窓の中に収まる").toBe(true);
+    expect(seen.shown, "1秒ほど見えて消える").toBeGreaterThan(400);
+    expect(seen.shown).toBeLessThan(1600);
+    // 3列では、左右の列は送る前と同じ大きさ・同じ明るさのまま
+    if (wide) {
+      const after = await panels();
+      expect(after).toEqual(before);
+      for (const panel of after) {
+        expect(panel.opacity).toBe("1");
+        expect(panel.filter).toBe("none");
+        expect(panel.transform).toBe("none");
+      }
+    }
+    await expect(burst).toHaveCount(0, { timeout: 5000 });
+  });
+}
