@@ -400,14 +400,15 @@ test("0-3h：つながりの箱に収まらない人は、多い順に残して�
   const story = await openStory(page);
   await expect(story.locator(".so-far-board")).toHaveAttribute("data-settled", "", { timeout: 5000 });
   const cloud = story.locator(".so-far-cloud");
-  const total = (await cloud.locator(".so-far-name").count()) + Number(await cloud.getAttribute("data-more"));
+  // 名前の数と「ほか」の数は同じ瞬間に数える（測り直しの途中で数がずれないように）
+  const countAll = () => cloud.evaluate((el) => el.querySelectorAll(".so-far-name").length + Number((el as HTMLElement).dataset.more ?? 0));
+  const total = await countAll();
   expect(total).toBeGreaterThan(1);
   // 箱を小さくすると、収まる人数まで減り、残りは「ほか N 人」
   await page.addStyleTag({ content: '.so-far-panel[data-panel="people"] { flex: none; height: 120px; }' });
   await expect(cloud.locator(".so-far-more-people")).toBeVisible();
-  const weights = await cloud.locator(".so-far-name").evaluateAll((elements) => elements.map((el) => Number(el.getAttribute("data-weight"))));
+  await expect.poll(countAll).toBe(total);
   const more = Number(await cloud.getAttribute("data-more"));
-  expect(weights.length + more).toBe(total);
   await expect(cloud.locator(".so-far-more-people")).toHaveText(`ほか ${more} 人`);
   // 測り直しは描いたあとに1人ずつ減らすので、落ち着くまで待つ
   await expect.poll(() => cloud.evaluate((el) => Math.max(el.scrollHeight - el.clientHeight, el.scrollWidth - el.clientWidth))).toBeLessThanOrEqual(1);
