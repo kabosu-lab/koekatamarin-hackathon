@@ -1,14 +1,5 @@
-/* 0-2n：会話の中のパートナーのアイコンを押すと、横に「新しい話にする？」の小さな吹き出しが出る。新しく話す入口はここ1つ */
-/* 吹き出しを出している間も、アイコンと言葉は同じ段のまま。聞く吹き出しは言葉の下に置く */
-.chat-row.partner:has(.new-talk-ask) {
-  display: grid;
-  grid-template-columns: auto minmax(0, auto);
-  justify-content: start;
-}
-
-.chat-row.partner:has(.new-talk-ask) > .new-talk-ask {
-  grid-column: 2;
-}
+/* 0-2n：会話の中のパートナーのアイコンを押すと「新しい話にする？」の小さな吹き出しが出る。新しく話す入口はここ1つ */
+/* 吹き出しは会話のスクロールの中に置かず、窓（.lcd）の下端・入力欄の上に重ねる。会話が長くても、いつも見える所に出る */
 
 .chat-icon[role="button"] {
   cursor: pointer;
@@ -20,15 +11,18 @@
 }
 
 .new-talk-ask {
-  position: relative;
+  position: absolute;
+  left: 50%;
+  bottom: 10px;
+  z-index: 5;
   display: flex;
-  justify-self: start;
   align-items: center;
   flex-wrap: wrap;
   gap: 6px 10px;
-  width: fit-content;
-  max-width: 100%;
-  margin: 6px 0 2px;
+  box-sizing: border-box;
+  width: max-content;
+  max-width: calc(100% - 20px);
+  margin: 0;
   padding: 8px 12px;
   border: 1px solid rgb(31 41 51 / 14%);
   border-radius: 14px;
@@ -37,22 +31,9 @@
   color: inherit;
   font-size: 0.9rem;
   font-weight: 700;
-  transform-origin: 0 0;
+  transform: translateX(-50%);
+  transform-origin: 50% 100%;
   animation: new-talk-ask-in 200ms cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-/* 吹き出しのしっぽはアイコンのほうを向く */
-.new-talk-ask::before {
-  content: "";
-  position: absolute;
-  top: -6px;
-  left: 14px;
-  width: 10px;
-  height: 10px;
-  border-top: 1px solid rgb(31 41 51 / 14%);
-  border-left: 1px solid rgb(31 41 51 / 14%);
-  background: inherit;
-  transform: rotate(45deg);
 }
 
 .new-talk-ask p {
@@ -76,7 +57,7 @@ html[data-theme] .talk .new-talk-ask button.new-talk {
 
 @keyframes new-talk-ask-in {
   from {
-    transform: scale(0.85);
+    transform: translateX(-50%) scale(0.85);
     opacity: 0;
   }
 }
