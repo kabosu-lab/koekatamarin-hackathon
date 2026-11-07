@@ -737,3 +737,141 @@ html body .room-fit .room-music-change {
 .room-fit .room-music-name {
   white-space: nowrap;
 }
+
+/* ==== 0-3f：パートナーを押すと名札。景色の中の床は押したところを通し、席と影の束だけが受ける ==== */
+.room-people {
+  display: contents;
+}
+
+.room-fit .room-floor {
+  pointer-events: none;
+}
+
+.room-fit .room-seat[data-seat] {
+  border-radius: 50%;
+  cursor: pointer;
+  pointer-events: auto;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.room-fit .room-seat[data-seat]:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.room-fit .room-shadows {
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+/* 名札：押したパートナーの頭の上に小さな吹き出し。名前・肩書・勉強している分だけ */
+.room-tag {
+  position: absolute;
+  z-index: 4;
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  width: max-content;
+  max-width: min(16rem, calc(100% - 16px));
+  padding: 8px 14px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--surface) 94%, transparent);
+  box-shadow: 0 4px 14px rgb(0 0 0 / 18%);
+  color: var(--ink);
+  line-height: 1.4;
+  text-align: center;
+  translate: -50% calc(-100% - 6px);
+  animation: room-notice-in 220ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.room-tag[data-below="true"] {
+  translate: -50% 6px;
+}
+
+.room-tag-name {
+  font-size: 1rem;
+}
+
+.room-tag-label,
+.room-tag-time {
+  color: var(--muted);
+  font-size: 0.8125rem;
+}
+
+/* 影の束（ほか N人）から出す名前の一覧 */
+html body .room-fit button.room-more {
+  cursor: pointer;
+}
+
+.room-list {
+  position: absolute;
+  z-index: 4;
+  top: calc(var(--fit-wall) - 0.8rem);
+  right: 16px;
+  left: 16px;
+  display: grid;
+  gap: 8px;
+  width: fit-content;
+  max-height: calc(100cqh - var(--fit-wall) - var(--fit-band) - 4px);
+  margin: 0 auto;
+  padding: 10px 14px;
+  overflow: hidden;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--surface) 95%, transparent);
+  box-shadow: 0 4px 14px rgb(0 0 0 / 18%);
+  animation: room-notice-in 220ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.room-list ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.room-list li {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.room-list li span {
+  color: var(--muted);
+  font-size: 0.8125rem;
+}
+
+html body .room-list-close {
+  justify-self: center;
+  min-height: 44px;
+  margin: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .room-fit .room-seat.is-poked {
+    animation: room-poke 520ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+}
+
+@keyframes room-poke {
+  0%,
+  100% {
+    transform: none;
+  }
+  35% {
+    transform: translateY(-14%) scale(1.06);
+  }
+  65% {
+    transform: translateY(0) scale(0.97);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .room-tag,
+  .room-list {
+    animation: none;
+  }
+}

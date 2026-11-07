@@ -123,6 +123,29 @@ export function getPresence(db: DatabaseSync, now: Date): StudyPresence {
   return { count: rows.length, tokens: rows.map((row) => roomToken(db, row.person_id, now)) };
 }
 
+/**
+ * 自習室で押したパートナーの名札（0-3f）。名前と肩書（people の label）と、勉強しはじめてからの分だけ。
+ * 職員室のことや投稿は出さない。並びは getPresence の tokens と同じ。
+ */
+export type StudyMate = { id: string; name: string; label: string; minutes: number };
+
+export function getStudyMates(db: DatabaseSync, now: Date): StudyMate[] {
+  const rows = db
+    .prepare(
+      `SELECT s.person_id AS id, p.name AS name, p.label AS label, MIN(s.started_at) AS started_at
+       FROM study_sessions s JOIN people p ON p.id = s.person_id
+       WHERE s.finished_at IS NULL AND s.ends_at > ?
+       GROUP BY s.person_id ORDER BY s.person_id`,
+    )
+    .all(now.toISOString()) as { id: string; name: string; label: string; started_at: string }[];
+  return rows.map((row) => ({
+    id: row.id,
+    name: row.name,
+    label: row.label,
+    minutes: Math.max(1, Math.floor((now.getTime() - Date.parse(row.started_at)) / 60_000)),
+  }));
+}
+
 export function handleStudy(db: DatabaseSync, personId: string, input: unknown, now: Date = new Date()) {
   const { action, sessionId } = (typeof input === "object" && input !== null ? input : {}) as Record<string, unknown>;
   if (action === "start") {

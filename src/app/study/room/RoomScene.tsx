@@ -12,7 +12,18 @@ const SHADOWS_MAX = 8;
  * 夜遅くは促さないよう、ハイタッチと応援をやめ、一人ずつ伸びをするだけにする。
  * 人が増えるほど机の列を増やしてキャラクターを小さくし、12人を超えた分は奥のぼかした影にする（0-2s）。景色に文字は置かない。
  */
-export function RoomScene({ tokens, moment, season }: { tokens: string[]; moment: RoomMoment; season?: Season }) {
+export function RoomScene({
+  tokens,
+  moment,
+  season,
+  pressable = false,
+}: {
+  tokens: string[];
+  moment: RoomMoment;
+  season?: Season;
+  /** 自習室ではパートナーを押せる（0-3f。名札は RoomPeople が出す）。Teams のタブでは押せない */
+  pressable?: boolean;
+}) {
   const { place, label } = ROOM_PLACES[moment.time];
   const seated = tokens.slice(0, ROOM_SEATS);
   const shadows = Math.min(SHADOWS_MAX, tokens.length - seated.length);
@@ -45,7 +56,12 @@ export function RoomScene({ tokens, moment, season }: { tokens: string[]; moment
               <div className="room-seats">
                 {paired && <span className="room-spark" aria-hidden="true" />}
                 {table.map((token, seat) => (
-                  <div key={seat} className="room-seat">
+                  <div
+                    key={seat}
+                    className="room-seat"
+                    data-seat={order * 2 + seat}
+                    tabIndex={pressable ? 0 : undefined}
+                  >
                     <span className="room-glow" aria-hidden="true" />
                     <StudyBuddy token={token} side={paired ? (seat === 0 ? "left" : "right") : "solo"} order={order} />
                   </div>
