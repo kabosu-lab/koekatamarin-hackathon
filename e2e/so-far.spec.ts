@@ -202,7 +202,7 @@ for (const person of ["青木 ひより（2年）", "川村 陽菜（理科・1�
       await expect(story.locator(".so-far-board")).toHaveAttribute("data-settled", "", { timeout: 5000 });
       // 0-3h：3列（横向き）では、左の列の中から3列の上に全画面で重ねて開く
       if (viewport.width > viewport.height) {
-        await expect(page.locator('iframe[title="履歴と設定"]')).toHaveAttribute("data-so-far-full", "true");
+        await expect(page.locator('iframe[title="履歴と設定"]')).toHaveAttribute("data-column-full", "true");
         const box = (await page.locator('iframe[title="履歴と設定"]').boundingBox())!;
         expect(Math.round(box.x)).toBe(0);
         expect(Math.round(box.width)).toBe(viewport.width);
@@ -294,7 +294,7 @@ test("0-3h：3列（iPad 横・パソコン）では、押したときだけ3列
     expect(column.width).toBeLessThan(size.width / 2);
     const frame = (await (await frameElement.elementHandle())!.contentFrame())!;
     const story = await openStory(frame);
-    await expect(frameElement).toHaveAttribute("data-so-far-full", "true");
+    await expect(frameElement).toHaveAttribute("data-column-full", "true");
     const full = (await frameElement.boundingBox())!;
     expect(Math.round(full.width)).toBe(size.width);
     expect(Math.round(full.height)).toBe(size.height);
@@ -304,7 +304,7 @@ test("0-3h：3列（iPad 横・パソコン）では、押したときだけ3列
     await expect(page.locator(".device-row > .retro-home")).toHaveAttribute("inert", "");
     await expect(page.locator('.device-row > .wide-panel[data-side="right"]')).toHaveAttribute("inert", "");
     await closeStory(story);
-    await expect(frameElement).not.toHaveAttribute("data-so-far-full", "true");
+    await expect(frameElement).not.toHaveAttribute("data-column-full", "true");
     await expect(page.locator(".device-row > .retro-home")).not.toHaveAttribute("inert", "");
     await expect(page.locator('.device-row > .wide-panel[data-side="right"]')).not.toHaveAttribute("inert", "");
     const back = (await frameElement.boundingBox())!;
@@ -420,9 +420,9 @@ test("0-3h：広げたまま列の中が読み直されても、3列に戻る", 
   await expect(frameElement).toBeVisible();
   const frame = (await (await frameElement.elementHandle())!.contentFrame())!;
   await openStory(frame);
-  await expect(frameElement).toHaveAttribute("data-so-far-full", "true");
+  await expect(frameElement).toHaveAttribute("data-column-full", "true");
   await frame.evaluate(() => location.reload());
-  await expect(frameElement).not.toHaveAttribute("data-so-far-full", "true");
+  await expect(frameElement).not.toHaveAttribute("data-column-full", "true");
   await expect(page.locator(".device-row > .retro-home")).not.toHaveAttribute("inert", "");
   expect((await frameElement.boundingBox())!.width).toBeLessThan(640);
 });

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { audioOutput } from "@/app/sound";
 import { markThanksSeenOnDevice, THANKS_KINDS, THANKS_REVEAL_EVENT, THANKS_VIEW_EVENT, type ThanksKind } from "@/lib/thanks-kind";
 import { Icon } from "../Icon";
+import { useLift } from "../column-lift";
 import { ThanksEntry } from "./ThanksCard";
 import "./thanks-reveal.css";
 
@@ -240,11 +241,13 @@ export function ThanksReveal({ viewerId, cards }: { viewerId: string; cards: Rev
     }
   }
 
+  // 0-3m：3列のときは、3列の上に全画面で（column-lift.ts）
+  useLift(isOpen && mounted);
   if (!card || !mounted) return null;
   const { label, icon } = THANKS_KINDS[card.kind];
 
   return createPortal(
-    <div ref={rootRef} className="thanks-reveal" data-phase={phase} data-mode={mode} data-kind={card.kind} data-noswipe onKeyDown={onKeyDown}>
+    <div ref={rootRef} className="thanks-reveal" data-lift-layer data-phase={phase} data-mode={mode} data-kind={card.kind} data-noswipe onKeyDown={onKeyDown}>
       <div className="thanks-reveal-scrim" aria-hidden="true" onClick={() => phase === "card" && stash()} />
       <div ref={stageRef} className="thanks-reveal-stage" role="dialog" aria-modal="true" aria-label={mode === "view" ? "サンクスカード" : "届いたサンクスカード"} tabIndex={-1}>
         {queue.length > 1 && (

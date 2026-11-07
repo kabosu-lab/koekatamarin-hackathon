@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
+import { useLift } from "../column-lift";
 
 /** 桜の窓に知らせる期間限定のイベント（src/lib/events.ts の SchoolEvent のうち、画面に出す分） */
 export type MegaphoneEvent = {
@@ -46,6 +47,8 @@ export function MegaphoneButton({ place, hidden, onOpen }: { place: "scene" | "b
 /** メガホンを押すと出る小さなカード。今のイベントを並べ、外を押すと閉じる */
 export function EventPopup({ events, onClose }: { events: readonly MegaphoneEvent[]; onClose(): void }) {
   const card = useRef<HTMLDivElement>(null);
+  // 0-3m：3列のときは、3列の上に全画面で（column-lift.ts）
+  useLift(true);
 
   useEffect(() => {
     card.current?.focus({ preventScroll: true });
@@ -57,7 +60,7 @@ export function EventPopup({ events, onClose }: { events: readonly MegaphoneEven
   }, [onClose]);
 
   return createPortal(
-    <div className="minna-event-layer" data-noswipe>
+    <div className="minna-event-layer" data-noswipe data-lift-layer>
       <div className="minna-event-scrim" aria-hidden="true" onClick={onClose} />
       <div ref={card} className="minna-event-card" role="dialog" aria-label="期間限定のイベント" tabIndex={-1}>
         {events.map((event) => (

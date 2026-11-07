@@ -1,6 +1,7 @@
 "use client";
 
 import { type PointerEvent, type ReactNode, useEffect, useRef, useState } from "react";
+import { useLift, useLiftMode } from "./column-lift";
 import "./bottom-sheet.css";
 
 type Props = {
@@ -49,6 +50,18 @@ export function BottomSheet({ open, onClose, label, children, footer }: Props) {
     return () => window.clearTimeout(timer);
   }, [open, shown]);
 
+  // 0-3m：3列のときは、3列の上に全画面で（column-lift.ts）。出ている間（閉じる動きの間も）だけ上げる
+  const lift = useLiftMode();
+  const liftRef = useRef<HTMLDialogElement>(null);
+  const lifted = lift && shown;
+  useLift(lifted);
+  useEffect(() => {
+    const dialog = liftRef.current;
+    if (!dialog) return;
+    if (lifted && !dialog.open) dialog.showModal();
+    else if (!lifted && dialog.open) dialog.close();
+  }, [lifted]);
+
   const closeRef = useRef(onClose);
   useEffect(() => {
     closeRef.current = onClose;
@@ -95,7 +108,7 @@ export function BottomSheet({ open, onClose, label, children, footer }: Props) {
     if (current.dy > CLOSE_DISTANCE || (current.dy > 16 && speed > CLOSE_SPEED)) onClose();
   }
 
-  return (
+  const sheet = (
     <div className="bottom-sheet" data-state={open && entered ? "open" : "closed"} hidden={!open && !shown} inert={!open}>
       <div className="bottom-sheet-scrim" aria-hidden="true" onClick={onClose} />
       <div
@@ -115,5 +128,23 @@ export function BottomSheet({ open, onClose, label, children, footer }: Props) {
         {footer && <div className="bottom-sheet-footer">{footer}</div>}
       </div>
     </div>
+  );
+  if (!lift) return sheet;
+  // 0-3m：3列のときは、3列の上に全画面でせり上がる。最上層の <dialog> に入れ、裏は暗幕と inert（column-lift.ts）
+  return (
+    <dialog
+      ref={liftRef}
+      className="sheet-lift"
+      onCancel={(event) => {
+        // Esc は上の見張りが閉じる（dialog 自身には閉じさせない）
+        event.preventDefault();
+      }}
+      onClose={() => {
+        // それでもブラウザが台を閉じたときは、シートも閉じる（開いたまま見えなくならないように）
+        if (open) closeRef.current();
+      }}
+    >
+      {sheet}
+    </dialog>
   );
 }

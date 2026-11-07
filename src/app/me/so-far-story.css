@@ -790,3 +790,9 @@ html .so-far-story .so-far-board button.so-far-name[aria-expanded="true"] {
     animation: none;
   }
 }
+
+/* 0-3m：3列の上に上げたときも、「これまで」だけは画面いっぱい（グラフを潰さない。0-3h） */
+.so-far-story .sheet-lift .bottom-sheet-panel {
+  width: 100%;
+  max-height: 100dvh;
+}

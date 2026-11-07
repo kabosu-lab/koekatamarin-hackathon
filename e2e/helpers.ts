@@ -18,7 +18,9 @@ export async function openScreen(page: Page, path: string): Promise<Page | Frame
   const iframe = page.locator(`.wide-panel[data-side=${side}] iframe`);
   const frame = (await (await iframe.elementHandle())!.contentFrame())!;
   await frame.waitForLoadState("load");
-  await expect(frame.locator("main").first()).toBeVisible();
+  // 0-3m：開いたとたんに重ね（今日の3人など）が出ると、列は3列の上に広がり、中の画面は隠れる（重ねだけが見える）
+  await expect(frame.locator("main").first()).toBeAttached();
+  await expect(frame.locator("html[data-column-lift], main:visible").first()).toBeAttached();
   return frame;
 }
 

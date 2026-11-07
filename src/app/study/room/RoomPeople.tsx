@@ -2,6 +2,7 @@
 
 import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import type { StudyMate } from "@/lib/study";
+import { useLift } from "../../column-lift";
 
 /** 名札は2〜3秒で消える（指を乗せている間は待つ） */
 const TAG_MS = 3_000;
@@ -31,6 +32,8 @@ export function RoomPeople({
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [tag, setTag] = useState<Tag | null>(null);
   const [listOpen, setListOpen] = useState(false);
+  // 0-3m：3列のときは、名前の一覧を3列の上に全画面で（column-lift.ts）
+  useLift(listOpen);
 
   const stopTimer = useCallback(() => {
     if (timer.current) clearTimeout(timer.current);
@@ -114,7 +117,7 @@ export function RoomPeople({
         </button>
       )}
       {listOpen && (
-        <div className="room-list" role="dialog" aria-label="ほかに勉強している人">
+        <div className="room-list" role="dialog" aria-label="ほかに勉強している人" data-lift-layer>
           <ul>
             {others.map((other, index) => (
               <li key={index}>

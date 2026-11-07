@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { type FormEvent, useEffect, useRef, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
+import { useLift } from "../column-lift";
 import { LEAF_EVENT } from "@/lib/sakura";
 import { createReply, toggleLike } from "../teams/actions";
 import { playCommitRun } from "../sound";
@@ -42,6 +43,8 @@ export function ReplyField({
   const [extraReplies, setExtraReplies] = useState(0);
   const [bump, setBump] = useState(0);
   const [sheet, setSheet] = useState<"closed" | "open" | "closing">("closed");
+  // 0-3m：3列のときは、3列の上に全画面で（column-lift.ts）
+  useLift(sheet !== "closed");
   const [text, setText] = useState("");
   const [interim, setInterim] = useState("");
   const [listening, setListening] = useState(false);
@@ -178,7 +181,7 @@ export function ReplyField({
       </button>
       {sheet !== "closed" &&
         createPortal(
-          <div className="minna-reply-layer" data-state={sheet}>
+          <div className="minna-reply-layer" data-state={sheet} data-lift-layer>
             <div className="minna-reply-scrim" aria-hidden="true" onClick={close} />
             <form className="minna-reply-sheet" role="dialog" aria-label={`${authorName}さんへの返信`} onSubmit={send} data-noswipe>
               <span className="minna-reply-handle" aria-hidden="true" />

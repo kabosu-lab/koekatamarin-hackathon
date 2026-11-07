@@ -16,6 +16,7 @@ import { ReplyField } from "./ReplyField";
 import { TODAY_SEEN_COOKIE } from "./today-seen";
 import { cardAttr, PostSubject } from "@/app/PostSubject";
 import { STRIP_LAND_EVENT } from "../strip";
+import { useLift } from "../column-lift";
 
 
 /** 設計書 §1：移動は 160〜260ms、消えるときは ease-in で素早く */
@@ -163,6 +164,8 @@ type Drag = {
  */
 export function TodayModal({ cards }: { cards: TodayModalCard[] }) {
   const { open, hide } = useToday();
+  // 0-3m：3列のときは、3列の上に全画面で（column-lift.ts）
+  useLift(open);
   const [closing, setClosing] = useState(false);
   const [index, setIndex] = useState(0);
   const sheet = useRef<HTMLDivElement>(null);
@@ -318,7 +321,7 @@ export function TodayModal({ cards }: { cards: TodayModalCard[] }) {
   };
 
   return (
-    <div className="minna-today-layer" data-state={closing ? "closing" : "open"} data-noswipe>
+    <div className="minna-today-layer" data-state={closing ? "closing" : "open"} data-noswipe data-lift-layer>
       <div className="minna-today-scrim" aria-hidden="true" onClick={close} />
       <div
         ref={sheet}
