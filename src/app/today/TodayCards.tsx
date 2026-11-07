@@ -62,14 +62,15 @@ export function TodayCards({ cards: allCards }: { cards: (TodayCard & { authorIm
     });
   }, [shownId]);
 
+  // 0-2l：押した瞬間に応援済みの形と音。送信は裏で、届かなかったら戻して知らせる
   async function sendCheer(postId: string) {
     setProblem("");
+    setCheered((current) => [...current, postId]);
+    playReachedSound();
     const { ok } = await postJson("/api/today/cheer", { postId }).catch(() => ({ ok: false }));
-    if (ok) {
-      setCheered((current) => [...current, postId]);
-      playReachedSound();
-    }
-    else setProblem("応援を届けられませんでした。もう一度押してください。");
+    if (ok) return;
+    setCheered((current) => current.filter((id) => id !== postId));
+    setProblem("応援を届けられませんでした。もう一度押してください。");
   }
 
   async function hideAuthor(authorId: string, authorName: string) {

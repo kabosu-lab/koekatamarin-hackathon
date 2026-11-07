@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { Draft, Review } from "@/lib/claude/compose";
 import type { ChannelView, PersonView } from "@/lib/destination/types";
 import { AIZUCHI_INTERVAL_MS, PAUSE_MS, aizuchiAt, detectCommand, withoutEndWord } from "@/lib/walk-command";
-import { Compose, type ComposeStart } from "../Compose";
+import { Compose, type ComposeSend, type ComposeStart } from "../Compose";
 import { TRIAL_SAFETY_SPEECH } from "@/lib/trial";
 import { SafetyCard, type SafetyNotice } from "../SafetyCard";
 import { useTrial } from "../TrialContext";
@@ -333,19 +333,62 @@ export function WalkMode({ viewer, viewerId }: { viewer: { name: string; label: 
     setPhase("ready");
   }
 
+  // 0-2l：「本人として送る」を押した瞬間に送ったあとの音と動きを出し、送信は裏で。届かなかったら下書きを戻して知らせる
+  function sendInBackground(start: ComposeStart, { channel, words, review, body }: ComposeSend) {
+    setComposing(null);
+    setNotice("");
+    setBurst(words);
+    setSentWords(words);
+    playSendSound(words);
+    void (async () => {
+      const response = await fetch("/api/publish", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      }).catch(() => null);
+      if (response?.ok) return;
+      const data = ((await response?.json().catch(() => null)) ?? {}) as { error?: string; review?: Review };
+      setSentWords(null);
+      setComposing({
+        ...start,
+        writing: false,
+        reviewFailed: false,
+        draft: { ...start.draft, text: words, channelId: channel.id },
+        review: response?.status === 422 && data.review ? data.review : review,
+        scope: typeof body.scope === "string" ? (body.scope as ComposeStart["scope"]) : undefined,
+        scopePersonId: typeof body.scopePersonId === "string" ? body.scopePersonId : undefined,
+      });
+      setNotice(
+        response?.status === 422
+          ? "この内容は送れませんでした。言い方を一緒に考えましょう。"
+          : response?.status === 400 && data.error
+            ? `まだ届いていません。${data.error} 下書きは残してあります。`
+            : "まだ届いていません。下書きは残してあるので、もう一度送ってください。",
+      );
+    })();
+  }
+
   if (composing && finished) {
     return (
-      <Compose
-        {...composing}
-        viewer={viewer}
-        onCancel={() => setComposing(null)}
-        onSent={(_channel, _postId, words) => {
-          setComposing(null);
-          setBurst(words);
-          setSentWords(words);
-          playSendSound(words);
-        }}
-      />
+      <>
+        {notice && (
+          <p className="notice" role="alert">
+            {notice}
+          </p>
+        )}
+        <Compose
+          {...composing}
+          viewer={viewer}
+          onCancel={() => setComposing(null)}
+          onSent={(_channel, _postId, words) => {
+            setComposing(null);
+            setBurst(words);
+            setSentWords(words);
+            playSendSound(words);
+          }}
+          onSendStart={(send) => sendInBackground(composing, send)}
+        />
+      </>
     );
   }
 

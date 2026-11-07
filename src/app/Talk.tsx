@@ -276,9 +276,24 @@ export function Talk({
           // いちばん下に足されたもの（吹き出しか、送った結果などのカード）
           const items = Array.from(log.children).filter((child) => !child.classList.contains("find-knowledge")) as HTMLElement[];
           const last = items[items.length - 1];
+          // 0-2q(8)：「校内の知恵を探す」が上端をまたいで半分切れないよう、丸ごと見せるか丸ごと上へ送る
+          const find = log.querySelector<HTMLElement>(":scope > .find-knowledge");
+          log.style.paddingBottom = "";
+          const findBox = () => (find ? find.getBoundingClientRect() : null);
+          const top = () => log.getBoundingClientRect().top + log.clientTop;
           if (last && last.offsetHeight > log.clientHeight - 8 && !last.classList.contains("me")) {
             log.scrollTop += last.getBoundingClientRect().top - log.getBoundingClientRect().top - 4;
-          } else log.scrollTop = log.scrollHeight;
+            const box = findBox();
+            if (box && box.top < top() && box.bottom > top()) log.scrollTop -= top() - box.top + 4;
+          } else {
+            log.scrollTop = log.scrollHeight;
+            const box = findBox();
+            if (box && box.top < top() && box.bottom > top()) {
+              const base = parseFloat(getComputedStyle(log).paddingBottom) || 0;
+              log.style.paddingBottom = `${base + Math.ceil(box.bottom - top()) + 4}px`;
+              log.scrollTop = log.scrollHeight;
+            }
+          }
         });
         return () => cancelAnimationFrame(frame);
       }

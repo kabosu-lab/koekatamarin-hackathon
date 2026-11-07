@@ -159,9 +159,17 @@ export function RoomMusic({ initial }: { initial: Music }) {
     const watch = () => setAwake(audio.state === "running");
     watch();
     audio.addEventListener("statechange", watch);
+    // 裏へ回したり電話のあと、止まった音を起こし直す。曲は作り直さないので、止まったところの続きから流れる。
+    // 戻ってすぐに起こせない端末（iOS）は、次に画面を触ったときに起こす
+    const wake = () => {
+      if (document.visibilityState === "visible" && audio.state !== "running") void audio.resume().catch(() => undefined);
+    };
+    const wakeEvents = ["visibilitychange", "pageshow", "touchend", "click"] as const;
+    for (const type of wakeEvents) (type === "pageshow" ? window : document).addEventListener(type, wake, true);
     const room = new RoomPlayer(audio, output.out, () => Date.now() + offset.current);
     player.current = room;
     return () => {
+      for (const type of wakeEvents) (type === "pageshow" ? window : document).removeEventListener(type, wake, true);
       audio.removeEventListener("statechange", watch);
       room.stop();
       player.current = null;

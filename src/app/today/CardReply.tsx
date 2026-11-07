@@ -1,12 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { VoiceReply } from "../VoiceReply";
+import { VoiceReply, type VoiceReplyRestore } from "../VoiceReply";
 
 /** 今日のカードや担任への案内から、話して返信する。押すまで開かない。 */
 export function CardReply({ postId, label = "話して返信する" }: { postId: string; label?: string }) {
   const [open, setOpen] = useState(false);
   const [sent, setSent] = useState(false);
+  // 0-2l：押した瞬間に届けた形にし、届かなかったら言葉を戻して知らせる
+  const [retry, setRetry] = useState<{ key: number; value: VoiceReplyRestore; message: string } | null>(null);
 
   if (sent) {
     return (
@@ -24,7 +26,24 @@ export function CardReply({ postId, label = "話して返信する" }: { postId:
   }
   return (
     <div className="talk card-reply" aria-label="話して返信する" role="group">
-      <VoiceReply postId={postId} draftUrl="/api/today/reply/draft" replyUrl="/api/today/reply" listenLabel="声で話す" onSent={() => setSent(true)} />
+      <VoiceReply
+        key={retry?.key ?? 0}
+        postId={postId}
+        draftUrl="/api/today/reply/draft"
+        replyUrl="/api/today/reply"
+        listenLabel="声で話す"
+        restore={retry?.value}
+        onSent={() => setSent(true)}
+        onFailed={(value, message) => {
+          setRetry((current) => ({ key: (current?.key ?? 0) + 1, value, message }));
+          setSent(false);
+        }}
+      />
+      {retry && (
+        <p className="notice" role="alert">
+          {retry.message}
+        </p>
+      )}
     </div>
   );
 }

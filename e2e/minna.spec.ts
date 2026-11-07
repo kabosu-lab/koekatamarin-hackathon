@@ -92,6 +92,55 @@ test("返信を押すと下から欄がせり上がり、やめると閉じ、�
   await expect(scroller.getByText(words)).toBeVisible();
 });
 
+test("0-2m：返信を話している間は音を鳴らさず、話し終えたときに鈴をまとめて鳴らす", async ({ page }) => {
+  await page.addInitScript(() => {
+    const store = window as unknown as Record<string, unknown>;
+    store.oscillators = 0;
+    const proto = BaseAudioContext.prototype;
+    const make = proto.createOscillator;
+    proto.createOscillator = function (this: BaseAudioContext) {
+      store.oscillators = (store.oscillators as number) + 1;
+      return make.call(this);
+    };
+    class FakeRecognition {
+      onresult: ((event: unknown) => void) | null = null;
+      onend: (() => void) | null = null;
+      onerror: ((event: unknown) => void) | null = null;
+      continuous = false;
+      start() {
+        store.current = this;
+      }
+      stop() {
+        this.onend?.();
+      }
+      say(text: string) {
+        this.onresult?.({ resultIndex: 0, results: [Object.assign([{ transcript: text }], { isFinal: true })] });
+      }
+    }
+    Object.assign(window, { webkitSpeechRecognition: FakeRecognition, SpeechRecognition: FakeRecognition });
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/minna");
+  const scroller = page.getByRole("region", { name: "みんな" });
+  const reply = scroller.getByRole("button", { name: "返信", exact: true }).first();
+  const sheet = page.getByRole("dialog", { name: /さんへの返信$/ });
+  await expect(async () => {
+    await reply.click();
+    await expect(sheet).toBeVisible({ timeout: 1000 });
+  }).toPass();
+  await sheet.getByRole("button", { name: "話す" }).click();
+  await expect(sheet.getByRole("button", { name: "止める" })).toBeVisible();
+  const oscillators = () => page.evaluate(() => (window as unknown as { oscillators: number }).oscillators);
+  const before = await oscillators();
+  await page.evaluate(() => (window as unknown as { current: { say(text: string): void } }).current.say("いいね"));
+  await expect(sheet.getByLabel("返信")).toHaveValue("いいね");
+  await page.waitForTimeout(300);
+  // 話している間は鳴らさない
+  expect(await oscillators()).toBe(before);
+  await sheet.getByRole("button", { name: "止める" }).click();
+  await expect.poll(oscillators).toBeGreaterThan(before);
+});
+
 test("チャネルの札で投稿を絞れ、教職員だけの札は生徒には出ない", async ({ page }) => {
   await page.goto("/minna");
   const chips = page.getByRole("group", { name: "チャネルで絞る" });

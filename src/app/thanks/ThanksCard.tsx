@@ -35,23 +35,29 @@ export function ThanksKindMark({ kind }: { kind: ThanksKind }) {
 
 /**
  * 相手が決まったあとの、言葉と肩書きの欄。相手を探す欄は持たない。
- * 送れたら onSent に知らせる（入口のシートはそこで閉じる）。
+ * 0-2l：押した瞬間に届いた音と知らせを出して onSent を呼び（入口のシートはそこで閉じる）、送信は裏で進める。
+ * 届かなかったら言葉を戻して知らせ、onFailed に渡す（閉じた入口を開き直すため）。
  */
 export function ThanksComposer({
   to,
   initialMessage = "",
+  initialTitle = "",
+  initialNotice = "",
   onSent,
+  onFailed,
 }: {
   to: ThanksPerson;
   initialMessage?: string;
+  initialTitle?: string;
+  initialNotice?: string;
   onSent?(notice: string): void;
+  onFailed?(failed: { message: string; title: string; notice: string }): void;
 }) {
   const [message, setMessage] = useState(initialMessage);
-  const [title, setTitle] = useState("");
+  const [title, setTitle] = useState(initialTitle);
   const [ideas, setIdeas] = useState<string[]>([]);
   const [thinking, setThinking] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [notice, setNotice] = useState("");
+  const [notice, setNotice] = useState(initialNotice);
   const kind = readThanksKind(message);
 
   // 押したときだけ Claude が案を出す。贈るかどうかを決めるのは送る人
@@ -74,26 +80,27 @@ export function ThanksComposer({
   }
 
   async function send() {
-    setBusy(true);
-    setNotice("");
+    // 押した瞬間に届いた音と知らせ。送信は裏で
+    const sent = { message, title };
+    const done = sentNotice(to.name, kind);
+    playReachedSound();
+    setMessage("");
+    setTitle("");
+    setIdeas([]);
+    setNotice(done);
+    onSent?.(done);
+    let problem = "";
     try {
-      const { ok, data } = await postJson("/api/thanks", { toPersonId: to.id, message, ...(title.trim() ? { title } : {}) });
-      if (ok) {
-        const done = sentNotice(to.name, kind);
-        playReachedSound();
-        setMessage("");
-        setTitle("");
-        setIdeas([]);
-        setNotice(done);
-        onSent?.(done);
-      } else {
-        setNotice(typeof data.error === "string" ? data.error : "まだ送っていません。もう一度押してください。");
-      }
+      const { ok, data } = await postJson("/api/thanks", { toPersonId: to.id, message: sent.message, ...(sent.title.trim() ? { title: sent.title } : {}) });
+      if (ok) return;
+      problem = typeof data.error === "string" ? data.error : "まだ届いていません。言葉は残してあるので、もう一度押してください。";
     } catch {
-      setNotice("まだ送っていません。もう一度押してください。");
-    } finally {
-      setBusy(false);
+      problem = "まだ届いていません。言葉は残してあるので、もう一度押してください。";
     }
+    setMessage(sent.message);
+    setTitle(sent.title);
+    setNotice(problem);
+    onFailed?.({ ...sent, notice: problem });
   }
 
   return (
@@ -127,7 +134,7 @@ export function ThanksComposer({
           </button>
         ))}
       </div>
-      <button type="button" disabled={busy || message.trim() === ""} onClick={() => void send()}>
+      <button type="button" disabled={message.trim() === ""} onClick={() => void send()}>
         サンクスカードを送る
       </button>
       {notice && <p role="status">{notice}</p>}
@@ -159,6 +166,7 @@ export function ThanksPicker({ recent }: { recent: RecentPerson[] }) {
   const [found, setFound] = useState<ThanksPerson[]>([]);
   const [searched, setSearched] = useState("");
   const [lastNotice, setLastNotice] = useState("");
+  const [retry, setRetry] = useState<{ message: string; title: string; notice: string; key: number } | null>(null);
 
   useEffect(() => {
     const q = query.trim();
@@ -183,6 +191,7 @@ export function ThanksPicker({ recent }: { recent: RecentPerson[] }) {
   }, [query]);
 
   function choose(person: ThanksPerson) {
+    setRetry(null);
     setTo(person);
     setLastNotice("");
   }
@@ -195,14 +204,30 @@ export function ThanksPicker({ recent }: { recent: RecentPerson[] }) {
       <h2>ことばを届けたい人は？</h2>
       {to ? (
         <>
-          <Chosen person={to} onClear={() => setTo(null)} />
+          <Chosen
+            person={to}
+            onClear={() => {
+              setRetry(null);
+              setTo(null);
+            }}
+          />
           <ThanksComposer
-            key={to.id}
+            key={`${to.id}-${retry?.key ?? 0}`}
             to={to}
+            initialMessage={retry?.message}
+            initialTitle={retry?.title}
+            initialNotice={retry?.notice}
             onSent={(notice) => {
               setLastNotice(notice);
+              setRetry(null);
               setTo(null);
               setQuery("");
+            }}
+            onFailed={(failed) => {
+              // 閉じたあとで届かなかったと分かったら、同じ相手と言葉で開き直す
+              setLastNotice("");
+              setTo(to);
+              setRetry((current) => ({ ...failed, key: (current?.key ?? 0) + 1 }));
             }}
           />
         </>
@@ -318,6 +343,12 @@ export function ThanksEntry({
                     setSent(true);
                     // 届いた知らせを少し見せてから、自動で閉じる
                     closeTimer.current = window.setTimeout(() => setOpen(false), 1200);
+                  }}
+                  onFailed={() => {
+                    // 届かなかったら、言葉を戻した欄をもう一度見せる
+                    if (closeTimer.current !== null) window.clearTimeout(closeTimer.current);
+                    setSent(false);
+                    setOpen(true);
                   }}
                 />
               </section>

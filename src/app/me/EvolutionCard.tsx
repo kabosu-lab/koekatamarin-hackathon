@@ -36,18 +36,21 @@ export function EvolutionCard() {
     setBusy(false);
   }
 
+  // 0-2l：押した瞬間に選んだ形と音。送信は裏で、選べなかったら戻して知らせる
   async function choose(candidate: EvolutionCandidate) {
     setBusy(true);
     setProblem("");
+    setChosen(candidate);
+    playReachedSound();
+    const shown = Date.now();
     const { ok } = await post({ action: "choose", family: candidate.family }).catch(() => ({ ok: false }));
     setBusy(false);
     if (!ok) {
+      setChosen(null);
       setProblem("選べませんでした。もう一度押してください。");
       return;
     }
-    setChosen(candidate);
-    playReachedSound();
-    setTimeout(() => router.refresh(), FLASH_MS);
+    setTimeout(() => router.refresh(), Math.max(0, FLASH_MS - (Date.now() - shown)));
   }
 
   return (

@@ -4,9 +4,8 @@ import { useRouter } from "next/navigation";
 import { type FormEvent, useEffect, useRef, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import { LEAF_EVENT } from "@/lib/sakura";
-import { schedulePop } from "@/lib/send-sound";
 import { createReply, toggleLike } from "../teams/actions";
-import { audioOutput } from "../sound";
+import { playCommitRun } from "../sound";
 import { isSpeechSupported, startListening } from "../speech";
 
 /** 欄が下がって消える時間（設計書 §2-2-5：160ms ease-in） */
@@ -15,12 +14,6 @@ const CLOSE_MS = 160;
 /** 人に届いて葉が1枚増えたことを、桜に知らせる */
 function leafReached() {
   window.dispatchEvent(new CustomEvent(LEAF_EVENT, { detail: { count: 1 } }));
-}
-
-/** 声が1区切り固まったときの「ポン」（0-1g と同じ音） */
-function pop() {
-  const output = audioOutput();
-  if (output) schedulePop(output.audio, output.out, output.audio.currentTime + 0.02, 76, 0.35);
 }
 
 /**
@@ -54,6 +47,8 @@ export function ReplyField({
   const [listening, setListening] = useState(false);
   const [error, setError] = useState("");
   const stopListening = useRef<(() => void) | null>(null);
+  /** 0-2m：この欄で話した回数。話している間は鳴らさず、話し終えたときに鈴をまとめて鳴らす */
+  const spoken = useRef(0);
   const field = useRef<HTMLTextAreaElement>(null);
   const opener = useRef<HTMLButtonElement>(null);
 
@@ -110,7 +105,9 @@ export function ReplyField({
         onFinal: (words) => {
           setInterim("");
           setText((before) => `${before}${words}`);
-          pop();
+          // 聞き取りは話し終えてから1回だけ言葉を渡すので、ここで鈴をまとめて鳴らす
+          spoken.current += 1;
+          playCommitRun(spoken.current);
         },
         onError: setError,
         onEnd: () => {
@@ -132,7 +129,8 @@ export function ReplyField({
     const form = new FormData();
     form.set("postId", postId);
     form.set("body", body);
-    // 送ると欄は閉じ、返事の数が1つ増える。届いた返事は人に届くので、葉も1枚
+    // 送ると欄は閉じ、返事の数が1つ増える。届いた返事は人に届くので、葉も1枚。鈴の段は最初に戻す
+    spoken.current = 0;
     setText("");
     close();
     setExtraReplies((n) => n + 1);

@@ -157,3 +157,27 @@ for (const [name, width] of [["スマホ", 412], ["iPad", 768], ["PC", 1280]] as
     }
   });
 }
+
+test("0-2l：本人として送るを押した瞬間に届けた形になり、届かなかったら下書きを戻して知らせる", async ({ page }) => {
+  await fakeVoice(page);
+  let release = () => {};
+  const held = new Promise<void>((done) => (release = done));
+  await page.route("**/api/publish", async (route) => {
+    await held;
+    await route.fulfill({ status: 503, json: {} });
+  });
+  await page.goto("/");
+  await page.goto("/walk");
+  await page.getByRole("button", { name: "話し始める" }).click();
+  await expect(page.getByRole("status")).toHaveText("聞いています");
+  await hear(page, `本棚ができた ${test.info().testId}。終わり`);
+  const drafts = page.getByRole("region", { name: "投稿の下書き" }).locator("article");
+  await expect(drafts).toHaveCount(3);
+  await drafts.first().getByRole("button", { name: "これを確かめて送る" }).click();
+  await page.getByRole("button", { name: "本人として送る" }).click();
+  // 返事を待たずに届けた形
+  await expect(page.getByText("届けました。")).toBeVisible();
+  release();
+  await expect(page.getByRole("alert").filter({ hasText: "まだ届いていません" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "本人として送る" })).toBeVisible();
+});
