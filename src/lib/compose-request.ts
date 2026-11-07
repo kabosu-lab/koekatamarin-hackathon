@@ -23,7 +23,7 @@ import {
   type PostDestination,
 } from "./destination/types";
 import type { PostKind } from "./seed-data";
-import { cardKind, normalizeSubject } from "./subject";
+import { cardKind, cardTag, normalizeSubject } from "./subject";
 import { noteAlternatives, noteDraftNotReady, notePublished, noteUndone } from "./trophy-log";
 
 type Failure = { status: 400 | 422 | 503; body: { error: string; review?: Review } };
@@ -77,7 +77,7 @@ type DraftPlan = {
   /** Claude に選ばせる送り先（カードは「ありがとう」だけ、ふつうの投稿は「ありがとう」を除く） */
   draftChannels: ChannelView[];
   /** 0-3d：サンクスカードの宛名。画面の「〇〇さんへ」とメンションになる */
-  card?: { asked: DraftAsked; request: CardRequest };
+  card?: { asked: DraftAsked; request: CardRequest; kind: "thanks" | "effort" | "congrats"; channelId: string };
 };
 
 /** 0-3d：下書きの宛名。card はサンクスカードの宛名 */
@@ -131,7 +131,7 @@ function planDraft(destination: PostDestination, viewerId: string, input: unknow
     }
   }
   const card = found
-    ? { asked: { id: found.to.id, name: found.to.name, card: true }, request: { name: found.to.name, words: found.words } }
+    ? { asked: { id: found.to.id, name: found.to.name, card: true }, request: { name: found.to.name, words: found.words }, kind: found.kind, channelId: THANKS_CHANNEL_ID }
     : undefined;
   const draftChannels = card && thanksChannel ? [thanksChannel] : channels.filter((c) => c.id !== THANKS_CHANNEL_ID);
   return { history: messages, channels, draftChannels: draftChannels.length > 0 ? draftChannels : channels, people: destination.listOtherPeople(viewerId), askedName, stored, card };
@@ -204,6 +204,15 @@ export function prepareDraftStream(
             signal,
             card?.request,
           );
+          // 0-3d：相手の分かっているカードは、Claude が「まだ投稿にできない」と返しても、決まった形の下書きでシートを開く
+          if (card && !draft.ready && !signal?.aborted) {
+            const subject = `【${cardTag(card.kind)}】${card.request.name}さんへ`;
+            const text = `${card.request.name}さん、${card.request.words}`;
+            draft = { ready: true, subject, text, channelId: card.channelId, kind: "report", researchedWithAi: false };
+            send({ type: "channel", channelId: draft.channelId });
+            send({ type: "subject", subject });
+            await dripText(text, (part) => send({ type: "delta", text: part }), undefined, undefined, signal);
+          }
         }
       } catch (error) {
         if (signal?.aborted) return;

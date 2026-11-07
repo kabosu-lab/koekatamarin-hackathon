@@ -35,6 +35,23 @@ async function collect(words: string) {
   return events;
 }
 
+describe("Claude が「まだ投稿にできない」と返しても、カードは決まった形で開く", () => {
+  it("相手の分かっているカードは、ready が false でも下書きになる", async () => {
+    const notReady = { mode: "real" as const, complete: async (request: { task: string }) =>
+      request.task === "review"
+        ? { text: JSON.stringify({ tone: "ok", note: "" }), refused: false }
+        : { text: JSON.stringify({ ready: false, channelId: "thanks", kind: "report", researchedWithAi: false, announcement: false, subject: "", text: "" }), refused: false } };
+    const prepared = prepareDraftStream(notReady as never, teams, "aoki", { history: [{ role: "user", content: "野田 翔さんにありがとうを伝えたい" }] }, db);
+    if (prepared.status !== 200) throw new Error("止まった");
+    const events: DraftStreamEvent[] = [];
+    await prepared.run((event) => events.push(event));
+    const draft = events.find((event) => event.type === "draft");
+    expect(draft && draft.type === "draft" && draft.draft.ready).toBe(true);
+    expect(draft && draft.type === "draft" && draft.draft.subject).toMatch(/^【ありがとう】野田 翔さんへ/);
+    expect(draft && draft.type === "draft" && draft.draft.text).toContain("野田 翔さん、");
+  });
+});
+
 describe("話した言葉からカードと見分ける", () => {
   it("特定の人へのお礼・お祝いはカード、名前が出るだけの話はカードにしない", () => {
     expect(detectThanksCard(db, "aoki", "野田先生にありがとうって伝えたい")?.to.id).toBe("noda");
