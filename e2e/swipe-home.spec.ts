@@ -199,21 +199,13 @@ test.describe("今日の3人のモーダル", () => {
     return { context, page, modal };
   }
 
-  test("カードのめくりが先。1枚目からさらに右へ払うとホームへ戻る", async ({ browser }) => {
+  test("0-3p：カードの上の横の払いはカードを消すだけで、画面は移らない", async ({ browser }) => {
     const { context, page, modal } = await openModal(browser);
-    const count = modal.getByRole("img", { name: /枚目/ });
-    await expect(async () => {
-      await stroke(page, -200, 0);
-      await expect(count).toHaveAttribute("aria-label", /^2 枚目/, { timeout: 1000 });
-    }).toPass();
-    // 2枚目から右へは、めくって戻るだけ。画面は移らない
-    await stroke(page, 200, 0);
-    await expect(count).toHaveAttribute("aria-label", /^1 枚目/);
+    await stroke(page, -200, 0);
     await expect(page).toHaveURL(/\/minna$/);
-    // 1枚目の先へ払うと、ホームへ
+    await expect(modal).toBeVisible();
     await stroke(page, 200, 0);
-    await expect(page).toHaveURL(/127\.0\.0\.1:\d+\/$/);
-    await expect(page.locator(".talk.device")).toBeVisible();
+    await expect(page).toHaveURL(/\/minna$/);
     await context.close();
   });
 

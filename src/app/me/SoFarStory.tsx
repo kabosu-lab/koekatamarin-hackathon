@@ -201,7 +201,8 @@ function PanelPeople({ story, plan, run, tip }: { story: Story; plan: StoryPlan;
   const [fit, setFit] = useState({ shown: people.length, turn: 0 });
   useLayoutEffect(() => {
     const box = cloud.current;
-    if (!box || fit.shown <= 1) return;
+    // 箱がとても小さいときは、名前を0人にして「ほか N人」だけにする
+    if (!box || fit.shown <= 0) return;
     // 名前は出てくるときに縮んだ形から弾む（transform）ので、scrollHeight でなく、動きを除いた置き場（offset）で測る。
     // 真ん中寄せで上にはみ出した分も数える
     const items = [...box.children] as HTMLElement[];
@@ -239,7 +240,7 @@ function PanelPeople({ story, plan, run, tip }: { story: Story; plan: StoryPlan;
   }, [people.length]);
   if (people.length === 0) return <p className="so-far-later so-far-center">これから</p>;
   const max = Math.max(1, ...people.map((person) => person.weight));
-  const shown = people.slice(0, Math.max(1, fit.shown));
+  const shown = people.slice(0, Math.max(0, fit.shown));
   const more = story.morePeople + people.length - shown.length;
   return (
     <div
@@ -252,7 +253,7 @@ function PanelPeople({ story, plan, run, tip }: { story: Story; plan: StoryPlan;
         const box = event.currentTarget;
         if (box.getAnimations({ subtree: true }).length > 0) return;
         if (box.scrollHeight > box.clientHeight + 1 || box.scrollWidth > box.clientWidth + 1) {
-          setFit((current) => (current.shown > 1 ? { ...current, shown: current.shown - 1 } : current));
+          setFit((current) => (current.shown > 0 ? { ...current, shown: current.shown - 1 } : current));
         }
       }}
     >
