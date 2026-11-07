@@ -39,6 +39,8 @@
   display: flex;
   flex-direction: column;
   width: min(100%, 40rem);
+  /* 見えている窓の高さを超えない（Safari のツールバーが出ていても）。dvh を知らない端末は vh */
+  max-height: 92vh;
   max-height: 92dvh;
   margin: 0 auto;
   border-radius: 1.4rem 1.4rem 0 0;
@@ -123,6 +125,9 @@
   padding: 0 1rem;
   overflow-y: auto;
   overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  /* 中に下へ貼り付く列（とどけるのボタン列）があれば、その高さ分（Compose.tsx が測る）だけ、移った先を上に出す */
+  scroll-padding-bottom: calc(var(--sticky-actions-height, 0px) + 0.5rem);
 }
 
 .bottom-sheet-body:last-child {

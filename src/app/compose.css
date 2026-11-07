@@ -73,9 +73,14 @@
   background: var(--surface, #fff);
 }
 
-/* シートの中に入ったときは、シートの下端がボタン列の台になる */
+/* シートの中に入ったときは、シートの下端がボタン列の台になる。
+   下の安全域はシートの中身の余白でなくボタン列が持つ（中身に余白があると、ボタン列がその分浮き、下に札が覗いて押せない） */
 .bottom-sheet .compose-sheet .compose-sheet-actions {
-  padding-bottom: 0.6rem;
+  padding-bottom: calc(0.6rem + env(safe-area-inset-bottom, 0px));
+}
+
+.bottom-sheet .bottom-sheet-body:has(.compose-sheet-actions) {
+  padding-bottom: 0;
 }
 
 @media (prefers-reduced-motion: reduce) {

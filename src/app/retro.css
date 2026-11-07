@@ -2015,6 +2015,8 @@ html[data-theme="retro"] .talk .device-mic {
   /* とどけるのシートや感想のシートは、真ん中の列の幅に収める（列の中のシートは、列の iframe に収まる） */
   html:not([data-embed]) .bottom-sheet-panel {
     width: min(100%, 40rem, var(--wide-center));
+    /* 高さも真ん中の列（上下の余白 24px を除いた見えている窓）を超えない。中身はシートの中でスクロールする */
+    max-height: min(92dvh, calc(100dvh - 48px));
   }
 
   /* 輪を小さくして、会話の窓を高くする */
