@@ -55,7 +55,9 @@ export function layoutOf(k: number): ChipLayout {
     y: 10 * k * k,
     scale: CENTER_SCALE - 0.44 * inner - 0.14 * outer,
     rotate: -4 * k,
-    opacity: (1 - 0.45 * inner - 0.2 * outer) * edge,
+    // 両わきは透かさない（後ろの会話が透けて重なるため）。薄く見せるのは CSS で色を落として行う。
+    // 見えない端（2〜2.5枚）でだけ消し、中身の差し替えを見せない
+    opacity: edge,
     center: a < 0.5,
   };
 }

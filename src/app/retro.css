@@ -2127,3 +2127,46 @@ html[data-pane] :is(.feedback-fab, .feedback-thanks) {
     width: min(360px, calc(100cqi - 32px));
   }
 }
+
+/* ===== 0-2o の続き：どの幅でも、ホイールのチップを崩さない ===== */
+
+/* 名前は1行。チップの幅と字数から字の大きさを決める（長い名前だけ縮む） */
+.wheel-carousel .chip {
+  container-type: inline-size;
+}
+
+.wheel-carousel .chip-label {
+  width: 100%;
+  min-width: 0;
+  font-size: min(15px, calc(96cqi / var(--chip-label-chars, 6)));
+}
+
+/* 丸い絵は、上の段（60%）の中に収める */
+.wheel-carousel .chip-art {
+  width: auto;
+  height: min(100%, 64cqi);
+  max-width: 64%;
+  font-size: min(32px, 28cqi);
+}
+
+/* 両わきのチップは透かさず、色を落として控えめにする（後ろの会話が透けて重ならない） */
+.wheel-carousel .wheel-carousel-slot:not([data-center="true"]) > .chip {
+  --surface: #d3d8de;
+  --accent: #5f6b75;
+  color: #4a535b;
+}
+
+/* 会話の上の幕を濃くする */
+.wheel-carousel .wheel-scrim {
+  background: rgb(10 16 24 / 82%);
+}
+
+/* 説明の一文は、角丸の暗い札の上に出す */
+.wheel-carousel .wheel-carousel-caption {
+  width: fit-content;
+  max-width: calc(100% - 32px);
+  margin: 0 auto;
+  padding: 6px 12px;
+  border-radius: 10px;
+  background: rgb(10 16 24 / 88%);
+}
