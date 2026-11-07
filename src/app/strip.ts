@@ -10,8 +10,35 @@ import { springSettled, springStep } from "@/lib/wheel-carousel";
  *
  * URL は話す画面のまま、どこにいるかだけを ?pane=right / ?pane=left で表す（page.tsx がそれを読んで data-pane を描くので、
  * 再読み込み・戻る・bfcache でも食い違わない）。左右へ着いたときは pushState（ブラウザの「戻る」で話す画面へ戻る）。
- * 着いた先は新しくする（STRIP_LAND_EVENT。外側は SwipeNav が、左右の画面はその中の SwipeNav が router.refresh する）。
+ * 着いた知らせは STRIP_LAND_EVENT。左右の画面は中で router.refresh せず、画面の外にある間に読み直す（refreshPane）。
  */
+
+/** 帯の位置を URL の ?pane= に合わせる（動かさず、履歴にも触らない）。描いたときや作り直されたときに使う */
+export function showStrip() {
+  const strip = row();
+  if (!strip) return;
+  const to = paneFromUrl();
+  if (to === -1) strip.dataset.pane = "right";
+  else if (to === 1) strip.dataset.pane = "left";
+  else delete strip.dataset.pane;
+  markInert(to);
+}
+
+/** 話す画面から投稿できたときの知らせ（Talk が送る）。画面の外のみんなを読み直す */
+export const POSTED_EVENT = "koekata:posted";
+
+/** 画面の外にある左右の画面を、読み直しておく（見えている画面は読み直さない） */
+export function refreshPane(side: "left" | "right") {
+  if (stripRest() === (side === "right" ? -1 : 1)) return;
+  const frame = pane(side)?.querySelector("iframe");
+  try {
+    if (!frame?.contentWindow) return;
+    delete frame.dataset.loaded;
+    frame.contentWindow.location.reload();
+  } catch {
+    // 読めなければそのまま
+  }
+}
 
 /** 帯が止まったときの知らせ。外側の window と、着いた左右の画面の window に送る。detail は着いた位置 */
 export const STRIP_LAND_EVENT = "koekata:strip-land";

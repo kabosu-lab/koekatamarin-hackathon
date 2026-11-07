@@ -213,12 +213,16 @@ test("帯：左の画面で人を切り替えると、話す画面と右の画�
   // 読み直しの直後は、届きかけの読み込みが落ち着くまで待つ（重いときに帯が元の位置へ描き直されることがある）
   await page.waitForLoadState("networkidle");
   const right = page.frameLocator('.wide-panel[data-side="right"] iframe');
-  await expect(async () => {
-    expect(await goStrip(page, "/minna")).toBe(true);
-    await expect(page.locator('.device-row[data-pane="right"]')).toHaveCount(1, { timeout: 2000 });
-    await expect(right.getByRole("group", { name: "チャネルで絞る" }).getByRole("button", { name: "すべて" })).toBeVisible({ timeout: 3000 });
-  }).toPass({ timeout: 20000 });
+  // 帯が動いたあとはもう一度頼まない（着いている画面への go は false を返す）
+  expect(await goStrip(page, "/minna")).toBe(true);
+  await expect(page.locator('.device-row[data-pane="right"]')).toHaveCount(1);
+  // みんなの画面が見えている。チャネルの札は、最近の投稿が2つ以上のチャネルにあるときだけ出るので
+  // （ほかのテストの投稿で1つのチャネルだけになることがある）、札の有無ではなく、職員室が出ていないことで生徒の画面と確かめる
+  await expect(right.getByRole("region", { name: "みんな" })).toBeInViewport();
   await expect(right.getByRole("group", { name: "チャネルで絞る" }).getByRole("button", { name: "職員室" })).toHaveCount(0);
+  await expect(right.locator(".minna-post-head small", { hasText: "職員室" })).toHaveCount(0);
+  // 左の履歴と設定も新しい人
+  await expect(page.frameLocator('.wide-panel[data-side="left"] iframe').getByRole("img", { name: "青木 ひよりさんのパートナー" }).first()).toBeAttached();
   await context.close();
 });
 

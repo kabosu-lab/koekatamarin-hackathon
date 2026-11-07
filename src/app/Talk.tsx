@@ -564,6 +564,8 @@ export function Talk({
       const data = ((await response?.json().catch(() => null)) ?? {}) as { postId?: string; teams?: TeamsDelivery; error?: string; review?: Review };
       setPublishing(false);
       if (response?.ok && typeof data.postId === "string") {
+        // 0-2z：帯の右（みんな）を読み直してもらう
+        window.dispatchEvent(new Event("koekata:posted"));
         setSentTo({ channel, postId: data.postId, isPublic, teams: data.teams });
         setGoalForPost(null);
         setAttachment(null);
