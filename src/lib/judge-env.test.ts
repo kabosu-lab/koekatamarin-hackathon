@@ -28,6 +28,18 @@ describe("審査用のサーバーに渡す設定", () => {
     expect(env.KOEKATA_CLAUDE).toBe("scripted");
     expect(env.KOEKATA_ACCESS_CODE).toBeUndefined();
     expect(env.KOEKATA_TEAMS).toBe("off");
+    // 訪問者ごとに書き込みを分ける（0-3n）
+    expect(env.KOEKATA_PUBLIC).toBe("1");
+    // 訪問者の cookie の署名の秘密は、起動ごとの乱数
+    expect(env.KOEKATA_VISITOR_SECRET).toMatch(/^[0-9a-f]{64}$/);
+    expect(siteEnv(site("public"), base, { slot: ".next-a", code: "123456" }).KOEKATA_VISITOR_SECRET).not.toBe(env.KOEKATA_VISITOR_SECRET);
+  });
+
+  it("訪問者ごとに分けるのはみんな用だけ", () => {
+    expect(siteEnv(site("judge"), base, { slot: ".next-a", code: "123456" }).KOEKATA_PUBLIC).toBeUndefined();
+    const judge = siteEnv(site("judge"), { ...base, KOEKATA_PUBLIC: "1", KOEKATA_VISITOR_SECRET: "x" }, { slot: ".next-a", code: "123456" });
+    expect(judge.KOEKATA_PUBLIC).toBeUndefined();
+    expect(judge.KOEKATA_VISITOR_SECRET).toBeUndefined();
   });
 
   it("昼休みの試用版（3201/3202）とポートが重ならない", () => {

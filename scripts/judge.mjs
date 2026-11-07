@@ -13,9 +13,10 @@
 //
 // 審査員用（3301）：合言葉つき、本物の Claude（1時間あたりの回数に上限）、先生も選べる、Teams へは送らない、ダミーの DB。
 // みんな用（3302）：合言葉なし、台本モード（キーを渡さず、Claude を呼ばない）、Teams へは送らない。起動のたびに DB を作り直す。
+//   訪問者ごと（cookie の乱数）に別の DB に書き、ほかの訪問者の書き込みは見えない（KOEKATA_PUBLIC=1）。
 // 合言葉と URL は data/judge.json（Git に入らない）にだけ書く。キーの中身は出さない。
 import { execFileSync, spawn, spawnSync } from "node:child_process";
-import { createHash, randomInt } from "node:crypto";
+import { createHash, randomBytes, randomInt } from "node:crypto";
 import { existsSync, mkdirSync, openSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -119,7 +120,7 @@ function prepare(commit, state) {
 }
 
 /** それぞれのサーバーに渡す設定。どちらも Teams へは送らない */
-export function siteEnv(site, base, { slot, code }) {
+export function siteEnv(site, base, { slot, code, visitorSecret = randomBytes(32).toString("hex") }) {
   const env = {
     ...base,
     KOEKATA_DIST_DIR: slot,
@@ -131,6 +132,8 @@ export function siteEnv(site, base, { slot, code }) {
   };
   delete env.KOEKATA_TRIAL_TEAMS_AS;
   delete env.KOEKATA_TEAMS_WEBHOOK_URL;
+  delete env.KOEKATA_PUBLIC; // みんな用だけ、下で付ける
+  delete env.KOEKATA_VISITOR_SECRET;
   if (site.name === "judge") {
     Object.assign(env, { KOEKATA_ACCESS_CODE: code, KOEKATA_TRIAL_AUDIENCE: "teacher", KOEKATA_CLAUDE_PER_HOUR: PER_HOUR, KOEKATA_FEEDBACK: "off" });
   } else {
@@ -139,13 +142,20 @@ export function siteEnv(site, base, { slot, code }) {
     delete env.KOEKATA_ACCESS_CODE;
     delete env.KOEKATA_TRIAL_AUDIENCE;
     env.KOEKATA_CLAUDE = "scripted";
+    // だれでも開けるので、訪問者ごとに別の DB に書き、ほかの訪問者の書き込みを見せない（0-3n）
+    env.KOEKATA_PUBLIC = "1";
+    // 訪問者の cookie の署名に使う、起動ごとの秘密。ファイルにもログにも出さない（起動のたびに訪問者の DB も消すので、前の cookie は出し直しになる）
+    env.KOEKATA_VISITOR_SECRET = visitorSecret;
   }
   return env;
 }
 
 function startServer(site, slot, code) {
   // みんな用は、だれが何を書いても次の起動で消えるよう、毎回まっさらから始める
-  if (site.name === "public") for (const suffix of ["", "-wal", "-shm"]) rmSync(`${site.db}${suffix}`, { force: true });
+  if (site.name === "public") {
+    for (const suffix of ["", "-wal", "-shm"]) rmSync(`${site.db}${suffix}`, { force: true });
+    rmSync(`${site.db}-visitors`, { recursive: true, force: true }); // 訪問者ごとの DB（src/lib/visitor.ts）
+  }
   return detached(
     process.execPath,
     [NEXT, "start", "--hostname", "127.0.0.1", "--port", String(site.port)],

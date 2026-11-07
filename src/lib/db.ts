@@ -1,7 +1,9 @@
-import { mkdirSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { existsSync, mkdirSync, readdirSync, rmSync, statSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
+import { workUnitAsyncStorage } from "next/dist/server/app-render/work-unit-async-storage.external";
 import { seedDatabase } from "./seed";
+import { VISITOR_COOKIE, isPublicMode, verifyVisitorCookie, visitorDbPath, visitorsDir } from "./visitor";
 
 /** 順番に適用する変更。公開後は書き換えず、末尾に足す。 */
 const MIGRATIONS: readonly string[] = [
@@ -434,11 +436,192 @@ export function readSchemaVersion(db: DatabaseSync): number {
 }
 
 // next dev の再読み込みで接続が増えないよう、globalThis に1つだけ持つ
-const holder = globalThis as typeof globalThis & { koekataDb?: DatabaseSync };
+const holder = globalThis as typeof globalThis & {
+  koekataDb?: DatabaseSync;
+  koekataPublicBase?: DatabaseSync;
+  koekataVisitors?: VisitorState;
+};
+
+/** みんな用の訪問者の DB の状態（0-3n） */
+type VisitorState = {
+  /** 開いている接続。古い順（Map の並び） */
+  open: Map<string, DatabaseSync>;
+  /** 開いたとき（初期データを入れた直後）の変更の数。これより増えていれば、訪問者が書いた */
+  baseline: Map<string, number>;
+  /** 訪問者が何か書いた DB。上限を超えても消さない */
+  written: Set<string>;
+  /** 新しく作った時刻（ミリ秒）。1分あたりの上限に使う */
+  made: number[];
+};
+
+const visitorState = (): VisitorState => (holder.koekataVisitors ??= { open: new Map(), baseline: new Map(), written: new Set(), made: [] });
+
+/** 単体テスト用：訪問者の状態を空にする（開いている接続は閉じる） */
+export function resetVisitorState(): void {
+  for (const db of holder.koekataVisitors?.open.values() ?? []) db.close();
+  holder.koekataVisitors = undefined;
+}
+
+const basePath = () => process.env.KOEKATA_DB_PATH ?? "data/koekata.db";
+const envNumber = (name: string, fallback: number) => Number(process.env[name] ?? fallback) || fallback;
+/** 同時に開いておく訪問者の DB の数（メモリの少ない PC のため）。超えたら古いものから閉じる */
+const openVisitors = () => envNumber("KOEKATA_PUBLIC_OPEN_VISITORS", 32);
+/**
+ * 閉じるまで待つ時間。途中の要求（Claude の返事を待つ間など）がまだ使っているかもしれないため。
+ * これより長く1つの要求が握っていると、閉じた接続を踏んでその要求だけが失敗する（ほかの訪問者には漏れない）。
+ */
+const CLOSE_DELAY_MS = 120_000;
+/** 残しておく訪問者の DB ファイルの数。書いたことのある訪問者のファイルは消さず、空きがなければ新しく作らない */
+const maxVisitorFiles = () => envNumber("KOEKATA_PUBLIC_MAX_VISITORS", 300);
+/** 新しく作る数の、全体での1分あたりの上限。超えたら、初期データだけを読める共有の DB を渡す */
+const newPerMinute = () => envNumber("KOEKATA_PUBLIC_NEW_PER_MINUTE", 30);
+
+/** 今の要求の cookie から、こちらが署名した訪問者を読む。要求の外（書き出しのときなど）では null */
+function currentVisitorId(): string | null {
+  const store = workUnitAsyncStorage.getStore();
+  if (store?.type !== "request") return null;
+  return verifyVisitorCookie(store.cookies.get(VISITOR_COOKIE)?.value);
+}
+
+const changes = (db: DatabaseSync) => (db.prepare("SELECT total_changes() AS n").get() as { n: number }).n;
+
+function noteWritten(state: VisitorState, id: string, db: DatabaseSync): void {
+  if (state.written.has(id)) return;
+  if (changes(db) > (state.baseline.get(id) ?? Infinity)) state.written.add(id);
+}
+
+/**
+ * 空きを作る。消すのは、開いていない・書いたことのない（初期データだけの）ファイルを古い順に。
+ * 空きができれば true。本物の訪問者が書いたファイルは消さない。
+ */
+export function pruneVisitorFiles(dir: string, state: VisitorState = visitorState()): boolean {
+  let files: { id: string; time: number }[];
+  try {
+    files = readdirSync(dir)
+      .filter((name) => name.endsWith(".db"))
+      .map((name) => ({ id: name.slice(0, -3), time: statSync(join(dir, name)).mtimeMs }));
+  } catch {
+    return true; // まだフォルダがない
+  }
+  let extra = files.length - maxVisitorFiles() + 1;
+  if (extra <= 0) return true;
+  for (const [id, db] of state.open) noteWritten(state, id, db);
+  files.sort((a, b) => a.time - b.time);
+  for (const { id } of files.filter((f) => !state.open.has(f.id) && !state.written.has(f.id))) {
+    if (extra <= 0) break;
+    try {
+      for (const suffix of ["", "-wal", "-shm"]) rmSync(join(dir, `${id}.db${suffix}`), { force: true });
+      state.baseline.delete(id);
+      extra -= 1;
+    } catch {
+      // ほかで開いていて消せないものは、次の機会に回す
+    }
+  }
+  return extra <= 0;
+}
+
+/**
+ * みんな用：訪問者ごとの DB。初めての訪問者には、ダミーの初期データだけの DB を作る。
+ * 新しく作る数が1分あたりの上限を超えたとき・空きがないときは null（呼ぶ側が共有の読むだけの DB を渡す）。
+ */
+export function visitorDatabase(id: string, base: string = basePath(), now: number = Date.now()): DatabaseSync | null {
+  const state = visitorState();
+  const hit = state.open.get(id);
+  if (hit) {
+    state.open.delete(id);
+    state.open.set(id, hit);
+    if (ensureMigrated(hit)) seedDatabase(hit);
+    return hit;
+  }
+  const path = visitorDbPath(base, id);
+  if (!existsSync(path)) {
+    state.made = state.made.filter((time) => now - time < 60_000);
+    if (state.made.length >= newPerMinute()) return null;
+    if (!pruneVisitorFiles(visitorsDir(base), state)) return null;
+    state.made.push(now);
+  }
+  const db = openDatabase(path);
+  seedDatabase(db);
+  // 初期データを入れ直した分は、訪問者の書き込みに数えない。前に開いたときに書いていれば、written に残っている
+  state.baseline.set(id, changes(db));
+  state.open.set(id, db);
+  while (state.open.size > openVisitors()) {
+    const [oldest, conn] = state.open.entries().next().value as [string, DatabaseSync];
+    state.open.delete(oldest);
+    noteWritten(state, oldest, conn);
+    // 閉じるまでの間に開き直されると基準が替わるので、この接続の基準を持っておく
+    const before = state.baseline.get(oldest) ?? Infinity;
+    setTimeout(() => {
+      try {
+        if (changes(conn) > before) state.written.add(oldest);
+        conn.close();
+      } catch {
+        // もう閉じていればよい
+      }
+    }, CLOSE_DELAY_MS).unref();
+  }
+  return db;
+}
+
+/** 書き込みを断られた（query_only）か */
+const isReadonlyError = (error: unknown) => (error as { errcode?: number } | null)?.errcode === 8;
+
+/**
+ * 書き込みを黙って捨てる包み。中の接続は query_only なので書き込みはどれも断られ、その失敗だけを飲み込む。
+ * 画面を開くだけで記録が入る所（リボンなど）があるため、断って画面ごと落とさないようにする。
+ */
+function dropWrites(db: DatabaseSync): DatabaseSync {
+  const quiet = <T extends (...args: never[]) => unknown>(fn: T, empty: unknown) =>
+    ((...args: Parameters<T>) => {
+      try {
+        return fn(...args);
+      } catch (error) {
+        if (isReadonlyError(error)) return empty;
+        throw error;
+      }
+    }) as T;
+  return new Proxy(db, {
+    get(target, key) {
+      if (key === "exec") return quiet(target.exec.bind(target), undefined);
+      if (key === "prepare") {
+        return (sql: string) => {
+          const statement = target.prepare(sql);
+          return new Proxy(statement, {
+            get(inner, name) {
+              const value = Reflect.get(inner, name, inner);
+              if (name === "run") return quiet(value.bind(inner), { changes: 0, lastInsertRowid: 0 });
+              return typeof value === "function" ? value.bind(inner) : value;
+            },
+          });
+        };
+      }
+      const value = Reflect.get(target, key, target);
+      return typeof value === "function" ? value.bind(target) : value;
+    },
+  });
+}
+
+/**
+ * みんな用で、訪問者の分からない呼び出し（死活の確かめなど）と、新しく作る上限を超えた訪問者に渡す DB。
+ * ダミーの初期データだけを読め、書き込みは残らない（だれかの書き込みがほかの人に見えないように）。
+ */
+function publicBaseDatabase(): DatabaseSync {
+  if (!holder.koekataPublicBase) {
+    const db = openDatabase(basePath());
+    seedDatabase(db);
+    db.exec("PRAGMA query_only = ON");
+    holder.koekataPublicBase = dropWrites(db);
+  }
+  return holder.koekataPublicBase;
+}
 
 export function getDatabase(): DatabaseSync {
+  if (isPublicMode()) {
+    const visitor = currentVisitorId();
+    return (visitor && visitorDatabase(visitor)) || publicBaseDatabase();
+  }
   if (!holder.koekataDb) {
-    const db = openDatabase(process.env.KOEKATA_DB_PATH ?? "data/koekata.db");
+    const db = openDatabase(basePath());
     seedDatabase(db);
     holder.koekataDb = db;
   } else if (ensureMigrated(holder.koekataDb)) {
