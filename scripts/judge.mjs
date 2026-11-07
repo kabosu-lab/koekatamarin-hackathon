@@ -16,7 +16,7 @@
 //   訪問者ごと（cookie の乱数）に別の DB に書き、ほかの訪問者の書き込みは見えない（KOEKATA_PUBLIC=1）。
 // 合言葉と URL は data/judge.json（Git に入らない）にだけ書く。キーの中身は出さない。
 import { execFileSync, spawn, spawnSync } from "node:child_process";
-import { createHash, randomInt } from "node:crypto";
+import { createHash, randomBytes, randomInt } from "node:crypto";
 import { existsSync, mkdirSync, openSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -120,7 +120,7 @@ function prepare(commit, state) {
 }
 
 /** それぞれのサーバーに渡す設定。どちらも Teams へは送らない */
-export function siteEnv(site, base, { slot, code }) {
+export function siteEnv(site, base, { slot, code, visitorSecret = randomBytes(32).toString("hex") }) {
   const env = {
     ...base,
     KOEKATA_DIST_DIR: slot,
@@ -133,6 +133,7 @@ export function siteEnv(site, base, { slot, code }) {
   delete env.KOEKATA_TRIAL_TEAMS_AS;
   delete env.KOEKATA_TEAMS_WEBHOOK_URL;
   delete env.KOEKATA_PUBLIC; // みんな用だけ、下で付ける
+  delete env.KOEKATA_VISITOR_SECRET;
   if (site.name === "judge") {
     Object.assign(env, { KOEKATA_ACCESS_CODE: code, KOEKATA_TRIAL_AUDIENCE: "teacher", KOEKATA_CLAUDE_PER_HOUR: PER_HOUR, KOEKATA_FEEDBACK: "off" });
   } else {
@@ -143,6 +144,8 @@ export function siteEnv(site, base, { slot, code }) {
     env.KOEKATA_CLAUDE = "scripted";
     // だれでも開けるので、訪問者ごとに別の DB に書き、ほかの訪問者の書き込みを見せない（0-3n）
     env.KOEKATA_PUBLIC = "1";
+    // 訪問者の cookie の署名に使う、起動ごとの秘密。ファイルにもログにも出さない（起動のたびに訪問者の DB も消すので、前の cookie は出し直しになる）
+    env.KOEKATA_VISITOR_SECRET = visitorSecret;
   }
   return env;
 }

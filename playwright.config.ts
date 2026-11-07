@@ -113,6 +113,10 @@ export default defineConfig({
         KOEKATA_CLAUDE: "scripted",
         KOEKATA_NOTICE_ALWAYS: "1",
         KOEKATA_PUBLIC: "1",
+        // 訪問者の cookie の署名の秘密（judge.mjs では起動ごとの乱数）
+        KOEKATA_VISITOR_SECRET: `e2e-${process.pid}`,
+        // 1分あたりの新しい訪問者の上限を、テストで確かめられる小ささに（e2e/public.spec.ts）
+        KOEKATA_PUBLIC_NEW_PER_MINUTE: "12",
       },
     },
   ],
