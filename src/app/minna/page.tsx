@@ -97,9 +97,11 @@ export default async function MinnaPage({ searchParams }: { searchParams: Promis
   }));
   // その日はじめて開いたときだけ自動で出す。広い画面の右の欄（iframe）の中でも出す。動画用の早回しでは出さない
   const showToday = todayCards.length > 0 && !store.get(TODAY_SEEN_COOKIE) && hayaokuri !== "1";
+  // 帯の左右（裏で読み込んだ画面）では、見せたときに開く（TodayModal がブラウザ側で決める）
+  const todayDue = showToday;
 
   return (
-    <TodayProvider initialOpen={showToday}>
+    <TodayProvider initialOpen={showToday} openWhenShown={todayDue}>
       <ChannelFilter>
         <MinnaFrame
           title="みんな"

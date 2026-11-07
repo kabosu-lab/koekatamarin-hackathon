@@ -5,6 +5,7 @@ import { useEffect } from "react";
 import { isDeep, SWIPE_HOME, SWIPE_SCREENS, swipeTarget } from "@/lib/swipe-nav";
 import { WIDE_QUERY } from "@/lib/wide";
 import { Peek, remember, screenOf } from "./swipe-peek";
+import { holdStrip, paneFromUrl, repairPanes, STRIP_LAND_EVENT, strip, stripReady, stripRest } from "./strip";
 
 /**
  * 操作の途中の指の動きを、画面の移動にしない場所。
@@ -12,6 +13,8 @@ import { Peek, remember, screenOf } from "./swipe-peek";
  * 押し続けて話すボタンとホイール、文字を打つ欄は除く。
  */
 const NO_SWIPE = "[data-noswipe], .device-mic, input, textarea, select, dialog, [contenteditable]";
+/** 話す画面から先に読んでおく奥の画面（ホイールのチップの行き先） */
+const DEEP_PREFETCH = ["/today", "/inbox", "/study/room", "/chie", "/me?open=goals", "/me?open=daily", "/me?open=lookback", "/me?open=settings"];
 /** 3枚の上で、奥の状態（タイルを開いた・今日の3人を出した）を開いている印。あれば左右どちらでもホームへ戻る（0-2p） */
 const DEEP_STATE = "[data-swipe-home]";
 /** 奥の画面の部品が「ホームへ戻して」と頼む知らせ（今日の3人の、端の先へのめくり）。detail は SwipeHomeRequest */
@@ -34,10 +37,27 @@ const SPRING = "cubic-bezier(0.34, 1.56, 0.64, 1)";
 
 type Arrival = { from: "left" | "right"; ms: number; rest: number };
 
+/** 使う人と見た目の cookie。変わったら、外側の話す画面を描き直す */
+function whoAndLook(): string {
+  return document.cookie
+    .split("; ")
+    .filter((pair) => /^koekata_(person|theme|size|avatar|sound)=/.test(pair))
+    .sort()
+    .join("; ");
+}
+
+/** 左右の画面の中からの指の量を、帯の位置にする。帯の端の先は重くする */
+function bandOffset(base: number, dx: number): number {
+  const width = window.innerWidth || 1;
+  const outward = (base === -1 && dx < 0) || (base === 1 && dx > 0);
+  return base + (outward ? dx * 0.3 : dx) / width;
+}
+
 const reducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 const page = () => document.querySelector<HTMLElement>("body > main, main");
 /** スワイプは狭い画面だけ（0-2y (3)）。広い画面は3列が並び、欄（iframe）の中の奥の画面は「戻る」で閉じる */
-const swipes = () => document.documentElement.dataset.embed !== "true" && !window.matchMedia(WIDE_QUERY).matches;
+const swipes = () =>
+  document.documentElement.dataset.embed !== "true" && document.documentElement.dataset.pane !== "true" && !window.matchMedia(WIDE_QUERY).matches;
 
 /** 指を置いた所から外へ向かって、横にスクロールできる入れ物（カルーセル、チップの列）があるか */
 function insideSideScroller(target: Element | null): boolean {
@@ -93,8 +113,12 @@ export function SwipeNav() {
 
   // 隣の画面を先に読んでおき、移るときに待たせない
   useEffect(() => {
+    // 左右の画面（iframe）の中では先読みしない。外側がする
+    if (window.self !== window.top) return;
     if (SWIPE_SCREENS.includes(pathname as (typeof SWIPE_SCREENS)[number])) {
       for (const screen of SWIPE_SCREENS) if (screen !== pathname) router.prefetch(screen);
+      // 0-2z：ホイールのチップで開く奥の画面も、話す画面から先に読んでおく
+      if (pathname === SWIPE_HOME) for (const deep of DEEP_PREFETCH) router.prefetch(deep);
     } else router.prefetch(SWIPE_HOME);
   }, [pathname, router]);
 
@@ -120,9 +144,72 @@ export function SwipeNav() {
     main.animate([{ transform: `translateX(${offset})` }, { transform: "translateX(0)" }], { duration: ms, easing: EASE });
   }, [pathname]);
 
+  // 0-2z：話す画面の帯を、左右の画面（iframe）の中からも動かせるようにする。
+  // 帯が止まったら、着いた先を新しくする（外側は話す画面へ戻ったとき、左右の画面はその中で）。「戻る」では帯を合わせる
+  useEffect(() => {
+    // 外側（話す画面）を描いたときの、使う人と見た目の印
+    const drawnAs = whoAndLook();
+    const onLand = (event: Event) => {
+      const to = (event as CustomEvent<number>).detail;
+      // 左右の画面は、着いたとき自分の中で新しくする
+      if (window.self !== window.top) {
+        router.refresh();
+        return;
+      }
+      // 外側は、左右の画面で人や見た目が替わっていたら、話す画面へ戻ったときに窓ごと読み直す。
+      // router.refresh は使わない（読み直しの途中で帯がまた左右へ動くと、遅れて届いた話す画面の木で帯が元へ戻ってしまう）
+      // 読み直すと左右の画面も新しい人で読み込み直す。URL の引数は残す
+      if (to === 0 && whoAndLook() !== drawnAs) {
+        holdStrip();
+        location.reload();
+      }
+    };
+    window.addEventListener(STRIP_LAND_EVENT, onLand);
+    if (window.self !== window.top) return () => window.removeEventListener(STRIP_LAND_EVENT, onLand);
+    window.koekataStrip = strip;
+    // 帯を動かせるようになった印（html[data-strip-ready]）。左右の画面の読み込みを見て付け外しする（画面テストもこれを待つ）
+    const root = document.documentElement;
+    // 左右の画面があるのに 3 秒たっても整わなければ、左右の画面を入口から読み直す
+    let waitingSince = 0;
+    const watchReady = window.setInterval(() => {
+      if (stripReady()) {
+        root.dataset.stripReady = "true";
+        waitingSince = 0;
+        return;
+      }
+      delete root.dataset.stripReady;
+      const panes = document.querySelectorAll('.device-row > .wide-panel[data-mode="pane"] iframe').length;
+      if (panes < 2 || root.dataset.stripHold === "true") {
+        waitingSince = 0;
+        return;
+      }
+      if (!waitingSince) waitingSince = performance.now();
+      else if (performance.now() - waitingSince > 3000) {
+        repairPanes();
+        waitingSince = 0;
+      }
+    }, 250);
+    const onPop = () => {
+      if (!document.querySelector(".device-row")) return;
+      strip.settle(stripRest(), 0, paneFromUrl(), "none");
+    };
+    window.addEventListener("popstate", onPop);
+    return () => {
+      window.clearInterval(watchReady);
+      window.removeEventListener(STRIP_LAND_EVENT, onLand);
+      window.removeEventListener("popstate", onPop);
+    };
+  }, [router]);
+
   useEffect(() => {
     let start: { x: number; y: number } | null = null;
     let dragging = false;
+    // 0-2z：帯（話す画面と、裏で読み込んだ左右の画面）を動かしているか。paneMode は左右の画面の中から動かすとき
+    let banded = false;
+    let paneMode = false;
+    let base = 0;
+    // 帯の今の位置（指が取り消されたときに、ここからばねで戻す）
+    let bandAt = 0;
     let main: HTMLElement | null = null;
     // 横画面か・動きを減らす設定かは、指を置いたときに1回だけ調べる（動かすたびに matchMedia しない）
     let landscape = false;
@@ -150,6 +237,10 @@ export function SwipeNav() {
     };
 
     const reset = () => {
+      // 0-2z：帯をつかんでいる途中で指が取り消されたら（touchcancel）、帯を元の位置へ戻す
+      if (dragging && banded) strip.settle(bandAt, 0, stripRest());
+      if (dragging && paneMode) window.parent.koekataStrip?.settle(bandAt, 0, base as -1 | 1);
+      banded = false;
       dropPeek();
       delete document.documentElement.dataset.swiping;
       if (main) {
@@ -167,11 +258,14 @@ export function SwipeNav() {
       still = reducedMotion();
       deep = isDeep(pathname, document.querySelector(DEEP_STATE) !== null);
       const root = document.documentElement;
+      paneMode = root.dataset.pane === "true" && Boolean(window.parent?.koekataStrip);
+      banded = false;
       const blocked =
         event.touches.length !== 1 ||
         root.dataset.theme !== "retro" ||
-        // 広い画面と、その左右の欄（iframe）の中では移らない。欄の中でホームへ移ると、欄の中が話す画面になってしまう
-        !swipes() ||
+        // 広い画面と、その左右の欄（iframe）の中では移らない。欄の中でホームへ移ると、欄の中が話す画面になってしまう。
+        // 狭い画面で裏に読み込んだ左右の画面（pane）の中からは、外側の帯を動かす
+        (!paneMode && !swipes()) ||
         target?.closest(NO_SWIPE) ||
         (landscape && !deep && target?.closest(NO_SWIPE_LANDSCAPE)) ||
         insideSideScroller(target) ||
@@ -190,6 +284,25 @@ export function SwipeNav() {
       const dy = event.touches[0].clientY - start.y;
       if (!dragging) {
         if (Math.abs(dx) < LOCK_DISTANCE || Math.abs(dx) < Math.abs(dy) * 1.6) return;
+        if (paneMode) {
+          dragging = true;
+          base = (window.frameElement as HTMLElement | null)?.dataset.side === "left" ? 1 : -1;
+        } else if (pathname === SWIPE_HOME && !deep && !landscape && window.self === window.top && stripReady()) {
+          dragging = true;
+          banded = true;
+        }
+      }
+      if (paneMode) {
+        bandAt = bandOffset(base, dx);
+        window.parent.koekataStrip?.drag(bandAt);
+        return;
+      }
+      if (banded) {
+        bandAt = dx / (window.innerWidth || 1);
+        strip.drag(bandAt);
+        return;
+      }
+      if (!dragging) {
         main = screenOf();
         if (!main) return;
         dragging = true;
@@ -222,6 +335,29 @@ export function SwipeNav() {
       const sideways = !landscape || deep;
       const forward = (sideways ? dx : touch.clientY - start.y) < 0;
       start = null;
+      if ((paneMode || banded) && dragging) {
+        // 0-2z：帯は、ホイールと同じばねで吸い付く。URL は replaceState で替える（strip.ts）
+        const width = window.innerWidth || 1;
+        const [a, b] = recent.length >= 2 ? recent : [{ x: touch.clientX, t: 0 }, { x: touch.clientX, t: 1 }];
+        const velocity = ((b.x - a.x) / Math.max(1, b.t - a.t)) * (1000 / width);
+        dragging = false;
+        if (banded) {
+          banded = false;
+          strip.settle(dx / width, velocity, next ? (dx < 0 ? -1 : 1) : 0);
+          return;
+        }
+        // 左右の画面の中から：話す画面の側へ払えば戻る。奥の画面では左右どちらへ払っても戻る（0-2p）。
+        // 帯の端（話す画面と反対の側）には何もないので、元の位置へ戻る
+        let to = base as -1 | 1 | 0;
+        if (next) {
+          if (deep) to = 0;
+          else if ((base === -1 && dx > 0) || (base === 1 && dx < 0)) to = 0;
+        }
+        window.parent.koekataStrip?.settle(bandOffset(base, dx), velocity, to);
+        return;
+      }
+      // 左右の画面の中では、指に付かなかった払い方でも、その中では移らない（外側の帯だけが動く）
+      if (paneMode) return;
       if (peek && main && dragging) {
         // 0-2z：離したら、ホイールと同じばねで吸い付く。届けば隣の画面へ、届かなければ元の位置へ
         const [a, b] = recent.length >= 2 ? recent : [{ x: touch.clientX, t: 0 }, { x: touch.clientX, t: 1 }];

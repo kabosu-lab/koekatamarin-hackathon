@@ -2049,6 +2049,65 @@ html[data-embed] .first-card-backdrop {
 }
 
 /*
+ * 0-2z：狭い画面では、話す画面の左右の画面（履歴と設定・みんな）を裏で読み込み、画面のすぐ外に置いておく。
+ * スワイプの途中は、この本物の画面が指に1対1で付いて覗く（SwipeNav と swipe-peek.ts が動かす）。
+ * 3列（上の「0-2y (6)」）のときは使わない。
+ */
+@media not ((orientation: landscape) and (min-height: 600px)) {
+  .device-row > .wide-panel[data-mode="pane"] {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 40;
+    display: block;
+    width: 100vw;
+    height: 100dvh;
+    border-radius: 0;
+    background: none;
+    box-shadow: none;
+    pointer-events: none;
+  }
+
+  .device-row > .wide-panel[data-mode="pane"][data-side="left"] {
+    transform: translateX(-100vw);
+  }
+
+  .device-row > .wide-panel[data-mode="pane"][data-side="right"] {
+    transform: translateX(100vw);
+  }
+}
+
+/* 0-2z：帯が止まっている位置（strip.ts の data-pane）。動かしている間は strip.ts が transform を直接書く */
+@media not ((orientation: landscape) and (min-height: 600px)) {
+  .device-row[data-pane="right"] > .retro-home {
+    transform: translateX(-100vw);
+  }
+
+  .device-row[data-pane="right"] > .wide-panel[data-mode="pane"][data-side="right"],
+  .device-row[data-pane="left"] > .wide-panel[data-mode="pane"][data-side="left"] {
+    transform: translateX(0);
+    pointer-events: auto;
+  }
+
+  .device-row[data-pane="right"] > .wide-panel[data-mode="pane"][data-side="left"] {
+    transform: translateX(-200vw);
+  }
+
+  .device-row[data-pane="left"] > .retro-home {
+    transform: translateX(100vw);
+  }
+
+  .device-row[data-pane="left"] > .wide-panel[data-mode="pane"][data-side="right"] {
+    transform: translateX(200vw);
+  }
+}
+
+/* 左右の画面の中には感想のアイコンを出さない（外側の1つだけ。動かしている間に2つ並ばない） */
+html[data-pane] :is(.feedback-fab, .feedback-thanks) {
+  display: none;
+}
+
+/*
  * 0-2y（広い画面の確認の 12）：3列のとき、話す画面の最初の約束のカードの暗幕を、左右の列にもかける。
  * 話す画面の本体（.retro-home）は部品の幅の基準（container）なので、中の position: fixed は本体の箱に収まってしまう。
  * 暗幕を本体の箱から四方へ大きく広げ、左右の列（iframe）より手前に出す。カードは本体の真ん中のまま
