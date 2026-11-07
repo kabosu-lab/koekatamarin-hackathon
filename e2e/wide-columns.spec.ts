@@ -9,19 +9,6 @@ test.beforeEach(async ({ context }) => {
 const LEFT = ["/me", "/me?open=daily", "/me?open=lookback", "/me?open=goals", "/me?open=thanks", "/me?open=partner", "/me?open=settings", "/daily", "/lookback", "/yousu", "/walk", "/soudan"];
 const RIGHT = ["/minna", "/inbox", "/chie", "/chie/new", "/chie/knowledge-quick-quiz", "/today", "/study/room", "/people/ogawara", "/sakura", "/koho", "/teams"];
 
-/**
- * 1画面のまま：列（data-mode="column"）は1つもなく、裏で読み込んだ左右の画面（pane）は画面の外にある（0-2z）
- */
-async function expectSingleScreen(page: Page) {
-  await expect(page.locator('[data-mode="column"]')).toHaveCount(0);
-  const inside = await page.evaluate(() =>
-    [...document.querySelectorAll(".wide-panel")]
-      .map((panel) => panel.getBoundingClientRect())
-      .filter((box) => box.width > 0 && box.right > 1 && box.left < innerWidth - 1).length,
-  );
-  expect(inside).toBe(0);
-}
-
 /** 3列が並んでいる：左の列・真ん中の話す画面・右の列が、左から順に横に並ぶ */
 async function expectThreeColumns(page: Page) {
   await expect(page.locator(".device-row")).toBeVisible();
@@ -114,8 +101,8 @@ for (const viewport of [
       for (let deg = 10; deg <= 360 && (await chip.count()) === 0; deg += 10) await page.mouse.move(at(deg).x, at(deg).y, { steps: 2 });
       await expect(chip.first()).toBeVisible();
       await page.mouse.up();
-      // 離したときに真ん中にいたチップ（受信箱かその隣。みんなのこともある）が、右の列の中で開く。外側は話す画面のまま
-      await expect(page.locator(".wide-panel[data-side=right] iframe")).toHaveAttribute("src", /^\/(minna|inbox|today|study\/room|chie)/);
+      // 離したときに真ん中にいたチップ（受信箱かその隣）が、右の列の中で開く。外側は話す画面のまま
+      await expect(page.locator(".wide-panel[data-side=right] iframe")).toHaveAttribute("src", /^\/(inbox|today|study\/room|chie)/);
       await expect(page.frameLocator(".wide-panel[data-side=right] iframe").locator("main h1").first()).toBeVisible();
       await expect(page).toHaveURL(/127\.0\.0\.1:\d+\/$/);
       await expectThreeColumns(page);
@@ -181,9 +168,11 @@ test("iPhone の横（844×390）では「縦にして使ってね」の絵が�
   await expect(page).toHaveURL(/\/inbox$/);
   const hint = page.getByRole("status", { name: "縦にして使ってね" });
   await expect(hint).toBeVisible();
+  await expect(page.locator(".wide-panel").first()).toBeHidden();
   await page.goto("/");
   await expect(hint).toBeVisible();
-  await expectSingleScreen(page);
+  await expect(page.locator(".wide-panel[data-side=left]")).toBeHidden();
+  await expect(page.locator("iframe")).toHaveCount(0);
 });
 
 test("動きを減らす設定では、縦にしての絵は回らない", async ({ browser }) => {
@@ -203,7 +192,7 @@ test("パソコンの低いウィンドウ（1280×560、マウス）では「�
   await expect(page.getByRole("heading", { name: "受信箱", level: 1 })).toBeVisible();
   await expect(page.getByRole("status", { name: "縦にして使ってね" })).toBeHidden();
   await page.goto("/");
-  await expectSingleScreen(page);
+  await expect(page.locator("iframe")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "押し続けて話す" })).toBeVisible();
   await context.close();
 });
@@ -218,12 +207,13 @@ for (const viewport of [
   await expect(page.getByRole("heading", { name: "受信箱" })).toBeVisible();
   await expect(page.getByRole("status", { name: "縦にして使ってね" })).toBeHidden();
   await page.goto("/");
-  await expectSingleScreen(page);
+  await expect(page.locator(".wide-panel[data-side=right]")).toBeHidden();
+  await expect(page.locator("iframe")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "押し続けて話す" })).toBeVisible();
 });
 
 test("スマホの縦では、絵も3列も出ない", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByRole("status", { name: "縦にして使ってね" })).toBeHidden();
-  await expectSingleScreen(page);
+  await expect(page.locator("iframe")).toHaveCount(0);
 });

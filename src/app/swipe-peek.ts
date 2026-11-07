@@ -5,23 +5,8 @@ import { springSettled, springStep } from "@/lib/wheel-carousel";
  * 指に1対1で付いて今の画面と隣の画面が動き、離すとホイールと同じばねで吸い付く。
  * 動きは rAF と transform だけ（React の state にしない）。
  *
- * 話す画面（ホーム）からは、裏で読み込んでおいた本物の左右の画面（WidePanel の pane）を覗かせる。
- * それ以外の画面からは、前にその画面を離れたときの写し（DOM の複製）を使う。まだ行ったことがなければ、外枠だけの姿を出す。
+ * 隣の画面の姿は、前にその画面を離れたときの写し（DOM の複製）を使う。まだ行ったことがなければ、外枠だけの姿を出す。
  */
-
-/** 裏で読み込み終わった、その行き先の本物の画面（話す画面の左右の pane）。なければ null */
-function livePane(target: string, side: -1 | 1): HTMLElement | null {
-  const pane = document.querySelector<HTMLElement>(`.device-row > .wide-panel[data-mode="pane"][data-side="${side === 1 ? "right" : "left"}"]`);
-  const frame = pane?.querySelector("iframe");
-  if (!pane || !frame) return null;
-  try {
-    const inner = frame.contentWindow?.location;
-    if (!inner || inner.pathname !== target || frame.contentDocument?.readyState !== "complete") return null;
-  } catch {
-    return null;
-  }
-  return pane;
-}
 
 const LABELS: Record<string, string> = { "/": "話す", "/me": "履歴と設定", "/minna": "みんな" };
 
@@ -43,9 +28,7 @@ export function remember(pathname: string, screen: HTMLElement) {
 
 export class Peek {
   readonly target: string;
-  private readonly layer: HTMLElement;
-  /** 本物の左右の画面を動かしているか（外すときは消さずに、画面の外の位置へ戻す） */
-  private readonly live: boolean;
+  private readonly layer: HTMLDivElement;
   private readonly screen: HTMLElement;
   /** 隣の画面が出てくる側（-1＝左から、1＝右から） */
   readonly side: -1 | 1;
@@ -57,14 +40,6 @@ export class Peek {
     this.side = side;
     this.screen = screen;
     this.width = window.innerWidth || 1;
-    const pane = livePane(target, side);
-    this.live = pane !== null;
-    if (pane) {
-      pane.classList.add("swipe-peek");
-      pane.style.willChange = "transform";
-      this.layer = pane;
-      return;
-    }
     const box = screen.getBoundingClientRect();
     const layer = document.createElement("div");
     layer.className = "swipe-peek";
@@ -121,12 +96,6 @@ export class Peek {
 
   remove() {
     cancelAnimationFrame(this.frame);
-    if (!this.live) {
-      this.layer.remove();
-      return;
-    }
-    this.layer.classList.remove("swipe-peek");
-    this.layer.style.transform = "";
-    this.layer.style.willChange = "";
+    this.layer.remove();
   }
 }

@@ -94,11 +94,10 @@ export default async function MinnaPage({ searchParams }: { searchParams: Promis
   }));
   // その日はじめて開いたときだけ自動で出す。広い画面の左右の欄（iframe）と、動画用の早回しでは出さない
   const embedded = (await headers()).get("sec-fetch-dest") === "iframe";
-  const todayDue = todayCards.length > 0 && !store.get(TODAY_SEEN_COOKIE) && hayaokuri !== "1";
-  const showToday = todayDue && !embedded;
+  const showToday = todayCards.length > 0 && !store.get(TODAY_SEEN_COOKIE) && !embedded && hayaokuri !== "1";
 
   return (
-    <TodayProvider initialOpen={showToday} openWhenShown={todayDue}>
+    <TodayProvider initialOpen={showToday}>
       <ChannelFilter>
         <MinnaFrame
           title="みんな"

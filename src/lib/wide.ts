@@ -50,5 +50,5 @@ export function columnSrc(side: WideSide, requested: string | string[] | undefin
  * 3列かどうかは CSS と同じメディアクエリで決める。
  */
 export function wideBootScript(): string {
-  return `(function(){try{var d=document.documentElement;if(window.self!==window.top){var f=window.frameElement;if(f&&f.getAttribute("data-mode")==="pane")d.dataset.pane="true";else d.dataset.embed="true";return}var p=location.pathname;if(p==="/"||p.indexOf("/api/")===0)return;if(!window.matchMedia(${JSON.stringify(WIDE_QUERY)}).matches)return;var L=${JSON.stringify(LEFT_PREFIXES)};var s="right";for(var i=0;i<L.length;i++){if(p===L[i]||p.indexOf(L[i]+"/")===0){s="left";break}}d.dataset.wideAway="true";location.replace("/?"+s+"="+encodeURIComponent(p+location.search+location.hash))}catch(e){}})();`;
+  return `(function(){try{var d=document.documentElement;if(window.self!==window.top){d.dataset.embed="true";return}var p=location.pathname;if(p==="/"||p.indexOf("/api/")===0)return;if(!window.matchMedia(${JSON.stringify(WIDE_QUERY)}).matches)return;var L=${JSON.stringify(LEFT_PREFIXES)};var s="right";for(var i=0;i<L.length;i++){if(p===L[i]||p.indexOf(L[i]+"/")===0){s="left";break}}d.dataset.wideAway="true";location.replace("/?"+s+"="+encodeURIComponent(p+location.search+location.hash))}catch(e){}})();`;
 }

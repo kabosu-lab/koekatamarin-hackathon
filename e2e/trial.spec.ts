@@ -81,28 +81,6 @@ test("試用の注意は最初に1回だけカードで全部見せ、あとは�
   await expect(card).toContainText("気づいたことを、ぜひ教えてね。");
 });
 
-test("0-2z：話す画面の帯で開いた「履歴と設定」から「注意を読み直す」を押すと、話す画面へ戻って注意が出る", async ({ page }) => {
-  await enter(page);
-  await page.waitForFunction(() => {
-    const frames = [...document.querySelectorAll<HTMLIFrameElement>('.wide-panel[data-mode="pane"] iframe')];
-    return (
-      frames.length === 2 &&
-      frames.every((frame) => frame.contentDocument?.readyState === "complete" && /^\/(me|minna)/.test(frame.contentWindow?.location.pathname ?? "")) &&
-      Boolean(window.koekataStrip)
-    );
-  });
-  expect(await page.evaluate(() => window.koekataStrip!.go("/me"))).toBe(true);
-  await expect(page).toHaveURL(/\?pane=left$/);
-  const left = page.frameLocator('.wide-panel[data-side="left"] iframe');
-  await left.locator('a[data-tile="settings"]').click();
-  // 左の画面の中には、注意のカードは出ない（外側に1つだけ）
-  await expect(left.getByRole("dialog", { name: "試用版について" })).toHaveCount(0);
-  await left.getByRole("region", { name: "試用版について" }).getByRole("button", { name: "注意を読み直す" }).click();
-  await expect(page.getByRole("dialog", { name: "試用版について" })).toContainText(NOTICE);
-  await expect(page).toHaveURL(/127\.0\.0\.1:\d+\/$/);
-  await expect(page.locator(".device-row[data-pane]")).toHaveCount(0);
-});
-
 test("命や安全に関わる話では、先生や相談室に届いていないことと窓口を伝える", async ({ page }) => {
   await enter(page);
   await page.getByLabel("パートナーに書く").fill("親に殴られている");
