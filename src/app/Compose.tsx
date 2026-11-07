@@ -182,6 +182,26 @@ export function Compose({
     };
   }, []);
 
+  // 書き終わって送り先の札が出たら、選ばれている札がボタン列の裏に隠れていれば、その上まで中身を送る。
+  // チャネルがいくつ増えても、選ばれた送り先（ありがとうのカードなら一番下の「ありがとう」）が最初から見えて押せる
+  useEffect(() => {
+    if (writing) return;
+    const actions = actionsRef.current;
+    const scroller = actions?.closest<HTMLElement>(".bottom-sheet-body");
+    const chip = actions?.parentElement?.querySelector<HTMLElement>('.compose-chip[aria-checked="true"]');
+    if (!actions || !scroller || !chip) return;
+    // 札は下から少し浮き上がって出る（compose-rise 220ms）。出終わってから測る
+    const timer = window.setTimeout(() => {
+      if (chip.getClientRects().length === 0) return;
+      const hidden = chip.getBoundingClientRect().bottom - (actions.getBoundingClientRect().top - 8);
+      if (hidden <= 0) return;
+      const smooth = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      scroller.scrollBy({ top: hidden, behavior: smooth ? "smooth" : "auto" });
+    }, 260);
+    return () => window.clearTimeout(timer);
+    // 書き終わったときに1回だけ。札を選び直すたびには動かさない
+  }, [writing]);
+
   const channel: ChannelView | undefined = channels.find((c) => c.id === channelId);
   // 0-2k：送り先を誰が見るのかを、数と一文で見せる。肩書きが学年から始まる人は生徒（ダミーの決まり）
   const isStudent = (label: string) => /^[0-9０-９]年/.test(label);
