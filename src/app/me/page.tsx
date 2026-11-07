@@ -9,6 +9,7 @@ import { getDraft } from "@/lib/profile";
 import { listThanks } from "@/lib/thanks";
 import { listRecentPartners } from "@/lib/thanks-people";
 import { ensureWelcomeThanks } from "@/lib/thanks-reveal";
+import { ThanksSeenOnDevice } from "../thanks/ThanksSeenOnDevice";
 import { ThanksKindMark } from "../thanks/ThanksCard";
 import { listTitles, wornTitle } from "@/lib/titles";
 import { PersonTitle } from "../PersonTitle";
@@ -142,6 +143,8 @@ export default async function MePage({ searchParams }: { searchParams: Promise<{
         const recent = listRecentPartners(db, viewer.id).map((p) => ({ ...p, image: getAvatar(db, p.id).image }));
         return (
           <>
+            {/* 0-3a：このタイルで見たら、この端末では封筒の知らせを出さない */}
+            <ThanksSeenOnDevice viewerId={viewer.id} at={now.toISOString()} />
             <ThanksForm key={`${viewer.id}-thanks`} recent={recent} />
             <section className="card" aria-label="もらったありがとう">
               <h2>もらったありがとう</h2>

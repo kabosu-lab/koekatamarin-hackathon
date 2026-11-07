@@ -21,7 +21,27 @@ export type UnopenedThanks = {
 
 /** まだ開いていないカード。古い順（届いた順に開ける）。しばらく出さない人からのものは出さない */
 export function listUnopenedThanks(db: DatabaseSync, viewerId: string): UnopenedThanks[] {
-  const since = thanksSeenSince(db, viewerId) ?? "";
+  return listThanksSince(db, viewerId, thanksSeenSince(db, viewerId) ?? "");
+}
+
+/** 日本時間のその日の0時（ISO） */
+function japanDayStart(now: Date): string {
+  return new Date(`${japanDate(now)}T00:00:00+09:00`).toISOString();
+}
+
+/**
+ * この端末で、まだ封筒から開けていないカード（司令塔の決定：開けたかは端末ごと。数とトロフィーは人物ごとのまま）。
+ * - この端末で開けたことがあれば、そのあとに届いたもの
+ * - 初めての端末なら、今日届いたものと、どこでもまだ開かれていないもの（試用の人どうしで同じ人物を使っても、どの端末でも最初の1回は見られる）
+ */
+export function listRevealThanks(db: DatabaseSync, viewerId: string, deviceSeen: string | null, now: Date): UnopenedThanks[] {
+  if (deviceSeen && !Number.isNaN(new Date(deviceSeen).getTime())) return listThanksSince(db, viewerId, deviceSeen);
+  const today = japanDayStart(now);
+  const seen = thanksSeenSince(db, viewerId);
+  return listThanksSince(db, viewerId, seen && seen < today ? seen : today);
+}
+
+function listThanksSince(db: DatabaseSync, viewerId: string, since: string): UnopenedThanks[] {
   const hidden = listHiddenIds(db, viewerId);
   const rows = db
     .prepare(

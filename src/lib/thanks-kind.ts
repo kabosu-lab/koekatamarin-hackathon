@@ -42,3 +42,22 @@ export function sentNotice(name: string, kind: ThanksKind): string {
 /** 0-3a：話す画面のパートナーの「ありがとうが届いています」。押すとその場で封筒が開く */
 export const THANKS_REVEAL_HREF = "#thanks-reveal";
 export const THANKS_REVEAL_EVENT = "koekata:thanks-reveal";
+
+/** その端末で、封筒から開けたところまで（人物ごとに1つの cookie。値は開けた最後のカードの時刻） */
+export function thanksDeviceCookie(viewerId: string): string {
+  return `koekata_thanks_seen_${viewerId.replace(/[^A-Za-z0-9_-]/g, "")}`;
+}
+
+const DEVICE_MAX_AGE = 60 * 60 * 24 * 400;
+
+/** ブラウザで、この端末の「開けたところ」を進める。戻しはしない */
+export function markThanksSeenOnDevice(viewerId: string, at: string): void {
+  const name = thanksDeviceCookie(viewerId);
+  const current = document.cookie
+    .split("; ")
+    .find((part) => part.startsWith(`${name}=`))
+    ?.slice(name.length + 1);
+  const previous = current ? decodeURIComponent(current) : "";
+  if (previous >= at) return;
+  document.cookie = `${name}=${encodeURIComponent(at)}; path=/; max-age=${DEVICE_MAX_AGE}; samesite=lax`;
+}
