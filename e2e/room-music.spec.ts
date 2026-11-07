@@ -112,3 +112,37 @@ test("ほかの画面は外の画面に埋め込む許可を出さない", async
     expect(response?.headers()["content-security-policy"] ?? "").not.toContain("teams.microsoft.com");
   }
 });
+
+test("裏へ回して止まった曲は、戻ると作り直さずに続きから流れる", async ({ page }) => {
+  await page.addInitScript(() => {
+    const seen = window as unknown as Counted & { audio?: AudioContext };
+    seen.loopsStarted = 0;
+    const Real = window.AudioContext;
+    window.AudioContext = class extends Real {
+      constructor() {
+        super();
+        seen.audio = this;
+      }
+    };
+    const start = AudioBufferSourceNode.prototype.start;
+    AudioBufferSourceNode.prototype.start = function (this: AudioBufferSourceNode, ...args: Parameters<typeof start>) {
+      if (this.loop) seen.loopsStarted += 1;
+      return start.apply(this, args);
+    };
+  });
+  await page.goto("/study/room");
+  await page.getByRole("heading", { name: "自習室" }).click();
+  await expect.poll(() => page.evaluate(() => (window as unknown as Counted).loopsStarted)).toBe(1);
+  // 裏へ回ったときのように音が止まる
+  await page.evaluate(() => (window as unknown as { audio: AudioContext }).audio.suspend());
+  await expect.poll(() => page.evaluate(() => (window as unknown as { audio: AudioContext }).audio.state)).toBe("suspended");
+  // 戻ってきた（触らなくても起こし直す）
+  await page.evaluate(() => {
+    document.dispatchEvent(new Event("visibilitychange"));
+    window.dispatchEvent(new Event("pageshow"));
+  });
+  await expect.poll(() => page.evaluate(() => (window as unknown as { audio: AudioContext }).audio.state)).toBe("running");
+  // 曲は作り直していない（続きから）
+  await page.waitForTimeout(500);
+  expect(await page.evaluate(() => (window as unknown as Counted).loopsStarted)).toBe(1);
+});
