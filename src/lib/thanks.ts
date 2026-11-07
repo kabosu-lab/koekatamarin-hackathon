@@ -7,19 +7,29 @@ import { readThanksKind, type ThanksKind } from "./thanks-kind";
 import { cleanTitle, offerTitle } from "./titles";
 
 /** kind は保存せず、言葉から毎回読み取る（ありがとう・がんばったね・おめでとう） */
-export type ThanksCard = { id: string; fromName: string; message: string; createdAt: string; kind: ThanksKind };
+export type ThanksCard = {
+  id: string;
+  fromId: string;
+  fromName: string;
+  fromLabel: string;
+  message: string;
+  createdAt: string;
+  kind: ThanksKind;
+};
 
 export function listThanks(db: DatabaseSync, personId: string): ThanksCard[] {
   const rows = db
     .prepare(
-      `SELECT t.id, p.name AS from_name, t.message, t.created_at FROM thanks t
+      `SELECT t.id, t.from_person_id, p.name AS from_name, p.label AS from_label, t.message, t.created_at FROM thanks t
        JOIN people p ON p.id = t.from_person_id
        WHERE t.to_person_id = ? ORDER BY t.created_at DESC, t.rowid DESC`,
     )
-    .all(personId) as { id: string; from_name: string; message: string; created_at: string }[];
+    .all(personId) as { id: string; from_person_id: string; from_name: string; from_label: string; message: string; created_at: string }[];
   return rows.map((row) => ({
     id: row.id,
+    fromId: row.from_person_id,
     fromName: row.from_name,
+    fromLabel: row.from_label,
     message: row.message,
     createdAt: row.created_at,
     kind: readThanksKind(row.message),

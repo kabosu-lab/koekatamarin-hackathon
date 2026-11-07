@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { switchPerson } from "./helpers";
+import { openEnvelopes } from "./thanks-book";
 
 // 0-2j：サンクスカードの送り先は、一覧（ドロップダウン）から選ばせない
 
@@ -81,6 +82,8 @@ test("受信箱の届いた返事の「ありがとう」から、その人宛�
   await page.goto("/");
   await switchPerson(page, "野田 翔（情報・ものづくり部顧問）");
   await page.goto("/me?open=thanks");
+  // 0-3c：まだ開けていないカードは封筒。開けてからカード帳で見る
+  await openEnvelopes(page);
   await expect(page.getByRole("region", { name: "もらったありがとう" })).toContainText(words);
 });
 
@@ -107,7 +110,8 @@ test("みんなの頑張りの投稿には「おめでとう」があり、届�
   const option = await page.getByLabel("試す人を切り替える").locator("option", { hasText: `${to}（` }).first().innerText();
   await switchPerson(page, option.trim());
   await page.goto("/me?open=thanks");
-  const card = page.getByRole("region", { name: "もらったありがとう" }).locator(".thanks-card").filter({ hasText: words });
+  await openEnvelopes(page);
+  const card = page.getByRole("region", { name: "もらったありがとう" }).locator(".card-book-card").filter({ hasText: words });
   await expect(card).toHaveAttribute("data-kind", "congrats");
 });
 

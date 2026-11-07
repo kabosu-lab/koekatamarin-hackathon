@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { openScreen, switchPerson } from "./helpers";
+import { openEnvelopes } from "./thanks-book";
 
 test("下の階層の画面でも、左上の戻る印で、どこから来たかが分かる（下のタブはもうない）", async ({ page }) => {
   for (const path of ["/today", "/daily", "/inbox"]) {
@@ -39,6 +40,8 @@ test("サンクスカードが相手に届き、他の人には見えない", as
   await page.goto("/");
   await switchPerson(page, "野田 翔（情報・ものづくり部顧問）");
   await page.goto("/me?open=thanks");
+  // 0-3c：まだ開けていないカードは封筒。開けてからカード帳で見る
+  await openEnvelopes(page);
   await expect(page.getByRole("region", { name: "もらったありがとう" })).toContainText(words);
 
   await page.goto("/");

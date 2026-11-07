@@ -365,3 +365,13 @@
     display: none;
   }
 }
+
+/* 0-3c：カード帳のカードを読み返すとき。封筒は出さず、裏から表へくるっと返すだけ */
+.thanks-reveal[data-mode="view"] .thanks-reveal-envelope {
+  display: none;
+}
+
+.thanks-reveal[data-mode="view"][data-phase="open"] .thanks-reveal-card {
+  opacity: 1;
+  transform: none;
+}

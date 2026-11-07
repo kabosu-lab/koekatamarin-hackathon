@@ -4,7 +4,7 @@ import { type CSSProperties, type KeyboardEvent, useEffect, useRef, useState } f
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { audioOutput } from "@/app/sound";
-import { markThanksSeenOnDevice, THANKS_KINDS, THANKS_REVEAL_EVENT, type ThanksKind } from "@/lib/thanks-kind";
+import { markThanksSeenOnDevice, THANKS_KINDS, THANKS_REVEAL_EVENT, THANKS_VIEW_EVENT, type ThanksKind } from "@/lib/thanks-kind";
 import { Icon } from "../Icon";
 import { ThanksEntry } from "./ThanksCard";
 import "./thanks-reveal.css";
@@ -24,6 +24,8 @@ const FLY_MS = 520;
 const OPEN_MS = 380;
 const STASH_MS = 420;
 const PETALS = 14;
+/** カード帳のカードを返すまでの一拍 */
+const VIEW_FLIP_DELAY_MS = 40;
 const FOCUSABLE = "button:not([disabled]), [href], input, textarea, [tabindex]:not([tabindex='-1'])";
 
 type Phase = "fly" | "open" | "card" | "stash";
@@ -62,6 +64,8 @@ export function ThanksReveal({ viewerId, cards }: { viewerId: string; cards: Rev
   const [queue, setQueue] = useState<RevealCard[]>([]);
   const [index, setIndex] = useState(0);
   const [phase, setPhase] = useState<Phase>("fly");
+  // reveal：封筒から開ける（届いたばかり）。view：カード帳のカードを、くるっと表に返して読む（0-3c）
+  const [mode, setMode] = useState<"reveal" | "view">("reveal");
   const [mounted, setMounted] = useState(false);
   const timers = useRef<number[]>([]);
   const cardsRef = useRef(cards);
@@ -86,6 +90,17 @@ export function ThanksReveal({ viewerId, cards }: { viewerId: string; cards: Rev
     timers.current.push(window.setTimeout(run, ms));
   }
 
+  /** カード帳のカード：封筒は出さず、裏から表へ返すだけ。音と花びらは付けない */
+  function playView() {
+    clearTimers();
+    if (reducedMotion()) {
+      setPhase("card");
+      return;
+    }
+    setPhase("open");
+    later(VIEW_FLIP_DELAY_MS, () => setPhase("card"));
+  }
+
   function play() {
     clearTimers();
     if (reducedMotion()) {
@@ -103,23 +118,39 @@ export function ThanksReveal({ viewerId, cards }: { viewerId: string; cards: Rev
   }
 
   useEffect(() => {
-    function onOpen() {
-      // 開いている間にもう一度押されても、やり直さない
-      if (openRef.current || cardsRef.current.length === 0) return;
-      openRef.current = true;
+    function rememberReturn() {
       // 閉じたら戻す先。吹き出し（焦点の当たらない所）を押して開いたときは、パートナーのボタンへ
       const active = document.activeElement;
       returnTo.current =
         active instanceof HTMLElement && active !== document.body
           ? active
           : document.querySelector<HTMLElement>(".lcd-companion button");
+    }
+    function onOpen() {
+      // 開いている間にもう一度押されても、やり直さない
+      if (openRef.current || cardsRef.current.length === 0) return;
+      openRef.current = true;
+      rememberReturn();
+      setMode("reveal");
       setQueue(cardsRef.current);
       setIndex(0);
       play();
     }
+    function onView(event: Event) {
+      const detail = (event as CustomEvent<RevealCard>).detail;
+      if (openRef.current || !detail) return;
+      openRef.current = true;
+      rememberReturn();
+      setMode("view");
+      setQueue([detail]);
+      setIndex(0);
+      playView();
+    }
     window.addEventListener(THANKS_REVEAL_EVENT, onOpen);
+    window.addEventListener(THANKS_VIEW_EVENT, onView);
     return () => {
       window.removeEventListener(THANKS_REVEAL_EVENT, onOpen);
+      window.removeEventListener(THANKS_VIEW_EVENT, onView);
       clearTimers();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -146,6 +177,8 @@ export function ThanksReveal({ viewerId, cards }: { viewerId: string; cards: Rev
     openRef.current = false;
     setQueue([]);
     setIndex(0);
+    // カード帳で読み返しただけのときは、印も読み直しもいらない（元の位置へ戻るだけ）
+    if (mode === "view") return;
     // この端末では、ここまで開けた（司令塔の決定：開けたかは端末ごと）
     markThanksSeenOnDevice(viewerId, last.createdAt);
     // 数とバッジのために、人物ごとの開封の印も付ける
@@ -170,8 +203,8 @@ export function ThanksReveal({ viewerId, cards }: { viewerId: string; cards: Rev
         finish(card);
       }
     };
-    // 動きを減らす設定や、開いている途中で閉じたときは、すぐに
-    if (reducedMotion() || phase !== "card") {
+    // 動きを減らす設定や、開いている途中で閉じたとき、カード帳で読み返したときは、すぐに
+    if (reducedMotion() || phase !== "card" || mode === "view") {
       done();
       return;
     }
@@ -211,9 +244,9 @@ export function ThanksReveal({ viewerId, cards }: { viewerId: string; cards: Rev
   const { label, icon } = THANKS_KINDS[card.kind];
 
   return createPortal(
-    <div ref={rootRef} className="thanks-reveal" data-phase={phase} data-kind={card.kind} data-noswipe onKeyDown={onKeyDown}>
+    <div ref={rootRef} className="thanks-reveal" data-phase={phase} data-mode={mode} data-kind={card.kind} data-noswipe onKeyDown={onKeyDown}>
       <div className="thanks-reveal-scrim" aria-hidden="true" onClick={() => phase === "card" && stash()} />
-      <div ref={stageRef} className="thanks-reveal-stage" role="dialog" aria-modal="true" aria-label="届いたサンクスカード" tabIndex={-1}>
+      <div ref={stageRef} className="thanks-reveal-stage" role="dialog" aria-modal="true" aria-label={mode === "view" ? "サンクスカード" : "届いたサンクスカード"} tabIndex={-1}>
         {queue.length > 1 && (
           <p className="thanks-reveal-count">
             {index + 1} 枚目（全 {queue.length} 枚）
@@ -239,14 +272,22 @@ export function ThanksReveal({ viewerId, cards }: { viewerId: string; cards: Rev
         </div>
         {phase === "card" && (
           <div className="thanks-reveal-actions">
-            <ThanksEntry reply person={{ id: card.fromId, name: card.fromName, label: card.fromLabel }} />
+            {mode === "view" ? (
+              // 0-3d：返すのは話す画面から（相手を入れた下書き）。受ける側は 0-3d の担当
+              <a className="thanks-entry thanks-reply-link" href={`/?thanks=${encodeURIComponent(card.fromId)}`} aria-label={`${card.fromName}さんにありがとうを返す`}>
+                <Icon name="heart" />
+                <span>ありがとうを返す</span>
+              </a>
+            ) : (
+              <ThanksEntry reply person={{ id: card.fromId, name: card.fromName, label: card.fromLabel }} />
+            )}
             <button type="button" className="secondary" onClick={stash}>
-              {index + 1 < queue.length ? "しまって次へ" : "カード帳にしまう"}
+              {mode === "view" ? "閉じる" : index + 1 < queue.length ? "しまって次へ" : "カード帳にしまう"}
             </button>
           </div>
         )}
       </div>
-      {(phase === "card" || phase === "open") && (
+      {mode === "reveal" && (phase === "card" || phase === "open") && (
         <div className="thanks-reveal-petals" aria-hidden="true">
           {Array.from({ length: PETALS }, (_, i) => (
             <i key={i} style={{ "--x": `${(i * 37) % 100}%`, "--d": `${(i % 5) * 0.12}s`, "--r": `${(i * 53) % 360}deg` } as CSSProperties} />

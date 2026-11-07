@@ -1,6 +1,7 @@
 import { expect, type Page, test } from "@playwright/test";
 import { switchPerson } from "./helpers";
 import { PROMISE_SEEN } from "./promise-seen";
+import { openEnvelopes } from "./thanks-book";
 
 // SPEC の「デモ（3分）」を最初から最後まで動かす。写真は Git に入らない test-results/ に残す。
 const TEACHER = "佐伯 みどり（国語・2年担任）";
@@ -106,6 +107,8 @@ test("先生の一日：話しかける、返す、パス、サンクス、日�
   await expect(page.getByRole("region", { name: "これまで" })).toContainText(/解決 [1-9]/);
   await expect(page.getByRole("region", { name: "これまで" })).toContainText(/つないだ [1-9]/);
   await page.goto("/me?open=thanks");
+  // 0-3c：まだ開けていないカードは封筒。開けてからカード帳で見る
+  await openEnvelopes(page);
   await expect(page.getByRole("region", { name: "もらったありがとう" })).toContainText("つないでくれて");
   await shot(page, "06-パートナーとありがとう");
 

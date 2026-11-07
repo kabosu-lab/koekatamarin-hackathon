@@ -8,9 +8,10 @@ import { getDatabase } from "@/lib/db";
 import { getDraft } from "@/lib/profile";
 import { listThanks } from "@/lib/thanks";
 import { listRecentPartners } from "@/lib/thanks-people";
-import { ensureWelcomeThanks } from "@/lib/thanks-reveal";
+import { thanksDeviceCookie } from "@/lib/thanks-kind";
+import { ensureWelcomeThanks, listRevealThanks } from "@/lib/thanks-reveal";
+import { CardBook } from "../thanks/CardBook";
 import { ThanksSeenOnDevice } from "../thanks/ThanksSeenOnDevice";
-import { ThanksKindMark } from "../thanks/ThanksCard";
 import { listTitles, wornTitle } from "@/lib/titles";
 import { PersonTitle } from "../PersonTitle";
 import { TitleCollection } from "./TitleCollection";
@@ -23,7 +24,7 @@ import { SoundTest } from "./SoundTest";
 import { HiddenPeople } from "./HiddenPeople";
 import { GoalsPanel } from "./GoalsPanel";
 import { getNudge, listGoals } from "@/lib/goals";
-import { listHiddenPeople } from "@/lib/hidden-people";
+import { listHiddenIds, listHiddenPeople } from "@/lib/hidden-people";
 import { getDestination } from "@/lib/destination/current";
 import { listMemories } from "@/lib/memory";
 import { getPhotoAvatarState, roomToken } from "@/lib/avatar-art";
@@ -79,9 +80,12 @@ export default async function MePage({ searchParams }: { searchParams: Promise<{
   const now = new Date();
   const openKey = resolveOpenKey(typeof requested === "string" ? requested : undefined);
   // 0-2v：開いたら消える。数え方はホーム・みんな・ホイールと同じ1か所（今日の3人の入口はここにないので数えない）
+  // 0-3c：この端末でまだ封筒から開けていないカード。人物ごとの開封の印を付ける前に数える
+  let envelopes: ReturnType<typeof listRevealThanks> = [];
   if (openKey === "thanks") {
     // 0-3a：今日の1枚（ダミーの同僚から）は、先にここで開いても同じカード帳に入る
     ensureWelcomeThanks(db, viewer.id, now);
+    envelopes = listRevealThanks(db, viewer.id, store.get(thanksDeviceCookie(viewer.id))?.value ?? null, now);
     markThanksOpened(db, viewer.id, now);
   }
   if (openKey === "partner") markCollectionOpened(db, viewer.id, now);
@@ -138,27 +142,18 @@ export default async function MePage({ searchParams }: { searchParams: Promise<{
       icon: "thanks",
       badge: badgeOf(fresh.thanks),
       content: () => {
-        const thanks = listThanks(db, viewer.id);
+        // 0-3c：カード帳。しばらく出さない人からのカードは、知らせと同じく並べない
+        const hiddenIds = listHiddenIds(db, viewer.id);
+        const thanks = listThanks(db, viewer.id).filter((card) => !hiddenIds.has(card.fromId));
         // 0-2j：一覧からは選ばせず、最近やりとりした人を数人だけ顔つきで出す
         const recent = listRecentPartners(db, viewer.id).map((p) => ({ ...p, image: getAvatar(db, p.id).image }));
         return (
           <>
             {/* 0-3a：このタイルで見たら、この端末では封筒の知らせを出さない */}
             <ThanksSeenOnDevice viewerId={viewer.id} at={now.toISOString()} />
+            {/* 送る欄は 0-3d（話す画面から送る）でまとめて外す。いまはそのまま */}
             <ThanksForm key={`${viewer.id}-thanks`} recent={recent} />
-            <section className="card" aria-label="もらったありがとう">
-              <h2>もらったありがとう</h2>
-              {thanks.length === 0 ? (
-                <p className="muted">これから届きます。</p>
-              ) : (
-                thanks.map((card) => (
-                  <p className="thanks-card" key={card.id} data-kind={card.kind}>
-                    <ThanksKindMark kind={card.kind} />
-                    <strong>{card.fromName}さん</strong>：{card.message}
-                  </p>
-                ))
-              )}
-            </section>
+            <CardBook key={`${viewer.id}-book`} viewerId={viewer.id} cards={thanks} envelopes={envelopes} />
           </>
         );
       },
