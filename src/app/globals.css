@@ -3287,3 +3287,9 @@ html[data-avatar="hide"] .burst-speaker {
     align-items: stretch;
   }
 }
+
+/* 0-3b：投稿の件名。本文の上に太字の1行 */
+.post-subject {
+  margin: 0 0 0.2rem;
+  overflow-wrap: anywhere;
+}

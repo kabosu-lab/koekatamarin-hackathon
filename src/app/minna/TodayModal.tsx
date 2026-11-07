@@ -14,6 +14,7 @@ function CardThanks({ card }: { card: { authorId: string; authorName: string; au
 }
 import { ReplyField } from "./ReplyField";
 import { TODAY_SEEN_COOKIE } from "./today-seen";
+import { PostSubject } from "@/app/PostSubject";
 
 
 /** 設計書 §1：移動は 160〜260ms、消えるときは ease-in で素早く */
@@ -34,6 +35,7 @@ export type TodayModalCard = {
   authorLabel: string;
   authorImage: string;
   channelName: string;
+  subject: string | null;
   body: string;
   likeCount: number;
   liked: boolean;
@@ -312,6 +314,7 @@ export function TodayModal({ cards }: { cards: TodayModalCard[] }) {
                   </span>
                 </header>
                 {card.reason && <p className="minna-today-reason">おすすめ：{card.reason}</p>}
+                <PostSubject subject={card.subject} className="minna-today-subject" />
                 <p className="minna-today-body">{card.body}</p>
                 <ReplyField
                   postId={card.postId}

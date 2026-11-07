@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import type { InboxItem, PassCandidate } from "@/lib/inbox";
 import { VoiceReply, type VoiceReplyRestore } from "../VoiceReply";
+import { PostSubject } from "@/app/PostSubject";
 
 async function postJson(url: string, body: unknown) {
   const response = await fetch(url, {
@@ -79,6 +80,7 @@ export function InboxCard({ item, candidates }: { item: InboxItem; candidates: P
       <p className="from">
         <strong>{item.authorName}</strong>（{item.authorLabel}）・{item.channelName}
       </p>
+      <PostSubject subject={item.subject} />
       <p>{item.body}</p>
 
       <VoiceReply

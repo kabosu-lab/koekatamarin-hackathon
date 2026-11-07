@@ -20,6 +20,8 @@ export type TodayCard = {
   channelName: string;
   authorName: string;
   authorLabel: string;
+  /** 0-3b：件名。あるときだけ */
+  subject: string | null;
   body: string;
   likeCount: number;
   replyCount: number;
@@ -57,6 +59,7 @@ function toCard(post: ReturnType<typeof visiblePosts>[number]): TodayCard {
     channelName: post.channelName,
     authorName: post.authorName,
     authorLabel: post.authorLabel,
+    subject: post.subject,
     body: post.body,
     likeCount: post.likeCount,
     replyCount: post.replies.length,

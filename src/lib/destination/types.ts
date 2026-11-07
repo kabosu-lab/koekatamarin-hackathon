@@ -31,6 +31,8 @@ export type PostView = {
   authorName: string;
   authorLabel: string;
   kind: PostKind;
+  /** 0-3b：件名（頭に種類の札）。古い投稿にはない */
+  subject: string | null;
   body: string;
   createdAt: string;
   scope: PostScope;
@@ -61,6 +63,8 @@ export type PostView = {
 
 export type CreatePostOptions = {
   kind?: PostKind;
+  /** 0-3b：件名。Teams へは chatMessage の subject で送る */
+  subject?: string;
   researchedWithAi?: boolean;
   askedPersonId?: string;
   scope?: PostScope;

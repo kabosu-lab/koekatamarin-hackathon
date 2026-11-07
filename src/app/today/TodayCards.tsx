@@ -9,6 +9,7 @@ import { PersonTitle } from "../PersonTitle";
 import { ThanksEntry } from "../thanks/ThanksCard";
 import { thanksEntryLabel } from "@/lib/thanks-kind";
 import { CardReply } from "./CardReply";
+import { PostSubject } from "@/app/PostSubject";
 
 const BATCH = 3;
 
@@ -141,6 +142,7 @@ export function TodayCards({ cards: allCards }: { cards: (TodayCard & { authorIm
           <strong>{card.authorName}</strong> <PersonTitle title={card.authorTitle} />（{card.authorLabel}）
         </p>
         {card.relatedReason && <p className="count related-line">おすすめ：{card.relatedReason}</p>}
+        <PostSubject subject={card.subject} />
         <p className="words">{card.body}</p>
         {card.researchedWithAi && <p className="count">AI と調べました</p>}
         {hints[card.postId] && <p className="hint-line">{hints[card.postId]}</p>}

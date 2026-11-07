@@ -467,7 +467,7 @@ export function Talk({
     setSentTo(null);
     setComposeKey((key) => key + 1);
     setComposing({
-      draft: { ready: false, text: "", channelId: "", kind: "report", researchedWithAi: false },
+      draft: { ready: false, subject: "", text: "", channelId: "", kind: "report", researchedWithAi: false },
       review: null,
       writing: true,
       channels: [],
@@ -504,6 +504,8 @@ export function Talk({
           update((current) => ({ ...current, channels: event.channels, people: event.people, attachment: event.attachment ?? current.attachment }));
         } else if (event.type === "channel") {
           update((current) => ({ ...current, draft: { ...current.draft, channelId: event.channelId } }));
+        } else if (event.type === "subject") {
+          update((current) => ({ ...current, draft: { ...current.draft, subject: event.subject } }));
         } else if (event.type === "delta") {
           update((current) => ({ ...current, draft: { ...current.draft, text: current.draft.text + event.text } }));
         } else if (event.type === "draft") {

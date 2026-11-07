@@ -30,6 +30,7 @@ import { TODAY_SEEN_COOKIE } from "./today-seen";
 import { ThanksEntry } from "../thanks/ThanksCard";
 import { thanksEntryLabel } from "@/lib/thanks-kind";
 import type { PostView } from "@/lib/destination/types";
+import { PostSubject } from "@/app/PostSubject";
 import "./minna.css";
 
 export const metadata: Metadata = { title: "みんな｜こえかた" };
@@ -84,6 +85,7 @@ export default async function MinnaPage({ searchParams }: { searchParams: Promis
     authorLabel: card.authorLabel,
     authorImage: getAvatar(db, card.authorId).image,
     channelName: card.channelName,
+    subject: card.subject,
     body: card.body,
     likeCount: card.likeCount,
     liked: card.likedByViewer,
@@ -187,6 +189,7 @@ export default async function MinnaPage({ searchParams }: { searchParams: Promis
                         {channel.name}・{shortAgo(activeAt, now)}
                       </small>
                     </header>
+                    <PostSubject subject={post.subject} className="minna-post-subject" />
                     {/* 本文は途中で切らず、全部出す */}
                     <p className="minna-post-body">{post.body}</p>
                     {post.attachment && <p className="minna-post-note">写真や資料が付いています</p>}

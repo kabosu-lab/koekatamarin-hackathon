@@ -21,6 +21,7 @@ import {
   type PostDestination,
 } from "./destination/types";
 import type { PostKind } from "./seed-data";
+import { normalizeSubject } from "./subject";
 import { noteAlternatives, noteDraftNotReady, notePublished, noteUndone } from "./trophy-log";
 
 type Failure = { status: 400 | 422 | 503; body: { error: string; review?: Review } };
@@ -111,6 +112,8 @@ function planDraft(destination: PostDestination, viewerId: string, input: unknow
 export type DraftStreamEvent =
   | { type: "start"; channels: ChannelView[]; people: PersonView[]; attachment?: AttachmentView & { notices: AttachmentNotice[] } }
   | { type: "channel"; channelId: string }
+  /** 0-3b：本文より先に決まった件名 */
+  | { type: "subject"; subject: string }
   | { type: "delta"; text: string }
   | { type: "draft"; draft: Draft; notices?: AttachmentNotice[] }
   /** failed：本文はできたが、受け取られ方を確かめられなかった（下書きは残し、画面で確かめ直す） */
@@ -155,6 +158,7 @@ export function prepareDraftStream(
           notices = result.notices;
           if (draft.ready && !signal?.aborted) {
             send({ type: "channel", channelId: draft.channelId });
+            if (draft.subject) send({ type: "subject", subject: draft.subject });
             await dripText(draft.text, (text) => send({ type: "delta", text }), undefined, undefined, signal);
           }
         } else {
@@ -162,7 +166,11 @@ export function prepareDraftStream(
             claude,
             history,
             channels,
-            { text: (text) => send({ type: "delta", text }), channel: (channelId) => send({ type: "channel", channelId }) },
+            {
+              text: (text) => send({ type: "delta", text }),
+              channel: (channelId) => send({ type: "channel", channelId }),
+              subject: (subject) => send({ type: "subject", subject }),
+            },
             askedName,
             signal,
           );
@@ -267,7 +275,7 @@ export async function handlePublish(
   input: unknown,
   db?: DatabaseSync,
 ): Promise<PublishOutcome> {
-  const { announcement, goalId, text, channelId, kind, researchedWithAi, askedPersonId, scope, scopePersonId, attachmentId } = fields(input);
+  const { announcement, goalId, subject, text, channelId, kind, researchedWithAi, askedPersonId, scope, scopePersonId, attachmentId } = fields(input);
   if (attachmentId !== undefined && (typeof attachmentId !== "string" || !db || !loadPending(db, viewerId, attachmentId))) {
     return { status: 400, body: { error: "添付が見つかりません。もう一度付けてください" } };
   }
@@ -281,6 +289,10 @@ export async function handlePublish(
   }
   if (!validText(text)) return { status: 400, body: { error: "本文が空か、長すぎます" } };
   if (typeof channelId !== "string") return { status: 400, body: { error: "チャネルが正しくありません" } };
+  if (subject !== undefined && typeof subject !== "string") return { status: 400, body: { error: "件名が正しくありません" } };
+  const knownKind = KINDS.find((k) => k === kind);
+  // 0-3b：件名は札を整え、札から種類を決める（本人が札を回したら、その種類で残す）
+  const titled = typeof subject === "string" ? normalizeSubject(subject, knownKind ?? "report") : null;
 
   // 確かめられないときは送らない
   let review: Review;
@@ -296,7 +308,8 @@ export async function handlePublish(
 
   try {
     const postId = destination.createPost(viewerId, channelId, text, {
-      kind: KINDS.find((k) => k === kind),
+      kind: titled?.subject ? titled.kind : knownKind,
+      subject: titled?.subject || undefined,
       researchedWithAi: researchedWithAi === true,
       announcement: announcement === true,
       askedPersonId,

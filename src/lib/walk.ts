@@ -3,6 +3,7 @@ import { ComposeError, reviewPost, type Draft, type DraftChannel, type Review } 
 import type { ClaudeClient } from "./claude/types";
 import type { PostDestination } from "./destination/types";
 import { assessSafety, assessWithoutClaude, createSafetyNotice, type SafetyNoticeBody } from "./safety";
+import { subjectFromText } from "./subject";
 import { noteWalkFinished } from "./trophy-log";
 
 const MAX_TOKENS = 4000;
@@ -80,6 +81,8 @@ export async function summarizeWalk(claude: ClaudeClient, spoken: string, channe
     if (!channel || !kind || typeof draft.text !== "string" || draft.text.trim() === "") continue;
     drafts.push({
       ready: true,
+      // 0-3b：歩きながらの下書きは件名を作らせていないので、種類の札と本文の頭から作る
+      subject: subjectFromText(draft.text, kind),
       text: draft.text.trim(),
       channelId: channel.id,
       kind,

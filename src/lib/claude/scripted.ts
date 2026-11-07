@@ -87,6 +87,26 @@ function scriptedWalk(content: string, jsonSchema: Record<string, unknown> | und
   };
 }
 
+/** 0-3b：台本の件名。話の中身から札を選び、最初の言葉を20字ほどにする（動画に映る） */
+function scriptedSubject(spoken: string[]): string {
+  const talk = spoken.join("\n");
+  const tag = /勉強会|ゼミ|お知らせ/.test(talk)
+    ? "お知らせ"
+    : /ありがとう/.test(talk)
+      ? "ありがとう"
+      : /うまくいった|静かになった|聞いてくれた|できた/.test(talk)
+        ? "うまくいった"
+        : /教えて|聞きたい|[?？]/.test(talk)
+          ? "聞きたい"
+          : /困|わからん|どうしよ/.test(talk)
+            ? "困りごと"
+            : /頑張/.test(talk)
+              ? "頑張り"
+              : "うまくいった";
+  const first = spoken[0].replace(/[。！!]+$/, "");
+  return `【${tag}】${first.length > 20 ? `${first.slice(0, 20)}…` : first}`;
+}
+
 function scriptedDraft(transcript: string, jsonSchema: Record<string, unknown> | undefined) {
   const spoken = [...transcript.matchAll(/^本人：(.*)$/gm)]
     .map((match) => match[1].trim())
@@ -95,6 +115,7 @@ function scriptedDraft(transcript: string, jsonSchema: Record<string, unknown> |
   const channels = properties.channelId?.enum ?? [];
   return {
     ready: spoken.length > 0,
+    subject: spoken.length > 0 ? scriptedSubject(spoken) : "",
     text: spoken.join("\n"),
     // 全校のお知らせの次にある、話題のチャネルを選ぶ
     channelId: channels[1] ?? channels[0] ?? "",
@@ -106,9 +127,10 @@ function scriptedDraft(transcript: string, jsonSchema: Record<string, unknown> |
 
 /** 台本の下書き。添付は読まず、気づきの例を1つ返す。 */
 function scriptedAttachmentDraft(transcript: string, jsonSchema: Record<string, unknown> | undefined) {
-  const { ready, text, channelId } = scriptedDraft(transcript, jsonSchema);
+  const { ready, text, channelId, subject } = scriptedDraft(transcript, jsonSchema);
   return {
     ready,
+    subject,
     text: ready ? `${text} 🎉` : "",
     channelId,
     kind: "effort",

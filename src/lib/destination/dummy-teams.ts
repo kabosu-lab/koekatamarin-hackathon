@@ -23,6 +23,7 @@ type PostRow = {
   author_name: string;
   author_label: string;
   kind: PostKind;
+  subject: string | null;
   body: string;
   created_at: string;
   researched_with_ai: number;
@@ -125,7 +126,7 @@ export function createDummyTeams(db: DatabaseSync): PostDestination {
       const posts = db
         .prepare(
           `SELECT p.id, p.channel_id, p.author_id, a.name AS author_name, a.label AS author_label,
-                  p.kind, p.body, p.created_at, p.researched_with_ai, p.scope, p.scope_person_id, p.needs_look, p.shared_to_staff, p.is_announcement,
+                  p.kind, p.subject, p.body, p.created_at, p.researched_with_ai, p.scope, p.scope_person_id, p.needs_look, p.shared_to_staff, p.is_announcement,
                   (SELECT q.name FROM people q WHERE q.id = p.asked_person_id) AS asked_person_name,
                   EXISTS (SELECT 1 FROM replies r WHERE r.post_id = p.id AND r.author_id = p.asked_person_id) AS answered,
                   (SELECT count(*) FROM post_likes l WHERE l.post_id = p.id) AS like_count,
@@ -164,6 +165,7 @@ export function createDummyTeams(db: DatabaseSync): PostDestination {
         authorName: p.author_name,
         authorLabel: p.author_label,
         kind: p.kind,
+        subject: p.subject,
         body: p.body,
         createdAt: p.created_at,
         researchedWithAi: p.researched_with_ai === 1,
@@ -193,7 +195,7 @@ export function createDummyTeams(db: DatabaseSync): PostDestination {
       viewerId,
       channelId,
       body,
-      { kind = "report", researchedWithAi = false, askedPersonId, scope = "everyone", scopePersonId, needsLook = false, announcement = false } = {},
+      { kind = "report", subject, researchedWithAi = false, askedPersonId, scope = "everyone", scopePersonId, needsLook = false, announcement = false } = {},
     ) {
       requireVisibleChannel(viewerId, channelId);
       if (askedPersonId !== undefined) {
@@ -211,8 +213,8 @@ export function createDummyTeams(db: DatabaseSync): PostDestination {
       }
       const id = randomUUID();
       db.prepare(
-        `INSERT INTO posts (id, channel_id, author_id, kind, body, created_at, researched_with_ai, asked_person_id, scope, scope_person_id, needs_look, is_announcement)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO posts (id, channel_id, author_id, kind, body, created_at, researched_with_ai, asked_person_id, scope, scope_person_id, needs_look, is_announcement, subject)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       ).run(
         id,
         channelId,
@@ -227,6 +229,7 @@ export function createDummyTeams(db: DatabaseSync): PostDestination {
         // 範囲を絞った投稿は相手を本人が選んでいるので、他の教職員へ広げるきっかけにしない
         needsLook && scope === "everyone" ? 1 : 0,
         announcement ? 1 : 0,
+        subject?.trim() ? subject.trim() : null,
       );
       return id;
     },
