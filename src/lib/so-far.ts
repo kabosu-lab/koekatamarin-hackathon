@@ -126,9 +126,12 @@ export function getSoFar(db: DatabaseSync, personId: string, now: Date): SoFarSt
     all<{ id: string }>("SELECT hidden_person_id AS id FROM hidden_people WHERE person_id = ?", personId).map((r) => r.id),
   );
   // 0-3h：つながり（ワードクラウド）。人ごとに、やり取りの種類と回数を数える。
-  // 職員室（先生だけのチャネル）と、自分だけ・管理職だけの投稿の上のやり取りは数えない。
-  // 生徒の画面では、回しただけ（相手が何もしていない）の先生は出さない
-  const open = `coalesce((SELECT audience FROM channels c WHERE c.id = p.channel_id), 'everyone') != 'staff' AND p.scope IN ('everyone', 'person')`;
+  // 生徒の画面では、職員室（先生だけのチャネル）と、自分だけ・管理職だけの投稿の上のやり取りは数えず、
+  // 回しただけ（相手が何もしていない）の先生も出さない。先生の画面は本人のやり取りを見るだけなので、全部数える
+  const open =
+    role === "student"
+      ? `coalesce((SELECT audience FROM channels c WHERE c.id = p.channel_id), 'everyone') != 'staff' AND p.scope IN ('everyone', 'person')`
+      : "1 = 1";
   const tally = (sql: string) => all<{ id: string; n: number }>(sql, personId);
   const kinds: [ConnectionKind, { id: string; n: number }[]][] = [
     ["thanksGot", tally("SELECT from_person_id AS id, count(*) AS n FROM thanks WHERE to_person_id = ?1 GROUP BY from_person_id")],

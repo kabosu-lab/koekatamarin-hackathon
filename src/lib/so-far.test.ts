@@ -124,12 +124,24 @@ describe("つながりのワードクラウド（0-3h）", () => {
     expect(story.people.indexOf(a)).toBeLessThan(story.people.indexOf(b));
   });
 
-  it("職員室のやり取りは数えない", () => {
+  it("職員室や自分だけ・管理職だけの投稿の上のやり取りは、生徒では数えず、先生では数える", () => {
     addPerson("cloud-me", "teacher");
     addPerson("cloud-staff", "teacher");
+    addPerson("cloud-pupil", "student");
     post("cp2", "cloud-me", channel("staff"));
     reply("cr4", "cp2", "cloud-staff");
-    expect(getSoFar(db, "cloud-me", NOW).people.map((p) => p.id)).not.toContain("cloud-staff");
+    expect(getSoFar(db, "cloud-me", NOW).people.map((p) => p.id)).toContain("cloud-staff");
+    // 生徒：先生だけのチャネルと、管理職だけの投稿の上のやり取りは数えない
+    post("cp4", "cloud-staff", channel("staff"));
+    reply("cr6", "cp4", "cloud-pupil");
+    post("cp5", "cloud-pupil", channel("everyone"));
+    db.prepare("UPDATE posts SET scope = 'managers' WHERE id = 'cp5'").run();
+    reply("cr7", "cp5", "cloud-me");
+    const ids = getSoFar(db, "cloud-pupil", NOW).people.map((p) => p.id);
+    expect(ids).not.toContain("cloud-staff");
+    expect(ids).not.toContain("cloud-me");
+    // 先生の画面では、管理職だけの投稿の上のやり取りも数える
+    expect(getSoFar(db, "cloud-me", NOW).people.map((p) => p.id)).toContain("cloud-pupil");
   });
 
   it("生徒の画面には、回しただけの先生は出さず、やり取りのあった先生だけを出す", () => {
