@@ -62,7 +62,8 @@ test("返事が届くと、パートナーの最初の一言で知らせ、押�
   await page.goto("/");
   const bubble = page.locator(".partner-bubble");
   // 先生には、です・ます
-  await expect(bubble).toHaveText("返事が1件届いています。みんなのほうにあります", { timeout: 15_000 });
+  // 並んで動くデモのテストが、同じ先生の別の投稿に返すことがある。件数は次のテストで確かめる
+  await expect(bubble).toHaveText(/^返事が[12]件届いています。みんなのほうにあります$/, { timeout: 15_000 });
   await expect(page.locator(".reply-toast")).toHaveCount(0);
   await expect(page.getByRole("status", { name: "届いた返事" })).toHaveCount(0);
   // 下の「みんな ›」の横に点。マイクは隠さない
@@ -84,13 +85,16 @@ test("返事が届くと、パートナーの最初の一言で知らせ、押�
 
 test("同じ数を、ホーム・みんなの下の帯・ホイールのチップで出し、ありがとうは履歴と設定のタイルで出す", async ({ browser }) => {
   const page = await replied(browser, "fujimoto", ["saeki", "noda"], `実験の記録 ${test.info().testId}`);
+  await page.goto("/");
+  await expect(page.locator(".partner-bubble")).toHaveText("返事が2件届いています。みんなのほうにあります", { timeout: 15_000 });
+
   const thanker = await open(browser, "nakamura");
   const thanked = await thanker.request.post("/api/thanks", { data: { toPersonId: "fujimoto", message: "記録、助かりました" } });
   expect(thanked.ok()).toBe(true);
   await thanker.context().close();
-
+  // 0-3a：ありがとうは、返事より先に封筒で知らせる
   await page.goto("/");
-  await expect(page.locator(".partner-bubble")).toHaveText("返事が2件届いています。みんなのほうにあります", { timeout: 15_000 });
+  await expect(page.locator(".partner-bubble")).toHaveText("ありがとうが届いています", { timeout: 15_000 });
   await expect(page.locator('.swipe-mark a[href="/me"] .swipe-new')).toBeVisible();
   await expect(page.locator('.swipe-mark a[href="/minna"] .swipe-new')).toBeVisible();
 

@@ -40,7 +40,7 @@ test("最近やりとりした人がチップで出て、押すとその人宛�
     const response = await fetch("/api/thanks", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ toPersonId: "kawamura", message: "実験の準備、助かりました" }),
+      body: JSON.stringify({ toPersonId: "saeki", message: "作文の書き方、助かりました" }),
     });
     return response.ok;
   });
@@ -51,12 +51,12 @@ test("最近やりとりした人がチップで出て、押すとその人宛�
   const chips = form.getByRole("group", { name: "最近やりとりした人" });
   await expect(chips.getByRole("button")).not.toHaveCount(0);
   expect(await chips.getByRole("button").count()).toBeLessThanOrEqual(5);
-  await chips.getByRole("button", { name: "川村 陽菜さん" }).click();
+  await chips.getByRole("button", { name: "佐伯 みどりさん" }).click();
 
   await form.getByLabel("届けることば").fill(`発表、頑張ってたね ${test.info().testId}`);
   await expect(form.locator(".thanks-kind-line")).toContainText("がんばったね");
   await form.getByRole("button", { name: "サンクスカードを送る" }).click();
-  await expect(form).toContainText("川村 陽菜さんに、「がんばったね」が届きました");
+  await expect(form).toContainText("佐伯 みどりさんに、「がんばったね」が届きました");
 });
 
 test("受信箱の届いた返事の「ありがとう」から、その人宛てのカードが下から開いて送れる", async ({ page }) => {

@@ -104,6 +104,8 @@ describe("パートナーの最初の一言", () => {
     // 0-3a：ありがとうは、その場で封筒を開ける
     expect(newsLine({ ...empty, thanks: 1 }, "student")).toEqual({ text: "ありがとうが届いてるよ", href: "#thanks-reveal" });
     expect(newsLine({ ...empty, thanks: 2 }, "teacher")?.text).toBe("ありがとうが届いています");
+    // 受信箱より先（開け終えたら、次に受信箱の知らせ）
+    expect(newsLine({ ...empty, inbox: 2, asks: 2, thanks: 1 }, "teacher")?.href).toBe("#thanks-reveal");
     expect(newsLine({ ...empty, collection: 1 }, "student")?.href).toBe("/me?open=partner");
   });
 

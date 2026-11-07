@@ -8,6 +8,7 @@ import { getDatabase } from "@/lib/db";
 import { getDraft } from "@/lib/profile";
 import { listThanks } from "@/lib/thanks";
 import { listRecentPartners } from "@/lib/thanks-people";
+import { ensureWelcomeThanks } from "@/lib/thanks-reveal";
 import { ThanksKindMark } from "../thanks/ThanksCard";
 import { listTitles, wornTitle } from "@/lib/titles";
 import { PersonTitle } from "../PersonTitle";
@@ -77,7 +78,11 @@ export default async function MePage({ searchParams }: { searchParams: Promise<{
   const now = new Date();
   const openKey = resolveOpenKey(typeof requested === "string" ? requested : undefined);
   // 0-2v：開いたら消える。数え方はホーム・みんな・ホイールと同じ1か所（今日の3人の入口はここにないので数えない）
-  if (openKey === "thanks") markThanksOpened(db, viewer.id, now);
+  if (openKey === "thanks") {
+    // 0-3a：今日の1枚（ダミーの同僚から）は、先にここで開いても同じカード帳に入る
+    ensureWelcomeThanks(db, viewer.id, now);
+    markThanksOpened(db, viewer.id, now);
+  }
   if (openKey === "partner") markCollectionOpened(db, viewer.id, now);
   const fresh = countNew(db, getDestination(db), viewer.id, now, { rewards, todaySeen: true });
   const badgeOf = (n: number) => (n > 0 ? String(n) : undefined);
