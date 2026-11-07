@@ -1946,7 +1946,8 @@ html[data-theme="retro"] .talk .device-mic {
   position: absolute;
   left: 16px;
   right: 16px;
-  top: calc(var(--chip-width, 112px) * 0.84 + 14px);
+  /* チップの高さの 0.6 倍（真ん中は 1.16 倍に広がるので、その下の端より少し下）＋14px */
+  top: calc(var(--chip-height, calc(var(--chip-width, 112px) * 1.4)) * 0.6 + 14px);
   z-index: 1;
   margin: 0;
   color: #fff;
@@ -2139,12 +2140,20 @@ html[data-pane] :is(.feedback-fab, .feedback-thanks) {
 /* 名前は1行。チップの幅と字数から字の大きさを決める（長い名前だけ縮む） */
 .wheel-carousel .chip {
   container-type: inline-size;
+  /* 高さは窓に合わせて WheelCarousel が決める（低い窓では横長にして、名前の字を小さくしない） */
+  aspect-ratio: auto;
+  height: var(--chip-height, calc(var(--chip-width, 112px) * 1.4));
 }
 
+.wheel-carousel .wheel-carousel-slot {
+  margin-top: calc(var(--chip-height, calc(var(--chip-width, 112px) * 1.4)) / -2);
+}
+
+/* 名前の字は 14px より小さくしない（チップの幅は WheelCarousel が、名前が 14px で1行に収まる幅以上にする） */
 .wheel-carousel .chip-label {
   width: 100%;
   min-width: 0;
-  font-size: min(15px, calc(96cqi / var(--chip-label-chars, 6)));
+  font-size: max(14px, min(15px, calc(100cqi / var(--chip-label-chars, 6))));
 }
 
 /* 丸い絵は、上の段（60%）の中に収める */

@@ -1,14 +1,37 @@
 import { expect, type Page, test } from "@playwright/test";
 import { PROMISE_SEEN } from "./promise-seen";
 
-// iPad でチップが大きすぎ、説明の一文が窓の下で切れた。どの大きさの画面でも、チップは窓の高さの 40% まで、説明は窓の中に収まる
+// iPad でチップが大きすぎ、説明の一文が窓の下で切れた。どの大きさの画面でも、チップは窓の高さの 40% まで、説明は窓の中に収まる。
+// 窓が低い画面（iPad 横・パソコン）でも、チップの名前の字は 14px より小さくしない（チップを横長にする）
 
 const SIZES = [
   { name: "iPad 縦", viewport: { width: 820, height: 1180 }, isMobile: false },
   { name: "iPad 横", viewport: { width: 1180, height: 820 }, isMobile: false },
   { name: "iPhone", viewport: { width: 390, height: 844 }, isMobile: true },
   { name: "iPad mini", viewport: { width: 744, height: 1133 }, isMobile: false },
+  { name: "パソコン", viewport: { width: 1280, height: 800 }, isMobile: false },
 ];
+
+/** 真ん中と両わきのチップの名前の字の大きさ（px）と、1行に収まっているか */
+async function labelSizes(page: Page) {
+  return page.evaluate(() => {
+    const center = document.querySelector('.wheel-carousel-slot[data-center="true"]')!.getBoundingClientRect();
+    const middle = center.left + center.width / 2;
+    return [...document.querySelectorAll<HTMLElement>(".wheel-carousel-slot")]
+      .map((slot) => {
+        const box = slot.getBoundingClientRect();
+        const label = slot.querySelector<HTMLElement>(".chip-label")!;
+        return {
+          distance: Math.abs(box.left + box.width / 2 - middle),
+          text: label.textContent ?? "",
+          size: parseFloat(getComputedStyle(label).fontSize),
+          fits: label.scrollWidth <= label.clientWidth + 0.5,
+        };
+      })
+      .sort((a, b) => a.distance - b.distance)
+      .slice(0, 3);
+  });
+}
 
 /** ホイールのチップの数（Talk.tsx の WHEEL_CHIPS） */
 const CHIP_COUNT = 10;
@@ -67,6 +90,11 @@ for (const size of SIZES) {
             `${m.label}：説明 ${JSON.stringify(m.caption)} が窓 ${JSON.stringify(m.lcd)} の中`,
           )
           .toBe(true);
+        // 真ん中と両わきの名前の字は 14px 以上で、1行に収まる
+        for (const label of await labelSizes(page)) {
+          expect.soft(label.size, `${m.label} のとき「${label.text}」の字 ${label.size}px が 14px 以上`).toBeGreaterThanOrEqual(14);
+          expect.soft(label.fits, `${m.label} のとき「${label.text}」が1行に収まる`).toBe(true);
+        }
         for (const step of [8, 16, 24]) await page.mouse.move(at(deg + step).x, at(deg + step).y);
         deg += 24;
       }

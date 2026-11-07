@@ -47,8 +47,13 @@ const reducedMotion = () =>
 
 /** チップの基準の幅（chip.css の --chip-width の初めの値） */
 const BASE_CHIP = 112;
-/** これより小さくすると名前が読めない */
-const MIN_CHIP = 56;
+/**
+ * チップの幅の下限。名前（5字まで）が 14px で1行に収まる幅（字 14px×5＋縁と内側の余白 18px）。
+ * 窓が低いときは高さだけを縮め、横長のチップにする（名前の字を小さくしない）
+ */
+const MIN_CHIP = 90;
+/** チップの高さの下限（絵と名前と記号が入る高さ） */
+const MIN_CHIP_HEIGHT = 84;
 /** 真ん中のチップ（拡大した分も含む）の高さを、窓の高さのこの割合までにする */
 const CHIP_SHARE = 0.38;
 /** チップと説明を、窓の上下の端からこれだけ離す */
@@ -61,11 +66,14 @@ const EDGE = 8;
 function fitToWindow(root: HTMLElement | null, caption: HTMLElement | null): number {
   const height = root?.parentElement?.clientHeight ?? 0;
   if (!root || height <= 0) return 1;
-  const width = Math.max(MIN_CHIP, Math.min(BASE_CHIP, (height * CHIP_SHARE) / (1.4 * CENTER_SCALE)));
+  // 高さを窓に合わせ、幅は 5:7 のまま縮める。幅が下限に当たったら、高さだけを縮める（横長になる）
+  const chipHeight = Math.max(MIN_CHIP_HEIGHT, Math.min(BASE_CHIP * 1.4, (height * CHIP_SHARE) / CENTER_SCALE));
+  const width = Math.max(MIN_CHIP, Math.min(BASE_CHIP, chipHeight / 1.4));
   root.style.setProperty("--chip-width", `${width.toFixed(1)}px`);
-  // 真ん中からの上下（チップは 5:7、真ん中は CENTER_SCALE 倍。説明の上は retro.css の top と同じ式）
-  const top = -(width * 1.4 * CENTER_SCALE) / 2;
-  const bottom = width * 0.84 + 14 + (caption?.offsetHeight || 48);
+  root.style.setProperty("--chip-height", `${chipHeight.toFixed(1)}px`);
+  // 真ん中からの上下（真ん中は CENTER_SCALE 倍。説明の上は retro.css の top と同じ式）
+  const top = -(chipHeight * CENTER_SCALE) / 2;
+  const bottom = chipHeight * 0.6 + 14 + (caption?.offsetHeight || 48);
   let shift = -(top + bottom) / 2;
   shift = Math.max(shift, -height / 2 + EDGE - top);
   // 説明が窓の下で切れないことを、いちばん先に守る
