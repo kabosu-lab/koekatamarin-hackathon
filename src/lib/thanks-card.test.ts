@@ -9,7 +9,8 @@ import { openDatabase } from "./db";
 import { createDummyTeams } from "./destination/dummy-teams";
 import { resetTeamsBridge, sendPostToTeams } from "./destination/teams-bridge";
 import type { PostDestination } from "./destination/types";
-import { listInbox } from "./inbox";
+import { countContributions } from "./avatar";
+import { listInbox, listPassCandidates } from "./inbox";
 import { seedDatabase } from "./seed";
 import { listThanks } from "./thanks";
 import { detectThanksCard } from "./thanks-people";
@@ -40,6 +41,35 @@ describe("話した言葉からカードと見分ける", () => {
     expect(detectThanksCard(db, "aoki", "佐伯先生、県大会おめでとうございます")?.kind).toBe("congrats");
     expect(detectThanksCard(db, "aoki", "野田先生に相談したいことがある")).toBeNull();
     expect(detectThanksCard(db, "aoki", "みんなありがとう")).toBeNull();
+    // 「助かった」だけは相談にも出るので、カードにしない
+    expect(detectThanksCard(db, "aoki", "野田先生に聞けたら助かったのに")).toBeNull();
+  });
+
+  it("名だけで当たったときは、後ろに敬称か「に・へ」があるときだけ", () => {
+    expect(detectThanksCard(db, "aoki", "みどりの葉っぱがきれいで、ありがとうって思った")).toBeNull();
+    expect(detectThanksCard(db, "aoki", "みどりさん、ありがとう")?.to.id).toBe("saeki");
+    expect(detectThanksCard(db, "aoki", "みどり先生にありがとうって伝えたい")?.to.id).toBe("saeki");
+  });
+
+  it("何往復かしても、前の言葉にお礼と名前があればカードのまま", async () => {
+    const prepared = prepareDraftStream(
+      scripted,
+      teams,
+      "aoki",
+      {
+        history: [
+          { role: "user", content: "野田先生にありがとうって伝えたい" },
+          { role: "assistant", content: "いいね。どんなことで？" },
+          { role: "user", content: "3D プリンターのこと" },
+        ],
+      },
+      db,
+    );
+    if (prepared.status !== 200) throw new Error("止まった");
+    const events: DraftStreamEvent[] = [];
+    await prepared.run((event) => events.push(event));
+    const start = events.find((event) => event.type === "start");
+    expect(start?.type === "start" && start.asked?.id).toBe("noda");
   });
 
   it("台本でも、カードの下書きは宛名つきで、札がカードの札になり、ありがとうのチャネルへ", async () => {
@@ -68,7 +98,7 @@ describe("話した言葉からカードと見分ける", () => {
 });
 
 describe("カードを送る", () => {
-  it("相手の受信箱に入り、ありがとうの記録（封筒・カード帳の数）もできる", async () => {
+  it("お願いの仕組みには乗せず（受信箱・回す・ゴールに出ない）、ありがとうの記録（封筒・カード帳の数）ができる", async () => {
     const outcome = await handlePublish(
       scripted,
       teams,
@@ -77,8 +107,14 @@ describe("カードを送る", () => {
       db,
     );
     expect(outcome.status).toBe(200);
-    expect(listInbox(db, "noda").map((item) => item.subject)).toContain("【ありがとう】野田 翔さんへ");
+    expect(listInbox(db, "noda").map((item) => item.subject)).not.toContain("【ありがとう】野田 翔さんへ");
     expect(listThanks(db, "noda")[0]).toMatchObject({ fromName: "青木 ひより", message: "野田 翔さん、ありがとう！" });
+    if (outcome.status !== 200) throw new Error("送れなかった");
+    const { postId } = outcome.body;
+    expect(listPassCandidates(db, teams, postId, "noda")).toEqual([]);
+    const goals = countContributions(db, "noda").goals;
+    teams.createReply("noda", postId, "こちらこそ");
+    expect(countContributions(db, "noda").goals).toBe(goals);
   });
 
   it("送った直後に取り消すと、ありがとうの記録も消える", async () => {
@@ -94,6 +130,17 @@ describe("カードを送る", () => {
     if (outcome.status !== 200) throw new Error("送れなかった");
     expect(handleUndo(teams, "aoki", { postId: outcome.body.postId }, new Date(), db).status).toBe(200);
     expect(listThanks(db, "noda").length).toBe(before);
+  });
+
+  it("同じ言葉のカードを2枚送って片方を取り消しても、もう片方の記録は残る（post_id で消す）", async () => {
+    const send = () =>
+      handlePublish(scripted, teams, "aoki", { subject: "【ありがとう】野田 翔さんへ", text: "同じ言葉", channelId: "thanks", askedPersonId: "noda" }, db);
+    const first = await send();
+    const second = await send();
+    if (first.status !== 200 || second.status !== 200) throw new Error("送れなかった");
+    handleUndo(teams, "aoki", { postId: first.body.postId }, new Date(), db);
+    const rows = db.prepare("SELECT post_id FROM thanks WHERE message = '同じ言葉'").all() as { post_id: string }[];
+    expect(rows.map((row) => row.post_id)).toEqual([second.body.postId]);
   });
 
   it("札をふつうの種類に戻したら、ありがとうの記録は作らない", async () => {
@@ -138,6 +185,14 @@ describe("Teams の「ありがとう」チャネルへ（偽の fetch）", () =
     const body = sent[0].body as { subject: string; body: { content: string } };
     expect(body.subject).toBe("【ありがとう】野田 翔さんへ");
     expect(body.body.content.startsWith("野田 翔さん")).toBe(true);
+  });
+
+  it("本文の頭の「〇〇さん、」はメンションに替え、名前を二重にしない", async () => {
+    writeFileSync(join(dir, "teams.json"), JSON.stringify({ tenant: "example.test", clientId: "dummy", channels: { thanks: { team: "T", channel: "ありがとう" } } }));
+    const { sent, fetcher } = fake();
+    await sendPostToTeams(db, "aoki", "p1", "thanks", "野田 翔さん、ありがとう！", { subject: "【ありがとう】野田 翔さんへ", askedPersonId: "noda" }, fetcher);
+    const body = sent[0].body as { body: { content: string } };
+    expect(body.body.content).toBe("野田 翔さん\nありがとう！");
   });
 
   it("対応表になければ、アプリの中に残る", async () => {

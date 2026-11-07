@@ -97,6 +97,9 @@ export function draftThanksFromWords(db: DatabaseSync, viewerId: string, words: 
       // 1文字の名（「翔」など）は、ほかの言葉に紛れやすいので使わない
       if (key.length < 2) continue;
       if (!text.includes(key)) continue;
+      // 名（「みどり」「ひより」など）だけで当たったときは、ふつうの言葉に紛れやすいので、後ろに敬称か「に・へ」があるときだけ
+      const givenOnly = parts.length > 1 && key === parts[parts.length - 1];
+      if (givenOnly && !new RegExp(`${escape(key)}(?:さん|先生|せんせい|くん|君|ちゃん|に|へ)`).test(text)) continue;
       if (key.length > best.length) {
         best = key;
         matched = [person];
@@ -121,7 +124,7 @@ export function draftThanksFromWords(db: DatabaseSync, viewerId: string, words: 
 }
 
 /** 0-3d：お礼・ねぎらい・お祝いを伝えたい話か（名前が出るだけの相談はカードにしない） */
-const CARD_INTENT = /ありがと|ありがた|感謝|助かった|おめでと|お祝い|祝い|頑張ってたね|がんばってたね|頑張ったね|がんばったね|お疲れさま|おつかれさま|ねぎらい/;
+const CARD_INTENT = /ありがと|ありがた|感謝|おめでと|お祝い|祝い|頑張ってたね|がんばってたね|頑張ったね|がんばったね|お疲れさま|おつかれさま|ねぎらい/;
 
 /**
  * 0-3d：本人の最後の言葉が、特定の人へのお礼・ねぎらい・お祝いなら、サンクスカードの下書きにする。

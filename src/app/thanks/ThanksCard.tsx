@@ -33,9 +33,11 @@ export function ThanksEntry({
   reply?: boolean;
 }) {
   const icon = label === "おめでとう" ? "star" : label === "頑張ってたね" ? "flag" : "heart";
+  // 0-3d：おめでとう・頑張ってたねのボタンからは、その言葉と札で下書きを始める
+  const kind = reply ? "" : label === "おめでとう" ? "&kind=congrats" : label === "頑張ってたね" ? "&kind=effort" : "";
   return (
     <Link
-      href={`/?thanks=${encodeURIComponent(person.id)}`}
+      href={`/?thanks=${encodeURIComponent(person.id)}${kind}`}
       className="thanks-entry button-link"
       aria-label={reply ? `${person.name}さんにありがとうを返す` : `${person.name}さんに${label}を送る`}
     >

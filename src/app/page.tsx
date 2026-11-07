@@ -27,8 +27,8 @@ export const dynamic = "force-dynamic";
 
 const SEND_PROMPT = "届けたいことを話してね。下書きにするよ。送るのは、確かめてから。";
 
-export default async function HomePage({ searchParams }: { searchParams: Promise<{ ask?: string | string[]; goal?: string | string[]; talk?: string | string[]; left?: string | string[]; right?: string | string[]; thanks?: string | string[] }> }) {
-  const { ask, goal, talk, left, right, thanks } = await searchParams;
+export default async function HomePage({ searchParams }: { searchParams: Promise<{ ask?: string | string[]; goal?: string | string[]; talk?: string | string[]; left?: string | string[]; right?: string | string[]; thanks?: string | string[]; kind?: string | string[] }> }) {
+  const { ask, goal, talk, left, right, thanks, kind } = await searchParams;
   const { viewer, people } = await getViewer();
   const db = getDatabase();
   await syncFromTeamsIfStale(db);
@@ -83,7 +83,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
         question={talk === "send" ? SEND_PROMPT : question}
         initialGoal={doneGoal?.status === "done" ? { id: doneGoal.id, text: doneGoal.text } : null}
         initialAsk={askPerson ? { id: askPerson.id, name: askPerson.name } : null}
-        initialThanks={thanksPerson ? { id: thanksPerson.id, name: thanksPerson.name } : null}
+        initialThanks={thanksPerson ? { id: thanksPerson.id, name: thanksPerson.name, kind: kind === "congrats" || kind === "effort" ? kind : "thanks" } : null}
       />
     </main>
     <WidePanel src={columnSrc("right", right)} title="みんな" side="right" />

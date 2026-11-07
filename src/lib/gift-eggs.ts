@@ -1,3 +1,4 @@
+import { notCardSql } from "./subject";
 import { randomUUID } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
 import { PENDING_FAMILY } from "./avatar";
@@ -50,7 +51,7 @@ function helpfulMoments(db: DatabaseSync, personId: string): Moment[] {
       `SELECT 'reply:' || r.id AS source_id, p.author_id AS partner_id, r.created_at FROM replies r
        JOIN posts p ON p.id = r.post_id
        WHERE r.author_id = ? AND p.author_id != r.author_id
-         AND (p.kind IN ('trouble', 'worry') OR p.asked_person_id = r.author_id)`,
+         AND (p.kind IN ('trouble', 'worry') OR (p.asked_person_id = r.author_id AND ${notCardSql("p")}))`,
     )
     .all(personId) as Moment[];
   return [...thanks, ...likes, ...answers].sort((a, b) => a.created_at.localeCompare(b.created_at));

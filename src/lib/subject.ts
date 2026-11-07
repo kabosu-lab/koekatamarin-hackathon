@@ -29,6 +29,15 @@ export function cardKind(subject: string | null | undefined): CardKind | null {
   return tag && Object.hasOwn(CARD_TAGS, tag) ? CARD_TAGS[tag as keyof typeof CARD_TAGS] : null;
 }
 
+/**
+ * SQL で「カードの投稿ではない」を表す条件（cardKind と同じ見分け方）。
+ * カードは「お願い」の仕組み（asked_person_id）に乗るので、受信箱・パス・ゴールなどの数から外すのに使う
+ */
+export function notCardSql(alias = "p"): string {
+  const tags = Object.keys(CARD_TAGS).map((tag) => `coalesce(${alias}.subject, '') LIKE '【${tag}】%'`);
+  return `NOT (${tags.join(" OR ")})`;
+}
+
 /** カードの種類から札 */
 export function cardTag(kind: CardKind): SubjectTag {
   return kind === "congrats" ? "おめでとう" : kind === "effort" ? "がんばったね" : "ありがとう";

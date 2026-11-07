@@ -1,3 +1,4 @@
+import { cardKind, notCardSql } from "./subject";
 import { randomUUID } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
 import type { Review } from "./claude/compose";
@@ -35,6 +36,8 @@ export function listInbox(db: DatabaseSync, viewerId: string): InboxItem[] {
        JOIN channels c ON c.id = p.channel_id
        WHERE p.asked_person_id = ?
          AND NOT EXISTS (SELECT 1 FROM replies r WHERE r.post_id = p.id AND r.author_id = ?)
+         -- 0-3d：サンクスカードはお願いではない（封筒の知らせと「もらったありがとう」で受け取る）
+         AND ${notCardSql("p")}
        ORDER BY p.created_at, p.rowid`,
     )
     .all(viewerId, viewerId) as {
@@ -82,9 +85,10 @@ export function isNoticeHours(now: Date): boolean {
 
 function currentAsked(db: DatabaseSync, postId: string, viewerId: string): { body: string; channel_id: string; author_id: string } | null {
   const post = db
-    .prepare("SELECT body, channel_id, author_id, asked_person_id FROM posts WHERE id = ?")
-    .get(postId) as { body: string; channel_id: string; author_id: string; asked_person_id: string | null } | undefined;
-  if (!post || post.asked_person_id !== viewerId) return null;
+    .prepare("SELECT body, channel_id, author_id, asked_person_id, subject FROM posts WHERE id = ?")
+    .get(postId) as { body: string; channel_id: string; author_id: string; asked_person_id: string | null; subject: string | null } | undefined;
+  // 0-3d：サンクスカードは返したり、ほかの人へ回したりするお願いではない
+  if (!post || post.asked_person_id !== viewerId || cardKind(post.subject)) return null;
   // 返信済みのお願いは終わっている。再送や古い画面から、もう一度返したりパスしたりできない
   const answered = db.prepare("SELECT 1 FROM replies WHERE post_id = ? AND author_id = ?").get(postId, viewerId);
   return answered ? null : post;

@@ -377,6 +377,8 @@ const MIGRATIONS: readonly string[] = [
    ALTER TABLE report_items ADD COLUMN edited INTEGER NOT NULL DEFAULT 0 CHECK (edited IN (0, 1));`,
   // 0-3b：投稿の件名（頭に種類の札）。Teams の件名と同じ。古い投稿にはない
   `ALTER TABLE posts ADD COLUMN subject TEXT;`,
+  // 0-3d：サンクスカードの投稿と、一緒に作ったありがとうの記録を結ぶ（取り消すときに id で消す）
+  `ALTER TABLE thanks ADD COLUMN post_id TEXT;`,
 ];
 
 export const SCHEMA_VERSION

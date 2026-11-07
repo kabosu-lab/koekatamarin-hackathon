@@ -207,6 +207,13 @@ describe("送る", () => {
 describe("読む", () => {
   beforeEach(() => signIn());
 
+  it("0-3d：頭の呼びかけをメンションに替えて送った投稿は、読み直しても二重にしない", async () => {
+    const id = createDummyTeams(db).createPost("saeki", "study", "野田 翔さん、ありがとう！", { askedPersonId: "noda" });
+    await syncFromTeams(db, fakeGraph([message("g1", "佐伯 みどり", "<p>野田 翔さん<br>ありがとう！</p>")]).fetcher);
+    expect(db.prepare("SELECT id FROM posts WHERE body LIKE '野田 翔さん%ありがとう！'").all()).toEqual([{ id }]);
+    expect(reachedTeams(db, id)).toBe(true);
+  });
+
   it("0-3b：Teams の件名を残す。札があれば札の種類で、なければそのまま", async () => {
     const messages = [
       { ...message("s1", "佐伯 みどり", "<p>件名つき</p>"), subject: "【困りごと】コピー機" },

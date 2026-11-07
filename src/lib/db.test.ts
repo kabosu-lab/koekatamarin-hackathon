@@ -7,7 +7,7 @@ import { ensureMigrated, openDatabase, readSchemaVersion, SCHEMA_VERSION } from 
 import { seedDatabase } from "./seed";
 
 /** 反応の移行より前の版。新しい変更を足したら、この差を1つ増やす */
-const SCHEMA_VERSION_BEFORE_REACTIONS = SCHEMA_VERSION - 18;
+const SCHEMA_VERSION_BEFORE_REACTIONS = SCHEMA_VERSION - 19;
 
 const dirs: string[] = [];
 
@@ -92,6 +92,7 @@ describe("知恵の反応の移行", () => {
       DROP TABLE person_titles;
       DROP TABLE goal_posts;
       DROP TABLE goal_settings;
+      ALTER TABLE thanks DROP COLUMN post_id;
       ALTER TABLE posts DROP COLUMN subject;
       DROP TABLE goals;
       DROP TABLE seen_replies;

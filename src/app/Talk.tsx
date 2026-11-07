@@ -115,7 +115,7 @@ export function Talk({
 }: {
   viewer: { name: string; label: string; role?: string };
   /** 0-3d：「ありがとう」ボタン（/?thanks=<人のID>）から来たとき。その人へのカードの下書きを始める */
-  initialThanks?: { id: string; name: string } | null;
+  initialThanks?: { id: string; name: string; kind?: "thanks" | "effort" | "congrats" } | null;
   question: string | null;
   initialAsk?: { id: string; name: string } | null;
   viewerId: string;
@@ -307,18 +307,6 @@ export function Talk({
 
   useEffect(() => () => stopRef.current?.(), []);
 
-  // 0-3d：「ありがとう」ボタンから来たら、その人へのカードの下書きを1回だけ始める（読み直しで繰り返さない）
-  const thanksStarted = useRef(false);
-  useEffect(() => {
-    if (!initialThanks || thanksStarted.current) return;
-    thanksStarted.current = true;
-    window.history.replaceState(null, "", window.location.pathname);
-    const line: ChatMessage = { role: "user", content: `${initialThanks.name}さんにありがとうを伝えたい` };
-    setMessages((current) => [...current, line]);
-    void startCompose(undefined, undefined, [line]);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialThanks]);
-
   // 画面を行き来しても話が消えないよう、このタブの中だけに残す。サーバーには保存しない
   const restored = useRef(false);
   useEffect(() => {
@@ -333,6 +321,21 @@ export function Talk({
       goalLine && saved.at(-1)?.content !== goalLine ? [...saved, { role: "user", content: goalLine }] : saved;
     if (withGoal.length > 0) setMessages(withGoal);
   }, [messages, viewer.name]);
+
+  // 0-3d：「ありがとう」ボタンから来たら、その人へのカードの下書きを1回だけ始める（読み直しで繰り返さない）。
+  // 残っていた話の復元（すぐ上）のあとに、決め文句の行を足す。おめでとう・がんばったねのボタンからは、その言葉で
+  const thanksStarted = useRef(false);
+  useEffect(() => {
+    if (!initialThanks || thanksStarted.current) return;
+    thanksStarted.current = true;
+    window.history.replaceState(null, "", window.location.pathname);
+    const words =
+      initialThanks.kind === "congrats" ? "おめでとうを伝えたい" : initialThanks.kind === "effort" ? "頑張ってたねって伝えたい" : "ありがとうを伝えたい";
+    const line: ChatMessage = { role: "user", content: `${initialThanks.name}さんに${words}` };
+    setMessages((current) => [...current, line]);
+    void startCompose(undefined, undefined, [line]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialThanks]);
 
   function rememberPromiseSeen() {
     document.cookie = `${promiseCookieName(viewerId)}=1; path=/; max-age=31536000; samesite=lax`;

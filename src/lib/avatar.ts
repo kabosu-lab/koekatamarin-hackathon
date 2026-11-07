@@ -1,3 +1,4 @@
+import { notCardSql } from "./subject";
 import { companionImage } from "./companion-art";
 import type { DatabaseSync } from "node:sqlite";
 import { catalogEntry } from "./avatar-catalog";
@@ -67,7 +68,7 @@ export function countContributions(db: DatabaseSync, personId: string): Contribu
     goals: one(
       `SELECT count(DISTINCT p.id) AS count FROM posts p
        JOIN replies r ON r.post_id = p.id AND r.author_id = p.asked_person_id
-       WHERE p.asked_person_id = ?`,
+       WHERE p.asked_person_id = ? AND ${notCardSql("p")}`,
       personId,
     ),
     assists: one(
