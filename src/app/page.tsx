@@ -27,8 +27,8 @@ export const dynamic = "force-dynamic";
 
 const SEND_PROMPT = "届けたいことを話してね。下書きにするよ。送るのは、確かめてから。";
 
-export default async function HomePage({ searchParams }: { searchParams: Promise<{ ask?: string | string[]; goal?: string | string[]; talk?: string | string[]; left?: string | string[]; right?: string | string[]; pane?: string | string[]; thanks?: string | string[] }> }) {
-  const { ask, goal, talk, left, right, pane, thanks } = await searchParams;
+export default async function HomePage({ searchParams }: { searchParams: Promise<{ ask?: string | string[]; goal?: string | string[]; talk?: string | string[]; left?: string | string[]; right?: string | string[]; pane?: string | string[]; thanks?: string | string[]; kind?: string | string[] }> }) {
+  const { ask, goal, talk, left, right, pane, thanks, kind } = await searchParams;
   // 0-2z：狭い画面の帯で、左右どちらの画面にいるか（?pane=right / ?pane=left）。再読み込みや「戻る」でも同じ画面を描く
   const shownPane = pane === "right" || pane === "left" ? pane : undefined;
   const { viewer, people } = await getViewer();
@@ -85,7 +85,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
         question={talk === "send" ? SEND_PROMPT : question}
         initialGoal={doneGoal?.status === "done" ? { id: doneGoal.id, text: doneGoal.text } : null}
         initialAsk={askPerson ? { id: askPerson.id, name: askPerson.name } : null}
-        initialThanks={thanksPerson ? { id: thanksPerson.id, name: thanksPerson.name } : null}
+        initialThanks={thanksPerson ? { id: thanksPerson.id, name: thanksPerson.name, kind: kind === "congrats" || kind === "effort" ? kind : "thanks" } : null}
       />
     </main>
     <WidePanel src={columnSrc("right", right)} title="みんな" side="right" shown={shownPane === "right"} />

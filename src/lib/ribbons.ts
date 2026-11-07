@@ -1,3 +1,4 @@
+import { notCardSql } from "./subject";
 import type { DatabaseSync } from "node:sqlite";
 import { EVENTS, isInEvent, type SchoolEvent } from "./events";
 import { CATEGORY_LABELS, type TrophyCategory, type TrophyDefinition, type TrophyEmblem, TROPHIES } from "./trophies";
@@ -51,7 +52,7 @@ function helpedDuring(db: DatabaseSync, personId: string, event: SchoolEvent): b
     .prepare(
       `SELECT r.created_at FROM replies r JOIN posts p ON p.id = r.post_id
        WHERE r.author_id = ? AND p.author_id != r.author_id
-         AND (p.kind IN ('trouble', 'worry') OR p.asked_person_id = r.author_id)`,
+         AND (p.kind IN ('trouble', 'worry') OR (p.asked_person_id = r.author_id AND ${notCardSql("p")}))`,
     )
     .all(personId) as { created_at: string }[];
   const thanks = db.prepare("SELECT created_at FROM thanks WHERE from_person_id = ?").all(personId) as { created_at: string }[];

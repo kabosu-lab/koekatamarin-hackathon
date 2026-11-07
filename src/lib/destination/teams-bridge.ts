@@ -143,7 +143,13 @@ function mentionTarget(db: DatabaseSync, personId: string, linked: Record<string
 export function askMessage(db: DatabaseSync, text: string, askedPersonId: string | undefined, subject?: string): TeamsMessageBody {
   const target = askedPersonId ? mentionTarget(db, askedPersonId) : null;
   if (!target) return buildTeamsMessage(text, [], subject);
-  const withHead = text.includes(`@${target.name}`) ? text : `@${target.name}さん\n${text}`;
+  // 0-3d：本文の頭が「〇〇さん、」の呼びかけなら、そこをメンションにして名前を二重にしない
+  const greeting = new RegExp(`^${target.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}さん[、,]?\\s*`);
+  const withHead = text.includes(`@${target.name}`)
+    ? text
+    : greeting.test(text)
+      ? `@${target.name}さん\n${text.replace(greeting, "")}`
+      : `@${target.name}さん\n${text}`;
   return buildTeamsMessage(withHead, [target], subject);
 }
 
@@ -412,7 +418,9 @@ function unlinkedLocal(db: DatabaseSync, table: "posts" | "replies", authorId: s
   ).all(authorId, within) as { id: string; body: string }[];
   const same = (local: string) => {
     const bare = local.replace(/@/g, "");
-    return local === body || bare === body || body.endsWith(`\n${bare}`);
+    // 0-3d：頭の「〇〇さん、」をメンションに替えて送った分（askMessage）
+    const called = bare.match(/^([^\n、,]+さん)[、,]?\s*([\s\S]+)$/);
+    return local === body || bare === body || body.endsWith(`\n${bare}`) || (called !== null && body === `${called[1]}\n${called[2]}`);
   };
   return rows.find((row) => same(row.body))?.id ?? null;
 }

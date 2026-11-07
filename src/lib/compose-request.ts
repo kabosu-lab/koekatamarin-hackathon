@@ -119,10 +119,17 @@ function planDraft(destination: PostDestination, viewerId: string, input: unknow
     if (!stored) return { status: 400, body: { error: "添付が見つかりません。もう一度付けてください" } };
   }
   const messages = history as ChatMessage[];
-  // 0-3d：本人の最後の言葉が、特定の人へのお礼・ねぎらい・お祝いなら、サンクスカードの下書きにする
-  const lastWords = [...messages].reverse().find((m) => m.role === "user")?.content;
+  // 0-3d：本人の言葉を新しい順にたどり、特定の人へのお礼・ねぎらい・お祝いが見つかれば、サンクスカードの下書きにする
+  // （「野田先生にありがとうって伝えたい」→ 聞き返し →「3D プリンターのこと」のように何往復かしても、カードのまま）
   const thanksChannel = channels.find((c) => c.id === THANKS_CHANNEL_ID);
-  const found = askedPersonId === undefined && !stored && db && thanksChannel && typeof lastWords === "string" ? detectThanksCard(db, viewerId, lastWords) : null;
+  let found: ReturnType<typeof detectThanksCard> = null;
+  if (askedPersonId === undefined && !stored && db && thanksChannel) {
+    for (const message of [...messages].reverse()) {
+      if (message.role !== "user" || typeof message.content !== "string") continue;
+      found = detectThanksCard(db, viewerId, message.content);
+      if (found) break;
+    }
+  }
   const card = found
     ? { asked: { id: found.to.id, name: found.to.name, card: true }, request: { name: found.to.name, words: found.words } }
     : undefined;
@@ -269,22 +276,11 @@ export async function handleDraft(
 /** 送った直後の取り消し。 */
 export function handleUndo(destination: PostDestination, viewerId: string, input: unknown, now: Date = new Date(), db?: DatabaseSync) {
   const { postId } = fields(input);
-  // 0-3d：カードを取り消したら、一緒に作ったありがとうの記録も消す（封筒と数が残らないように）
-  const card =
-    db && typeof postId === "string"
-      ? (db.prepare("SELECT author_id, asked_person_id, body, subject FROM posts WHERE id = ?").get(postId) as
-          | { author_id: string; asked_person_id: string | null; body: string; subject: string | null }
-          | undefined)
-      : undefined;
   if (typeof postId !== "string" || !destination.undoPost(viewerId, postId, now)) {
     return { status: 409, body: { error: "もう取り消せません" } };
   }
-  if (db && card?.asked_person_id && cardKind(card.subject)) {
-    db.prepare(
-      `DELETE FROM thanks WHERE id = (SELECT id FROM thanks WHERE from_person_id = ? AND to_person_id = ? AND message = ?
-       ORDER BY created_at DESC, rowid DESC LIMIT 1)`,
-    ).run(card.author_id, card.asked_person_id, card.body.trim());
-  }
+  // 0-3d：カードを取り消したら、一緒に作ったありがとうの記録も消す（封筒と数が残らないように）
+  if (db) db.prepare("DELETE FROM thanks WHERE post_id = ?").run(postId);
   if (db) noteUndone(db, viewerId, now);
   return { status: 200, body: { ok: true } };
 }
@@ -356,12 +352,13 @@ export async function handlePublish(
     if (typeof attachmentId === "string" && db) linkAttachment(db, viewerId, attachmentId, postId);
     // 0-3d：サンクスカードの投稿は、ありがとうの記録も作る（受け取った数・封筒・カード帳がそろうように）
     if (db && typeof askedPersonId === "string" && cardKind(titled?.subject)) {
-      db.prepare("INSERT INTO thanks (id, from_person_id, to_person_id, message, created_at) VALUES (?, ?, ?, ?, ?)").run(
+      db.prepare("INSERT INTO thanks (id, from_person_id, to_person_id, message, created_at, post_id) VALUES (?, ?, ?, ?, ?, ?)").run(
         randomUUID(),
         viewerId,
         askedPersonId,
         text.trim(),
         new Date().toISOString(),
+        postId,
       );
     }
     if (db) {
