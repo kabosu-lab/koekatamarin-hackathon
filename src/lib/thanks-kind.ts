@@ -42,6 +42,8 @@ export function sentNotice(name: string, kind: ThanksKind): string {
 /** 0-3a：話す画面のパートナーの「ありがとうが届いています」。押すとその場で封筒が開く */
 export const THANKS_REVEAL_HREF = "#thanks-reveal";
 export const THANKS_REVEAL_EVENT = "koekata:thanks-reveal";
+/** 0-3c：カード帳のカードを押して、表に返して読む（detail にカード） */
+export const THANKS_VIEW_EVENT = "koekata:thanks-view";
 
 /** その端末で、封筒から開けたところまで（人物ごとに1つの cookie。値は開けた最後のカードの時刻） */
 export function thanksDeviceCookie(viewerId: string): string {

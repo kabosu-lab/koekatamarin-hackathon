@@ -1,0 +1,205 @@
+/* 0-3c：カード帳。封筒の演出と同じ絵柄の小さなカード。iPhone は2列、広い画面は3列 */
+
+.card-book h2 {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  margin: 0;
+}
+
+.card-book-total {
+  font-size: 0.9em;
+  font-weight: 400;
+}
+
+.card-book-kinds {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0.4rem 0 0.8rem;
+  font-size: 0.85rem;
+}
+
+.card-book-kinds span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.05rem 0.55rem;
+  border-radius: 999px;
+  background: #ffe3ea;
+  color: #8a2442;
+}
+
+.card-book-kinds span[data-kind="effort"] {
+  background: #e2f1ff;
+  color: #1d4f7a;
+}
+
+.card-book-kinds span[data-kind="congrats"] {
+  background: #fff1c7;
+  color: #7a5200;
+}
+
+.card-book-kinds svg {
+  width: 1em;
+  height: 1em;
+}
+
+.card-book-empty {
+  margin: 0.8rem 0 0;
+  padding: 1.6rem 1rem;
+  border: 2px dashed var(--line, #c9c9d6);
+  border-radius: 1rem;
+  text-align: center;
+  opacity: 0.85;
+}
+
+.card-book-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.6rem;
+}
+
+/* 広い画面（iPad の縦など、カード帳が広く取れるとき）は3列。横向きの3列の画面では左の列の幅で決まる */
+.card-book {
+  container-type: inline-size;
+}
+
+@container (min-width: 540px) {
+  .card-book-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.card-book-grid li {
+  display: grid;
+  min-width: 0;
+}
+
+/* 小さなカード（押すと、くるっと表に返して全文） */
+.card-book-card,
+.card-book-envelope {
+  display: grid;
+  align-content: start;
+  gap: 0.35rem;
+  width: 100%;
+  min-height: 7.5rem;
+  padding: 0.7rem;
+  border: 0;
+  border-radius: 0.9rem;
+  text-align: left;
+  font: inherit;
+  color: #3a1420;
+  background: #ffe3ea;
+  box-shadow: 0 4px 10px rgb(0 0 0 / 0.12);
+  cursor: pointer;
+  transition: transform 160ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.card-book-card:active,
+.card-book-envelope:active {
+  transform: scale(0.97);
+}
+
+.card-book-card[data-kind="effort"] {
+  background: #e2f1ff;
+  color: #102536;
+}
+
+.card-book-card[data-kind="congrats"] {
+  background: #fff1c7;
+  color: #3a2a00;
+}
+
+.card-book-kind {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.card-book-kind svg {
+  width: 1em;
+  height: 1em;
+}
+
+/* 言葉は3行まで見せる（全文は押して読む） */
+.card-book-words {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.card-book-from {
+  margin-top: auto;
+  font-weight: 700;
+  font-size: 0.8rem;
+}
+
+/* まだ開けていないカードは封筒の形 */
+.card-book-envelope {
+  align-content: center;
+  justify-items: center;
+  text-align: center;
+  background:
+    linear-gradient(to top right, transparent calc(50% - 1px), #e8a0ae 50%, transparent calc(50% + 1px)) left / 50% 100% no-repeat,
+    linear-gradient(to top left, transparent calc(50% - 1px), #e8a0ae 50%, transparent calc(50% + 1px)) right / 50% 100% no-repeat,
+    #fff6e8;
+  border: 2px solid #d9536f;
+  animation: card-book-hop 1.8s cubic-bezier(0.2, 0.8, 0.2, 1) infinite;
+}
+
+.card-book-seal {
+  display: grid;
+  place-items: center;
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 50%;
+  background: #d9536f;
+  color: #fff;
+}
+
+.card-book-seal svg {
+  width: 1.2rem;
+  height: 1.2rem;
+}
+
+.card-book-envelope small {
+  font-weight: 700;
+  background: rgb(255 246 232 / 0.9);
+  padding: 0 0.3rem;
+  border-radius: 0.3rem;
+}
+
+@keyframes card-book-hop {
+  0%,
+  70%,
+  100% {
+    transform: translateY(0);
+  }
+  80% {
+    transform: translateY(-4px);
+  }
+  90% {
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card-book-envelope {
+    animation: none;
+  }
+
+  .card-book-card,
+  .card-book-envelope {
+    transition: none;
+  }
+}
