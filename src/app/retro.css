@@ -2373,4 +2373,15 @@ html[data-embed] .edge-handle {
   .wheel-hint {
     display: none;
   }
+
+}
+
+/* 0-3h：横向きの3列で「これまで」を開いている間だけ、左の列の iframe を外側の画面いっぱいに広げて重ねる
+   （src/app/so-far-full.ts が data-so-far-full を付け外しする。裏の列には inert） */
+.wide-panel > iframe[data-so-far-full] {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483000;
+  width: 100vw;
+  height: 100dvh;
 }

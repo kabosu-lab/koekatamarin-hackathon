@@ -43,8 +43,6 @@ export type SoFarStory = {
   stageImages: string[];
   /** この学期にもらったトロフィーの名前 */
   trophies: string[];
-  /** 人からの一言（最新2件） */
-  words: { from: string; text: string }[];
 };
 
 const MAX_PEOPLE = 12;
@@ -150,12 +148,14 @@ export function getSoFar(db: DatabaseSync, personId: string, now: Date): SoFarSt
         "SELECT x.from_person_id AS id, count(*) AS n FROM report_responses x JOIN daily_reports d ON d.id = x.report_id WHERE d.person_id = ?1 GROUP BY x.from_person_id",
       ),
     ],
-    ["passed", tally("SELECT to_person_id AS id, count(*) AS n FROM post_passes WHERE from_person_id = ?1 GROUP BY to_person_id")],
+    [
+      "passed",
+      tally(`SELECT x.to_person_id AS id, count(*) AS n FROM post_passes x JOIN posts p ON p.id = x.post_id WHERE x.from_person_id = ?1 AND ${open} GROUP BY x.to_person_id`),
+    ],
   ];
   const everyone = new Map(
     all<{ id: string; name: string; role: SoFarStory["role"]; label: string }>("SELECT id, name, role, label FROM people").map((p) => [p.id, p]),
   );
-  const names = new Map([...everyone.values()].map((p) => [p.id, p.name]));
   const byPerson = new Map<string, Partial<Record<ConnectionKind, number>>>();
   for (const [kind, rows] of kinds) {
     for (const row of rows) {
@@ -201,25 +201,6 @@ export function getSoFar(db: DatabaseSync, personId: string, now: Date): SoFarSt
     .filter((ribbon) => earned.has(ribbon.id))
     .map((ribbon) => ribbon.name);
 
-  // 一言：人からの言葉で閉じる（AI の褒め言葉は出さない）。先生は返す側なので、ありがとうだけ
-  const words = [
-    ...all<{ from_id: string; text: string; at: string }>(
-      "SELECT from_person_id AS from_id, message AS text, created_at AS at FROM thanks WHERE to_person_id = ?",
-      personId,
-    ),
-    ...(role === "student"
-      ? all<{ from_id: string; text: string; at: string }>(
-          `SELECT x.from_person_id AS from_id, x.text, x.created_at AS at FROM report_responses x
-           JOIN daily_reports d ON d.id = x.report_id WHERE d.person_id = ?`,
-          personId,
-        )
-      : []),
-  ]
-    .filter((word) => !hidden.has(word.from_id))
-    .sort((x, y) => y.at.localeCompare(x.at))
-    .slice(0, 2)
-    .map((word) => ({ from: names.get(word.from_id) ?? "", text: word.text }));
-
   return {
     empty,
     few: activity < 5,
@@ -240,6 +221,5 @@ export function getSoFar(db: DatabaseSync, personId: string, now: Date): SoFarSt
       ? [...Array.from({ length: Math.max(0, avatar.stage - 1) }, (_, i) => companionImage(avatar.family!, i + 1)).slice(-3), avatar.image]
       : [],
     trophies,
-    words,
   };
 }

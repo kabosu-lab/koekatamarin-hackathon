@@ -188,7 +188,7 @@ const STORY_VIEWPORTS = [
   { name: "パソコン", width: 1280, height: 800 },
 ] as const;
 
-for (const person of ["青木 ひより（2年）", "川村 陽菜（理科・1年副担任・生徒指導）", "藤本 恵（教頭）"]) {
+for (const person of ["青木 ひより（2年）", "川村 陽菜（理科・1年副担任・生徒指導）", "藤本 恵（教頭）", "大河原 誠（英語・学年主任）"]) {
   for (const viewport of STORY_VIEWPORTS) {
     test(`インフォグラフィックは ${viewport.name}（${viewport.width}×${viewport.height}）でスクロールなしに全部見える：${person.split("（")[0]}`, async ({
       page,
@@ -298,11 +298,15 @@ test("0-3h：3列（iPad 横・パソコン）では、押したときだけ3列
     const full = (await frameElement.boundingBox())!;
     expect(Math.round(full.width)).toBe(size.width);
     expect(Math.round(full.height)).toBe(size.height);
-    // 真ん中の話す画面と右の列は、そのまま裏に残る
+    // 真ん中の話す画面と右の列は、そのまま裏に残る。広げている間は、Tab や読み上げが裏へ抜けない（inert）
     await expect(page.locator(".device-row > .retro-home")).toHaveCount(1);
     await expect(page.locator('iframe[title="みんな"]')).toHaveCount(1);
+    await expect(page.locator(".device-row > .retro-home")).toHaveAttribute("inert", "");
+    await expect(page.locator('.device-row > .wide-panel[data-side="right"]')).toHaveAttribute("inert", "");
     await closeStory(story);
     await expect(frameElement).not.toHaveAttribute("data-so-far-full", "true");
+    await expect(page.locator(".device-row > .retro-home")).not.toHaveAttribute("inert", "");
+    await expect(page.locator('.device-row > .wide-panel[data-side="right"]')).not.toHaveAttribute("inert", "");
     const back = (await frameElement.boundingBox())!;
     expect(Math.round(back.width)).toBe(Math.round(column.width));
     expect(Math.round(back.x)).toBe(Math.round(column.x));
@@ -386,4 +390,56 @@ test("0-3h：生徒の画面のワードクラウドに、やり取りのない�
     await story.locator(".so-far-tip").click();
     await expect(story.locator(".so-far-tip")).toHaveCount(0);
   }
+});
+
+test("0-3h：つながりの箱に収まらない人は、多い順に残して「ほか N 人」にまとめ、箱が変わると測り直す", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+  await switchPerson(page, "大河原 誠（英語・学年主任）");
+  await page.goto("/me");
+  const story = await openStory(page);
+  await expect(story.locator(".so-far-board")).toHaveAttribute("data-settled", "", { timeout: 5000 });
+  const cloud = story.locator(".so-far-cloud");
+  const total = (await cloud.locator(".so-far-name").count()) + Number(await cloud.getAttribute("data-more"));
+  expect(total).toBeGreaterThan(1);
+  // 箱を小さくすると、収まる人数まで減り、残りは「ほか N 人」
+  await page.addStyleTag({ content: '.so-far-panel[data-panel="people"] { flex: none; height: 120px; }' });
+  await expect(cloud.locator(".so-far-more-people")).toBeVisible();
+  const weights = await cloud.locator(".so-far-name").evaluateAll((elements) => elements.map((el) => Number(el.getAttribute("data-weight"))));
+  const more = Number(await cloud.getAttribute("data-more"));
+  expect(weights.length + more).toBe(total);
+  await expect(cloud.locator(".so-far-more-people")).toHaveText(`ほか ${more} 人`);
+  const over = await cloud.evaluate((el) => Math.max(el.scrollHeight - el.clientHeight, el.scrollWidth - el.clientWidth));
+  expect(over).toBeLessThanOrEqual(1);
+});
+
+test("0-3h：広げたまま列の中が読み直されても、3列に戻る", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto("/");
+  const frameElement = page.locator('iframe[title="履歴と設定"]');
+  await expect(frameElement).toBeVisible();
+  const frame = (await (await frameElement.elementHandle())!.contentFrame())!;
+  await openStory(frame);
+  await expect(frameElement).toHaveAttribute("data-so-far-full", "true");
+  await frame.evaluate(() => location.reload());
+  await expect(frameElement).not.toHaveAttribute("data-so-far-full", "true");
+  await expect(page.locator(".device-row > .retro-home")).not.toHaveAttribute("inert", "");
+  expect((await frameElement.boundingBox())!.width).toBeLessThan(640);
+});
+
+test("0-3h：一文や名札を開いているときの Esc は、それだけを閉じ、シートは閉じない", async ({ page }) => {
+  await page.goto("/");
+  await switchPerson(page, "川村 陽菜（理科・1年副担任・生徒指導）");
+  await page.goto("/me");
+  const story = await openStory(page);
+  await story.locator('.so-far-bar[data-key="posts"]').click();
+  await expect(story.locator(".so-far-tip")).toHaveCount(1);
+  // 読み上げの知らせは、いつも置いてある入れ物の中身が替わる
+  await expect(story.getByRole("status")).toContainText("届けた：");
+  await page.keyboard.press("Escape");
+  await expect(story.locator(".so-far-tip")).toHaveCount(0);
+  await expect(story).toBeVisible();
+  await expect(story.getByRole("status")).toHaveText("");
+  await page.keyboard.press("Escape");
+  await expect(story).toBeHidden();
 });

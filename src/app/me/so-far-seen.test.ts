@@ -11,7 +11,6 @@ const story = {
   ],
   leaves: 9,
   trophies: ["はじめの一歩"],
-  words: [{ from: "一", text: "ありがとう" }],
 } as unknown as SoFarStory;
 
 describe("「これまで」のインフォグラフィックの動き（0-2t）", () => {

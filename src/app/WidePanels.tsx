@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import { type ReactNode, useEffect, useState } from "react";
 import { isColumnPath, WIDE_QUERY, type WideSide, wideHomeUrl, wideSide } from "@/lib/wide";
+import { collapseColumn } from "./so-far-full";
 import { showStrip, strip } from "./strip";
 
 /** 列の中身を外から替える知らせ（欄の中のリンクが、もう片方の列で開くとき） */
@@ -99,6 +100,8 @@ export function WidePanel({ src, title, side, shown: shownProp = false }: { src:
           // 読み込みが済んだ印。帯の準備（strip.ts の stripReady）が見る
           onLoad={(event) => {
             event.currentTarget.dataset.loaded = "true";
+            // 0-3h：「これまで」を広げたまま中が読み直されたら、列の大きさに戻す
+            collapseColumn(event.currentTarget);
           }}
           tabIndex={wide ? undefined : -1}
           aria-hidden={wide ? undefined : true}
