@@ -156,7 +156,9 @@ async function stripLoaded(page: Page) {
       frames.length === 2 &&
       frames.every((frame) => frame.contentDocument?.readyState === "complete") &&
       frames.every((frame) => /^\/(me|minna)/.test(frame.contentWindow?.location.pathname ?? "")) &&
-      Boolean(window.koekataStrip)
+      Boolean(window.koekataStrip) &&
+      // 外側が帯を動かせると決めた印（窓ごと読み直している途中は付かない）
+      document.documentElement.dataset.stripReady === "true"
     );
   });
 }
@@ -200,8 +202,10 @@ test("帯：左の画面で人を切り替えると、話す画面と右の画�
   const switched = page.waitForResponse((response) => Boolean(response.request().headers()["next-action"]));
   await left.getByRole("button", { name: "切り替え" }).click();
   await switched;
-  // 話す画面へ戻ると、話す画面も新しい人
+  // 話す画面へ戻ると、窓ごと読み直して話す画面も新しい人になる（読み直しが済むまで帯は止まる）
+  const reloaded = page.waitForEvent("load");
   expect(await goStrip(page, "/")).toBe(true);
+  await reloaded;
   await expect(page).toHaveURL(/127\.0\.0\.1:\d+\/$/);
   await expect(page.locator('.talk[data-viewer="青木 ひより"]')).toBeVisible();
   // 右のみんなも、生徒の画面（職員室の札がない）。左の画面が入口へ戻って読み込み終わってから
@@ -225,5 +229,36 @@ test("帯：その日はじめて帯でみんなを開くと、今日の3人が�
   await goStrip(page, "/minna");
   await expect(right.getByRole("dialog", { name: "今日の3人" })).toBeVisible();
   await expect.poll(async () => (await context.cookies()).some((cookie) => cookie.name === "koekata_today_seen")).toBe(true);
+  await context.close();
+});
+
+test("帯：URL のほかの引数（?talk=send）は残る", async ({ browser }) => {
+  const context = await touchContext(browser);
+  const page = await context.newPage();
+  await page.goto("/?talk=send");
+  await stripLoaded(page);
+  expect(await goStrip(page, "/minna")).toBe(true);
+  await expect(page).toHaveURL(/\/\?talk=send&pane=right$/);
+  expect(await goStrip(page, "/")).toBe(true);
+  await expect(page).toHaveURL(/\/\?talk=send$/);
+  await context.close();
+});
+
+test("帯：何度往復しても、記録は1つだけ。「戻る」2回でアプリの外へ出る", async ({ browser }) => {
+  const context = await touchContext(browser);
+  const page = await context.newPage();
+  await openStrip(page);
+  for (const href of ["/minna", "/", "/me", "/", "/minna"]) {
+    expect(await goStrip(page, href)).toBe(true);
+    await expect(page).toHaveURL(href === "/" ? /127\.0\.0\.1:\d+\/$/ : /\?pane=(left|right)$/);
+    // 着いたあとで次へ（ばねが止まって、左右の画面の読み直しが済むまで）
+    await expect.poll(() => page.evaluate(() => window.koekataStrip!.rest())).toBe(href === "/minna" ? -1 : href === "/me" ? 1 : 0);
+    await stripLoaded(page);
+  }
+  await page.goBack();
+  await expect(page).toHaveURL(/127\.0\.0\.1:\d+\/$/);
+  await expect(page.locator(".device-row[data-pane]")).toHaveCount(0);
+  await page.goBack();
+  await expect(page).toHaveURL("about:blank");
   await context.close();
 });

@@ -40,8 +40,15 @@ const center = () => row()?.querySelector<HTMLElement>(":scope > .retro-home") ?
 const pane = (side: "left" | "right") =>
   row()?.querySelector<HTMLElement>(`:scope > .wide-panel[data-mode="pane"][data-side="${side}"]`) ?? null;
 
+/** 窓ごと読み直している途中は、帯を動かさない（読み直しと帯の移動が競わないように） */
+export function holdStrip() {
+  document.documentElement.dataset.stripHold = "true";
+  delete document.documentElement.dataset.stripReady;
+}
+
 /** 左右の画面が両方とも読み込み終わり、帯として動かせるか。中が別の画面（話す画面や合言葉の画面）になっていたら使わない */
 export function stripReady(): boolean {
+  if (document.documentElement.dataset.stripHold === "true") return false;
   for (const side of ["left", "right"] as const) {
     const frame = pane(side)?.querySelector("iframe");
     try {
@@ -76,7 +83,14 @@ export function paneFromUrl(search = location.search): -1 | 0 | 1 {
   return value === "right" ? -1 : value === "left" ? 1 : 0;
 }
 
-const urlOf = (to: -1 | 0 | 1) => (to === -1 ? "/?pane=right" : to === 1 ? "/?pane=left" : "/");
+/** 今の URL の ?pane= だけを替えたもの。ほかの引数（?talk=send・?ask= など）は残す */
+function urlOf(to: -1 | 0 | 1): string {
+  const url = new URL(location.href);
+  if (to === -1) url.searchParams.set("pane", "right");
+  else if (to === 1) url.searchParams.set("pane", "left");
+  else url.searchParams.delete("pane");
+  return url.pathname + url.search + url.hash;
+}
 
 export function stripRest(): -1 | 0 | 1 {
   const state = row()?.dataset.pane;
@@ -127,9 +141,11 @@ function land(to: -1 | 0 | 1, mode: HistoryMode) {
   markInert(to);
   delete document.documentElement.dataset.swiping;
   if (mode !== "none" && before !== to) {
-    // 話す画面へ戻るときは置き換える（history.back は使わない。左右の画面の中で奥へ進んだ記録も同じ履歴に入っているため）
-    if (to !== 0 && before === 0 && mode === "push") history.pushState({ ...history.state, koekataPane: true }, "", urlOf(to));
-    else history.replaceState(history.state, "", urlOf(to));
+    // 帯のための記録は1つだけ。はじめて左右へ行くときに push し、あとはその記録を置き換える（往復しても重複しない）。
+    // 話す画面へ戻るときも置き換える（history.back は使わない。左右の画面の中で奥へ進んだ記録も同じ履歴に入っているため）。
+    // state は自分の印だけ（Next の内部の印を入れると、Next が URL の同期を飛ばす）
+    if (to !== 0 && before === 0 && mode === "push" && !history.state?.koekataPane) history.pushState({ koekataPane: true }, "", urlOf(to));
+    else history.replaceState(history.state?.koekataPane ? { koekataPane: true } : null, "", urlOf(to));
   }
   window.dispatchEvent(new CustomEvent(STRIP_LAND_EVENT, { detail: to }));
   if (to !== 0) {
