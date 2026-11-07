@@ -6,11 +6,11 @@ import type { ChatMessage } from "@/lib/claude/types";
 import type { SafetyNotice } from "./SafetyCard";
 import type { ListeningSession } from "./speech";
 import { soundAllowed } from "./sound";
+import { cancelAloud, speakAloud } from "./speak-aloud";
 
 const COMMAND_WAIT_MS = 1200;
 /** 話した分がこれだけ増えたら、命や安全の確認を通す */
 const CHECK_EVERY_CHARS = 400;
-const SPEAK_TIMEOUT_MS = 20_000;
 const MAX_ASK_TEXT = 2000;
 /** 0-1t：話の切れ目（これだけ黙った）で、自動でパートナーへ送る */
 export const AUTO_SEND_MS = 1500;
@@ -57,6 +57,8 @@ export function useLockedTalk({
   const usedRef = useRef(0);
   const checkedRef = useRef(0);
   const speakingRef = useRef(false);
+  /** 読み上げ待ちを含めた数。重なった読み上げは捨てずに順に読み、全部終わってから聞き取りに戻る */
+  const speakingCount = useRef(0);
   const lastAizuchi = useRef(0);
   const aizuchiCount = useRef(0);
   const commandTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -77,24 +79,16 @@ export function useLockedTalk({
     }
   }, []);
 
-  /** 声で返す。読み上げの間はマイクを止めて、自分の声を拾わない。 */
+  /** 声で返す。読み上げの間はマイクを止めて、自分の声を拾わない（話し終えて少し間をおいてから聞き直す）。 */
   const speak = useCallback(
     async (words: string) => {
-      if (!soundIsOn() || typeof speechSynthesis === "undefined" || speakingRef.current) return;
+      if (!soundIsOn() || typeof speechSynthesis === "undefined") return;
+      speakingCount.current += 1;
       speakingRef.current = true;
       session.current?.pause();
-      await new Promise<void>((resolve) => {
-        const utterance = new SpeechSynthesisUtterance(words);
-        utterance.lang = "ja-JP";
-        const timer = setTimeout(resolve, SPEAK_TIMEOUT_MS);
-        const done = () => {
-          clearTimeout(timer);
-          resolve();
-        };
-        utterance.onend = done;
-        utterance.onerror = done;
-        speechSynthesis.speak(utterance);
-      });
+      await speakAloud(words);
+      speakingCount.current -= 1;
+      if (speakingCount.current > 0) return;
       speakingRef.current = false;
       session.current?.resume();
     },
@@ -194,7 +188,7 @@ export function useLockedTalk({
     () => () => {
       clearTimers();
       void wake.current?.release().catch(() => undefined);
-      if (typeof speechSynthesis !== "undefined") speechSynthesis.cancel();
+      cancelAloud();
     },
     [],
   );

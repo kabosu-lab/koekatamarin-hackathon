@@ -202,3 +202,67 @@ test("0-1t：歩きながらは、話の切れ目で自動で送り、返事を�
   await expect(page.getByRole("status").filter({ hasText: "歩きながら" })).toBeVisible();
   await expect(page.getByRole("button", { name: "話し終えて送る" }).first()).toBeVisible();
 });
+
+// 0-3l：パートナーの読み上げを、マイクが本人の言葉として拾わない。読み上げは少し速く、最初の一文から読む
+test("0-3l：読み上げ中や直後に聞き取りが読み上げを拾っても、本人の言葉に入れない", async ({ page }) => {
+  await fakeVoice(page);
+  await page.addInitScript(() => {
+    const store = window as unknown as {
+      spoken: { text: string; rate: number }[];
+      held: SpeechSynthesisUtterance[];
+      endSpeech(): void;
+      pendingEnds: (() => void)[];
+      webkitSpeechRecognition: { prototype: { stop(): void } };
+    };
+    store.spoken = [];
+    store.held = [];
+    store.pendingEnds = [];
+    // 読み上げは endSpeech() を呼ぶまで続いていることにする
+    window.speechSynthesis.speak = (utterance) => {
+      store.spoken.push({ text: utterance.text, rate: utterance.rate });
+      store.held.push(utterance);
+    };
+    // 実機のように、止めても終わりの知らせはすぐ来ない（その間も読み上げを拾う）
+    store.webkitSpeechRecognition.prototype.stop = function (this: { onend: (() => void) | null }) {
+      store.pendingEnds.push(() => this.onend?.());
+    };
+    store.endSpeech = () => {
+      store.pendingEnds.splice(0).forEach((end) => end());
+      store.held.splice(0).forEach((utterance) => utterance.onend?.(new Event("end") as SpeechSynthesisEvent));
+    };
+  });
+  await page.goto("/");
+  await swipeToLock(page);
+  await hear(page, "この工夫どう思う？");
+  await expect(log(page).locator(".bubble.assistant:not(.waiting)")).toHaveCount(1, { timeout: 8000 });
+  await expect.poll(() => page.evaluate(() => (window as unknown as { spoken: unknown[] }).spoken.length)).toBeGreaterThan(0);
+  const spoken = await page.evaluate(() => (window as unknown as { spoken: { text: string; rate: number }[] }).spoken);
+  // 吹き出しの頭には、読み上げ用の「パートナー：」が付いている
+  const reply = (await log(page).locator(".bubble.assistant:not(.waiting)").last().innerText()).replace(/\s/g, "").replace(/^パートナー[：:]/, "");
+  // 最初の一文を、ひとつの読み上げとして先に読み始める
+  const firstSentence = (reply.match(/[^。！？!?]+[。！？!?]*/) ?? [reply])[0];
+  expect(spoken[0].text.replace(/\s/g, "")).toBe(firstSentence);
+  for (const { rate } of spoken) expect(rate).toBeCloseTo(1.15, 2);
+  const echo = spoken.map((item) => item.text).join("");
+  const mark = spoken[0].text.slice(0, 6);
+  const starts = await page.evaluate(() => (window as unknown as { starts: number }).starts);
+
+  // 読み上げの間：止めた聞き取りに読み上げが入っても、本人の言葉にしない。聞き直しもしない
+  await hear(page, `この工夫どう思う？${echo}`);
+  await page.waitForTimeout(400);
+  await expect(page.locator(".device-heard")).not.toContainText(mark);
+  expect(await page.evaluate(() => (window as unknown as { starts: number }).starts)).toBe(starts);
+
+  // 話し終えてから聞き直す。その直後に読み上げの残りを拾っても捨てる
+  await page.evaluate(() => (window as unknown as { endSpeech(): void }).endSpeech());
+  await expect.poll(() => page.evaluate(() => (window as unknown as { starts: number }).starts)).toBeGreaterThan(starts);
+  await hear(page, echo);
+  await page.waitForTimeout(300);
+  await expect(page.locator(".device-heard")).not.toContainText(mark);
+  await hear(page, "続きの話");
+  await page.getByRole("button", { name: "話し終えて送る" }).first().click();
+  const users = log(page).locator(".bubble.user");
+  await expect(users).toHaveCount(2);
+  await expect(users.last()).toContainText("続きの話");
+  await expect(users.last()).not.toContainText(mark);
+});

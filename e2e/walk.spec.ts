@@ -100,7 +100,10 @@ test("「どう思う？」と言ったときだけパートナーが声で答�
 
   await hear(page, "小テストの作り方で迷っててな。どう思う？");
   await expect(page.locator(".walk-reply")).toBeVisible({ timeout: 15_000 });
-  await expect.poll(() => spokenWords(page).then((words) => words.length)).toBe(1);
+  // 0-3l：返事は文ごとに分けて、最初の一文から読み始める（1回の返事を全部読む）
+  const reply = (await page.locator(".walk-reply").innerText()).replace(/\s/g, "");
+  await expect.poll(() => spokenWords(page).then((words) => words.join("").replace(/\s/g, ""))).not.toBe("");
+  expect(reply).toContain((await spokenWords(page)).join("").replace(/\s/g, ""));
   expect(await page.evaluate(() => (window as unknown as { micStops: number }).micStops)).toBeGreaterThan(0);
 });
 
