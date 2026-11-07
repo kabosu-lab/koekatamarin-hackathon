@@ -117,6 +117,13 @@ test.describe("子から始まる指", () => {
       }, from);
     expect(await drag(".device-mic")).toBe("");
     await page.evaluate(() => document.querySelector(".click-wheel")!.dispatchEvent(new PointerEvent("pointerup", { bubbles: true, pointerId: 7, pointerType: "touch" })));
-    expect(await drag(".wheel-ticks > i")).toBe("true");
+    // 輪の中の子（マイク以外）から始まった指も、輪のなぞりとして扱う
+    await page.evaluate(() => {
+      const child = document.createElement("span");
+      child.className = "probe-child";
+      child.style.cssText = "position:absolute;inset:0;pointer-events:none";
+      document.querySelector(".click-wheel")!.appendChild(child);
+    });
+    expect(await drag(".click-wheel > .probe-child")).toBe("true");
   });
 });

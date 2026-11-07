@@ -2312,25 +2312,11 @@ body:has(.first-card-backdrop) button.edge-handle {
   display: none;
 }
 
-/* 0-3i：なぞれる輪だと分かるよう、輪のまわりに目盛りのような薄い点を並べる（指は受けない） */
-.wheel-ticks,
-.wheel-ticks > i,
+/* 0-3i：初めて開いたときの指の印（指は受けない）。目盛りの点は利用者の決定でなくした */
 .wheel-hint {
   position: absolute;
   inset: 0;
   pointer-events: none;
-}
-
-.wheel-ticks > i::before {
-  content: "";
-  position: absolute;
-  top: 4.5%;
-  left: 50%;
-  width: 3px;
-  height: 3px;
-  margin-left: -1.5px;
-  border-radius: 50%;
-  background: rgb(40 52 62 / 24%);
 }
 
 /* 初めて開いたときだけ、指の印が輪を4分の1周なぞる */

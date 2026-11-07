@@ -71,7 +71,7 @@ for (const size of SIZES) {
     });
     const page = await ctx.newPage();
     await page.goto("/");
-    await expect(page.locator(".click-wheel .wheel-ticks > i")).toHaveCount(24);
+    await expect(page.locator(".click-wheel .wheel-ticks")).toHaveCount(0);
     await expect(page.locator("html[data-edge-hint='shown']")).toHaveCount(1, { timeout: 30_000 });
     await expect(page.locator(".edge-handle[data-nudge]")).toHaveCount(2);
     await page.screenshot({ path: test.info().outputPath(`揺れ-${size.name}.png`) });
@@ -99,7 +99,7 @@ test("3列（横向きで高さ 600 以上）では棒を出さない", async ({
   const ctx = await context(browser, { width: 1180, height: 820 }, { seen: false });
   const page = await ctx.newPage();
   await page.goto("/");
-  await expect(page.locator(".click-wheel .wheel-ticks > i")).toHaveCount(24);
+  await expect(page.locator(".click-wheel .wheel-ticks")).toHaveCount(0);
   await expect(page.locator(".edge-handle")).toHaveCount(2);
   for (const handle of await page.locator(".edge-handle").all()) await expect(handle).toBeHidden();
   await page.waitForTimeout(3000);

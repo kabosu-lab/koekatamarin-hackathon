@@ -11,7 +11,7 @@ const CHAR_MS = 35;
 /** 吹き出しが出終わってから輪が光り始めるまで（§2-1-B） */
 const RING_DELAY_MS = 400;
 /** 輪の呼吸 2.8s × 2回 */
-const RING_MS = 2800 * 2;
+const RING_MS = 2800 * 3;
 /** 触られないまま、この時間がたったら誘いの一言を添える（§2-1-B） */
 const NUDGE_MS = 6000;
 
